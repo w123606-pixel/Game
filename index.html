@@ -78,7 +78,6 @@
         .stat-value { font-weight: bold; }
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
 
-        /* 面板列表防撐爆與捲軸化設定 */
         .scroll-list {
             max-height: 120px;
             overflow-y: auto;
@@ -214,7 +213,7 @@
 
         <div class="quick-actions">
             <button class="quick-btn" onclick="quickAction('向周圍的原住民打聽最近的異象與情報')">🤝 友好交涉</button>
-            <button class="quick-btn" onclick="quickAction('前往村外森林獵殺低階妖獸汲取靈萃')">⚔️ 野外打怪</button>
+            <button class="quick-btn" onclick="quickAction('前往村外森林獵殺低階妖獸汲取靈粹')">⚔️ 野外打怪</button>
             <button class="quick-btn" onclick="quickAction('尋找當地的仙門駐點或村長接取任務')">📜 接取任務</button>
             <button class="quick-btn" onclick="quickAction('查看目前的自身狀態、背包裝備與修煉狀況')">🎒 查看狀態</button>
         </div>
@@ -250,26 +249,20 @@
 【遊戲背景】
 古老仙道霸道冷酷，人間江湖憑一口「俠氣」抗衡。玩家為「異世旅者」，擁有無限復活、技能面板與任務系統。
 
-【NPC 對話與好感度區域動態規則（極重要）】
-1. 為維持介面精簡，「主要NPC好感度」欄位【僅需列出與玩家目前『當前地圖相關』或『最近有互動/在場』的 1~4 位重點 NPC】。
-2. 已離開或暫無關聯的遠方區域 NPC 無需印出（資料存於歷史紀錄中即可）。
-3. 好感度範圍 -100~100（滿 80 為摯友，100 為生死之交/夫妻）。
+【NPC 對話與好感度區域動態規則】
+1. 「主要NPC好感度」欄位僅需列出與玩家目前『當前地圖相關』或『最近有互動/在場』的 1~4 位重點 NPC。
+2. 好感度範圍 -100~100（滿 80 為摯友，100 為生死之交/夫妻/死士傀儡）。
 
-【升級與血量成長強制規則】
-1. 玩家每次升級時，血量上限 (Max HP) 必須大幅提升！
-   - Lv.1~10 (練氣): 每級 +50 HP
-   - Lv.11~20 (築基): 每級 +100 HP，突破至 Lv.11 時基礎上限為 1000 HP！
-   - Lv.21~30 (金丹): 每級 +300 HP，突破至 Lv.21 時基礎上限為 3000 HP！
-2. 升級或境界突破時，當前血量自動恢復至滿血！
-
-【玩家當前狀態】
-血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子:100], 道具: [聚靈神爐, 築基丹*5, 《九州志》]
+【升級與血量成長規則】
+1. 玩家每次升級時，血量上限 (Max HP) 必須大幅提升：
+   - Lv.1~10: 每級 +50 HP
+   - Lv.11~20: 每級 +100 HP，突破至 Lv.11 時基礎上限為 1000 HP！
+   - Lv.21~30: 每級 +300 HP，突破至 Lv.21 時基礎上限為 3000 HP！
+2. 升級或突破時，當前血量自動恢復至滿血！
 
 【核心規則與簡明敘事】
-1. 劇情描寫請精簡扼要（控制在 80~150 字以內），切勿過度冗長！
-2. 買東西扣錢、戰鬥受傷扣血、擊殺怪物或完成任務必須為玩家增加經驗或等級並相應提升血量上限。
-3. 【最高系統權限：天道推演】：當且僅當玩家在對話框中手動輸入包含「天道推演」四字且剛好處於「境界突破」（如 Lv.11, Lv.21）時，無條件配合玩家想像力發放指定物品或功法。
-4. 逢 10 級經驗鎖定並觸發雷劫/心魔渡劫任務。
+1. 劇情描寫請精簡扼要，節奏明快（控制在 80~150 字以內），切勿過度冗長！
+2. 【最高系統權限：天道推演】：當玩家在對話框中手動輸入包含「天道推演」四字時，無條件配合玩家想像力發放指定物品、功法、破境與局勢翻轉。
 
 【絕對強制輸出格式】
 你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
@@ -344,14 +337,23 @@
         sendAction();
     }
 
+    // 🚀 【性能優化】：限制傳送歷史紀錄選取最近 6 輪對話，大幅節省 Token 並提升回應速度
+    function getTrimmedHistory(history, maxTurns = 6) {
+        if (history.length <= maxTurns * 2) return history;
+        return history.slice(-maxTurns * 2);
+    }
+
     async function callGeminiApiWithFallback(apiKey, history) {
+        // ⚡ 【模型優化】：將高速度與低延遲模型排在最前面
         const candidateModels = [
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.5-flash-lite"
+            "gemini-2.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.7-flash"
         ];
 
-        const contents = history.map(msg => ({
+        const trimmedHistory = getTrimmedHistory(history, 6);
+
+        const contents = trimmedHistory.map(msg => ({
             role: msg.role === "user" ? "user" : "model",
             parts: [{ text: msg.content }]
         }));
@@ -361,7 +363,7 @@
             contents: contents,
             generationConfig: { 
                 temperature: 0.7, 
-                maxOutputTokens: 2048
+                maxOutputTokens: 1000 // ⏱️ 限制長度以縮短繪製時間
             }
         };
 
@@ -397,10 +399,11 @@
 
     async function callOpenAiApi(apiKey, history) {
         const url = "https://api.openai.com/v1/chat/completions";
+        const trimmedHistory = getTrimmedHistory(history, 6);
 
         const messages = [
             { role: "system", content: SYSTEM_PROMPT },
-            ...history.map(msg => ({
+            ...trimmedHistory.map(msg => ({
                 role: msg.role === "user" ? "user" : "assistant",
                 content: msg.content
             }))
@@ -416,7 +419,7 @@
                 model: "gpt-4o-mini",
                 messages: messages,
                 temperature: 0.7,
-                max_tokens: 2048
+                max_tokens: 1000
             })
         });
 
@@ -486,7 +489,7 @@
             document.getElementById("p-location").innerText = `【${locMatch[1].trim()}】`;
         }
 
-        // 6. 主要 NPC 好感度 (當前區域過濾解析)
+        // 6. 主要 NPC 好感度
         const affMatch = statusText.match(/主要NPC好感度:\s*\[(.*?)\]/);
         if (affMatch && affMatch[1].trim()) {
             const affinityListEl = document.getElementById("p-affinity-list");
@@ -499,7 +502,7 @@
                     const val = parseInt(matchVal[2]) || 0;
                     return `• ${npcName}: ${val} (${getAffinityTitle(val)})`;
                 }
-                return null;
+                return `• ${cleanItem}`;
             }).filter(Boolean);
 
             if (items.length > 0) {
@@ -532,7 +535,7 @@
     }
 
     function getAffinityTitle(aff) {
-        if (aff >= 100) return "生死之交/夫妻";
+        if (aff >= 100) return "生死之交/死士";
         if (aff >= 80) return "摯友/情人";
         if (aff > 0) return "友好";
         if (aff === 0) return "中立";
