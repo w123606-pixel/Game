@@ -14,6 +14,9 @@
             --accent-green: #43a047;
             --accent-blue: #0288d1;
             --accent-purple: #8e24aa;
+            --hl-gold: #ffd700;
+            --hl-cyan: #00ffff;
+            --hl-red: #ff5252;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "微軟正黑體", "Noto Sans TC", sans-serif; }
@@ -104,6 +107,12 @@
         .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
         .status-footer { background: #131520; color: var(--border-gold); padding: 8px; border-radius: 4px; font-size: 0.85rem; margin-top: 8px; font-family: monospace; word-break: break-all; }
 
+        /* 關鍵字高亮樣式 */
+        .hl-item { color: var(--hl-gold); font-weight: bold; }
+        .hl-skill { color: var(--hl-cyan); font-weight: bold; }
+        .hl-danger { color: var(--hl-red); font-weight: bold; }
+        .hl-deduce { color: var(--accent-purple); font-weight: bold; }
+
         .input-group { display: flex; gap: 8px; }
         input[type="text"] { flex-grow: 1; background: #10121a; border: 1px solid var(--border-gold); color: #fff; padding: 12px; border-radius: 4px; font-size: 0.95rem; }
         button { background: #2a2d3d; color: var(--border-gold); border: 1px solid var(--border-gold); padding: 10px 18px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
@@ -112,6 +121,8 @@
 
         .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
         .quick-btn { font-size: 0.85rem; padding: 10px; min-height: 44px; }
+
+        details summary { cursor: pointer; padding: 6px 0; color: var(--border-gold); font-weight: bold; font-size: 0.9rem; outline: none; }
 
         @media (max-width: 900px) {
             body { padding: 8px; }
@@ -131,7 +142,7 @@
             .right-panel { order: 3; }
 
             .quick-actions {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr 1fr;
             }
 
             input[type="text"] {
@@ -207,15 +218,14 @@
         </div>
         
         <div class="input-group">
-            <input type="text" id="action-input" placeholder="輸入行動（如：向村長告別 / 查閱《九州志》...）" onkeydown="if(event.key==='Enter') sendAction()">
+            <input type="text" id="action-input" placeholder="輸入行動或發動天道推演..." onkeydown="if(event.key==='Enter') sendAction()">
             <button id="btn-submit" onclick="sendAction()">抉擇</button>
         </div>
 
+        <!-- 精簡後的快捷按鈕 -->
         <div class="quick-actions">
-            <button class="quick-btn" onclick="quickAction('向周圍的原住民打聽最近的異象與情報')">🤝 友好交涉</button>
-            <button class="quick-btn" onclick="quickAction('前往村外森林獵殺低階妖獸汲取靈粹')">⚔️ 野外打怪</button>
-            <button class="quick-btn" onclick="quickAction('尋找當地的仙門駐點或村長接取任務')">📜 接取任務</button>
-            <button class="quick-btn" onclick="quickAction('查看目前的自身狀態、背包裝備與修煉狀況')">🎒 查看狀態</button>
+            <button class="quick-btn" onclick="quickAction('【天道推演】')">✨ 發動天道推演</button>
+            <button class="quick-btn" onclick="quickAction('查閱《九州志》與探索周圍情報')">🔍 探查情報</button>
         </div>
     </div>
 
@@ -226,19 +236,22 @@
             <small style="color:#888;">仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。</small>
         </div>
 
-        <h2>📖 九州修仙境界</h2>
-        <div style="font-size: 0.8rem; line-height: 1.6; color: #bbb;">
-            1. 練氣期 (Lv.1-10)<br>
-            2. 築基期 (Lv.11-20)<br>
-            3. 金丹期 (Lv.21-30)<br>
-            4. 元嬰期 (Lv.31-40) [出竅]<br>
-            5. 化神期 (Lv.41-50) [分身]<br>
-            6. 煉虛期 (Lv.51-60) [洞天]<br>
-            7. 合體期 (Lv.61-70) [法相]<br>
-            8. 大乘期 (Lv.71-80) [言出法隨]<br>
-            9. 渡劫期 (Lv.81-90) [欺天]<br>
-            10. 真仙境 (Lv.91-100)
-        </div>
+        <!-- 境界列表收納為摺疊面板 -->
+        <details>
+            <summary>📖 九州修仙境界表 (點擊展開)</summary>
+            <div style="font-size: 0.8rem; line-height: 1.6; color: #bbb; padding-top: 8px;">
+                1. 練氣期 (Lv.1-10)<br>
+                2. 築基期 (Lv.11-20)<br>
+                3. 金丹期 (Lv.21-30)<br>
+                4. 元嬰期 (Lv.31-40)<br>
+                5. 化神期 (Lv.41-50)<br>
+                6. 煉虛期 (Lv.51-60)<br>
+                7. 合體期 (Lv.61-70)<br>
+                8. 大乘期 (Lv.71-80)<br>
+                9. 渡劫期 (Lv.81-90)<br>
+                10. 真仙境 (Lv.91-100)
+            </div>
+        </details>
     </div>
 </div>
 
@@ -271,6 +284,7 @@
 [當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子:100], 道具: [聚靈神爐, 築基丹*5, 《九州志》]`;
 
     let conversationHistory = [];
+    const MAX_DOM_LOGS = 30; // 最多保持 30 個故事區塊以防手機卡頓
 
     window.onload = () => {
         loadApiKey();
@@ -333,18 +347,22 @@
     }
 
     function quickAction(text) {
-        document.getElementById("action-input").value = text;
-        sendAction();
+        const inputEl = document.getElementById("action-input");
+        if (text === '【天道推演】') {
+            inputEl.value = '【天道推演】';
+            inputEl.focus();
+        } else {
+            inputEl.value = text;
+            sendAction();
+        }
     }
 
-    // 🚀 【性能優化】：限制傳送歷史紀錄選取最近 6 輪對話，大幅節省 Token 並提升回應速度
     function getTrimmedHistory(history, maxTurns = 6) {
         if (history.length <= maxTurns * 2) return history;
         return history.slice(-maxTurns * 2);
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // ⚡ 【模型優化】：將高速度與低延遲模型排在最前面
         const candidateModels = [
             "gemini-2.5-flash",
             "gemini-3.5-flash-lite",
@@ -363,7 +381,7 @@
             contents: contents,
             generationConfig: { 
                 temperature: 0.7, 
-                maxOutputTokens: 1000 // ⏱️ 限制長度以縮短繪製時間
+                maxOutputTokens: 1000 
             }
         };
 
@@ -445,7 +463,6 @@
 
         const statusText = text.substring(statusIndex);
 
-        // 1. 等級與境界
         let currentLevel = 11;
         const levelMatch = statusText.match(/等級:\s*(\d+)/);
         if (levelMatch) {
@@ -454,7 +471,6 @@
             document.getElementById("p-realm").innerText = getRealmName(currentLevel);
         }
 
-        // 2. 血量計算
         const hpMatch = statusText.match(/血量:\s*(\d+)\/(\d+)/);
         const expectedMaxHp = calculateExpectedHp(currentLevel);
         
@@ -470,26 +486,22 @@
             document.getElementById("p-hp").innerText = `${expectedMaxHp} / ${expectedMaxHp}`;
         }
 
-        // 3. 金幣
         const goldMatch = statusText.match(/金幣:\s*(\d+)/);
         if (goldMatch) {
             document.getElementById("p-gold").innerText = goldMatch[1];
         }
 
-        // 4. 裝備與神通
         const equipMatch = statusText.match(/裝備:\s*([^,，\n]+)/);
         if (equipMatch) {
             const equipItems = equipMatch[1].split(/[、,]/).map(s => s.trim()).filter(Boolean);
             document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
         }
 
-        // 5. 位置
         const locMatch = statusText.match(/位置:\s*([^,，\n]+)/);
         if (locMatch) {
             document.getElementById("p-location").innerText = `【${locMatch[1].trim()}】`;
         }
 
-        // 6. 主要 NPC 好感度
         const affMatch = statusText.match(/主要NPC好感度:\s*\[(.*?)\]/);
         if (affMatch && affMatch[1].trim()) {
             const affinityListEl = document.getElementById("p-affinity-list");
@@ -510,7 +522,6 @@
             }
         }
 
-        // 7. 道具與物品
         const itemMatch = statusText.match(/道具:\s*\[(.*?)\]/);
         if (itemMatch && itemMatch[1].trim()) {
             const invListEl = document.getElementById("p-inventory");
@@ -542,6 +553,15 @@
         return "冷淡/敵對";
     }
 
+    // 🎨 【高亮處理】：自動強化修仙關鍵字視覺表現
+    function applyKeywordHighlight(htmlText) {
+        return htmlText
+            .replace(/【天道推演】/g, '<span class="hl-deduce">【天道推演】</span>')
+            .replace(/(獲得|搜刮|獲得法寶|獲得神器|收歸囊中)/g, '<span class="hl-item">$1</span>')
+            .replace(/(突破|破境|昇華|頓悟|成功破丹成嬰|晉升)/g, '<span class="hl-skill">$1</span>')
+            .replace(/(灰飛煙滅|神形俱滅|全滅|重傷|死士|傀儡)/g, '<span class="hl-danger">$1</span>');
+    }
+
     function appendLog(role, text, type) {
         const logBox = document.getElementById("story-log");
         
@@ -556,12 +576,21 @@
             statusHtml = `<div class="status-footer">${rawStatus}</div>`;
         }
 
+        let highlightedContent = applyKeywordHighlight(formattedText.replace(/\n/g, "<br>"));
+
         logBox.innerHTML += `
             <div class="story-block ${type}">
                 <strong>${role}：</strong><br>
-                ${formattedText.replace(/\n/g, "<br>")}
+                ${highlightedContent}
                 ${statusHtml}
             </div>`;
+
+        // ✂️ 【DOM 清理】：移除舊的 DOM 節點，防止長時間遊玩時手機網頁卡頓
+        const blocks = logBox.getElementsByClassName("story-block");
+        while (blocks.length > MAX_DOM_LOGS) {
+            blocks[0].remove();
+        }
+
         logBox.scrollTop = logBox.scrollHeight;
     }
 
