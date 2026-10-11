@@ -180,7 +180,7 @@
         
         <h2 style="margin-top: 15px;">👥 當前區域 NPC 好感度</h2>
         <div id="p-affinity-list" class="scroll-list">
-            • 蒼雲子: 100 (生死之交)
+            • 蒼雲子(新手村長老): 100 (生死之交)
         </div>
         
         <h2 style="margin-top: 15px;">⚔️ 裝備與神通</h2>
@@ -213,7 +213,7 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 你打開蒼雲子留下的乾坤袋，只見金光一閃，裡面躺著一尊散發古樸藥香的「聚靈神爐」、五枚晶瑩剔透的「築基丹」，以及一卷記載著修仙界地圖與上古秘聞的《九州志》。你完美跨越突破，蛻凡築基，全身經脈與血氣大幅昇華！<br>
-                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子:100], 道具: [聚靈神爐, 築基丹*5, 《九州志》]</div>
+                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 道具: [聚靈神爐, 築基丹*5, 《九州志》]</div>
             </div>
         </div>
         
@@ -222,7 +222,6 @@
             <button id="btn-submit" onclick="sendAction()">抉擇</button>
         </div>
 
-        <!-- 精簡後的快捷按鈕 -->
         <div class="quick-actions">
             <button class="quick-btn" onclick="quickAction('【天道推演】')">✨ 發動天道推演</button>
             <button class="quick-btn" onclick="quickAction('查閱《九州志》與探索周圍情報')">🔍 探查情報</button>
@@ -236,7 +235,6 @@
             <small style="color:#888;">仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。</small>
         </div>
 
-        <!-- 境界列表收納為摺疊面板 -->
         <details>
             <summary>📖 九州修仙境界表 (點擊展開)</summary>
             <div style="font-size: 0.8rem; line-height: 1.6; color: #bbb; padding-top: 8px;">
@@ -259,12 +257,19 @@
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
 請嚴格遵守以下遊戲背景、NPC互動原則、規則與結算格式：
 
-【遊戲背景】
-古老仙道霸道冷酷，人間江湖憑一口「俠氣」抗衡。玩家為「異世旅者」，擁有無限復活、技能面板與任務系統。
+【遊戲背景與修仙界風險】
+古老仙道霸道冷酷，修仙界爾虞我詐、弱肉強食。
+【重要：事件隨機性機制】
+1. 當玩家進行一般行動（如尋找奇遇、打抱不平、英雄救美、探索密境）時，必須保持 30% 的「負面/險惡機率」：
+   - 70% 機率：順利獲得好處、機緣或建立良好人際關係。
+   - 30% 機率：觸發陷阱/代價/黑吃黑（例如：假機遇真奪舍陷阱、獲得殘破法寶但遭毒煞扣血、受救者事後恩將仇報、招惹更強大的門派強者等）。
+2. 【最高系統權限：天道推演】：只有當玩家在對話框中明確輸入包含「天道推演」四字時，才 100% 無條件配合玩家想像力發放指定物品、功法、破境與局勢翻轉。其餘常態行動請務必執行 30% 的風險機制！
 
-【NPC 對話與好感度區域動態規則】
-1. 「主要NPC好感度」欄位僅需列出與玩家目前『當前地圖相關』或『最近有互動/在場』的 1~4 位重點 NPC。
-2. 好感度範圍 -100~100（滿 80 為摯友，100 為生死之交/夫妻/死士傀儡）。
+【NPC 對話與好感度區域動態規則（核心定錨點）】
+1. 「主要NPC好感度」欄位『必須』精確標註 NPC 的名稱與固定身分門派，格式為：[NPC名字(門派/身分):好感度]。
+   - 例如：[沈清璃(凌霄閣聖女):100] 或 [夜無極(幽冥谷金丹傀儡):100]。
+2. 你在進行後續劇情創作時，必須嚴格遵循此身分標籤，絕對不可任意變動 NPC 的門派或設定！
+3. 好感度範圍 -100~100（滿 80 為摯友，100 為生死之交/夫妻/死士傀儡）。
 
 【升級與血量成長規則】
 1. 玩家每次升級時，血量上限 (Max HP) 必須大幅提升：
@@ -275,16 +280,15 @@
 
 【核心規則與簡明敘事】
 1. 劇情描寫請精簡扼要，節奏明快（控制在 80~150 字以內），切勿過度冗長！
-2. 【最高系統權限：天道推演】：當玩家在對話框中手動輸入包含「天道推演」四字時，無條件配合玩家想像力發放指定物品、功法、破境與局勢翻轉。
 
 【絕對強制輸出格式】
 你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
 
 ---
-[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子:100], 道具: [聚靈神爐, 築基丹*5, 《九州志》]`;
+[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 道具: [聚靈神爐, 築基丹*5, 《九州志》]`;
 
     let conversationHistory = [];
-    const MAX_DOM_LOGS = 30; // 最多保持 30 個故事區塊以防手機卡頓
+    const MAX_DOM_LOGS = 30;
 
     window.onload = () => {
         loadApiKey();
@@ -508,11 +512,11 @@
             const rawItems = affMatch[1].split(/[,，、]/);
             const items = rawItems.map(item => {
                 const cleanItem = item.trim();
-                const matchVal = cleanItem.match(/([^:(（]+)[:：（(]\s*(-?\d+)\s*[)）]?/);
+                const matchVal = cleanItem.match(/([^:(（]+[:：（(][^)]+[)）]?)\s*[:：（(]\s*(-?\d+)\s*[)）]?/) || cleanItem.match(/([^:(（]+)[:：（(]\s*(-?\d+)\s*[)）]?/);
                 if (matchVal) {
-                    const npcName = matchVal[1].trim();
+                    const npcInfo = matchVal[1].trim();
                     const val = parseInt(matchVal[2]) || 0;
-                    return `• ${npcName}: ${val} (${getAffinityTitle(val)})`;
+                    return `• ${npcInfo}: ${val} (${getAffinityTitle(val)})`;
                 }
                 return `• ${cleanItem}`;
             }).filter(Boolean);
@@ -553,13 +557,12 @@
         return "冷淡/敵對";
     }
 
-    // 🎨 【高亮處理】：自動強化修仙關鍵字視覺表現
     function applyKeywordHighlight(htmlText) {
         return htmlText
             .replace(/【天道推演】/g, '<span class="hl-deduce">【天道推演】</span>')
             .replace(/(獲得|搜刮|獲得法寶|獲得神器|收歸囊中)/g, '<span class="hl-item">$1</span>')
             .replace(/(突破|破境|昇華|頓悟|成功破丹成嬰|晉升)/g, '<span class="hl-skill">$1</span>')
-            .replace(/(灰飛煙滅|神形俱滅|全滅|重傷|死士|傀儡)/g, '<span class="hl-danger">$1</span>');
+            .replace(/(灰飛煙滅|神形俱滅|全滅|重傷|死士|傀儡|毒煞|暗算|陷阱|反噬)/g, '<span class="hl-danger">$1</span>');
     }
 
     function appendLog(role, text, type) {
@@ -585,7 +588,6 @@
                 ${statusHtml}
             </div>`;
 
-        // ✂️ 【DOM 清理】：移除舊的 DOM 節點，防止長時間遊玩時手機網頁卡頓
         const blocks = logBox.getElementsByClassName("story-block");
         while (blocks.length > MAX_DOM_LOGS) {
             blocks[0].remove();
