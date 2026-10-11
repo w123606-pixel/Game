@@ -367,11 +367,12 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 🎯 修正為 2026 年最新標準正式模型清單
+        // 🚀 優先採用 3.8-flash，依序向下嘗試新舊模型備援
         const candidateModels = [
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
-            "gemini-2.0-flash"
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-2.5-flash"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -396,7 +397,7 @@
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
-                // ⏱️ 8 秒超時防禦，保證若模型不存在或無反應，立刻跳下一個
+                // ⏱️ 8 秒 Timeout 機制，防止卡死在「天道推導中...」
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -419,12 +420,12 @@
                     return data.candidates[0].content.parts[0].text;
                 }
             } catch (err) {
-                console.warn(`[${modelName}] 呼叫失敗，嘗試下一個備用模型:`, err.message);
+                console.warn(`[${modelName}] 呼叫失敗，自動嘗試下一個備用模型:`, err.message);
                 lastError = err;
             }
         }
 
-        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否填寫正確！");
+        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否填寫正確並具備對應模型權限！");
     }
 
     async function callOpenAiApi(apiKey, history) {
