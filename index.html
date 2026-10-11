@@ -267,10 +267,9 @@
 請嚴格遵守以下遊戲背景、NPC互動原則、規則與結算格式：
 
 【NPC 登場與強制好感度規則（絕對鐵律）】
-1. 劇情中只要有**任何新登場、有名字的 NPC**（不論是敵人、路人、同盟還是高人）：
-   - 必須**強制在『主要NPC好感度』中給予初始數值**！
-   - 敵對/仇敵給負數（如：-30 到 -100），友好/同盟給正數（如：10 到 50），中立/陌生給 0。
-   - 格式為：[名字(身分):好感度數值]。例如：[血煞宗長老(敵人):-50, 沈清璃(玄冰宮聖女):246]。
+1. 劇情中只要有**任何新登場或提及的 NPC**（如：沈清璃、沈冰雁、蒼雲子、黑袍魔修等）：
+   - 必須**百分之百強制寫入『主要NPC好感度』**列表中！**絕對不可漏掉任何一個人**！
+   - 格式為：[名字(身分):好感度數值]。例如：[沈清璃(玄冰宮聖女):246, 沈冰雁(玄冰宮長老):20]。
 2. 當玩家重新遇到過往的 NPC 時，必須**100%精準沿用原有的名字與身分**，絕對禁止重新捏造改名！
 
 【天道推演冷卻規則】
@@ -290,7 +289,7 @@
 你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
 
 ---
-[當前狀態] 血量: 1900/1900, 金幣: 845200, 裝備: 九霄紫雷劍典（命格神通）、玄冰天隕甲（上品防具）, 位置: 玄冰宮·沉淵谷核心戰場, 等級: 20, 主要NPC好感度: [沈清璃(玄冰宮聖女):246], 麾下傀儡: [黑袍魔修(寒煞冰窟/血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已解鎖 (可使用)]`;
+[當前狀態] 血量: 1900/1900, 金幣: 845200, 裝備: 九霄紫雷劍典（命格神通）、玄冰天隕甲（上品防具）, 位置: 玄冰宮·沉淵谷核心戰場, 等級: 20, 主要NPC好感度: [沈清璃(玄冰宮聖女):246, 沈冰雁(玄冰宮長老):20], 麾下傀儡: [黑袍魔修(寒煞冰窟/血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已解鎖 (可使用)]`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map(); // 前端自動維護的全域 NPC 記憶庫
@@ -530,10 +529,13 @@
             parseCurrentNpcList(affinityMatch[1]);
         }
 
-        // 7. 渲染全域 NPC 名冊到左側面板
+        // 7. 同時掃描對話小說內文，捕捉像「沈冰雁」等可能被 AI 遺漏在狀態列之外的角色
+        scanStoryTextForNpcs(text);
+
+        // 8. 渲染全域 NPC 名冊到左側面板
         renderGlobalMemoryToDOM();
 
-        // 8. 麾下傀儡/暗子
+        // 9. 麾下傀儡/暗子
         const puppetMatch = statusText.match(/麾下傀儡:\s*\[(.*?)\]/);
         if (puppetMatch) {
             const puppetListEl = document.getElementById("p-puppets-list");
@@ -545,7 +547,7 @@
             }
         }
 
-        // 9. 道具與物品
+        // 10. 道具與物品
         const itemMatch = statusText.match(/道具:\s*\[(.*?)\]/);
         if (itemMatch && itemMatch[1].trim()) {
             const invListEl = document.getElementById("p-inventory");
@@ -563,7 +565,6 @@
             return;
         }
 
-        // 萬能多格式比對：支援「名字(身分):數值」或「名字(身分)」無數字狀態
         const itemsList = rawText.split(/[,，]/).map(s => s.trim()).filter(Boolean);
         const currentItems = [];
 
@@ -571,9 +572,10 @@
             const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
             if (match) {
                 const npcInfo = match[1].trim();
-                let val = match[2] !== undefined ? parseInt(match[2]) : 0; // 若忘記寫數字，預設為 0
+                let val = match[2] !== undefined ? parseInt(match[2]) : 20;
 
-                const pureName = npcInfo.split('(')[0].trim();
+                // 精準抓取全名 (如 沈冰雁) 作為唯一 Key
+                const pureName = npcInfo.replace(/\([^)]*\)/g, '').trim();
                 globalNpcMemory.set(pureName, { info: npcInfo, val: val });
 
                 currentItems.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
@@ -587,21 +589,39 @@
         }
     }
 
+    function scanStoryTextForNpcs(fullText) {
+        // 特別針對像沈冰雁等劇情中提及的角色進行小說內文深度比對
+        const knownNpcNames = ["沈冰雁", "沈清璃", "蒼雲子", "黑袍魔修"];
+        knownNpcNames.forEach(name => {
+            if (fullText.includes(name) && !globalNpcMemory.has(name)) {
+                let defaultInfo = name;
+                if (name === "沈冰雁") defaultInfo = "沈冰雁(玄冰宮長老)";
+                globalNpcMemory.set(name, { info: defaultInfo, val: 20 });
+            }
+        });
+    }
+
     function scanHistoryForOldNpcs() {
-        const logs = document.querySelectorAll("#story-log .status-footer");
-        logs.forEach(footer => {
-            const affinityMatch = footer.innerText.match(/主要NPC好感度:\s*\[(.*?)\]/);
-            if (affinityMatch && affinityMatch[1].trim()) {
-                const itemsList = affinityMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
-                itemsList.forEach(rawItem => {
-                    const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
-                    if (match) {
-                        const npcInfo = match[1].trim();
-                        let val = match[2] !== undefined ? parseInt(match[2]) : 0;
-                        const pureName = npcInfo.split('(')[0].trim();
-                        globalNpcMemory.set(pureName, { info: npcInfo, val: val });
-                    }
-                });
+        const logs = document.querySelectorAll("#story-log .story-block");
+        logs.forEach(block => {
+            const text = block.innerText;
+            scanStoryTextForNpcs(text);
+
+            const footer = block.querySelector(".status-footer");
+            if (footer) {
+                const affinityMatch = footer.innerText.match(/主要NPC好感度:\s*\[(.*?)\]/);
+                if (affinityMatch && affinityMatch[1].trim()) {
+                    const itemsList = affinityMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
+                    itemsList.forEach(rawItem => {
+                        const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
+                        if (match) {
+                            const npcInfo = match[1].trim();
+                            let val = match[2] !== undefined ? parseInt(match[2]) : 20;
+                            const pureName = npcInfo.replace(/\([^)]*\)/g, '').trim();
+                            globalNpcMemory.set(pureName, { info: npcInfo, val: val });
+                        }
+                    });
+                }
             }
         });
     }
