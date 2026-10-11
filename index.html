@@ -182,6 +182,11 @@
             • 蒼雲子(新手村長老): 100 (生死之交)
         </div>
 
+        <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊 (含仇敵)</h2>
+        <div id="p-global-npc-list" class="scroll-list" style="color: var(--accent-blue);">
+            • 蒼雲子(新手村長老/新手村): 100 (生死之交)
+        </div>
+
         <h2 style="margin-top: 15px;">♟️ 麾下傀儡 / 暗子</h2>
         <div id="p-puppets-list" class="scroll-list" style="color: var(--accent-purple);">
             • 無
@@ -217,7 +222,7 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 你打開蒼雲子留下的乾坤袋，只見金光一閃，裡面躺著一尊散發古樸藥香的「聚靈神爐」、五枚晶瑩剔透的「築基丹」，以及一卷記載著修仙界地圖與上古秘聞的《九州志》。你完美跨越突破，蛻凡築基，全身經脈與血氣大幅昇華！<br>
-                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]</div>
+                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 全域NPC名冊: [蒼雲子(新手村長老/新手村):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]</div>
             </div>
         </div>
         
@@ -261,31 +266,26 @@
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
 請嚴格遵守以下遊戲背景、NPC互動原則、規則與結算格式：
 
-【天道推演冷卻規則（絕對鐵律）】
-1. 玩家每達到一個大境界『大圓滿』等級（即 Lv.10 練氣大圓滿、Lv.20 築基大圓滿、Lv.30 金丹大圓滿...）時，『才自動解鎖 1 次』天道推演使用權限！
-2. 玩家在非大圓滿等級（例如剛突破的 Lv.11，或 Lv.12~19 期間）若嘗試輸入「天道推演」或詢問是否能推演時：
-   - 必須嚴格拒絕！並描述「天地法則反噬，天道權限尚在冷卻中，需待修為提升至當前境界大圓滿（如 Lv.20）方可再次調動天道之力！」
-   - 在結算列最後標註：天道推演: [冷卻中 (下一次解鎖：Lv.20)]。
+【NPC 雙軌記憶庫規則（絕對鐵律）】
+1. 『當前區域NPC好感度』：僅列出『目前在場或同行』的 NPC，格式為：[名字(身分):數值]。
+2. 『全域NPC名冊』：為永久資料庫！**必須記錄所有結識過、有名字且有正負好感度的 NPC**（包含恩人、好友、仇敵、宿敵等），格式為：[名字(身分/所在地或狀態):數值]。
+   - 好感度範圍為 -100 (生死仇敵) 到 +100 (生死之交)。
+   - 即使玩家離開該區域，NPC **絕對不能從『全域NPC名冊』中消失**！
+   - 當玩家重新召喚或再次遇到過去的 NPC 時，必須**100%精準沿用原有的名字與設定**！
 
-【遊戲背景與故事描寫品質】
-1. 修仙界爾虞我詐、弱肉強食。劇情描述請具有高質感修仙小說的臨場感，包含環境氣氛、招式異象與 NPC 微表情動態。
-2. 常態行動回覆請控制在 180 ~ 280 字以內；若是【天道推演】觸發時，請進行史詩級描寫。
-3. 【嚴禁中二台詞】：絕對禁止在劇情文字中提及「30%機率」、「觸發機率」、「系統判定」、「扣除生命值」等機制詞彙！所有風險與傷害請完全以『小說情節描寫』呈現！
+【天道推演冷卻規則】
+1. 玩家每達到一個大境界『大圓滿』等級（即 Lv.10 練氣大圓滿、Lv.20 築基大圓滿...）時，『才自動解鎖 1 次』天道推演！
+2. 在非大圓滿等級若輸入「天道推演」，必須嚴格拒絕並標註：天道推演: [冷卻中 (下一次解鎖：Lv.20)]。
 
-【NPC 與 麾下傀儡 定錨規則】
-1. 「主要NPC好感度」：僅記錄『當前在場或同行』的 NPC，格式統一放在一個括號內，如：主要NPC好感度: [沈清璃(玄冰宮聖女):80, 蒼雲子(新手村長老):100]。
-2. 「麾下傀儡」：記錄玩家已掌控但『不在現場或留在遠方駐守』的暗子，格式為：[傀儡名字(所在地/身分)]。例如：[黑袍魔修(後山禁地/築基死士)]。
-
-【升級與血量成長規則】
-- Lv.1~10: 每級 +50 HP
-- Lv.11~20: 每級 +100 HP，突破至 Lv.11 時基礎上限為 1000 HP！
-- Lv.21~30: 每級 +300 HP，突破至 Lv.21 時基礎上限為 3000 HP！
+【故事描寫品質與嚴禁中二台詞】
+1. 劇情描述請具有高質感修仙小說的臨場感。
+2. 絕對禁止提及「30%機率」、「系統判定」、「扣除生命值」等機制詞彙！
 
 【絕對強制輸出格式】
 你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
 
 ---
-[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]`;
+[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 全域NPC名冊: [蒼雲子(新手村長老/新手村):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]`;
 
     let conversationHistory = [];
     const MAX_DOM_LOGS = 30;
@@ -367,11 +367,12 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 🎯 只保留 3.8、3.7 與 3.5 模型
         const candidateModels = [
-            "gemini-3.8-flash",
+            "gemini-1.5-flash",
+            "gemini-2.0-flash",
+            "gemini-3.5-flash-lite",
             "gemini-3.7-flash",
-            "gemini-3.5-flash-lite"
+            "gemini-3.8-flash"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -396,9 +397,8 @@
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
-                // ⏱️ 8 秒 Timeout 機制，防止卡死在「天道推導中...」
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -419,12 +419,12 @@
                     return data.candidates[0].content.parts[0].text;
                 }
             } catch (err) {
-                console.warn(`[${modelName}] 呼叫失敗，自動嘗試下一個備用模型:`, err.message);
+                console.warn(`[${modelName}] 嘗試失敗，順延下一個模型:`, err.message);
                 lastError = err;
             }
         }
 
-        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否填寫正確並具備對應模型權限！");
+        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否有效！");
     }
 
     async function callOpenAiApi(apiKey, history) {
@@ -517,24 +517,19 @@
             updateLocationDescription(locName);
         }
 
-        // 6. 主要 NPC 好感度 (全域掃描，精準匹配)
-        const affinityListEl = document.getElementById("p-affinity-list");
-        const npcRegex = /([^\s,:：\[\]]+?\([^)]+\))\s*[:：（]\s*(-?\d+)/g;
-        let match;
-        const items = [];
-        
-        while ((match = npcRegex.exec(statusText)) !== null) {
-            const npcInfo = match[1].trim();
-            let val = parseInt(match[2]) || 0;
-            if (val > 100) val = 100;
-            items.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
+        // 6. 當前區域 NPC 好感度
+        const affinityMatch = statusText.match(/主要NPC好感度:\s*\[(.*?)\]/);
+        if (affinityMatch) {
+            parseNpcListToDOM(affinityMatch[1], "p-affinity-list");
         }
 
-        if (items.length > 0) {
-            affinityListEl.innerHTML = items.join("<br>");
+        // 7. 全域結識 NPC 名冊 (含仇敵)
+        const globalNpcMatch = statusText.match(/全域NPC名冊:\s*\[(.*?)\]/);
+        if (globalNpcMatch) {
+            parseNpcListToDOM(globalNpcMatch[1], "p-global-npc-list");
         }
 
-        // 7. 麾下傀儡/暗子
+        // 8. 麾下傀儡/暗子
         const puppetMatch = statusText.match(/麾下傀儡:\s*\[(.*?)\]/);
         if (puppetMatch) {
             const puppetListEl = document.getElementById("p-puppets-list");
@@ -546,7 +541,7 @@
             }
         }
 
-        // 8. 道具與物品
+        // 9. 道具與物品
         const itemMatch = statusText.match(/道具:\s*\[(.*?)\]/);
         if (itemMatch && itemMatch[1].trim()) {
             const invListEl = document.getElementById("p-inventory");
@@ -554,6 +549,32 @@
             if (items.length > 0) {
                 invListEl.innerText = "• " + items.join("\n• ");
             }
+        }
+    }
+
+    function parseNpcListToDOM(rawText, targetElementId) {
+        const listEl = document.getElementById(targetElementId);
+        if (!rawText || !rawText.trim()) {
+            listEl.innerText = "• 無";
+            return;
+        }
+
+        const npcRegex = /([^\s,:：\[\]]+?\([^)]+\))\s*[:：（]\s*(-?\d+)/g;
+        let match;
+        const items = [];
+
+        while ((match = npcRegex.exec(rawText)) !== null) {
+            const npcInfo = match[1].trim();
+            let val = parseInt(match[2]) || 0;
+            if (val > 100) val = 100;
+            if (val < -100) val = -100;
+            items.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
+        }
+
+        if (items.length > 0) {
+            listEl.innerHTML = items.join("<br>");
+        } else {
+            listEl.innerText = "• 無";
         }
     }
 
@@ -590,7 +611,8 @@
         if (aff >= 80) return "摯友/敬佩";
         if (aff > 0) return "友好";
         if (aff === 0) return "中立";
-        return "冷淡/敵對";
+        if (aff >= -50) return "厭惡/敵視";
+        return "不共戴天/生死仇敵";
     }
 
     function applyKeywordHighlight(htmlText) {
