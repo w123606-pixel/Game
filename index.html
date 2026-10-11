@@ -367,12 +367,11 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 🚀 優先採用 3.8-flash，依序向下嘗試新舊模型備援
+        // 🎯 只保留 3.8、3.7 與 3.5 模型
         const candidateModels = [
             "gemini-3.8-flash",
             "gemini-3.7-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-2.5-flash"
+            "gemini-3.5-flash-lite"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
