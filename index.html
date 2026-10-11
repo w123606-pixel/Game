@@ -367,13 +367,11 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 🚀 完整優化降級機制：3.8 優先 -> 3.7 -> 3.5-lite -> 2.0 -> 1.5 保底
+        // 🚀 使用 100% 正確官方開放的模型，確保不卡死
         const candidateModels = [
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash"
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash-exp"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -398,11 +396,18 @@
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
+                // ⏱️ 加上 8 秒 Timeout，防止 API 無回應時卡死「天道推導中...」
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+
                 const response = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyData)
+                    body: JSON.stringify(bodyData),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 if (!response.ok) {
                     const errData = await response.json();
@@ -414,12 +419,12 @@
                     return data.candidates[0].content.parts[0].text;
                 }
             } catch (err) {
-                console.warn(`[${modelName}] 呼叫失敗，嘗試下一個備用模型:`, err.message);
+                console.warn(`[${modelName}] 呼叫失敗或超時，自動跳下一個模型:`, err.message);
                 lastError = err;
             }
         }
 
-        throw lastError || new Error("Gemini 模型連線失敗，請確認 API Key 是否有效。");
+        throw lastError || new Error("Gemini API 連線逾時，請確認 API Key 是否填寫正確！");
     }
 
     async function callOpenAiApi(apiKey, history) {
