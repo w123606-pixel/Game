@@ -183,8 +183,8 @@
         </div>
 
         <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊 (含仇敵)</h2>
-        <div id="p-global-npc-list" class="scroll-list" style="color: var(--accent-blue);">
-            • 蒼雲子(新手村長老/新手村): 100 (生死之交)
+        <div id="p-global-npc-list" class="scroll-list" style="color: #64b5f6;">
+            • 蒼雲子(新手村長老): 100 (生死之交)
         </div>
 
         <h2 style="margin-top: 15px;">♟️ 麾下傀儡 / 暗子</h2>
@@ -222,7 +222,7 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 你打開蒼雲子留下的乾坤袋，只見金光一閃，裡面躺著一尊散發古樸藥香的「聚靈神爐」、五枚晶瑩剔透的「築基丹」，以及一卷記載著修仙界地圖與上古秘聞的《九州志》。你完美跨越突破，蛻凡築基，全身經脈與血氣大幅昇華！<br>
-                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 全域NPC名冊: [蒼雲子(新手村長老/新手村):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]</div>
+                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]</div>
             </div>
         </div>
         
@@ -266,16 +266,19 @@
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
 請嚴格遵守以下遊戲背景、NPC互動原則、規則與結算格式：
 
-【NPC 雙軌記憶庫規則（絕對鐵律）】
-1. 『當前區域NPC好感度』：僅列出『目前在場或同行』的 NPC，格式為：[名字(身分):數值]。
-2. 『全域NPC名冊』：為永久資料庫！**必須記錄所有結識過、有名字且有正負好感度的 NPC**（包含恩人、好友、仇敵、宿敵等），格式為：[名字(身分/所在地或狀態):數值]。
-   - 好感度範圍為 -100 (生死仇敵) 到 +100 (生死之交)。
-   - 即使玩家離開該區域，NPC **絕對不能從『全域NPC名冊』中消失**！
-   - 當玩家重新召喚或再次遇到過去的 NPC 時，必須**100%精準沿用原有的名字與設定**！
+【NPC 互動與好感度規則】
+1. 『主要NPC好感度』：只需列出『當前地圖在場或有互動變化』的 NPC，格式為：[名字(身分):好感度數值]。
+   - 好感度數值可為任意正負整數（例如 -50 至 300 以上）。
+2. 當玩家重新遇到過往的 NPC 時，必須**100%精準沿用原有的名字與身分**，絕對禁止重新捏造改名！
 
 【天道推演冷卻規則】
 1. 玩家每達到一個大境界『大圓滿』等級（即 Lv.10 練氣大圓滿、Lv.20 築基大圓滿...）時，『才自動解鎖 1 次』天道推演！
 2. 在非大圓滿等級若輸入「天道推演」，必須嚴格拒絕並標註：天道推演: [冷卻中 (下一次解鎖：Lv.20)]。
+
+【升級與血量規則】
+- Lv.1~10: 每級 +50 HP
+- Lv.11~20: 每級 +100 HP，Lv.20 為 1900 HP
+- Lv.21~30: 每級 +300 HP，突破至 Lv.21 時上限為 3000 HP
 
 【故事描寫品質與嚴禁中二台詞】
 1. 劇情描述請具有高質感修仙小說的臨場感。
@@ -285,9 +288,10 @@
 你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
 
 ---
-[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 全域NPC名冊: [蒼雲子(新手村長老/新手村):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]`;
+[當前狀態] 血量: 1900/1900, 金幣: 845200, 裝備: 九霄紫雷劍典（命格神通）、玄冰天隕甲（上品防具）, 位置: 玄冰宮·沉淵谷上空, 等級: 20, 主要NPC好感度: [沈清璃(玄冰宮聖女):243], 麾下傀儡: [黑袍魔修(寒煞冰窟/血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已解鎖 (可使用)]`;
 
     let conversationHistory = [];
+    let globalNpcMemory = new Map(); // 前端自動維護的全域 NPC 記憶庫 (key: 名字, value: {info, val})
     const MAX_DOM_LOGS = 30;
 
     window.onload = () => {
@@ -484,13 +488,14 @@
             document.getElementById("p-realm").innerText = getRealmName(currentLevel);
         }
 
-        // 2. 血量
-        const hpMatch = statusText.match(/血量:\s*(\d+)\/(\d+)/);
+        // 2. 超強健壯血量解析（支援任何數值與等級成長）
+        const hpMatch = statusText.match(/血量[^\d]*(\d+)\s*[\/|:]\s*(\d+)/i);
         const expectedMaxHp = calculateExpectedHp(currentLevel);
         if (hpMatch) {
             let curHp = parseInt(hpMatch[1]);
             let maxHp = parseInt(hpMatch[2]);
-            if (maxHp < expectedMaxHp) { maxHp = expectedMaxHp; curHp = expectedMaxHp; }
+            if (maxHp < expectedMaxHp) maxHp = expectedMaxHp;
+            if (curHp > maxHp) curHp = maxHp;
             document.getElementById("p-hp").innerText = `${curHp} / ${maxHp}`;
         } else {
             document.getElementById("p-hp").innerText = `${expectedMaxHp} / ${expectedMaxHp}`;
@@ -517,17 +522,14 @@
             updateLocationDescription(locName);
         }
 
-        // 6. 當前區域 NPC 好感度
+        // 6. 解析主要 NPC 好感度 + 自動更新累加至全域 Map
         const affinityMatch = statusText.match(/主要NPC好感度:\s*\[(.*?)\]/);
         if (affinityMatch) {
-            parseNpcListToDOM(affinityMatch[1], "p-affinity-list");
+            parseCurrentNpcList(affinityMatch[1]);
         }
 
-        // 7. 全域結識 NPC 名冊 (含仇敵)
-        const globalNpcMatch = statusText.match(/全域NPC名冊:\s*\[(.*?)\]/);
-        if (globalNpcMatch) {
-            parseNpcListToDOM(globalNpcMatch[1], "p-global-npc-list");
-        }
+        // 7. 渲染全域 NPC 名冊到左側面板
+        renderGlobalMemoryToDOM();
 
         // 8. 麾下傀儡/暗子
         const puppetMatch = statusText.match(/麾下傀儡:\s*\[(.*?)\]/);
@@ -552,30 +554,51 @@
         }
     }
 
-    function parseNpcListToDOM(rawText, targetElementId) {
-        const listEl = document.getElementById(targetElementId);
+    function parseCurrentNpcList(rawText) {
+        const listEl = document.getElementById("p-affinity-list");
         if (!rawText || !rawText.trim()) {
             listEl.innerText = "• 無";
             return;
         }
 
-        const npcRegex = /([^\s,:：\[\]]+?\([^)]+\))\s*[:：（]\s*(-?\d+)/g;
+        // 升級版萬能 NPC 比對正則，支援任何正負大數字（如 243 或 -150）
+        const npcRegex = /([^\s,:：\[\]()]+(?:\([^)]+\))?)\s*[:：（]\s*(-?\d+)/g;
         let match;
-        const items = [];
+        const currentItems = [];
 
         while ((match = npcRegex.exec(rawText)) !== null) {
             const npcInfo = match[1].trim();
             let val = parseInt(match[2]) || 0;
-            if (val > 100) val = 100;
-            if (val < -100) val = -100;
-            items.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
+
+            // 提取 NPC 的純名字（去掉括號內的備註）作為 Key
+            const pureName = npcInfo.split('(')[0].trim();
+            
+            // 寫入/更新全域記憶 Map
+            globalNpcMemory.set(pureName, { info: npcInfo, val: val });
+
+            currentItems.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
         }
 
-        if (items.length > 0) {
-            listEl.innerHTML = items.join("<br>");
+        if (currentItems.length > 0) {
+            listEl.innerHTML = currentItems.join("<br>");
         } else {
             listEl.innerText = "• 無";
         }
+    }
+
+    function renderGlobalMemoryToDOM() {
+        const listEl = document.getElementById("p-global-npc-list");
+        if (globalNpcMemory.size === 0) {
+            listEl.innerText = "• 無";
+            return;
+        }
+
+        const items = [];
+        globalNpcMemory.forEach((data) => {
+            items.push(`• ${data.info}: ${data.val} (${getAffinityTitle(data.val)})`);
+        });
+
+        listEl.innerHTML = items.join("<br>");
     }
 
     function updateLocationDescription(location) {
@@ -672,16 +695,24 @@
     function saveGameState() {
         localStorage.setItem("blade_story_log", document.getElementById("story-log").innerHTML);
         localStorage.setItem("blade_conv_history", JSON.stringify(conversationHistory));
+        localStorage.setItem("blade_global_npc_map", JSON.stringify(Array.from(globalNpcMemory.entries())));
     }
 
     function manualSaveGame() {
         saveGameState();
-        alert("💾 遊戲進度已成功儲存！");
+        alert("💾 遊戲進度與 NPC 名冊已成功儲存！");
     }
 
     function loadGameState() {
         const savedLog = localStorage.getItem("blade_story_log");
         const savedHistory = localStorage.getItem("blade_conv_history");
+        const savedNpcMap = localStorage.getItem("blade_global_npc_map");
+
+        if (savedNpcMap) {
+            try {
+                globalNpcMemory = new Map(JSON.parse(savedNpcMap));
+            } catch(e) { console.error("NPC Map 載入失敗", e); }
+        }
         
         if (savedLog && savedHistory) {
             document.getElementById("story-log").innerHTML = savedLog;
@@ -696,13 +727,14 @@
 
     function manualLoadGame() {
         loadGameState();
-        alert("📂 已成功讀取歷史存檔！");
+        alert("📂 已成功讀取歷史存檔與全域名冊！");
     }
 
     function resetGame() {
         if (confirm("確定要重置九州冒險進度嗎？所有紀錄將會被清空。")) {
             localStorage.removeItem("blade_story_log");
             localStorage.removeItem("blade_conv_history");
+            localStorage.removeItem("blade_global_npc_map");
             location.reload();
         }
     }
