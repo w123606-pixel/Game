@@ -266,9 +266,11 @@
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
 請嚴格遵守以下遊戲背景、NPC互動原則、規則與結算格式：
 
-【NPC 互動與好感度規則】
-1. 『主要NPC好感度』：只需列出『當前地圖在場或有互動變化』的 NPC，格式為：[名字(身分):好感度數值]。
-   - 好感度數值可為任意正負整數（例如 -50 至 300 以上）。
+【NPC 登場與強制好感度規則（絕對鐵律）】
+1. 劇情中只要有**任何新登場、有名字的 NPC**（不論是敵人、路人、同盟還是高人）：
+   - 必須**強制在『主要NPC好感度』中給予初始數值**！
+   - 敵對/仇敵給負數（如：-30 到 -100），友好/同盟給正數（如：10 到 50），中立/陌生給 0。
+   - 格式為：[名字(身分):好感度數值]。例如：[血煞宗長老(敵人):-50, 沈清璃(玄冰宮聖女):246]。
 2. 當玩家重新遇到過往的 NPC 時，必須**100%精準沿用原有的名字與身分**，絕對禁止重新捏造改名！
 
 【天道推演冷卻規則】
@@ -288,10 +290,10 @@
 你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
 
 ---
-[當前狀態] 血量: 1900/1900, 金幣: 845200, 裝備: 九霄紫雷劍典（命格神通）、玄冰天隕甲（上品防具）, 位置: 玄冰宮·沉淵谷上空, 等級: 20, 主要NPC好感度: [沈清璃(玄冰宮聖女):243], 麾下傀儡: [黑袍魔修(寒煞冰窟/血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已解鎖 (可使用)]`;
+[當前狀態] 血量: 1900/1900, 金幣: 845200, 裝備: 九霄紫雷劍典（命格神通）、玄冰天隕甲（上品防具）, 位置: 玄冰宮·沉淵谷核心戰場, 等級: 20, 主要NPC好感度: [沈清璃(玄冰宮聖女):246], 麾下傀儡: [黑袍魔修(寒煞冰窟/血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已解鎖 (可使用)]`;
 
     let conversationHistory = [];
-    let globalNpcMemory = new Map(); // 前端自動維護的全域 NPC 記憶庫 (key: 名字, value: {info, val})
+    let globalNpcMemory = new Map(); // 前端自動維護的全域 NPC 記憶庫
     const MAX_DOM_LOGS = 30;
 
     window.onload = () => {
@@ -561,29 +563,47 @@
             return;
         }
 
-        // 升級版萬能 NPC 比對正則，支援任何正負大數字（如 243 或 -150）
-        const npcRegex = /([^\s,:：\[\]()]+(?:\([^)]+\))?)\s*[:：（]\s*(-?\d+)/g;
-        let match;
+        // 萬能多格式比對：支援「名字(身分):數值」或「名字(身分)」無數字狀態
+        const itemsList = rawText.split(/[,，]/).map(s => s.trim()).filter(Boolean);
         const currentItems = [];
 
-        while ((match = npcRegex.exec(rawText)) !== null) {
-            const npcInfo = match[1].trim();
-            let val = parseInt(match[2]) || 0;
+        itemsList.forEach(rawItem => {
+            const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
+            if (match) {
+                const npcInfo = match[1].trim();
+                let val = match[2] !== undefined ? parseInt(match[2]) : 0; // 若忘記寫數字，預設為 0
 
-            // 提取 NPC 的純名字（去掉括號內的備註）作為 Key
-            const pureName = npcInfo.split('(')[0].trim();
-            
-            // 寫入/更新全域記憶 Map
-            globalNpcMemory.set(pureName, { info: npcInfo, val: val });
+                const pureName = npcInfo.split('(')[0].trim();
+                globalNpcMemory.set(pureName, { info: npcInfo, val: val });
 
-            currentItems.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
-        }
+                currentItems.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
+            }
+        });
 
         if (currentItems.length > 0) {
             listEl.innerHTML = currentItems.join("<br>");
         } else {
             listEl.innerText = "• 無";
         }
+    }
+
+    function scanHistoryForOldNpcs() {
+        const logs = document.querySelectorAll("#story-log .status-footer");
+        logs.forEach(footer => {
+            const affinityMatch = footer.innerText.match(/主要NPC好感度:\s*\[(.*?)\]/);
+            if (affinityMatch && affinityMatch[1].trim()) {
+                const itemsList = affinityMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
+                itemsList.forEach(rawItem => {
+                    const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
+                    if (match) {
+                        const npcInfo = match[1].trim();
+                        let val = match[2] !== undefined ? parseInt(match[2]) : 0;
+                        const pureName = npcInfo.split('(')[0].trim();
+                        globalNpcMemory.set(pureName, { info: npcInfo, val: val });
+                    }
+                });
+            }
+        });
     }
 
     function renderGlobalMemoryToDOM() {
@@ -718,6 +738,8 @@
             document.getElementById("story-log").innerHTML = savedLog;
             conversationHistory = JSON.parse(savedHistory);
             
+            scanHistoryForOldNpcs();
+
             if (conversationHistory.length > 0) {
                 const lastAiMsg = [...conversationHistory].reverse().find(m => m.role === "assistant");
                 if (lastAiMsg) parseAndUpdateStatus(lastAiMsg.content);
