@@ -217,7 +217,7 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 你打開蒼雲子留下的乾坤袋，只見金光一閃，裡面躺著一尊散發古樸藥香的「聚靈神爐」、五枚晶瑩剔透的「築基丹」，以及一卷記載著修仙界地圖與上古秘聞的《九州志》。你完美跨越突破，蛻凡築基，全身經脈與血氣大幅昇華！<br>
-                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [已冷卻 (下一次解鎖：Lv.20)]</div>
+                <div class="status-footer">[當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》], 天道推演: [可使用 (下一次解鎖：Lv.20)]</div>
             </div>
         </div>
         
@@ -367,11 +367,11 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 🚀 更新最新 Gemini API 支援的模型列表
+        // 🚀 使用最穩定的通用與最新 API 端點模型
         const candidateModels = [
-            "gemini-3.8-flash",
-            "gemini-3.8-flash-lite",
-            "gemini-3.0-flash"
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
