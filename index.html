@@ -367,11 +367,12 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 🚀 使用 100% 正確官方開放的模型，確保不卡死
+        // 🚀 降級順序：3.8 -> 3.7 -> 3.5-lite -> 1.5-flash (絕對不會報無效端點錯)
         const candidateModels = [
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-exp"
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-1.5-flash"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -396,7 +397,7 @@
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
-                // ⏱️ 加上 8 秒 Timeout，防止 API 無回應時卡死「天道推導中...」
+                // ⏱️ 8 秒超時保護，若模型不存在或回應超時直接自動跳下一個備用模型
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -424,7 +425,7 @@
             }
         }
 
-        throw lastError || new Error("Gemini API 連線逾時，請確認 API Key 是否填寫正確！");
+        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否填寫正確！");
     }
 
     async function callOpenAiApi(apiKey, history) {
