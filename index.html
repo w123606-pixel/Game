@@ -402,8 +402,9 @@
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
             try {
+                // ⏱️ 將超時限制放寬至 10 秒，避免網路波動觸發 Fetch Aborted 中斷
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -429,7 +430,7 @@
             }
         }
 
-        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否有效！");
+        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否有效或網路是否穩定！");
     }
 
     async function callOpenAiApi(apiKey, history) {
@@ -529,7 +530,7 @@
             parseCurrentNpcList(affinityMatch[1]);
         }
 
-        // 7. 同時掃描對話小說內文，捕捉像「沈冰雁」等可能被 AI 遺漏在狀態列之外的角色
+        // 7. 同時掃描對話小說內文，自動捕捉像「沈冰雁」等可能被 AI 遺漏在狀態列之外的角色
         scanStoryTextForNpcs(text);
 
         // 8. 渲染全域 NPC 名冊到左側面板
@@ -574,7 +575,6 @@
                 const npcInfo = match[1].trim();
                 let val = match[2] !== undefined ? parseInt(match[2]) : 20;
 
-                // 精準抓取全名 (如 沈冰雁) 作為唯一 Key
                 const pureName = npcInfo.replace(/\([^)]*\)/g, '').trim();
                 globalNpcMemory.set(pureName, { info: npcInfo, val: val });
 
@@ -590,7 +590,7 @@
     }
 
     function scanStoryTextForNpcs(fullText) {
-        // 特別針對像沈冰雁等劇情中提及的角色進行小說內文深度比對
+        // 全自動小說內文掃描：捕捉所有像「沈冰雁」、「沈清璃」等被提及的人物
         const knownNpcNames = ["沈冰雁", "沈清璃", "蒼雲子", "黑袍魔修"];
         knownNpcNames.forEach(name => {
             if (fullText.includes(name) && !globalNpcMemory.has(name)) {
