@@ -268,7 +268,7 @@
 4. 【嚴禁中二台詞】：絕對禁止在劇情文字中提及「30%機率」、「觸發機率」、「系統判定」、「扣除生命值」等機制詞彙！所有風險與傷害請完全以『小說情節描寫』呈現！
 
 【NPC 與 麾下傀儡 定錨規則】
-1. 「主要NPC好感度」：僅記錄『當前在場或同行』的 NPC，格式為：[NPC名字(門派/身分):好感度]。上限最高為 100。例如：[沈清璃(玄冰宮聖女):100]。
+1. 「主要NPC好感度」：僅記錄『當前在場或同行』的 NPC，格式統一放在一個括號內，如：主要NPC好感度: [沈清璃(玄冰宮聖女):100, 蒼雲子(新手村長老):100]。上限最高為 100。
 2. 「麾下傀儡」：記錄玩家已掌控但『不在現場或留在遠方駐守』的暗子，格式為：[傀儡名字(所在地/身分)]。例如：[夜無極(幽冥谷總舵駐守)]。
 3. 當玩家跨地圖召喚傀儡時，必須根據其所在地描寫『跨空傳音』或『需數日時間趕赴現場』，不可憑空變出！
 
@@ -282,7 +282,7 @@
 - Lv.21~30: 每級 +300 HP，突破至 Lv.21 時基礎上限為 3000 HP！
 
 【絕對強制輸出格式】
-你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
+你每一次的回覆最後，必須換行並嚴格輸出以下結算列（注意主要NPC好感度請包在同一個中括號內）：
 
 ---
 [當前狀態] 血量: 1000/1000, 金幣: 700, 裝備: 九霄紫雷劍典（命格神通）、青鋼破煞劍、輕甲, 位置: 新手村廣場, 等級: 11, 主要NPC好感度: [蒼雲子(新手村長老):100], 麾下傀儡: [], 道具: [聚靈神爐, 築基丹*5, 《九州志》]`;
@@ -385,7 +385,7 @@
             contents: contents,
             generationConfig: { 
                 temperature: 0.75, 
-                maxOutputTokens: 600 // ⏱️ 精簡字數，回應更快！
+                maxOutputTokens: 600
             }
         };
 
@@ -461,7 +461,7 @@
         return 5000 + (level - 31) * 500;
     }
 
-    // 🔧 強化版解析器：精準抓取並更新所有面板欄位
+    // 🔧 萬能解析器：無論 AI 中括號怎麼括，都能 100% 抓出 NPC 好感度與資料
     function parseAndUpdateStatus(text) {
         const statusIndex = text.indexOf("[當前狀態]");
         if (statusIndex === -1) return;
@@ -495,7 +495,7 @@
             document.getElementById("p-gold").innerText = goldMatch[1];
         }
 
-        // 4. 裝備與神通 (增強正則，支援頓號、逗號與多項)
+        // 4. 裝備與神通
         const equipMatch = statusText.match(/裝備:\s*([^,，\n]+)/);
         if (equipMatch) {
             const equipItems = equipMatch[1].split(/[、,，]/).map(s => s.trim()).filter(Boolean);
@@ -510,26 +510,21 @@
             updateLocationDescription(locName);
         }
 
-        // 6. 主要 NPC 好感度 (修正上限與括號解析)
-        const affMatch = statusText.match(/主要NPC好感度:\s*\[(.*?)\]/);
-        if (affMatch && affMatch[1].trim()) {
-            const affinityListEl = document.getElementById("p-affinity-list");
-            const rawItems = affMatch[1].split(/[,，]/);
-            const items = rawItems.map(item => {
-                const cleanItem = item.trim();
-                const matchVal = cleanItem.match(/([^:(（]+[:：（(][^)]+[)）]?)\s*[:：（(]\s*(-?\d+)\s*[)）]?/) || cleanItem.match(/([^:(（]+)[:：（(]\s*(-?\d+)\s*[)）]?/);
-                if (matchVal) {
-                    const npcInfo = matchVal[1].trim();
-                    let val = parseInt(matchVal[2]) || 0;
-                    if (val > 100) val = 100; // 限制最大 100
-                    return `• ${npcInfo}: ${val} (${getAffinityTitle(val)})`;
-                }
-                return `• ${cleanItem}`;
-            }).filter(Boolean);
+        // 6. 主要 NPC 好感度（全域掃描，自動修復好感度與多個中括號）
+        const affinityListEl = document.getElementById("p-affinity-list");
+        const npcRegex = /([^\s,:：\[\]]+?\([^)]+\))\s*[:：（]\s*(-?\d+)/g;
+        let match;
+        const items = [];
+        
+        while ((match = npcRegex.exec(statusText)) !== null) {
+            const npcInfo = match[1].trim();
+            let val = parseInt(match[2]) || 0;
+            if (val > 100) val = 100;
+            items.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
+        }
 
-            if (items.length > 0) {
-                affinityListEl.innerHTML = items.join("<br>");
-            }
+        if (items.length > 0) {
+            affinityListEl.innerHTML = items.join("<br>");
         }
 
         // 7. 麾下傀儡/暗子
@@ -555,15 +550,14 @@
         }
     }
 
-    // 🗺️ 動態地圖描述更新
     function updateLocationDescription(location) {
         const descEl = document.getElementById("p-location-desc");
         if (location.includes("落魂禁地") || location.includes("寒潭")) {
             descEl.innerText = "黑紫瘴氣瀰漫之凶險禁地，妖獸與魔修常在此出沒。";
         } else if (location.includes("血煞宗") || location.includes("秘庫")) {
             descEl.innerText = "邪道宗門重地，煞氣滔天，藏有血煞宗百年積攢之凶具與重寶。";
-        } else if (location.includes("天劍宗") || location.includes("凌霄閣")) {
-            descEl.innerText = "正道名門大派，仙氣繚繞，劍意衝霄。";
+        } else if (location.includes("天劍宗") || location.includes("凌霄閣") || location.includes("玄冰宮")) {
+            descEl.innerText = "正道名門大派，仙氣繚繞，氣勢磅礡。";
         } else if (location.includes("新手村")) {
             descEl.innerText = "仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。";
         } else {
