@@ -321,19 +321,16 @@
     window.onload = () => {
         loadApiKey();
         loadGameState();
-        sanitizeNpcMemory(); // 啟動自動重複清理與姓名歸一化
+        sanitizeNpcMemory();
     };
 
     function sanitizeNpcMemory() {
-        // 自動清空舊存檔中的「紅蓮魔姬」、「血佛老祖」等矛盾重複條目
         const cleanMap = new Map();
 
-        // 寫入規範名稱
         canonicalNpcData.forEach(([key, val]) => {
             cleanMap.set(key, val);
         });
 
-        // 繼承歷史已存在的其他新 NPC（但摒棄紅蓮魔姬等舊暱稱）
         globalNpcMemory.forEach((data, key) => {
             if (!key.includes("紅蓮魔姬") && !key.includes("血佛老祖") && !cleanMap.has(key)) {
                 cleanMap.set(key, data);
@@ -416,11 +413,11 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
+        // 🎯 嚴格遵照要求：優先使用 3.5-flash-lite，備用為 3.7-flash 與 3.8-flash，完全剔除 1.5/2.0
         const candidateModels = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-2.5-flash",
-            "gemini-1.5-pro"
+            "gemini-3.5-flash-lite",
+            "gemini-3.7-flash",
+            "gemini-3.8-flash"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
