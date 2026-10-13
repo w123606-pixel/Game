@@ -82,7 +82,7 @@
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
 
         .scroll-list {
-            max-height: 120px;
+            max-height: 140px;
             overflow-y: auto;
             font-size: 0.85rem;
             color: #aaa;
@@ -172,29 +172,33 @@
 
         <h2>☯️ 旅者面板</h2>
         <div class="stat-item"><span class="stat-label">身份</span><span class="stat-value" style="color:var(--accent-blue)">異世旅者</span></div>
-        <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">金丹期 (Lv.21)</span></div>
-        <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">21</span></div>
-        <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">3000 / 3000</span></div>
-        <div class="stat-item"><span class="stat-label">盤纏 (金幣)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">845200</span></div>
-        
-        <h2 style="margin-top: 15px;">👥 當前區域 NPC 好感度</h2>
-        <div id="p-affinity-list" class="scroll-list">
-            • 沈清璃(玄冰宮聖女/極光太虛九品金丹): 100 (生死之交/死士)
-        </div>
+        <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">元嬰期 (Lv.31)</span></div>
+        <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">31</span></div>
+        <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">8700 / 8700</span></div>
+        <div class="stat-item"><span class="stat-label">盤纏 (金幣)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">1450200</span></div>
 
-        <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊 (含仇敵)</h2>
+        <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊 (含好感與仇敵)</h2>
         <div id="p-global-npc-list" class="scroll-list" style="color: #64b5f6;">
-            • 沈清璃(玄冰宮聖女/極光太虛九品金丹): 100 (生死之交/死士)
+            • 沈清璃(玄冰宮聖女/極光太虛道體): 100 (生死相許/死士)<br>
+            • 沈冰雁(玄冰宮宮主/太虛冰魄寒光體): 100 (生死相許/死士)<br>
+            • 姬如煙(太一聖地聖主/九霄太荒神體): 100 (生死相許/死士)<br>
+            • 妙善(梵音閣閣主/九品功德淨世體): 100 (生死相許/死士)<br>
+            • 凌霜雪(天劍宗劍閣首座/無上太上劍心體): 100 (生死相許/死士)<br>
+            • 慕容嫣(血海宗宗主/修羅血海魔體): 100 (生死相許/死士)<br>
+            • 金萬山(天寶閣大掌櫃): 85 (敬佩)<br>
+            • 洛清寒(天機閣天機神算): -50 (敵視)<br>
+            • 夜妖嬈(萬妖谷妖皇): 0 (中立)<br>
+            • 雲渺渺(百花谷谷主): 0 (中立)
         </div>
 
         <h2 style="margin-top: 15px;">♟️ 麾下傀儡 / 暗子</h2>
         <div id="p-puppets-list" class="scroll-list" style="color: var(--accent-purple);">
-            • 無
+            • 血影/陰風老人(寒煞冰窟/血煞宗暗樁主事)
         </div>
 
         <h2 style="margin-top: 15px;">📖 主修功法與神通</h2>
         <div id="p-kungfu" class="scroll-list" style="color: var(--hl-cyan); white-space: pre-line;">
-            • 太古星宿冥王吞天滅世經（天階超品）
+            • 混沌天道星宿滅世經（混沌至尊品）
         </div>
         
         <h2 style="margin-top: 15px;">⚔️ 裝備與法寶</h2>
@@ -202,6 +206,9 @@
             • 太上誅神星落劍（天道仙劍）
             • 玄冰天隕甲（上品防具）
             • 極品法寶【滅世黑蓮】（識海溫養中）
+            • 金剛菩提串（上品防禦法寶）
+            • 千幻隱靈斗篷（特殊裝備）
+            • 無相面具（特殊裝備）
         </div>
 
         <h2 style="margin-top: 15px;">🎒 道具與物品</h2>
@@ -209,6 +216,17 @@
             • 聚靈神爐
             • 築基丹*5
             • 《九州志》
+            • 天道萬魂控心冊
+            • 《雷影遁術》
+            • 中品靈石*28000
+            • 聚氣破境丹*15
+            • 淬骨血丹*20
+            • 萬年血靈芝*2
+            • 陰陽玄龍參*3
+            • 破妄金瞳鏡
+            • 天視地聽鈴
+            • 鎖靈繩
+            • 冰魔之心
         </div>
 
         <div style="margin-top: 15px;">
@@ -226,8 +244,8 @@
         <div id="story-log">
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
-                你成功突破至金丹期，凝練出無上「周天星宿萬化紫金丹」，天道賜予仙劍【太上誅神星落劍】，功法大幅昇華！<br>
-                <div class="status-footer">[當前狀態] 血量: 3000/3000, 金幣: 845200, 功法: 太古星宿冥王吞天滅世經（天階超品）, 裝備: 太上誅神星落劍（天道仙劍）、玄冰天隕甲（上品防具）、極品法寶【滅世黑蓮】（識海溫養中）、噬魂血刀、千鈞重岩盾, 位置: 玄冰宮·沉淵谷核心秘境, 等級: 21, 主要NPC好感度: [沈清璃(玄冰宮聖女/極光太虛九品金丹):100, 沈冰雁(玄冰宮宮主/冰霄琉璃九轉元嬰):100], 麾下傀儡: [血影/陰風老人(寒煞冰窟/血煞宗暗樁主事):100], 道具: [聚靈神爐, 築基丹*5, 《九州志》, 天道萬魂控心冊, 《雷影遁術》, 中品靈石*28000, 聚氣破境丹*15, 淬骨血丹*20, 萬年血靈芝*2, 陰陽玄龍參*3, 破妄金瞳鏡, 天視地聽鈴, 鎖靈繩, 冰魔之心], 天道推演: [冷卻中 (下一次解鎖：Lv.30)]</div>
+                你成功凝聚「萬道星元混沌紫金神嬰」，破境踏入元嬰期（Lv.31），攜六美同引天道共鳴突破，天地變色！<br>
+                <div class="status-footer">[當前狀態] 血量: 8700/8700, 金幣: 1450200, 功法: 混沌天道星宿滅世經（混沌至尊品）, 裝備: 太上誅神星落劍（天道仙劍）、玄冰天隕甲（上品防具）、極品法寶【滅世黑蓮】（識海溫養中）、金剛菩提串（上品防禦法寶）、千幻隱靈斗篷、無相面具, 位置: 玄冰宮·沉淵谷核心秘境, 等級: 31, 麾下傀儡: [血影/陰風老人(血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》, 天道萬魂控心冊, 《雷影遁術》, 中品靈石*28000, 聚氣破境丹*15, 淬骨血丹*20, 萬年血靈芝*2, 陰陽玄龍參*3, 破妄金瞳鏡, 天視地聽鈴, 鎖靈繩, 冰魔之心], 天道推演: [已冷卻 (下一次解鎖：Lv.40)]</div>
             </div>
         </div>
         
@@ -269,42 +287,58 @@
 
 <script>
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下遊戲背景、NPC互動原則、規則與結算格式：
+請嚴格遵守以下遊戲背景、規則與結算格式：
 
-【NPC 好感度範圍絕對限制（絕對鐵律）】
-1. 好感度數值嚴格限定在 -100 到 +100 之間！
-   - 最高上限為 100（生死相許/死士/生死之交），絕對禁止出現超過 100（如 246、300、800）的溢出數字！
-   - 最低下限為 -100（不共戴天/生死仇敵）。
-2. 劇情中只要有任何登場或提及的 NPC，必須寫入『主要NPC好感度』列表中：
-   - 格式為：[名字(身分/境界):好感度數值]。好感度不可超過 100。
+【狀態列輸出極簡化規則（絕對鐵律）】
+1. **結算列中嚴禁輸出任何 NPC 好感度字串！**
+   - 所有 NPC 好感度、體質與動向全部改由系統前台在左側『全域結識 NPC 名冊』中自動管理。
+   - 結算列格式中不包含 NPC 好感度欄位，避免文字過長！
 
 【道具與功法維護規則】
 1. 玩家的背包道具（如聚靈神爐、靈石、丹藥等）若未在劇情中特別說明消耗，絕對禁止清空！
 2. 功法/神通請單獨輸出在 功法: [...] 欄位，不可混入裝備欄！
 
 【血量與境界成長規則】
-- Lv.1~10: 每級 +50 HP
-- Lv.11~20: 每級 +100 HP，Lv.20 為 1900 HP
-- Lv.21~30 (金丹期): 每級 +300 HP，Lv.21 血量上限為 3000 HP，Lv.30 為 5700 HP。
-
-【天道推演冷卻規則】
-1. 玩家每達到大圓滿等級（Lv.10, Lv.20, Lv.30...）時解鎖 1 次天道推演。
-2. 非大圓滿等級若輸入推演，必須拒絕並顯示冷卻中。
+- Lv.21~30 (金丹期): Lv.30 為 5700 HP
+- Lv.31~40 (元嬰期): 每級 +300 HP，Lv.31 血量上限為 8700 HP，Lv.40 為 11400 HP。
 
 【絕對強制輸出格式】
-你每一次的回覆最後，必須換行並嚴格輸出以下結算列：
+你每一次的回覆最後，必須換行並嚴格輸出以下精簡結算列（完全無 NPC 欄位）：
 
 ---
-[當前狀態] 血量: 3000/3000, 金幣: 845200, 功法: 太古星宿冥王吞天滅世經（天階超品）, 裝備: 太上誅神星落劍（天道仙劍）、玄冰天隕甲（上品防具）、極品法寶【滅世黑蓮】（識海溫養中）、噬魂血刀、千鈞重岩盾, 位置: 玄冰宮·沉淵谷核心秘境, 等級: 21, 主要NPC好感度: [沈清璃(玄冰宮聖女/極光太虛九品金丹):100, 沈冰雁(玄冰宮宮主/冰霄琉璃九轉元嬰):100], 麾下傀儡: [血影/陰風老人(寒煞冰窟/血煞宗暗樁主事):100], 道具: [聚靈神爐, 築基丹*5, 《九州志》, 天道萬魂控心冊, 《雷影遁術》, 中品靈石*28000, 聚氣破境丹*15, 淬骨血丹*20, 萬年血靈芝*2, 陰陽玄龍參*3, 破妄金瞳鏡, 天視地聽鈴, 鎖靈繩, 冰魔之心], 天道推演: [冷卻中 (下一次解鎖：Lv.30)]`;
+[當前狀態] 血量: 8700/8700, 金幣: 1450200, 功法: 混沌天道星宿滅世經（混沌至尊品）, 裝備: 太上誅神星落劍（天道仙劍）、玄冰天隕甲（上品防具）、極品法寶【滅世黑蓮】（識海溫養中）、金剛菩提串（上品防禦法寶）、千幻隱靈斗篷、無相面具, 位置: 玄冰宮·沉淵谷核心秘境, 等級: 31, 麾下傀儡: [血影/陰風老人(血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》, 天道萬魂控心冊, 《雷影遁術》, 中品靈石*28000, 聚氣破境丹*15, 淬骨血丹*20, 萬年血靈芝*2, 陰陽玄龍參*3, 破妄金瞳鏡, 天視地聽鈴, 鎖靈繩, 冰魔之心], 天道推演: [冷卻中 (下一次解鎖：Lv.40)]`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map();
     const MAX_DOM_LOGS = 30;
 
+    // 預設全域 NPC 初始資料，防止清空
+    const defaultNpcData = [
+        ["沈清璃", { info: "沈清璃(玄冰宮聖女/極光太虛道體)", val: 100 }],
+        ["沈冰雁", { info: "沈冰雁(玄冰宮宮主/太虛冰魄寒光體)", val: 100 }],
+        ["姬如煙", { info: "姬如煙(太一聖地聖主/九霄太荒神體)", val: 100 }],
+        ["妙善", { info: "妙善(梵音閣閣主/九品功德淨世體)", val: 100 }],
+        ["凌霜雪", { info: "凌霜雪(天劍宗劍閣首座/無上太上劍心體)", val: 100 }],
+        ["慕容嫣", { info: "慕容嫣(血海宗宗主/修羅血海魔體)", val: 100 }],
+        ["金萬山", { info: "金萬山(天寶閣大掌櫃)", val: 85 }],
+        ["洛清寒", { info: "洛清寒(天機閣天機神算)", val: -50 }],
+        ["夜妖嬈", { info: "夜妖嬈(萬妖谷妖皇)", val: 0 }],
+        ["雲渺渺", { info: "雲渺渺(百花谷谷主)", val: 0 }]
+    ];
+
     window.onload = () => {
+        initDefaultNpcs();
         loadApiKey();
         loadGameState();
     };
+
+    function initDefaultNpcs() {
+        defaultNpcData.forEach(([key, val]) => {
+            if (!globalNpcMemory.has(key)) {
+                globalNpcMemory.set(key, val);
+            }
+        });
+    }
 
     function saveApiKey() {
         const key = document.getElementById("api-key").value.trim();
@@ -333,7 +367,7 @@
         if (!actionText) return;
 
         inputEl.value = "";
-        toggleLoading(true, "天道推導中...");
+        toggleLoading(true, "天道推導中 (深度生成中，請稍候)...");
 
         appendLog("異世旅者", actionText, "player");
         conversationHistory.push({ role: "user", content: actionText });
@@ -379,11 +413,10 @@
 
     async function callGeminiApiWithFallback(apiKey, history) {
         const candidateModels = [
-            "gemini-1.5-flash",
             "gemini-2.0-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.7-flash",
-            "gemini-3.8-flash"
+            "gemini-1.5-flash",
+            "gemini-2.5-flash",
+            "gemini-1.5-pro"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -398,7 +431,7 @@
             contents: contents,
             generationConfig: { 
                 temperature: 0.75, 
-                maxOutputTokens: 1200
+                maxOutputTokens: 1500
             }
         };
 
@@ -409,7 +442,7 @@
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const timeoutId = setTimeout(() => controller.abort(), 45000);
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -460,7 +493,7 @@
                 model: "gpt-4o-mini",
                 messages: messages,
                 temperature: 0.75,
-                max_tokens: 1200
+                max_tokens: 1500
             })
         });
 
@@ -477,7 +510,7 @@
         if (level <= 10) return 100 + (level - 1) * 50;
         if (level <= 20) return 1000 + (level - 11) * 100;
         if (level <= 30) return 3000 + (level - 21) * 300;
-        return 5000 + (level - 31) * 500;
+        return 5700 + (level - 30) * 300;
     }
 
     function parseAndUpdateStatus(text) {
@@ -487,7 +520,7 @@
         const statusText = text.substring(statusIndex);
 
         // 1. 等級與境界
-        let currentLevel = 21;
+        let currentLevel = 31;
         const levelMatch = statusText.match(/等級:\s*(\d+)/);
         if (levelMatch) {
             currentLevel = parseInt(levelMatch[1]);
@@ -495,7 +528,7 @@
             document.getElementById("p-realm").innerText = getRealmName(currentLevel);
         }
 
-        // 2. 血量校正（金丹期 Lv.21 鎖定 3000 HP，避免 AI 溢出）
+        // 2. 血量校正（元嬰期 Lv.31 鎖定 8700 HP）
         const expectedMaxHp = calculateExpectedHp(currentLevel);
         document.getElementById("p-hp").innerText = `${expectedMaxHp} / ${expectedMaxHp}`;
 
@@ -527,16 +560,10 @@
             updateLocationDescription(locName);
         }
 
-        // 7. 解析主要 NPC 好感度（強效限制不得超過 100）
-        const affinityMatch = statusText.match(/主要NPC好感度:\s*\[(.*?)\]/);
-        if (affinityMatch) {
-            parseCurrentNpcList(affinityMatch[1]);
-        }
-
         scanStoryTextForNpcs(text);
         renderGlobalMemoryToDOM();
 
-        // 8. 麾下傀儡/暗子
+        // 7. 麾下傀儡/暗子
         const puppetMatch = statusText.match(/麾下傀儡:\s*\[(.*?)\]/);
         if (puppetMatch) {
             const puppetListEl = document.getElementById("p-puppets-list");
@@ -548,7 +575,7 @@
             }
         }
 
-        // 9. 道具與物品
+        // 8. 道具與物品
         const itemMatch = statusText.match(/道具:\s*\[(.*?)\]/);
         if (itemMatch && itemMatch[1].trim()) {
             const invListEl = document.getElementById("p-inventory");
@@ -559,75 +586,24 @@
         }
     }
 
-    function parseCurrentNpcList(rawText) {
-        const listEl = document.getElementById("p-affinity-list");
-        if (!rawText || !rawText.trim()) {
-            listEl.innerText = "• 無";
-            return;
-        }
-
-        const itemsList = rawText.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-        const currentItems = [];
-
-        itemsList.forEach(rawItem => {
-            const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
-            if (match) {
-                const npcInfo = match[1].trim();
-                let val = match[2] !== undefined ? parseInt(match[2]) : 20;
-
-                // 🛡️ 好感度上限限制：強行壓回 100 封頂
-                if (val > 100) val = 100;
-                if (val < -100) val = -100;
-
-                const pureName = npcInfo.replace(/\([^)]*\)/g, '').trim();
-                globalNpcMemory.set(pureName, { info: npcInfo, val: val });
-
-                currentItems.push(`• ${npcInfo}: ${val} (${getAffinityTitle(val)})`);
-            }
-        });
-
-        if (currentItems.length > 0) {
-            listEl.innerHTML = currentItems.join("<br>");
-        } else {
-            listEl.innerText = "• 無";
-        }
-    }
-
     function scanStoryTextForNpcs(fullText) {
-        const knownNpcNames = ["沈冰雁", "沈清璃", "蒼雲子", "黑袍魔修"];
-        knownNpcNames.forEach(name => {
-            if (fullText.includes(name) && !globalNpcMemory.has(name)) {
-                let defaultInfo = name;
-                if (name === "沈冰雁") defaultInfo = "沈冰雁(玄冰宮宮主/冰霄琉璃九轉元嬰)";
-                if (name === "沈清璃") defaultInfo = "沈清璃(玄冰宮聖女/極光太虛九品金丹)";
-                globalNpcMemory.set(name, { info: defaultInfo, val: 100 });
-            }
-        });
-    }
+        // 小說內文掃描：補全好感度，保證全域名冊不漏人
+        const knownNpcs = [
+            ["沈清璃", "沈清璃(玄冰宮聖女/極光太虛道體)", 100],
+            ["沈冰雁", "沈冰雁(玄冰宮宮主/太虛冰魄寒光體)", 100],
+            ["姬如煙", "姬如煙(太一聖地聖主/九霄太荒神體)", 100],
+            ["妙善", "妙善(梵音閣閣主/九品功德淨世體)", 100],
+            ["凌霜雪", "凌霜雪(天劍宗劍閣首座/無上太上劍心體)", 100],
+            ["慕容嫣", "慕容嫣(血海宗宗主/修羅血海魔體)", 100],
+            ["金萬山", "金萬山(天寶閣大掌櫃)", 85],
+            ["洛清寒", "洛清寒(天機閣天機神算)", -50],
+            ["夜妖嬈", "夜妖嬈(萬妖谷妖皇)", 0],
+            ["雲渺渺", "雲渺渺(百花谷谷主)", 0]
+        ];
 
-    function scanHistoryForOldNpcs() {
-        const logs = document.querySelectorAll("#story-log .story-block");
-        logs.forEach(block => {
-            const text = block.innerText;
-            scanStoryTextForNpcs(text);
-
-            const footer = block.querySelector(".status-footer");
-            if (footer) {
-                const affinityMatch = footer.innerText.match(/主要NPC好感度:\s*\[(.*?)\]/);
-                if (affinityMatch && affinityMatch[1].trim()) {
-                    const itemsList = affinityMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
-                    itemsList.forEach(rawItem => {
-                        const match = rawItem.match(/([^\s,:：\[\]()]+(?:\([^)]+\))?)(?:\s*[:：（]\s*(-?\d+))?/);
-                        if (match) {
-                            const npcInfo = match[1].trim();
-                            let val = match[2] !== undefined ? parseInt(match[2]) : 20;
-                            if (val > 100) val = 100;
-                            if (val < -100) val = -100;
-                            const pureName = npcInfo.replace(/\([^)]*\)/g, '').trim();
-                            globalNpcMemory.set(pureName, { info: npcInfo, val: val });
-                        }
-                    });
-                }
+        knownNpcs.forEach(([name, info, val]) => {
+            if (!globalNpcMemory.has(name)) {
+                globalNpcMemory.set(name, { info: info, val: val });
             }
         });
     }
@@ -764,7 +740,7 @@
             document.getElementById("story-log").innerHTML = savedLog;
             conversationHistory = JSON.parse(savedHistory);
             
-            scanHistoryForOldNpcs();
+            initDefaultNpcs();
 
             if (conversationHistory.length > 0) {
                 const lastAiMsg = [...conversationHistory].reverse().find(m => m.role === "assistant");
