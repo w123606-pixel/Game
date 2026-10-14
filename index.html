@@ -356,31 +356,31 @@
 
 <script>
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【九州貨幣體系】與【方案B：極簡差異化結算】：
+請嚴格遵守以下【九州雙重貨幣體系】與【方案B：極簡結算】：
 
-【一、 九州雙重貨幣體系】
-1. 凡俗貨幣：黃金/碎銀（用於世俗客棧、凡人市集消費，1兩黃金 ≈ 10兩碎銀）。
-2. 靈石體系：修仙界唯一通用貨幣，分為 [下品, 中品, 上品, 極品] 靈石，採100進位制（1中品 = 100下品）。
-3. 靈石不可作為一般物品寫入 [道具:] 欄，必須統一寫入 [靈石:] 結算欄位。
+【一、 九州雙重貨幣體系（強制區分）】
+1. 黃金/碎銀：世俗貨幣，標註為 [黃金:XX兩] 或 [碎銀:XX兩]。
+2. 靈石：修仙界唯一硬通貨，標註為 [靈石:下品*X, 中品*Y]。
+3. 嚴禁再使用 [金幣:] 標籤，也嚴禁將靈石寫入 [道具:] 或 [儲物袋] 內部！靈石必須作為獨立 [靈石:] 標籤輸出！
 
 【二、 方案 B 極簡結算輸出規範（絕對極簡）】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
 只輸出當前有數值、有狀態或該回合發生變動的欄位（未學習或無內容的項目如雜學、術法、陣法、傀儡絕對不輸出！）：
 
 輸出格式範例（以 | 分隔）：
-[異動] HP:120/160 | 黃金:10兩 | 靈石:下品*25,中品*2 | Lv:3(練氣三層) | 六維:[12,13,12,14,15,10] | 狀態:【健康】 | 心法:混沌天道星宿滅世經(3層) | 武功:基礎劍法(熟練) | 煉藥:基礎草藥辨識(精通) | 裝備:劣質鐵劍,新手布衣 | 道具:聚氣散*2 | 位置:青陽鎮·百草堂
+[異動] HP:120/160 | 黃金:80兩 | 靈石:下品*7 | Lv:3(練氣三層) | 六維:[12,13,12,14,15,10] | 狀態:【健康】 | 心法:混沌天道星宿滅世經(3層巔峰) | 武功:基礎劍法(熟練) | 術法:疾風步(入門) | 煉藥:基礎草藥辨識(精通) | 裝備:青鋼短刃,新手布衣 | 道具:《疾風步》(殘篇),金創藥*2 | 位置:青陽鎮·客棧天字房
 
 欄位縮寫規則：
 - 六維順序固定為：[膂力, 根骨, 身法, 神識, 悟性, 氣運]
-- 血量計算公式：上限 Max HP = 基礎 HP (Lv.1為100, 每升一層+50) + (根骨 - 10) * 20。當前 HP 不得超過 Max HP。請嚴格根據受傷/恢復動態扣減或增加當前 HP。
-- 未學會的技能分類（如雜學、術法、陣法、煉器）絕不要出現在結算列中！
+- 血量計算公式：上限 Max HP = 基礎 HP (Lv.1為100, 每升一層+50) + (根骨 - 10) * 20。請嚴格根據受傷/恢復動態扣減或增加當前 HP。
+- 道具欄中，若有儲物袋，請直接寫出袋內物品清單，不要把靈石放在道具欄裡。
 
 【三、 戰力體系與境界壓制鐵律（絕對嚴格）】
 1. 境界壓制極其嚴格（練氣 < 築基 < 金丹 < 元嬰 < 化神 < 煉虛 < 合體 < 大乘 < 渡劫 < 真仙）。
 2. 低境界者【嚴禁越級虐殺】高境界強者！低境界挑戰高境界必須依靠「極品法寶/陣法/智謀代價」，嚴禁爽文式無腦秒殺！
 
 【四、 主角性格與台詞限制】
-主角性格必須【深謀遠慮、內斂沉穩】，嚴禁口吐「本座」或滿嘴迷之自信的中二油腔滑調！
+主角性格必須【深謀慮、內斂沉穩】，嚴禁口吐「本座」或滿嘴迷之自信的中二油腔滑調！
 
 【五、 女性角色（掌門/聖女）心性與沉府規則】
 所有高階女性 NPC 皆具備深沉城府，絕對禁止「展露霸氣即臣服」的情節，每次好感度變動不得超過 +5 至 +10。`;
@@ -715,8 +715,9 @@
                     const realmText = lvlMatch[2] ? `${lvlMatch[2]} (Lv.${currentLevel})` : getRealmName(currentLevel);
                     document.getElementById("p-realm").innerText = realmText;
                 }
-            } else if (s.startsWith("黃金:") || s.startsWith("金幣:")) {
-                document.getElementById("p-gold").innerText = s.replace(/黃金:|金幣:/, "").trim();
+            } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:")) {
+                const val = s.replace(/黃金:|金幣:|碎銀:/, "").trim();
+                document.getElementById("p-gold").innerText = val.includes("兩") ? val : val + " 兩";
             } else if (s.startsWith("靈石:")) {
                 document.getElementById("p-spirit-stone").innerText = s.replace("靈石:", "").trim();
             } else if (s.startsWith("體質:")) {
@@ -757,7 +758,13 @@
                 const equipItems = s.replace("裝備:", "").split(/[,，]/).map(item => item.trim()).filter(Boolean);
                 document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
             } else if (s.startsWith("道具:")) {
-                const items = s.replace("道具:", "").split(/[,，]/).map(item => item.trim()).filter(Boolean);
+                // 自動清洗：若舊對話歷史中的道具欄被塞入「下品靈石/儲物袋(含靈石)」，嘗試分離出來更新靈石欄
+                let rawItemStr = s.replace("道具:", "").trim();
+                const spiritMatch = rawItemStr.match(/下品靈石\*\d+|中品靈石\*\d+/g);
+                if (spiritMatch) {
+                    document.getElementById("p-spirit-stone").innerText = spiritMatch.join(", ");
+                }
+                const items = rawItemStr.split(/[,，]/).map(item => item.trim()).filter(Boolean);
                 document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
             }
         });
