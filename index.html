@@ -253,7 +253,7 @@
 
         <h2 style="margin-top: 15px;">📜 雜學技藝（符/卜/御獸）</h2>
         <div id="p-skills-misc" class="scroll-list" style="color: #e0e0e0; white-space: pre-line;">
-            • 基礎避邪符（入門）
+            • 暫無
         </div>
 
         <h2 style="margin-top: 15px;">⚔️ 裝備與法寶</h2>
@@ -294,7 +294,7 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 歡迎踏入九州世界！你是一名初入仙途的異世旅者，當前踏足於九州邊陲的新手村，前路浩瀚，正邪紛爭將由你一手揭開……<br>
-                <div class="status-footer">[異動] HP:100/100 | 金幣:100 | Lv:1(練氣一層) | 體質:凡體肉胎 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 雜學:基礎避邪符(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2,下品靈石*10 | 位置:九州邊陲·新手村</div>
+                <div class="status-footer">[異動] HP:100/100 | 金幣:100 | Lv:1(練氣一層) | 體質:凡體肉胎 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2,下品靈石*10 | 位置:九州邊陲·新手村</div>
             </div>
         </div>
         
@@ -360,15 +360,15 @@
 
 【一、 方案 B 極簡結算輸出規範（絕對極簡）】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
-只輸出當前有數值、有狀態或該回合發生變動的欄位（空項目如未學技能、未擁有傀儡絕不輸出）：
+只輸出當前有數值、有狀態或該回合發生變動的欄位（未學習或無內容的項目如雜學、術法、陣法、傀儡絕對不輸出！）：
 
 輸出格式範例（以 | 分隔）：
-[異動] HP:95/160 | 金幣:120 | Lv:3(練氣三層) | 六維:[12,13,12,14,15,10] | 狀態:【健康】 | 心法:混沌天道星宿滅世經(3層) | 武功:基礎劍法(熟練) | 煉藥:基礎草藥辨識(精通) | 裝備:劣質鐵劍,新手布衣 | 道具:聚氣散*2 | 位置:青陽鎮·百草堂
+[異動] HP:120/160 | 金幣:120 | Lv:3(練氣三層) | 六維:[12,13,12,14,15,10] | 狀態:【健康】 | 心法:混沌天道星宿滅世經(3層) | 武功:基礎劍法(熟練) | 煉藥:基礎草藥辨識(精通) | 裝備:劣質鐵劍,新手布衣 | 道具:聚氣散*2 | 位置:青陽鎮·百草堂
 
 欄位縮寫規則：
 - 六維順序固定為：[膂力, 根骨, 身法, 神識, 悟性, 氣運]
-- 血量計算：基礎 HP (隨等級提升) + (根骨 - 10) * 20。請嚴格根據受傷/恢復即時更新當前 HP。
-- 沒變動或無內容的項目（如陣法:[]）請直接省去不輸出！
+- 血量計算公式：上限 Max HP = 基礎 HP (Lv.1為100, 每升一層+50) + (根骨 - 10) * 20。當前 HP 不得超過 Max HP。請嚴格根據受傷/恢復動態扣減或增加當前 HP。
+- 未學會的技能分類（如雜學、術法、陣法、煉器）絕不要出現在結算列中！
 
 【二、 戰力體系與境界壓制鐵律（絕對嚴格）】
 1. 境界壓制極其嚴格（練氣 < 築基 < 金丹 < 元嬰 < 化神 < 煉虛 < 合體 < 大乘 < 渡劫 < 真仙）。
@@ -385,6 +385,7 @@
     const MAX_DOM_LOGS = 30;
 
     let currentSixStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
+    let currentHpVal = 100;
 
     const canonicalNpcData = [
         ["蒼雲子", { info: "蒼雲子(新手村長老)", val: 20 }],
@@ -687,6 +688,7 @@
                 return;
             }
         }
+        el.innerText = "• 暫無";
     }
 
     function parseAndUpdateStatus(text) {
@@ -736,9 +738,9 @@
                     drawRadarChart(currentSixStats);
                 }
             } else if (s.startsWith("HP:")) {
-                const hpMatch = s.match(/HP:(\d+)\/(\d+)/);
+                const hpMatch = s.match(/HP:(\d+)(?:\/(\d+))?/);
                 if (hpMatch) {
-                    document.getElementById("p-hp").innerText = `${hpMatch[1]} / ${hpMatch[2]}`;
+                    currentHpVal = parseInt(hpMatch[1]);
                 }
             } else if (s.startsWith("狀態:")) {
                 document.getElementById("p-status-effects").innerText = "• " + s.replace("狀態:", "").trim();
@@ -753,12 +755,10 @@
             }
         });
 
-        // 動態修正 HP (如未指定 Max HP，自動由公式計算)
-        const hpText = document.getElementById("p-hp").innerText;
-        if (!hpText.includes("/")) {
-            const maxHp = calculateBaseHpByLevel(currentLevel) + (currentSixStats.con - 10) * 20;
-            document.getElementById("p-hp").innerText = `${maxHp} / ${maxHp}`;
-        }
+        // 血量精確重新計算引擎：上限 = 等級基底 + (根骨 - 10) * 20
+        const calculatedMaxHp = calculateBaseHpByLevel(currentLevel) + (currentSixStats.con - 10) * 20;
+        if (currentHpVal > calculatedMaxHp) currentHpVal = calculatedMaxHp;
+        document.getElementById("p-hp").innerText = `${currentHpVal} / ${calculatedMaxHp}`;
 
         parseCategorySkill(segments, "武功", "p-skills-martial");
         parseCategorySkill(segments, "術法", "p-skills-spells");
