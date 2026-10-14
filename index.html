@@ -233,7 +233,7 @@
 
         <h2 style="margin-top: 15px;">🔥 術法與神通</h2>
         <div id="p-skills-spells" class="scroll-list" style="color: #64b5f6; white-space: pre-line;">
-            • 御火術（入門）
+            • 暫無
         </div>
 
         <h2 style="margin-top: 15px;">☯️ 陣法藝能</h2>
@@ -243,7 +243,7 @@
 
         <h2 style="margin-top: 15px;">🔨 煉器造詣</h2>
         <div id="p-skills-craft" class="scroll-list" style="color: #ffb74d; white-space: pre-line;">
-            • 基礎礦物識別（入門）
+            • 暫無
         </div>
 
         <h2 style="margin-top: 15px;">🌿 煉藥/毒理</h2>
@@ -294,12 +294,12 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 歡迎踏入九州世界！你是一名初入仙途的異世旅者，當前踏足於九州邊陲的新手村，前路浩瀚，正邪紛爭將由你一手揭開……<br>
-                <div class="status-footer">[當前狀態] 血量: 100/100, 金幣: 100, 體質: 凡體肉胎, 六維: [膂力:10, 根骨:10, 身法:10, 神識:10, 悟性:10, 氣運:10], 狀態: [【健康】無特殊狀態], 心法: 基礎吐納心法（入門）, 武功: [基礎劍法（入門）, 輕功草上飛（入門）], 術法: [御火術（入門）], 陣法: [], 煉器: [], 煉藥: [基礎草藥辨識（入門）], 雜學: [基礎避邪符（入門）], 裝備: 粗鐵劍、布衣, 位置: 九州邊陲·新手村, 等級: 1, 麾下傀儡: [], 道具: [金創藥*2, 下品靈石*10], 天道推演: [冷卻中 (下一次解鎖：Lv.10)]</div>
+                <div class="status-footer">[異動] HP:100/100 | 金幣:100 | Lv:1(練氣一層) | 體質:凡體肉胎 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 雜學:基礎避邪符(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2,下品靈石*10 | 位置:九州邊陲·新手村</div>
             </div>
         </div>
         
         <div class="input-group">
-            <input type="text" id="action-input" placeholder="輸入行動，例如：服用淬骨血丹、更換太上誅神星落劍..." onkeydown="if(event.key==='Enter') sendAction()">
+            <input type="text" id="action-input" placeholder="輸入行動，開始你的九州傳奇..." onkeydown="if(event.key==='Enter') sendAction()">
             <button id="btn-submit" onclick="sendAction()">抉擇</button>
         </div>
 
@@ -356,50 +356,29 @@
 
 <script>
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【屬性動態影響機制】、【體質與六維屬性】與【結算格式】：
+請嚴格遵守以下【方案B：極簡差異化結算】與【戰力鐵律】：
 
-【一、 屬性動態影響機制鐵律（重點執行）】
-當玩家執行以下行動時，你必須在結算列中即時動態調整【六維數值】、【血量上限】與【狀態】：
-1. 服用藥物/丹藥：
-   - 永久性丹藥（如萬年血靈芝、陰陽玄龍參）：永久增加相應六維屬性（例如根骨+10、膂力+5）。
-   - 暫時性丹藥（如淬骨血丹、聚氣破境丹）：增加暫時性狀態（如【血氣湧動】、【真元爆發】），並適度提升對應屬性。
-2. 更換/卸下裝備：
-   - 裝備高等級武器/法寶（如太上誅神星落劍）：神識、膂力大幅增加，並賦予特有狀態（如【星辰劍意】）。
-   - 卸下裝備時，必須精確扣除該裝備帶來的屬性加成！
-3. 體質蛻變/覺醒：
-   - 當玩家體質從《凡體肉胎》晉升（如覺醒為《先天劍骨》、《萬化混沌星宿聖體》），六維屬性與根骨上限必須獲得突破性大幅提升！
+【一、 方案 B 極簡結算輸出規範（絕對極簡）】
+每次回覆最後換行，並以單行輸出 [異動] 標籤。
+只輸出當前有數值、有狀態或該回合發生變動的欄位（空項目如未學技能、未擁有傀儡絕不輸出）：
 
-【二、 體質與六維屬性規範】
-結算列中必須包含：
-1. 體質: [名稱]
-2. 六維: [膂力:數值, 根骨:數值, 身法:數值, 神識:數值, 悟性:數值, 氣運:數值]
-3. 狀態: [當前持續性增益、負面狀態或裝備特效]
+輸出格式範例（以 | 分隔）：
+[異動] HP:95/160 | 金幣:120 | Lv:3(練氣三層) | 六維:[12,13,12,14,15,10] | 狀態:【健康】 | 心法:混沌天道星宿滅世經(3層) | 武功:基礎劍法(熟練) | 煉藥:基礎草藥辨識(精通) | 裝備:劣質鐵劍,新手布衣 | 道具:聚氣散*2 | 位置:青陽鎮·百草堂
 
-【三、 技能與層次體系輸出規範】
-1. 心法: [名稱(層次)]
-2. 武功: [名稱(層次)] (包含劍法/刀法/身法/拳掌)
-3. 術法: [名稱(層次)] (包含神通/五行法術/雷法)
-4. 陣法: [名稱(層次)]
-5. 煉器: [名稱(層次)]
-6. 煉藥: [名稱(層次)]
-7. 雜學: [名稱(層次)] (包含符籙/占卜/御獸)
-層次規範：入門 -> 熟練 -> 精通 -> 大成 -> 圓滿 -> 化境。
+欄位縮寫規則：
+- 六維順序固定為：[膂力, 根骨, 身法, 神識, 悟性, 氣運]
+- 血量計算：基礎 HP (隨等級提升) + (根骨 - 10) * 20。請嚴格根據受傷/恢復即時更新當前 HP。
+- 沒變動或無內容的項目（如陣法:[]）請直接省去不輸出！
 
-【四、 戰力體系與境界壓制鐵律（絕對嚴格）】
+【二、 戰力體系與境界壓制鐵律（絕對嚴格）】
 1. 境界壓制極其嚴格（練氣 < 築基 < 金丹 < 元嬰 < 化神 < 煉虛 < 合體 < 大乘 < 渡劫 < 真仙）。
 2. 低境界者【嚴禁越級虐殺】高境界強者！低境界挑戰高境界必須依靠「極品法寶/陣法/智謀代價」，嚴禁爽文式無腦秒殺！
 
-【五、 主角性格與台詞限制】
+【三、 主角性格與台詞限制】
 主角性格必須【深謀慮、內斂沉穩】，嚴禁口吐「本座」或滿嘴迷之自信的中二油腔滑調！
 
-【六、 女性角色（掌門/聖女）心性與沉府規則】
-所有高階女性 NPC 皆具備深沉城府，絕對禁止「展露霸氣即臣服」的情節，每次好感度變動不得超過 +5 至 +10。
-
-【結算列強制輸出格式】
-每一次回覆最後換行並嚴格輸出精簡結算列（禁止輸出 NPC 好感度字串）：
-
----
-[當前狀態] 血量: 100/100, 金幣: 100, 體質: 凡體肉胎, 六維: [膂力:10, 根骨:10, 身法:10, 神識:10, 悟性:10, 氣運:10], 狀態: [【健康】無特殊狀態], 心法: 基礎吐納心法（入門）, 武功: [基礎劍法（入門）, 輕功草上飛（入門）], 術法: [御火術（入門）], 陣法: [], 煉器: [], 煉藥: [基礎草藥辨識（入門）], 雜學: [基礎避邪符（入門）], 裝備: 粗鐵劍、布衣, 位置: 九州邊陲·新手村, 等級: 1, 麾下傀儡: [], 道具: [金創藥*2, 下品靈石*10], 天道推演: [冷卻中 (下一次解鎖：Lv.10)]`;
+【四、 女性角色（掌門/聖女）心性與沉府規則】
+所有高階女性 NPC 皆具備深沉城府，絕對禁止「展露霸氣即臣服」的情節，每次好感度變動不得超過 +5 至 +10。`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map();
@@ -442,10 +421,8 @@
         const values = [stats.str, stats.con, stats.agi, stats.int, stats.wis, stats.luk];
         const numAxes = labels.length;
 
-        // 計算目前六維最高值作為繪圖動態基準上限
         const maxStatVal = Math.max(...values, 20);
 
-        // 1. 繪製背景網格層 (3層背景六邊形)
         for (let level = 1; level <= 3; level++) {
             const r = (radius / 3) * level;
             ctx.beginPath();
@@ -462,7 +439,6 @@
             ctx.stroke();
         }
 
-        // 2. 繪製 6 條中心放射軸線與標籤
         ctx.font = "11px 微軟正黑體";
         ctx.fillStyle = "#c5a059";
         ctx.textAlign = "center";
@@ -479,13 +455,11 @@
             ctx.strokeStyle = "rgba(197, 160, 89, 0.2)";
             ctx.stroke();
 
-            // 繪製文字標籤
             const labelX = centerX + (radius + 20) * Math.cos(angle);
             const labelY = centerY + (radius + 18) * Math.sin(angle);
             ctx.fillText(`${labels[i]}:${values[i]}`, labelX, labelY);
         }
 
-        // 3. 繪製玩家六維數值區域
         ctx.beginPath();
         for (let i = 0; i < numAxes; i++) {
             const angle = (Math.PI / 3) * i - Math.PI / 2;
@@ -499,16 +473,13 @@
         }
         ctx.closePath();
 
-        // 填色 (半透明青藍色)
         ctx.fillStyle = "rgba(0, 255, 255, 0.25)";
         ctx.fill();
 
-        // 邊框 (高亮青色)
         ctx.strokeStyle = "#00ffff";
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // 頂點圓圈點綴
         for (let i = 0; i < numAxes; i++) {
             const angle = (Math.PI / 3) * i - Math.PI / 2;
             const valRatio = Math.min(1, values[i] / maxStatVal);
@@ -698,133 +669,105 @@
         return data.choices[0].message.content;
     }
 
-    function calculateExpectedHp(level, conVal = 10) {
-        // 血量受等級與「根骨 (CON)」加成雙重影響
-        const baseHp = (level <= 10) ? 100 + (level - 1) * 50 : 
-                       (level <= 20) ? 1000 + (level - 11) * 100 : 
-                       (level <= 30) ? 3000 + (level - 21) * 300 : 5700 + (level - 30) * 300;
-        return baseHp + (conVal - 10) * 20;
+    function calculateBaseHpByLevel(level) {
+        if (level <= 10) return 100 + (level - 1) * 50;
+        if (level <= 20) return 1000 + (level - 11) * 100;
+        if (level <= 30) return 3000 + (level - 21) * 300;
+        return 5700 + (level - 30) * 300;
     }
 
-    function parseCategorySkill(statusText, label, elementId) {
-        const reg = new RegExp(`${label}:\\s*\\[?(.*?)\\]?(?:,|，|\\n|心法:|武功:|術法:|陣法:|煉器:|煉藥:|雜學:|裝備:)`);
-        const match = statusText.match(reg);
+    function parseCategorySkill(segments, label, elementId) {
+        const targetSeg = segments.find(s => s.trim().startsWith(label + ":"));
         const el = document.getElementById(elementId);
-        if (match && match[1].trim()) {
-            const items = match[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
+        if (targetSeg) {
+            const raw = targetSeg.split(":")[1] || "";
+            const items = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
             if (items.length > 0) {
                 el.innerText = "• " + items.join("\n• ");
                 return;
             }
         }
-        el.innerText = "• 暫無";
     }
 
     function parseAndUpdateStatus(text) {
-        const statusIndex = text.indexOf("[當前狀態]");
+        const statusIndex = text.indexOf("[異動]");
         if (statusIndex === -1) return;
 
-        const statusText = text.substring(statusIndex);
+        const statusLine = text.substring(statusIndex).trim();
+        const segments = statusLine.replace("[異動]", "").split("|");
 
-        let currentLevel = 1;
-        const levelMatch = statusText.match(/等級:\s*(\d+)/);
-        if (levelMatch) {
-            currentLevel = parseInt(levelMatch[1]);
-            document.getElementById("p-level").innerText = currentLevel;
-            document.getElementById("p-realm").innerText = getRealmName(currentLevel);
-        }
+        let currentLevel = parseInt(document.getElementById("p-level").innerText) || 1;
 
-        const goldMatch = statusText.match(/金幣:\s*(\d+)/);
-        if (goldMatch) {
-            document.getElementById("p-gold").innerText = goldMatch[1];
-        }
+        segments.forEach(seg => {
+            const s = seg.trim();
+            if (s.startsWith("Lv:")) {
+                const lvlMatch = s.match(/Lv:(\d+)(?:\((.*?)\))?/);
+                if (lvlMatch) {
+                    currentLevel = parseInt(lvlMatch[1]);
+                    document.getElementById("p-level").innerText = currentLevel;
+                    const realmText = lvlMatch[2] ? `${lvlMatch[2]} (Lv.${currentLevel})` : getRealmName(currentLevel);
+                    document.getElementById("p-realm").innerText = realmText;
+                }
+            } else if (s.startsWith("金幣:")) {
+                document.getElementById("p-gold").innerText = s.replace("金幣:", "").trim();
+            } else if (s.startsWith("體質:")) {
+                document.getElementById("p-physique").innerText = s.replace("體質:", "").trim();
+            } else if (s.startsWith("位置:")) {
+                const locName = s.replace("位置:", "").trim();
+                document.getElementById("p-location").innerText = `【${locName}】`;
+                updateLocationDescription(locName);
+            } else if (s.startsWith("六維:")) {
+                const arrMatch = s.match(/\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]/);
+                if (arrMatch) {
+                    currentSixStats.str = parseInt(arrMatch[1]);
+                    currentSixStats.con = parseInt(arrMatch[2]);
+                    currentSixStats.agi = parseInt(arrMatch[3]);
+                    currentSixStats.int = parseInt(arrMatch[4]);
+                    currentSixStats.wis = parseInt(arrMatch[5]);
+                    currentSixStats.luk = parseInt(arrMatch[6]);
 
-        // 解析體質
-        const physMatch = statusText.match(/體質:\s*([^,，\n]+)/);
-        if (physMatch) {
-            document.getElementById("p-physique").innerText = physMatch[1].trim();
-        }
+                    document.getElementById("st-str").innerText = currentSixStats.str;
+                    document.getElementById("st-con").innerText = currentSixStats.con;
+                    document.getElementById("st-agi").innerText = currentSixStats.agi;
+                    document.getElementById("st-int").innerText = currentSixStats.int;
+                    document.getElementById("st-wis").innerText = currentSixStats.wis;
+                    document.getElementById("st-luk").innerText = currentSixStats.luk;
 
-        // 解析六維屬性並即時重繪動態雷達圖
-        const sixMatch = statusText.match(/六維:\s*\[?(.*?)\]?(?:,|，|\n|狀態:)/);
-        if (sixMatch && sixMatch[1]) {
-            const strM = sixMatch[1].match(/膂力:\s*(\d+)/); if (strM) currentSixStats.str = parseInt(strM[1]);
-            const conM = sixMatch[1].match(/根骨:\s*(\d+)/); if (conM) currentSixStats.con = parseInt(conM[1]);
-            const agiM = sixMatch[1].match(/身法:\s*(\d+)/); if (agiM) currentSixStats.agi = parseInt(agiM[1]);
-            const intM = sixMatch[1].match(/神識:\s*(\d+)/); if (intM) currentSixStats.int = parseInt(intM[1]);
-            const wisM = sixMatch[1].match(/悟性:\s*(\d+)/); if (wisM) currentSixStats.wis = parseInt(wisM[1]);
-            const lukM = sixMatch[1].match(/氣運:\s*(\d+)/); if (lukM) currentSixStats.luk = parseInt(lukM[1]);
-
-            document.getElementById("st-str").innerText = currentSixStats.str;
-            document.getElementById("st-con").innerText = currentSixStats.con;
-            document.getElementById("st-agi").innerText = currentSixStats.agi;
-            document.getElementById("st-int").innerText = currentSixStats.int;
-            document.getElementById("st-wis").innerText = currentSixStats.wis;
-            document.getElementById("st-luk").innerText = currentSixStats.luk;
-
-            drawRadarChart(currentSixStats);
-        }
-
-        // 根據等級與「根骨」動態計算血量
-        const expectedMaxHp = calculateExpectedHp(currentLevel, currentSixStats.con);
-        document.getElementById("p-hp").innerText = `${expectedMaxHp} / ${expectedMaxHp}`;
-
-        // 解析目前狀態 (Buffs/Debuffs/裝備特效)
-        const stateMatch = statusText.match(/狀態:\s*\[?(.*?)\]?(?:,|，|\n|心法:)/);
-        if (stateMatch && stateMatch[1].trim()) {
-            const items = stateMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
-            if (items.length > 0) {
-                document.getElementById("p-status-effects").innerText = "• " + items.join("\n• ");
+                    drawRadarChart(currentSixStats);
+                }
+            } else if (s.startsWith("HP:")) {
+                const hpMatch = s.match(/HP:(\d+)\/(\d+)/);
+                if (hpMatch) {
+                    document.getElementById("p-hp").innerText = `${hpMatch[1]} / ${hpMatch[2]}`;
+                }
+            } else if (s.startsWith("狀態:")) {
+                document.getElementById("p-status-effects").innerText = "• " + s.replace("狀態:", "").trim();
+            } else if (s.startsWith("心法:")) {
+                document.getElementById("p-kungfu").innerText = "• " + s.replace("心法:", "").trim();
+            } else if (s.startsWith("裝備:")) {
+                const equipItems = s.replace("裝備:", "").split(/[,，]/).map(item => item.trim()).filter(Boolean);
+                document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
+            } else if (s.startsWith("道具:")) {
+                const items = s.replace("道具:", "").split(/[,，]/).map(item => item.trim()).filter(Boolean);
+                document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
             }
+        });
+
+        // 動態修正 HP (如未指定 Max HP，自動由公式計算)
+        const hpText = document.getElementById("p-hp").innerText;
+        if (!hpText.includes("/")) {
+            const maxHp = calculateBaseHpByLevel(currentLevel) + (currentSixStats.con - 10) * 20;
+            document.getElementById("p-hp").innerText = `${maxHp} / ${maxHp}`;
         }
 
-        // 解析主修心法與六大技能
-        const kungfuMatch = statusText.match(/心法:\s*([^,，\n]+)/);
-        if (kungfuMatch) {
-            document.getElementById("p-kungfu").innerText = "• " + kungfuMatch[1].trim();
-        }
-
-        parseCategorySkill(statusText, "武功", "p-skills-martial");
-        parseCategorySkill(statusText, "術法", "p-skills-spells");
-        parseCategorySkill(statusText, "陣法", "p-skills-array");
-        parseCategorySkill(statusText, "煉器", "p-skills-craft");
-        parseCategorySkill(statusText, "煉藥", "p-skills-alchemy");
-        parseCategorySkill(statusText, "雜學", "p-skills-misc");
-
-        const equipMatch = statusText.match(/裝備:\s*([^,，\n]+)/);
-        if (equipMatch) {
-            const equipItems = equipMatch[1].split(/[、,，]/).map(s => s.trim()).filter(Boolean);
-            document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
-        }
-
-        const locMatch = statusText.match(/位置:\s*([^,，\n]+)/);
-        if (locMatch) {
-            const locName = locMatch[1].trim();
-            document.getElementById("p-location").innerText = `【${locName}】`;
-            updateLocationDescription(locName);
-        }
+        parseCategorySkill(segments, "武功", "p-skills-martial");
+        parseCategorySkill(segments, "術法", "p-skills-spells");
+        parseCategorySkill(segments, "陣法", "p-skills-array");
+        parseCategorySkill(segments, "煉器", "p-skills-craft");
+        parseCategorySkill(segments, "煉藥", "p-skills-alchemy");
+        parseCategorySkill(segments, "雜學", "p-skills-misc");
 
         sanitizeNpcMemory();
-
-        const puppetMatch = statusText.match(/麾下傀儡:\s*\[(.*?)\]/);
-        if (puppetMatch) {
-            const puppetListEl = document.getElementById("p-puppets-list");
-            if (puppetMatch[1].trim()) {
-                const items = puppetMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
-                puppetListEl.innerHTML = "• " + items.join("<br>• ");
-            } else {
-                puppetListEl.innerText = "• 無";
-            }
-        }
-
-        const itemMatch = statusText.match(/道具:\s*\[(.*?)\]/);
-        if (itemMatch && itemMatch[1].trim()) {
-            const invListEl = document.getElementById("p-inventory");
-            const items = itemMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
-            if (items.length > 0) {
-                invListEl.innerText = "• " + items.join("\n• ");
-            }
-        }
     }
 
     function renderGlobalMemoryToDOM() {
@@ -850,7 +793,7 @@
             descEl.innerText = "邪道宗門重地，煞氣滔天，藏有血煞宗百年積攢之凶具與重寶。";
         } else if (location.includes("天劍宗") || location.includes("凌霄閣") || location.includes("玄冰宮")) {
             descEl.innerText = "正道名門大派，仙氣繚繞，氣勢磅礡。";
-        } else if (location.includes("新手村")) {
+        } else if (location.includes("新手村") || location.includes("青陽鎮")) {
             descEl.innerText = "仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。";
         } else {
             descEl.innerText = "九州浩瀚大地之上的一處未知秘境區域。";
@@ -890,7 +833,7 @@
     function appendLog(role, text, type) {
         const logBox = document.getElementById("story-log");
         
-        const statusIdx = text.indexOf("[當前狀態]");
+        const statusIdx = text.indexOf("[異動]");
         let formattedText = text;
         let statusHtml = "";
 
