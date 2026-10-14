@@ -81,8 +81,31 @@
         .stat-value { font-weight: bold; }
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
 
+        .radar-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #10121a;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #2a2d3d;
+            margin-bottom: 12px;
+        }
+
+        .six-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: #10121a;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #2a2d3d;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
         .scroll-list {
-            max-height: 140px;
+            max-height: 120px;
             overflow-y: auto;
             font-size: 0.85rem;
             color: #aaa;
@@ -170,54 +193,89 @@
             <button onclick="saveApiKey()" style="width:100%; padding:8px; font-size:0.85rem;">儲存 Key</button>
         </div>
 
-        <h2>☯️ 旅者面板</h2>
+        <h2>☯️ 旅者基本資訊</h2>
         <div class="stat-item"><span class="stat-label">身份</span><span class="stat-value" style="color:var(--accent-blue)">異世旅者</span></div>
-        <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">元嬰期 (Lv.31)</span></div>
-        <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">31</span></div>
-        <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">8700 / 8700</span></div>
-        <div class="stat-item"><span class="stat-label">盤纏 (金幣)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">1450200</span></div>
+        <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">練氣期 (Lv.1)</span></div>
+        <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">1</span></div>
+        <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">100 / 100</span></div>
+        <div class="stat-item"><span class="stat-label">盤纏 (金幣)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">100</span></div>
+        <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="p-physique">凡體肉胎</span></div>
 
-        <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊 (含好感與仇敵)</h2>
-        <div id="p-global-npc-list" class="scroll-list" style="color: #64b5f6;">
-            • 載入名冊中...
+        <h2 style="margin-top: 10px;">📊 六維屬性雷達圖</h2>
+        <div class="radar-container">
+            <canvas id="radarCanvas" width="220" height="220"></canvas>
         </div>
 
-        <h2 style="margin-top: 15px;">♟️ 麾下傀儡 / 暗子</h2>
-        <div id="p-puppets-list" class="scroll-list" style="color: var(--accent-purple);">
-            • 血影/陰風老人(血煞宗暗樁主事)
+        <div class="six-stats-grid">
+            <div>膂力 (STR): <span id="st-str" style="color:var(--hl-gold)">10</span></div>
+            <div>根骨 (CON): <span id="st-con" style="color:var(--accent-green)">10</span></div>
+            <div>身法 (AGI): <span id="st-agi" style="color:var(--hl-cyan)">10</span></div>
+            <div>神識 (INT): <span id="st-int" style="color:#64b5f6">10</span></div>
+            <div>悟性 (WIS): <span id="st-wis" style="color:var(--accent-purple)">10</span></div>
+            <div>氣運 (LUK): <span id="st-luk" style="color:#ffb74d">10</span></div>
         </div>
 
-        <h2 style="margin-top: 15px;">📖 主修功法與神通</h2>
+        <h2 style="margin-top: 5px;">💫 目前狀態 / 增益異常</h2>
+        <div id="p-status-effects" class="scroll-list" style="color: var(--accent-green);">
+            • 【健康】無特殊狀態
+        </div>
+
+        <h2 style="margin-top: 15px;">📖 主修心法與心境</h2>
         <div id="p-kungfu" class="scroll-list" style="color: var(--hl-cyan); white-space: pre-line;">
-            • 混沌天道星宿滅世經（混沌至尊品）
+            • 基礎吐納心法（入門）
         </div>
-        
+
+        <h2 style="margin-top: 15px;">⚔️ 武功技能（劍/刀/身法）</h2>
+        <div id="p-skills-martial" class="scroll-list" style="color: #81c784; white-space: pre-line;">
+            • 基礎劍法（入門）
+            • 輕功草上飛（入門）
+        </div>
+
+        <h2 style="margin-top: 15px;">🔥 術法與神通</h2>
+        <div id="p-skills-spells" class="scroll-list" style="color: #64b5f6; white-space: pre-line;">
+            • 御火術（入門）
+        </div>
+
+        <h2 style="margin-top: 15px;">☯️ 陣法藝能</h2>
+        <div id="p-skills-array" class="scroll-list" style="color: #ba68c8; white-space: pre-line;">
+            • 暫無
+        </div>
+
+        <h2 style="margin-top: 15px;">🔨 煉器造詣</h2>
+        <div id="p-skills-craft" class="scroll-list" style="color: #ffb74d; white-space: pre-line;">
+            • 基礎礦物識別（入門）
+        </div>
+
+        <h2 style="margin-top: 15px;">🌿 煉藥/毒理</h2>
+        <div id="p-skills-alchemy" class="scroll-list" style="color: #aed581; white-space: pre-line;">
+            • 基礎草藥辨識（入門）
+        </div>
+
+        <h2 style="margin-top: 15px;">📜 雜學技藝（符/卜/御獸）</h2>
+        <div id="p-skills-misc" class="scroll-list" style="color: #e0e0e0; white-space: pre-line;">
+            • 基礎避邪符（入門）
+        </div>
+
         <h2 style="margin-top: 15px;">⚔️ 裝備與法寶</h2>
         <div id="p-equipment" class="scroll-list" style="white-space: pre-line;">
-            • 太上誅神星落劍（天道仙劍）
-            • 玄冰天隕甲（上品防具）
-            • 極品法寶【滅世黑蓮】（識海溫養中）
-            • 金剛菩提串（上品防禦法寶）
-            • 千幻隱靈斗篷（特殊裝備）
-            • 無相面具（特殊裝備）
+            • 粗鐵劍（凡鐵武器）
+            • 布衣（凡品防具）
         </div>
 
         <h2 style="margin-top: 15px;">🎒 道具與物品</h2>
         <div id="p-inventory" class="scroll-list" style="white-space: pre-line;">
-            • 聚靈神爐
-            • 築基丹*5
-            • 《九州志》
-            • 天道萬魂控心冊
-            • 《雷影遁術》
-            • 中品靈石*28000
-            • 聚氣破境丹*15
-            • 淬骨血丹*20
-            • 萬年血靈芝*2
-            • 陰陽玄龍參*3
-            • 破妄金瞳鏡
-            • 天視地聽鈴
-            • 鎖靈繩
-            • 冰魔之心
+            • 金創藥*2
+            • 下品靈石*10
+        </div>
+
+        <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊</h2>
+        <div id="p-global-npc-list" class="scroll-list" style="color: #64b5f6;">
+            • 暫無結識 NPC
+        </div>
+
+        <h2 style="margin-top: 15px;">♟️ 麾下傀儡 / 暗子</h2>
+        <div id="p-puppets-list" class="scroll-list" style="color: var(--accent-purple);">
+            • 無
         </div>
 
         <div style="margin-top: 15px;">
@@ -235,13 +293,13 @@
         <div id="story-log">
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
-                你成功凝聚「萬道星元混沌紫金神嬰」，破境踏入元嬰期（Lv.31），攜六美同引天道共鳴突破，天地變色！<br>
-                <div class="status-footer">[當前狀態] 血量: 8700/8700, 金幣: 1450200, 功法: 混沌天道星宿滅世經（混沌至尊品）, 裝備: 太上誅神星落劍（天道仙劍）、玄冰天隕甲（上品防具）、極品法寶【滅世黑蓮】（識海溫養中）、金剛菩提串、千幻隱靈斗篷、無相面具, 位置: 玄冰宮·沉淵谷核心秘境, 等級: 31, 麾下傀儡: [血影/陰風老人(血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》, 天道萬魂控心冊, 《雷影遁術》, 中品靈石*28000, 聚氣破境丹*15, 淬骨血丹*20, 萬年血靈芝*2, 陰陽玄龍參*3, 破妄金瞳鏡, 天視地聽鈴, 鎖靈繩, 冰魔之心], 天道推演: [已冷卻 (下一次解鎖：Lv.40)]</div>
+                歡迎踏入九州世界！你是一名初入仙途的異世旅者，當前踏足於九州邊陲的新手村，前路浩瀚，正邪紛爭將由你一手揭開……<br>
+                <div class="status-footer">[當前狀態] 血量: 100/100, 金幣: 100, 體質: 凡體肉胎, 六維: [膂力:10, 根骨:10, 身法:10, 神識:10, 悟性:10, 氣運:10], 狀態: [【健康】無特殊狀態], 心法: 基礎吐納心法（入門）, 武功: [基礎劍法（入門）, 輕功草上飛（入門）], 術法: [御火術（入門）], 陣法: [], 煉器: [], 煉藥: [基礎草藥辨識（入門）], 雜學: [基礎避邪符（入門）], 裝備: 粗鐵劍、布衣, 位置: 九州邊陲·新手村, 等級: 1, 麾下傀儡: [], 道具: [金創藥*2, 下品靈石*10], 天道推演: [冷卻中 (下一次解鎖：Lv.10)]</div>
             </div>
         </div>
         
         <div class="input-group">
-            <input type="text" id="action-input" placeholder="輸入行動或發動天道推演..." onkeydown="if(event.key==='Enter') sendAction()">
+            <input type="text" id="action-input" placeholder="輸入行動，例如：服用淬骨血丹、更換太上誅神星落劍..." onkeydown="if(event.key==='Enter') sendAction()">
             <button id="btn-submit" onclick="sendAction()">抉擇</button>
         </div>
 
@@ -254,8 +312,8 @@
     <div class="panel right-panel">
         <h2>🗺️ 當前位置</h2>
         <div style="font-size: 0.9rem; margin-bottom: 15px;">
-            <strong id="p-location">【玄冰宮·沉淵谷核心秘境】</strong><br>
-            <small id="p-location-desc" style="color:#888;">正道名門大派，仙氣繚繞，氣勢磅礡。</small>
+            <strong id="p-location">【九州邊陲·新手村】</strong><br>
+            <small id="p-location-desc" style="color:#888;">仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。</small>
         </div>
 
         <details open>
@@ -298,108 +356,179 @@
 
 <script>
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【世界觀】、【戰力體系】、【NPC心性】與【主角設定】四大鐵律：
+請嚴格遵守以下【屬性動態影響機制】、【體質與六維屬性】與【結算格式】：
 
-【一、 九州二十大頂級勢力硬核架構（絕對不許亂湊門派）】
-九州世界僅存在以下四大陣營頂級勢力，掌門與重要人物已固定，嚴禁憑空捏造新門派或錯亂掌門：
-[正道盟]
-1. 太一聖地：聖主 姬如煙（合體期）
-2. 玄冰宮：宮主 沈冰雁（煉虛期）/ 聖女 沈清璃（化神期）
-3. 天劍宗：劍閣首座 凌霜雪（煉虛期）
-4. 梵音閣：閣主 妙善（煉虛期）
-5. 紫霄道宗：掌教 雷元子（合體期）
-6. 丹霞仙宗：宗主 丹陽子（煉虛期）
-7. 蓬萊仙島：島主 陸滄海（合體期）
-8. 浩然正氣書院：院長 言聖仙（合體期）
-9. 無極星宫：宮主 星宿子（煉虛期）
+【一、 屬性動態影響機制鐵律（重點執行）】
+當玩家執行以下行動時，你必須在結算列中即時動態調整【六維數值】、【血量上限】與【狀態】：
+1. 服用藥物/丹藥：
+   - 永久性丹藥（如萬年血靈芝、陰陽玄龍參）：永久增加相應六維屬性（例如根骨+10、膂力+5）。
+   - 暫時性丹藥（如淬骨血丹、聚氣破境丹）：增加暫時性狀態（如【血氣湧動】、【真元爆發】），並適度提升對應屬性。
+2. 更換/卸下裝備：
+   - 裝備高等級武器/法寶（如太上誅神星落劍）：神識、膂力大幅增加，並賦予特有狀態（如【星辰劍意】）。
+   - 卸下裝備時，必須精確扣除該裝備帶來的屬性加成！
+3. 體質蛻變/覺醒：
+   - 當玩家體質從《凡體肉胎》晉升（如覺醒為《先天劍骨》、《萬化混沌星宿聖體》），六維屬性與根骨上限必須獲得突破性大幅提升！
 
-[邪道盟]
-10. 血海宗：宗主 慕容嫣（化神期）
-11. 陰煞門/寒煞魔窟：暗樁主事 陰風老人（元嬰期）
-12. 萬魂幽冥宗：宗主 噬魂魔尊（合體期）
-13. 天魔邪宮：宮主 夜煞天魔（合體期）
+【二、 體質與六維屬性規範】
+結算列中必須包含：
+1. 體質: [名稱]
+2. 六維: [膂力:數值, 根骨:數值, 身法:數值, 神識:數值, 悟性:數值, 氣運:數值]
+3. 狀態: [當前持續性增益、負面狀態或裝備特效]
 
-[灰色中立]
-14. 天寶閣：大掌櫃 金萬山（元嬰期）
-15. 百花谷：谷主 雲渺渺（化神期）
-16. 天妖傀儡城：城主 墨千機（煉虛期）
-17. 黑市散修盟：盟主 獨孤狼（化神期）
-18. 四海商會：會長 錢海通（化神期）
+【三、 技能與層次體系輸出規範】
+1. 心法: [名稱(層次)]
+2. 武功: [名稱(層次)] (包含劍法/刀法/身法/拳掌)
+3. 術法: [名稱(層次)] (包含神通/五行法術/雷法)
+4. 陣法: [名稱(層次)]
+5. 煉器: [名稱(層次)]
+6. 煉藥: [名稱(層次)]
+7. 雜學: [名稱(層次)] (包含符籙/占卜/御獸)
+層次規範：入門 -> 熟練 -> 精通 -> 大成 -> 圓滿 -> 化境。
 
-[隱世/天道古族]
-19. 天機閣：閣主 洛清寒（煉虛期）
-20. 萬妖谷：妖皇 夜妖嬈（煉虛期）
-21. 荒古姜家：族長 姜太虛（合體期）
-22. 太古鳳凰族：族長 鳳凰老祖（合體期）
-23. 輪迴仙閣：閣主 無塵道尊（合體期）
-
-【二、 戰力體系與境界壓制鐵律】
+【四、 戰力體系與境界壓制鐵律（絕對嚴格）】
 1. 境界壓制極其嚴格（練氣 < 築基 < 金丹 < 元嬰 < 化神 < 煉虛 < 合體 < 大乘 < 渡劫 < 真仙）。
-2. 低境界者嚴禁隨意越級虐殺高境界強者！越級戰鬥必須描寫出極其艱苦的智取、陣法或付出重創代價。
+2. 低境界者【嚴禁越級虐殺】高境界強者！低境界挑戰高境界必須依靠「極品法寶/陣法/智謀代價」，嚴禁爽文式無腦秒殺！
 
-【三、 女性角色（掌門/聖女）心性與沉府規則】
-1. 所有女性 NPC 皆為修練數百年、執掌大權的高階修仙者，具備深沉城府與利益考量。
-2. 絕對禁止「展露霸氣即臣服」的無腦倒貼情節！好感度提升必須經過生死考驗、利益互換或長久情感鋪陳，每次好感度變動幅度不得超過 +5 至 +10。
+【五、 主角性格與台詞限制】
+主角性格必須【深謀慮、內斂沉穩】，嚴禁口吐「本座」或滿嘴迷之自信的中二油腔滑調！
 
-【四、 主角性格與台詞限制】
-1. 主角目前僅為元嬰期（Lv.31），性格必須【深謀遠慮、內斂沉穩】，絕不可口吐「本座」或滿嘴迷之自信的囂張中二台詞！
+【六、 女性角色（掌門/聖女）心性與沉府規則】
+所有高階女性 NPC 皆具備深沉城府，絕對禁止「展露霸氣即臣服」的情節，每次好感度變動不得超過 +5 至 +10。
 
-【結算列極簡化格式】
-每一次回覆最後換行並嚴格輸出以下精簡結算列（禁止輸出 NPC 好感度字串）：
+【結算列強制輸出格式】
+每一次回覆最後換行並嚴格輸出精簡結算列（禁止輸出 NPC 好感度字串）：
 
 ---
-[當前狀態] 血量: 8700/8700, 金幣: 1450200, 功法: 混沌天道星宿滅世經（混沌至尊品）, 裝備: 太上誅神星落劍（天道仙劍）、玄冰天隕甲（上品防具）、極品法寶【滅世黑蓮】（識海溫養中）、金剛菩提串、千幻隱靈斗篷、無相面具, 位置: 玄冰宮·沉淵谷核心秘境, 等級: 31, 麾下傀儡: [血影/陰風老人(血煞宗暗樁主事)], 道具: [聚靈神爐, 築基丹*5, 《九州志》, 天道萬魂控心冊, 《雷影遁術》, 中品靈石*28000, 聚氣破境丹*15, 淬骨血丹*20, 萬年血靈芝*2, 陰陽玄龍參*3, 破妄金瞳鏡, 天視地聽鈴, 鎖靈繩, 冰魔之心], 天道推演: [冷卻中 (下一次解鎖：Lv.40)]`;
+[當前狀態] 血量: 100/100, 金幣: 100, 體質: 凡體肉胎, 六維: [膂力:10, 根骨:10, 身法:10, 神識:10, 悟性:10, 氣運:10], 狀態: [【健康】無特殊狀態], 心法: 基礎吐納心法（入門）, 武功: [基礎劍法（入門）, 輕功草上飛（入門）], 術法: [御火術（入門）], 陣法: [], 煉器: [], 煉藥: [基礎草藥辨識（入門）], 雜學: [基礎避邪符（入門）], 裝備: 粗鐵劍、布衣, 位置: 九州邊陲·新手村, 等級: 1, 麾下傀儡: [], 道具: [金創藥*2, 下品靈石*10], 天道推演: [冷卻中 (下一次解鎖：Lv.10)]`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map();
     const MAX_DOM_LOGS = 30;
 
+    let currentSixStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
+
     const canonicalNpcData = [
-        ["沈清璃", { info: "沈清璃(玄冰宮聖女/極光太虛道體)", val: 100 }],
-        ["沈冰雁", { info: "沈冰雁(玄冰宮宮主/太虛冰魄寒光體)", val: 100 }],
-        ["慕容嫣", { info: "慕容嫣(血海宗宗主/紅蓮魔姬/修羅血海魔體)", val: 100 }],
-        ["姬如煙", { info: "姬如煙(太一聖地聖主/九霄太荒神體)", val: 100 }],
-        ["妙善", { info: "妙善(梵音閣閣主/九品功德淨世體)", val: 100 }],
-        ["凌霜雪", { info: "凌霜雪(天劍宗劍閣首座/無上太上劍心體)", val: 100 }],
-        ["蒼雲子", { info: "蒼雲子(新手村長老)", val: 100 }],
-        ["金萬山", { info: "金萬山(天寶閣大掌櫃)", val: 85 }],
-        ["夜妖嬈", { info: "夜妖嬈(萬妖谷妖皇/九尾天狐)", val: 0 }],
-        ["雲渺渺", { info: "雲渺渺(百花谷谷主)", val: 0 }],
-        ["洛清寒", { info: "洛清寒(天機閣天機神算)", val: -50 }],
-        ["雷元子", { info: "雷元子(紫霄道宗掌教)", val: 0 }],
-        ["丹陽子", { info: "丹陽子(丹霞仙宗宗主)", val: 0 }],
-        ["陸滄海", { info: "陸滄海(蓬萊仙島島主)", val: 0 }],
-        ["言聖仙", { info: "言聖仙(浩然正氣書院院長)", val: 0 }],
-        ["星宿子", { info: "星宿子(無極星宮宮主)", val: -20 }],
-        ["噬魂魔尊", { info: "噬魂魔尊(萬魂幽冥宗宗主)", val: -100 }],
-        ["夜煞天魔", { info: "夜煞天魔(天魔邪宮宮主)", val: -100 }],
-        ["墨千機", { info: "墨千機(天妖傀儡城城主)", val: 0 }],
-        ["獨孤狼", { info: "獨孤狼(黑市散修盟盟主)", val: 0 }],
-        ["錢海通", { info: "錢海通(四海商會會長)", val: 20 }],
-        ["姜太虛", { info: "姜太虛(荒古姜家族長)", val: 0 }],
-        ["鳳凰老祖", { info: "鳳凰老祖(太古鳳凰族族長)", val: 0 }],
-        ["無塵道尊", { info: "無塵道尊(輪迴仙閣閣主)", val: 0 }]
+        ["蒼雲子", { info: "蒼雲子(新手村長老)", val: 20 }],
+        ["沈清璃", { info: "沈清璃(玄冰宮聖女)", val: 0 }],
+        ["沈冰雁", { info: "沈冰雁(玄冰宮宮主)", val: 0 }],
+        ["慕容嫣", { info: "慕容嫣(血海宗宗主)", val: 0 }],
+        ["姬如煙", { info: "姬如煙(太一聖地聖主)", val: 0 }],
+        ["妙善", { info: "妙善(梵音閣閣主)", val: 0 }],
+        ["凌霜雪", { info: "凌霜雪(天劍宗劍閣首座)", val: 0 }],
+        ["金萬山", { info: "金萬山(天寶閣大掌櫃)", val: 0 }],
+        ["洛清寒", { info: "洛清寒(天機閣閣主)", val: 0 }]
     ];
 
     window.onload = () => {
         loadApiKey();
         loadGameState();
         sanitizeNpcMemory();
+        drawRadarChart(currentSixStats);
     };
+
+    function drawRadarChart(stats) {
+        const canvas = document.getElementById('radarCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = 75;
+
+        ctx.clearRect(0, 0, width, height);
+
+        const labels = ['膂力', '根骨', '身法', '神識', '悟性', '氣運'];
+        const values = [stats.str, stats.con, stats.agi, stats.int, stats.wis, stats.luk];
+        const numAxes = labels.length;
+
+        // 計算目前六維最高值作為繪圖動態基準上限
+        const maxStatVal = Math.max(...values, 20);
+
+        // 1. 繪製背景網格層 (3層背景六邊形)
+        for (let level = 1; level <= 3; level++) {
+            const r = (radius / 3) * level;
+            ctx.beginPath();
+            for (let i = 0; i < numAxes; i++) {
+                const angle = (Math.PI / 3) * i - Math.PI / 2;
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = "rgba(197, 160, 89, 0.25)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // 2. 繪製 6 條中心放射軸線與標籤
+        ctx.font = "11px 微軟正黑體";
+        ctx.fillStyle = "#c5a059";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        for (let i = 0; i < numAxes; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = "rgba(197, 160, 89, 0.2)";
+            ctx.stroke();
+
+            // 繪製文字標籤
+            const labelX = centerX + (radius + 20) * Math.cos(angle);
+            const labelY = centerY + (radius + 18) * Math.sin(angle);
+            ctx.fillText(`${labels[i]}:${values[i]}`, labelX, labelY);
+        }
+
+        // 3. 繪製玩家六維數值區域
+        ctx.beginPath();
+        for (let i = 0; i < numAxes; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
+            const valRatio = Math.min(1, values[i] / maxStatVal);
+            const r = radius * valRatio;
+            const x = centerX + r * Math.cos(angle);
+            const y = centerY + r * Math.sin(angle);
+
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+
+        // 填色 (半透明青藍色)
+        ctx.fillStyle = "rgba(0, 255, 255, 0.25)";
+        ctx.fill();
+
+        // 邊框 (高亮青色)
+        ctx.strokeStyle = "#00ffff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 頂點圓圈點綴
+        for (let i = 0; i < numAxes; i++) {
+            const angle = (Math.PI / 3) * i - Math.PI / 2;
+            const valRatio = Math.min(1, values[i] / maxStatVal);
+            const r = radius * valRatio;
+            const x = centerX + r * Math.cos(angle);
+            const y = centerY + r * Math.sin(angle);
+
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffd700";
+            ctx.fill();
+        }
+    }
 
     function sanitizeNpcMemory() {
         const cleanMap = new Map();
-
-        canonicalNpcData.forEach(([key, val]) => {
-            cleanMap.set(key, val);
-        });
-
+        canonicalNpcData.forEach(([key, val]) => cleanMap.set(key, val));
         globalNpcMemory.forEach((data, key) => {
-            if (!key.includes("紅蓮魔姬") && !key.includes("血佛老祖") && !cleanMap.has(key)) {
-                cleanMap.set(key, data);
-            }
+            if (!cleanMap.has(key)) cleanMap.set(key, data);
         });
-
         globalNpcMemory = cleanMap;
         renderGlobalMemoryToDOM();
     }
@@ -431,7 +560,7 @@
         if (!actionText) return;
 
         inputEl.value = "";
-        toggleLoading(true, "天道推導中 (深度生成中，請稍候)...");
+        toggleLoading(true, "天道推導中...");
 
         appendLog("異世旅者", actionText, "player");
         conversationHistory.push({ role: "user", content: actionText });
@@ -493,7 +622,7 @@
             system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
             contents: contents,
             generationConfig: { 
-                temperature: 0.75, 
+                temperature: 0.7, 
                 maxOutputTokens: 1500
             }
         };
@@ -555,7 +684,7 @@
             body: JSON.stringify({
                 model: "gpt-4o-mini",
                 messages: messages,
-                temperature: 0.75,
+                temperature: 0.7,
                 max_tokens: 1500
             })
         });
@@ -569,11 +698,26 @@
         return data.choices[0].message.content;
     }
 
-    function calculateExpectedHp(level) {
-        if (level <= 10) return 100 + (level - 1) * 50;
-        if (level <= 20) return 1000 + (level - 11) * 100;
-        if (level <= 30) return 3000 + (level - 21) * 300;
-        return 5700 + (level - 30) * 300;
+    function calculateExpectedHp(level, conVal = 10) {
+        // 血量受等級與「根骨 (CON)」加成雙重影響
+        const baseHp = (level <= 10) ? 100 + (level - 1) * 50 : 
+                       (level <= 20) ? 1000 + (level - 11) * 100 : 
+                       (level <= 30) ? 3000 + (level - 21) * 300 : 5700 + (level - 30) * 300;
+        return baseHp + (conVal - 10) * 20;
+    }
+
+    function parseCategorySkill(statusText, label, elementId) {
+        const reg = new RegExp(`${label}:\\s*\\[?(.*?)\\]?(?:,|，|\\n|心法:|武功:|術法:|陣法:|煉器:|煉藥:|雜學:|裝備:)`);
+        const match = statusText.match(reg);
+        const el = document.getElementById(elementId);
+        if (match && match[1].trim()) {
+            const items = match[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
+            if (items.length > 0) {
+                el.innerText = "• " + items.join("\n• ");
+                return;
+            }
+        }
+        el.innerText = "• 暫無";
     }
 
     function parseAndUpdateStatus(text) {
@@ -582,7 +726,7 @@
 
         const statusText = text.substring(statusIndex);
 
-        let currentLevel = 31;
+        let currentLevel = 1;
         const levelMatch = statusText.match(/等級:\s*(\d+)/);
         if (levelMatch) {
             currentLevel = parseInt(levelMatch[1]);
@@ -590,19 +734,62 @@
             document.getElementById("p-realm").innerText = getRealmName(currentLevel);
         }
 
-        const expectedMaxHp = calculateExpectedHp(currentLevel);
-        document.getElementById("p-hp").innerText = `${expectedMaxHp} / ${expectedMaxHp}`;
-
         const goldMatch = statusText.match(/金幣:\s*(\d+)/);
         if (goldMatch) {
             document.getElementById("p-gold").innerText = goldMatch[1];
         }
 
-        const kungfuMatch = statusText.match(/功法:\s*([^,，\n]+)/);
-        if (kungfuMatch) {
-            const kItems = kungfuMatch[1].split(/[、,，]/).map(s => s.trim()).filter(Boolean);
-            document.getElementById("p-kungfu").innerText = "• " + kItems.join("\n• ");
+        // 解析體質
+        const physMatch = statusText.match(/體質:\s*([^,，\n]+)/);
+        if (physMatch) {
+            document.getElementById("p-physique").innerText = physMatch[1].trim();
         }
+
+        // 解析六維屬性並即時重繪動態雷達圖
+        const sixMatch = statusText.match(/六維:\s*\[?(.*?)\]?(?:,|，|\n|狀態:)/);
+        if (sixMatch && sixMatch[1]) {
+            const strM = sixMatch[1].match(/膂力:\s*(\d+)/); if (strM) currentSixStats.str = parseInt(strM[1]);
+            const conM = sixMatch[1].match(/根骨:\s*(\d+)/); if (conM) currentSixStats.con = parseInt(conM[1]);
+            const agiM = sixMatch[1].match(/身法:\s*(\d+)/); if (agiM) currentSixStats.agi = parseInt(agiM[1]);
+            const intM = sixMatch[1].match(/神識:\s*(\d+)/); if (intM) currentSixStats.int = parseInt(intM[1]);
+            const wisM = sixMatch[1].match(/悟性:\s*(\d+)/); if (wisM) currentSixStats.wis = parseInt(wisM[1]);
+            const lukM = sixMatch[1].match(/氣運:\s*(\d+)/); if (lukM) currentSixStats.luk = parseInt(lukM[1]);
+
+            document.getElementById("st-str").innerText = currentSixStats.str;
+            document.getElementById("st-con").innerText = currentSixStats.con;
+            document.getElementById("st-agi").innerText = currentSixStats.agi;
+            document.getElementById("st-int").innerText = currentSixStats.int;
+            document.getElementById("st-wis").innerText = currentSixStats.wis;
+            document.getElementById("st-luk").innerText = currentSixStats.luk;
+
+            drawRadarChart(currentSixStats);
+        }
+
+        // 根據等級與「根骨」動態計算血量
+        const expectedMaxHp = calculateExpectedHp(currentLevel, currentSixStats.con);
+        document.getElementById("p-hp").innerText = `${expectedMaxHp} / ${expectedMaxHp}`;
+
+        // 解析目前狀態 (Buffs/Debuffs/裝備特效)
+        const stateMatch = statusText.match(/狀態:\s*\[?(.*?)\]?(?:,|，|\n|心法:)/);
+        if (stateMatch && stateMatch[1].trim()) {
+            const items = stateMatch[1].split(/[,，]/).map(s => s.trim()).filter(Boolean);
+            if (items.length > 0) {
+                document.getElementById("p-status-effects").innerText = "• " + items.join("\n• ");
+            }
+        }
+
+        // 解析主修心法與六大技能
+        const kungfuMatch = statusText.match(/心法:\s*([^,，\n]+)/);
+        if (kungfuMatch) {
+            document.getElementById("p-kungfu").innerText = "• " + kungfuMatch[1].trim();
+        }
+
+        parseCategorySkill(statusText, "武功", "p-skills-martial");
+        parseCategorySkill(statusText, "術法", "p-skills-spells");
+        parseCategorySkill(statusText, "陣法", "p-skills-array");
+        parseCategorySkill(statusText, "煉器", "p-skills-craft");
+        parseCategorySkill(statusText, "煉藥", "p-skills-alchemy");
+        parseCategorySkill(statusText, "雜學", "p-skills-misc");
 
         const equipMatch = statusText.match(/裝備:\s*([^,，\n]+)/);
         if (equipMatch) {
@@ -643,7 +830,7 @@
     function renderGlobalMemoryToDOM() {
         const listEl = document.getElementById("p-global-npc-list");
         if (globalNpcMemory.size === 0) {
-            listEl.innerText = "• 無";
+            listEl.innerText = "• 暫無";
             return;
         }
 
@@ -754,7 +941,7 @@
 
     function manualSaveGame() {
         saveGameState();
-        alert("💾 遊戲進度與 NPC 名冊已成功儲存！");
+        alert("💾 遊戲進度與技能名冊已成功儲存！");
     }
 
     function loadGameState() {
@@ -783,7 +970,7 @@
 
     function manualLoadGame() {
         loadGameState();
-        alert("📂 已成功讀取歷史存檔與全域名冊！");
+        alert("📂 已成功讀取歷史存檔！");
     }
 
     function resetGame() {
