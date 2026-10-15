@@ -368,7 +368,7 @@
 
 【動態異動項目】（僅在當前回合發生「新增、減少、更換或升級」時才輸出，未變動項目不要印出）：
 - 黃金 / 碎銀 / 靈石
-- Lv: 等級(境界)
+- Lv: 等級 (如 Lv:8，括號內可寫境界名稱如 Lv:8(練氣八層))
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
 - NPC: 姓名(身份):數值
 - 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
@@ -697,7 +697,8 @@
         segments.forEach(seg => {
             const s = seg.trim();
             if (s.startsWith("Lv:")) {
-                const lvlMatch = s.match(/Lv:(\d+)(?:\((.*?)\))?/);
+                // 強化等級與境界解析正則（全面相容中文與特殊符號）
+                const lvlMatch = s.match(/Lv:\s*(\d+)(?:\((.*?)\))?/i);
                 if (lvlMatch) {
                     currentLevel = parseInt(lvlMatch[1]);
                     document.getElementById("p-level").innerText = currentLevel;
