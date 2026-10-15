@@ -366,9 +366,9 @@
 - 狀態: 當前簡短狀態描述
 - 位置: 當前地點名稱
 
-【動態異動項目】（僅在當前回合發生「新增、減少、更換或升級」時才輸出，未變動項目不要印出）：
+【動態異動項目】（僅在當前後台數據發生新增、減少、更換或升級時才輸出，未變動項目絕對禁止印出）：
 - 黃金 / 碎銀 / 靈石
-- Lv: 等級 (如 Lv:8，括號內可寫境界名稱如 Lv:8(練氣八層))
+- Lv: 等級 (格式: Lv:8 或 Lv:8(練氣八層巔峰))
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
 - NPC: 姓名(身份):數值
 - 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
@@ -673,10 +673,11 @@
         return 5700 + (level - 30) * 300;
     }
 
+    // 增量解析：沒傳該欄位時保持原狀，絕對不清空！
     function parseCategorySkill(segments, label, elementId) {
         const targetSeg = segments.find(s => s.trim().startsWith(label + ":"));
-        const el = document.getElementById(elementId);
         if (targetSeg) {
+            const el = document.getElementById(elementId);
             const raw = targetSeg.split(":")[1] || "";
             const items = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
             if (items.length > 0) {
@@ -696,14 +697,18 @@
 
         segments.forEach(seg => {
             const s = seg.trim();
+            // 完美正則提取等級與境界
             if (s.startsWith("Lv:")) {
-                // 強化等級與境界解析正則（全面相容中文與特殊符號）
-                const lvlMatch = s.match(/Lv:\s*(\d+)(?:\((.*?)\))?/i);
-                if (lvlMatch) {
-                    currentLevel = parseInt(lvlMatch[1]);
+                const lvlNum = s.match(/Lv:\s*(\d+)/i);
+                if (lvlNum) {
+                    currentLevel = parseInt(lvlNum[1]);
                     document.getElementById("p-level").innerText = currentLevel;
-                    const realmText = lvlMatch[2] ? `${lvlMatch[2]} (Lv.${currentLevel})` : getRealmName(currentLevel);
-                    document.getElementById("p-realm").innerText = realmText;
+                }
+                const realmMatch = s.match(/Lv:\s*\d+\s*\((.*?)\)/i);
+                if (realmMatch && realmMatch[1]) {
+                    document.getElementById("p-realm").innerText = `${realmMatch[1]} (Lv.${currentLevel})`;
+                } else if (lvlNum) {
+                    document.getElementById("p-realm").innerText = getRealmName(currentLevel);
                 }
             } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:")) {
                 const val = s.replace(/黃金:|金幣:|碎銀:/, "").trim();
@@ -976,19 +981,20 @@
             } catch(e) { console.error("NPC Map 載入失敗", e); }
         }
 
-        restorePlayerSnapshot();
-        
         if (savedLog && savedHistory) {
             document.getElementById("story-log").innerHTML = savedLog;
             conversationHistory = JSON.parse(savedHistory);
             
-            sanitizeNpcMemory();
-
+            // 先還原對話紀錄中的最後一筆狀態
             if (conversationHistory.length > 0) {
                 const lastAiMsg = [...conversationHistory].reverse().find(m => m.role === "assistant");
                 if (lastAiMsg) parseAndUpdateStatus(lastAiMsg.content);
             }
         }
+
+        // 最後用 LocalStorage 快照覆蓋補全，確保不漏掉任何欄位
+        restorePlayerSnapshot();
+        sanitizeNpcMemory();
     }
 
     function manualLoadGame() {
