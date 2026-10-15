@@ -356,42 +356,25 @@
 
 <script>
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【方案 B 極簡異動結算規範】與【戰力鐵律】：
+請嚴格遵守以下【方案 B 異動結算規範】與【戰力鐵律】：
 
-【一、 方案 B 極簡異動結算鐵律（嚴格執行，禁止冗長）】
+【一、 結算列輸出規則】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
-**【極重要】未發生改變的舊欄位（如道具、裝備、技能、六維、NPC），絕對禁止重新印出來！**
 
-【必要輸出欄位】（每回合必須輸出這三項）：
+【核心項目】（每回合必須輸出）：
 - HP: 當前HP/上限HP
 - 狀態: 當前簡短狀態描述
 - 位置: 當前地點名稱
 
-【條件輸出欄位】（僅在「該回合發生新增、消耗或變化」時才可輸出，沒變動就直接省略）：
-- 黃金: 數值
-- 靈石: 數值
+【動態異動項目】（僅在當前回合發生「新增、減少、更換或升級」時才輸出，未變動項目不要印出）：
+- 黃金 / 碎銀 / 靈石
 - Lv: 等級(境界)
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
-- NPC: 姓名(身份):數值 (僅在認識新NPC或好感度改變時輸出)
-- 心法/武功/術法/煉藥/陣法: 技能名稱(層次) (僅在學會或升級時輸出)
-- 裝備: 名稱 (僅在更換裝備時輸出)
-- 道具: 名稱*數量 (僅在獲得或消耗物品時輸出)
+- NPC: 姓名(身份):數值
+- 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
+- 裝備 / 道具
 
-極簡異動範例（當回合僅進行移動與受傷）：
-[異動] HP:480/520 | 狀態:【受傷】遭遇黑風狼襲擊 | 位置:黑風嶺深處
-
-極簡異動範例（當回合消耗藥品並提升好感）：
-[異動] HP:520/520 | 狀態:【黑風嶺】贈予藥物 | NPC:蘇清雪(青雲宗內門弟子):15 | 道具:-聚氣丹*1 | 位置:黑風嶺外圍
-
-【二、 戰力體系與境界壓制鐵律】
-1. 境界壓制極其嚴格（練氣 < 築基 < 金丹 < 元嬰 < 化神 < 煉虛 < 合體 < 大乘 < 渡劫 < 真仙）。
-2. 低境界者【嚴禁越級虐殺】高境界強者！
-
-【三、 主角性格與台詞限制】
-主角性格必須【深謀遠慮、內斂沉穩】，嚴禁中二油腔滑調！
-
-【四、 女性角色心性與城府】
-所有高階女性 NPC 皆具備深沉城府，絕無無腦倒貼，每次好感度變動不得超過 +5 至 +15。`;
+當玩家發送【全屬性刷新】指令時，請在該回合完整輸出當前玩家的所有屬性欄位！`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map();
@@ -797,7 +780,70 @@
         parseCategorySkill(segments, "煉藥", "p-skills-alchemy");
         parseCategorySkill(segments, "雜學", "p-skills-misc");
 
+        savePlayerSnapshot();
         sanitizeNpcMemory();
+    }
+
+    function savePlayerSnapshot() {
+        const snapshot = {
+            level: document.getElementById("p-level").innerText,
+            realm: document.getElementById("p-realm").innerText,
+            hp: document.getElementById("p-hp").innerText,
+            gold: document.getElementById("p-gold").innerText,
+            spiritStone: document.getElementById("p-spirit-stone").innerText,
+            physique: document.getElementById("p-physique").innerText,
+            stats: currentSixStats,
+            status: document.getElementById("p-status-effects").innerText,
+            kungfu: document.getElementById("p-kungfu").innerText,
+            martial: document.getElementById("p-skills-martial").innerText,
+            spells: document.getElementById("p-skills-spells").innerText,
+            array: document.getElementById("p-skills-array").innerText,
+            craft: document.getElementById("p-skills-craft").innerText,
+            alchemy: document.getElementById("p-skills-alchemy").innerText,
+            misc: document.getElementById("p-skills-misc").innerText,
+            equipment: document.getElementById("p-equipment").innerText,
+            inventory: document.getElementById("p-inventory").innerText,
+            location: document.getElementById("p-location").innerText
+        };
+        localStorage.setItem("blade_player_snapshot", JSON.stringify(snapshot));
+    }
+
+    function restorePlayerSnapshot() {
+        const saved = localStorage.getItem("blade_player_snapshot");
+        if (!saved) return;
+        try {
+            const data = JSON.parse(saved);
+            if (data.level) document.getElementById("p-level").innerText = data.level;
+            if (data.realm) document.getElementById("p-realm").innerText = data.realm;
+            if (data.hp) document.getElementById("p-hp").innerText = data.hp;
+            if (data.gold) document.getElementById("p-gold").innerText = data.gold;
+            if (data.spiritStone) document.getElementById("p-spirit-stone").innerText = data.spiritStone;
+            if (data.physique) document.getElementById("p-physique").innerText = data.physique;
+            if (data.stats) {
+                currentSixStats = data.stats;
+                document.getElementById("st-str").innerText = currentSixStats.str;
+                document.getElementById("st-con").innerText = currentSixStats.con;
+                document.getElementById("st-agi").innerText = currentSixStats.agi;
+                document.getElementById("st-int").innerText = currentSixStats.int;
+                document.getElementById("st-wis").innerText = currentSixStats.wis;
+                document.getElementById("st-luk").innerText = currentSixStats.luk;
+                drawRadarChart(currentSixStats);
+            }
+            if (data.status) document.getElementById("p-status-effects").innerText = data.status;
+            if (data.kungfu) document.getElementById("p-kungfu").innerText = data.kungfu;
+            if (data.martial) document.getElementById("p-skills-martial").innerText = data.martial;
+            if (data.spells) document.getElementById("p-skills-spells").innerText = data.spells;
+            if (data.array) document.getElementById("p-skills-array").innerText = data.array;
+            if (data.craft) document.getElementById("p-skills-craft").innerText = data.craft;
+            if (data.alchemy) document.getElementById("p-skills-alchemy").innerText = data.alchemy;
+            if (data.misc) document.getElementById("p-skills-misc").innerText = data.misc;
+            if (data.equipment) document.getElementById("p-equipment").innerText = data.equipment;
+            if (data.inventory) document.getElementById("p-inventory").innerText = data.inventory;
+            if (data.location) {
+                document.getElementById("p-location").innerText = data.location;
+                updateLocationDescription(data.location);
+            }
+        } catch(e) { console.error("Snapshot Restore Fail", e); }
     }
 
     function renderGlobalMemoryToDOM() {
@@ -821,7 +867,7 @@
             descEl.innerText = "黑紫瘴氣瀰漫之凶險禁地，妖獸與魔修常在此出沒。";
         } else if (location.includes("血煞宗") || location.includes("秘庫")) {
             descEl.innerText = "邪道宗門重地，煞氣滔天，藏有血煞宗百年積攢之凶具與重寶。";
-        } else if (location.includes("天劍宗") || location.includes("凌霄閣") || location.includes("玄冰宮")) {
+        } else if (location.includes("天劍宗") || location.includes("凌霄閣") || location.includes("玄冰宮") || location.includes("雲霧峰")) {
             descEl.innerText = "正道名門大派，仙氣繚繞，氣勢磅礡。";
         } else if (location.includes("新手村") || location.includes("青陽鎮")) {
             descEl.innerText = "仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。";
@@ -910,6 +956,7 @@
         localStorage.setItem("blade_story_log", document.getElementById("story-log").innerHTML);
         localStorage.setItem("blade_conv_history", JSON.stringify(conversationHistory));
         localStorage.setItem("blade_global_npc_map", JSON.stringify(Array.from(globalNpcMemory.entries())));
+        savePlayerSnapshot();
     }
 
     function manualSaveGame() {
@@ -927,6 +974,8 @@
                 globalNpcMemory = new Map(JSON.parse(savedNpcMap));
             } catch(e) { console.error("NPC Map 載入失敗", e); }
         }
+
+        restorePlayerSnapshot();
         
         if (savedLog && savedHistory) {
             document.getElementById("story-log").innerHTML = savedLog;
@@ -951,6 +1000,7 @@
             localStorage.removeItem("blade_story_log");
             localStorage.removeItem("blade_conv_history");
             localStorage.removeItem("blade_global_npc_map");
+            localStorage.removeItem("blade_player_snapshot");
             location.reload();
         }
     }
