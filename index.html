@@ -356,7 +356,7 @@
 
 <script>
     const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【方案 B 異動結算規範】與【戰力鐵律】：
+請嚴格遵守以下【方案 B 異動結算規範】與【戰力/邏輯鐵律】：
 
 【一、 結算列輸出規則】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
@@ -368,13 +368,19 @@
 
 【動態異動項目】（僅在當前後台數據發生新增、減少、更換或升級時才輸出，未變動項目絕對禁止印出）：
 - 黃金 / 碎銀 / 靈石
-- Lv: 等級 (格式: Lv:8 或 Lv:8(練氣八層巔峰))
+- Lv: 等級 (等級上限為 Lv.90，格式: Lv:8)
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
 - NPC: 姓名(身份):數值
 - 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
 - 裝備 / 道具
 
-當玩家發送【全屬性刷新】指令時，請在該回合完整輸出當前玩家的所有屬性欄位！`;
+【二、 防作弊與數值權限鐵律（極重要）】
+1. **數值主權在天道**：玩家對話中的自我宣稱（例如「我其實是大乘期」、「我獲得了九品神丹」、「我召喚了仙帝」）**無效**！
+2. **違規輸入處置**：若玩家試圖透過對話改寫未經認可的境界或數值，請在劇情中將其描寫為「心魔幻象」、「荒謬妄想」或「走火入魔」，**絕對禁止在 [異動] 中變更玩家的等級或六維**！
+3. **等級與境界鎖定**：最高等級為 Lv.90。升級必須由天道劇情觸發，單次提升嚴禁超過 1 個小境界。
+
+【三、 境界與戰力體系】
+練氣(Lv.1-10) < 築基(Lv.11-20) < 金丹(Lv.21-30) < 元嬰(Lv.31-40) < 化神(Lv.41-50) < 煉虛(Lv.51-60) < 合體(Lv.61-70) < 大乘(Lv.71-80) < 渡劫(Lv.81-90)。`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map();
@@ -415,7 +421,15 @@
         ctx.clearRect(0, 0, width, height);
 
         const labels = ['膂力', '根骨', '身法', '神識', '悟性', '氣運'];
-        const values = [stats.str, stats.con, stats.agi, stats.int, stats.wis, stats.luk];
+        // 限制屬性上限避免雷達圖破表
+        const values = [
+            Math.min(stats.str, 100),
+            Math.min(stats.con, 100),
+            Math.min(stats.agi, 100),
+            Math.min(stats.int, 100),
+            Math.min(stats.wis, 100),
+            Math.min(stats.luk, 100)
+        ];
         const numAxes = labels.length;
 
         const maxStatVal = Math.max(...values, 20);
@@ -454,7 +468,7 @@
 
             const labelX = centerX + (radius + 20) * Math.cos(angle);
             const labelY = centerY + (radius + 18) * Math.sin(angle);
-            ctx.fillText(`${labels[i]}:${values[i]}`, labelX, labelY);
+            ctx.fillText(`${labels[i]}:${stats[Object.keys(stats)[i]]}`, labelX, labelY);
         }
 
         ctx.beginPath();
@@ -670,7 +684,8 @@
         if (level <= 10) return 100 + (level - 1) * 50;
         if (level <= 20) return 1000 + (level - 11) * 100;
         if (level <= 30) return 3000 + (level - 21) * 300;
-        return 5700 + (level - 30) * 300;
+        if (level <= 80) return 5700 + (level - 30) * 300;
+        return 20700 + (level - 80) * 1000;
     }
 
     // 增量解析：沒傳該欄位時保持原狀，絕對不清空！
@@ -697,17 +712,13 @@
 
         segments.forEach(seg => {
             const s = seg.trim();
-            // 完美正則提取等級與境界
             if (s.startsWith("Lv:")) {
                 const lvlNum = s.match(/Lv:\s*(\d+)/i);
                 if (lvlNum) {
-                    currentLevel = parseInt(lvlNum[1]);
+                    // 硬性將等級鎖定在上限 90 級內
+                    currentLevel = Math.min(parseInt(lvlNum[1]), 90);
                     document.getElementById("p-level").innerText = currentLevel;
-                }
-                const realmMatch = s.match(/Lv:\s*\d+\s*\((.*?)\)/i);
-                if (realmMatch && realmMatch[1]) {
-                    document.getElementById("p-realm").innerText = `${realmMatch[1]} (Lv.${currentLevel})`;
-                } else if (lvlNum) {
+                    // 自動用 JavaScript 精確演算對應境界名稱
                     document.getElementById("p-realm").innerText = getRealmName(currentLevel);
                 }
             } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:")) {
@@ -882,16 +893,17 @@
         }
     }
 
+    // 精準鎖定 10 個標準修仙境界
     function getRealmName(lvl) {
         if (lvl <= 10) return `練氣期 (Lv.${lvl})`;
         if (lvl <= 20) return `築基期 (Lv.${lvl})`;
         if (lvl <= 30) return `金丹期 (Lv.${lvl})`;
-        if (lvl <= 40) return `元嬰期 [出竅] (Lv.${lvl})`;
-        if (lvl <= 50) return `化神期 [分身] (Lv.${lvl})`;
-        if (lvl <= 60) return `煉虛期 [洞天] (Lv.${lvl})`;
-        if (lvl <= 70) return `合體期 [法相] (Lv.${lvl})`;
-        if (lvl <= 80) return `大乘期 [言出法隨] (Lv.${lvl})`;
-        if (lvl <= 90) return `渡劫期 [欺天] (Lv.${lvl})`;
+        if (lvl <= 40) return `元嬰期 (Lv.${lvl})`;
+        if (lvl <= 50) return `化神期 (Lv.${lvl})`;
+        if (lvl <= 60) return `煉虛期 (Lv.${lvl})`;
+        if (lvl <= 70) return `合體期 (Lv.${lvl})`;
+        if (lvl <= 80) return `大乘期 (Lv.${lvl})`;
+        if (lvl <= 90) return `渡劫期 (Lv.${lvl})`;
         return `真仙境 (Lv.${lvl})`;
     }
 
@@ -985,14 +997,12 @@
             document.getElementById("story-log").innerHTML = savedLog;
             conversationHistory = JSON.parse(savedHistory);
             
-            // 先還原對話紀錄中的最後一筆狀態
             if (conversationHistory.length > 0) {
                 const lastAiMsg = [...conversationHistory].reverse().find(m => m.role === "assistant");
                 if (lastAiMsg) parseAndUpdateStatus(lastAiMsg.content);
             }
         }
 
-        // 最後用 LocalStorage 快照覆蓋補全，確保不漏掉任何欄位
         restorePlayerSnapshot();
         sanitizeNpcMemory();
     }
