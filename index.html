@@ -370,7 +370,7 @@
 - 黃金 / 碎銀 / 靈石
 - Lv: 等級 (等級上限為 Lv.90，格式: Lv:8)
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
-- NPC: 姓名(身份):數值
+- NPC: 姓名(身份):數值 (只有當玩家在劇情中真實見面或互動時才輸出)
 - 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
 - 裝備 / 道具
 
@@ -389,17 +389,8 @@
     let currentSixStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
     let currentHpVal = 100;
 
-    const canonicalNpcData = [
-        ["蒼雲子", { info: "蒼雲子(新手村長老)", val: 20 }],
-        ["沈清璃", { info: "沈清璃(玄冰宮聖女)", val: 0 }],
-        ["沈冰雁", { info: "沈冰雁(玄冰宮宮主)", val: 0 }],
-        ["慕容嫣", { info: "慕容嫣(血海宗宗主)", val: 0 }],
-        ["姬如煙", { info: "姬如煙(太一聖地聖主)", val: 0 }],
-        ["妙善", { info: "妙善(梵音閣閣主)", val: 0 }],
-        ["凌霜雪", { info: "凌霜雪(天劍宗劍閣首座)", val: 0 }],
-        ["金萬山", { info: "金萬山(天寶閣大掌櫃)", val: 0 }],
-        ["洛清寒", { info: "洛清寒(天機閣閣主)", val: 0 }]
-    ];
+    // 清空寫死的 NPC 預設名單，防止重置後自動載入
+    const canonicalNpcData = [];
 
     window.onload = () => {
         loadApiKey();
@@ -421,7 +412,6 @@
         ctx.clearRect(0, 0, width, height);
 
         const labels = ['膂力', '根骨', '身法', '神識', '悟性', '氣運'];
-        // 限制屬性上限避免雷達圖破表
         const values = [
             Math.min(stats.str, 100),
             Math.min(stats.con, 100),
@@ -506,12 +496,6 @@
     }
 
     function sanitizeNpcMemory() {
-        const cleanMap = new Map();
-        canonicalNpcData.forEach(([key, val]) => cleanMap.set(key, val));
-        globalNpcMemory.forEach((data, key) => {
-            if (!cleanMap.has(key)) cleanMap.set(key, data);
-        });
-        globalNpcMemory = cleanMap;
         renderGlobalMemoryToDOM();
     }
 
@@ -688,7 +672,6 @@
         return 20700 + (level - 80) * 1000;
     }
 
-    // 增量解析：沒傳該欄位時保持原狀，絕對不清空！
     function parseCategorySkill(segments, label, elementId) {
         const targetSeg = segments.find(s => s.trim().startsWith(label + ":"));
         if (targetSeg) {
@@ -715,10 +698,8 @@
             if (s.startsWith("Lv:")) {
                 const lvlNum = s.match(/Lv:\s*(\d+)/i);
                 if (lvlNum) {
-                    // 硬性將等級鎖定在上限 90 級內
                     currentLevel = Math.min(parseInt(lvlNum[1]), 90);
                     document.getElementById("p-level").innerText = currentLevel;
-                    // 自動用 JavaScript 精確演算對應境界名稱
                     document.getElementById("p-realm").innerText = getRealmName(currentLevel);
                 }
             } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:")) {
@@ -866,7 +847,7 @@
     function renderGlobalMemoryToDOM() {
         const listEl = document.getElementById("p-global-npc-list");
         if (globalNpcMemory.size === 0) {
-            listEl.innerText = "• 暫無";
+            listEl.innerText = "• 暫無結識 NPC";
             return;
         }
 
@@ -893,7 +874,6 @@
         }
     }
 
-    // 精準鎖定 10 個標準修仙境界
     function getRealmName(lvl) {
         if (lvl <= 10) return `練氣期 (Lv.${lvl})`;
         if (lvl <= 20) return `築基期 (Lv.${lvl})`;
