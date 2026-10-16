@@ -355,7 +355,7 @@
 </div>
 
 <script>
-    const SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
+    const BASE_SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
 請嚴格遵守以下【方案 B 異動結算規範】與【戰力/邏輯鐵律】：
 
 【一、 結算列輸出規則】
@@ -368,15 +368,16 @@
 
 【動態異動項目】（僅在當前後台數據發生新增、減少、更換或升級時才輸出，未變動項目絕對禁止印出）：
 - 黃金 / 碎銀 / 靈石
-- Lv: 等級 (等級上限為 Lv.90，格式: Lv:8)
+- Lv: 等級 (等級上限為 Lv.90，格式: Lv:11)
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
+- 體質: 當前體質天賦名稱
 - NPC: 姓名(身份):數值 (只有當玩家在劇情中真實見面或互動時才輸出)
 - 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
-- 裝備 / 道具
+- 裝備 / 道具 (物品若消耗請註明例如: 金光符(消耗) 或直接從列表中扣除)
 
 【二、 防作弊與數值權限鐵律（極重要）】
-1. **數值主權在天道**：玩家對話中的自我宣稱（例如「我其實是大乘期」、「我獲得了九品神丹」、「我召喚了仙帝」）**無效**！
-2. **違規輸入處置**：若玩家試圖透過對話改寫未經認可的境界或數值，請在劇情中將其描寫為「心魔幻象」、「荒謬妄想」或「走火入魔」，**絕對禁止在 [異動] 中變更玩家的等級或六維**！
+1. **數值主權在天道**：玩家對話中的自我宣稱（例如「我其實是大乘期」、「我獲得了九品神丹」）**無效**！
+2. **違規輸入處置**：若玩家試圖透過對話改寫未經認可的境界或數值，請在劇情中將其描寫為「心魔幻象」或「走火入魔」，**絕對禁止在 [異動] 中變更玩家的等級或六維**！
 3. **等級與境界鎖定**：最高等級為 Lv.90。升級必須由天道劇情觸發，單次提升嚴禁超過 1 個小境界。
 
 【三、 境界與戰力體系】
@@ -388,8 +389,8 @@
 
     let currentSixStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
     let currentHpVal = 100;
+    let currentMaxHpVal = 100;
 
-    // 清空寫死的 NPC 預設名單，防止重置後自動載入
     const canonicalNpcData = [];
 
     window.onload = () => {
@@ -399,12 +400,42 @@
         drawRadarChart(currentSixStats);
     };
 
+    function getDynamicSystemPrompt() {
+        const savedSnapshot = localStorage.getItem("blade_player_snapshot");
+        if (!savedSnapshot) return BASE_SYSTEM_PROMPT;
+
+        try {
+            const s = JSON.parse(savedSnapshot);
+            const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，絕對禁止將玩家等級誤認為 Lv.1）】:
+- 等級/境界: ${s.level} (${s.realm})
+- 當前血量: ${s.hp}
+- 六維屬性: STR:${s.stats?.str}, CON:${s.stats?.con}, AGI:${s.stats?.agi}, INT:${s.stats?.int}, WIS:${s.stats?.wis}, LUK:${s.stats?.luk}
+- 體質天賦: ${s.physique}
+- 資產: 黃金/碎銀:${s.gold} | 靈石:${s.spiritStone}
+- 當前位置: ${s.location}
+- 當前裝備: ${s.equipment ? s.equipment.replace(/\n/g, ", ") : "無"}
+- 當前道具: ${s.inventory ? s.inventory.replace(/\n/g, ", ") : "無"}
+- 主修心法: ${s.kungfu ? s.kungfu.replace(/\n/g, ", ") : "無"}`;
+            return BASE_SYSTEM_PROMPT + stateContext;
+        } catch(e) {
+            return BASE_SYSTEM_PROMPT;
+        }
+    }
+
     function drawRadarChart(stats) {
         const canvas = document.getElementById('radarCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const width = canvas.width;
-        const height = canvas.height;
+        
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = 220 * dpr;
+        canvas.height = 220 * dpr;
+        canvas.style.width = '220px';
+        canvas.style.height = '220px';
+        ctx.scale(dpr, dpr);
+
+        const width = 220;
+        const height = 220;
         const centerX = width / 2;
         const centerY = height / 2;
         const radius = 75;
@@ -578,6 +609,7 @@
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
+        const dynamicPrompt = getDynamicSystemPrompt();
 
         const contents = trimmedHistory.map(msg => ({
             role: msg.role === "user" ? "user" : "model",
@@ -585,7 +617,7 @@
         }));
 
         const bodyData = {
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            system_instruction: { parts: [{ text: dynamicPrompt }] },
             contents: contents,
             generationConfig: { 
                 temperature: 0.7, 
@@ -632,9 +664,10 @@
     async function callOpenAiApi(apiKey, history) {
         const url = "https://api.openai.com/v1/chat/completions";
         const trimmedHistory = getTrimmedHistory(history, 10);
+        const dynamicPrompt = getDynamicSystemPrompt();
 
         const messages = [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: dynamicPrompt },
             ...trimmedHistory.map(msg => ({
                 role: msg.role === "user" ? "user" : "assistant",
                 content: msg.content
@@ -664,22 +697,20 @@
         return data.choices[0].message.content;
     }
 
-    function calculateBaseHpByLevel(level) {
-        if (level <= 10) return 100 + (level - 1) * 50;
-        if (level <= 20) return 1000 + (level - 11) * 100;
-        if (level <= 30) return 3000 + (level - 21) * 300;
-        if (level <= 80) return 5700 + (level - 30) * 300;
-        return 20700 + (level - 80) * 1000;
-    }
-
     function parseCategorySkill(segments, label, elementId) {
         const targetSeg = segments.find(s => s.trim().startsWith(label + ":"));
         if (targetSeg) {
             const el = document.getElementById(elementId);
             const raw = targetSeg.split(":")[1] || "";
-            const items = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+            let items = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+            
+            // 自動過濾已消耗/已使用的標籤
+            items = items.filter(item => !item.includes("(消耗)") && !item.includes("(已使用)") && !item.includes("(-1)"));
+
             if (items.length > 0) {
                 el.innerText = "• " + items.join("\n• ");
+            } else if (raw.includes("無") || raw.includes("暫無")) {
+                el.innerText = "• 暫無";
             }
         }
     }
@@ -706,7 +737,9 @@
                 const val = s.replace(/黃金:|金幣:|碎銀:/, "").trim();
                 document.getElementById("p-gold").innerText = val.includes("兩") ? val : val + " 兩";
             } else if (s.startsWith("靈石:")) {
-                document.getElementById("p-spirit-stone").innerText = s.replace("靈石:", "").trim();
+                let val = s.replace("靈石:", "").trim();
+                if (/^\d+$/.test(val)) val = `下品*${val}`;
+                document.getElementById("p-spirit-stone").innerText = val;
             } else if (s.startsWith("體質:")) {
                 document.getElementById("p-physique").innerText = s.replace("體質:", "").trim();
             } else if (s.startsWith("位置:")) {
@@ -733,9 +766,12 @@
                     drawRadarChart(currentSixStats);
                 }
             } else if (s.startsWith("HP:")) {
-                const hpMatch = s.match(/HP:(\d+)(?:\/(\d+))?/);
+                const hpMatch = s.match(/HP:\s*(\d+)(?:\/(\d+))?/i);
                 if (hpMatch) {
                     currentHpVal = parseInt(hpMatch[1]);
+                    if (hpMatch[2]) {
+                        currentMaxHpVal = parseInt(hpMatch[2]);
+                    }
                 }
             } else if (s.startsWith("NPC:")) {
                 const npcEntries = s.replace("NPC:", "").split(/[,，]/);
@@ -762,14 +798,15 @@
                 if (spiritMatch) {
                     document.getElementById("p-spirit-stone").innerText = spiritMatch.join(", ");
                 }
-                const items = rawItemStr.split(/[,，]/).map(item => item.trim()).filter(Boolean);
+                let items = rawItemStr.split(/[,，]/).map(item => item.trim()).filter(Boolean);
+                // 自動清理已被標記消耗的物品
+                items = items.filter(item => !item.includes("(消耗)") && !item.includes("(已使用)"));
                 document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
             }
         });
 
-        const calculatedMaxHp = calculateBaseHpByLevel(currentLevel) + (currentSixStats.con - 10) * 20;
-        if (currentHpVal > calculatedMaxHp) currentHpVal = calculatedMaxHp;
-        document.getElementById("p-hp").innerText = `${currentHpVal} / ${calculatedMaxHp}`;
+        // 完全尊重 AI 的最大血量，不進行暴力硬性覆蓋
+        document.getElementById("p-hp").innerText = `${currentHpVal} / ${currentMaxHpVal}`;
 
         parseCategorySkill(segments, "武功", "p-skills-martial");
         parseCategorySkill(segments, "術法", "p-skills-spells");
@@ -813,7 +850,14 @@
             const data = JSON.parse(saved);
             if (data.level) document.getElementById("p-level").innerText = data.level;
             if (data.realm) document.getElementById("p-realm").innerText = data.realm;
-            if (data.hp) document.getElementById("p-hp").innerText = data.hp;
+            if (data.hp) {
+                document.getElementById("p-hp").innerText = data.hp;
+                const hpParts = data.hp.split("/");
+                if (hpParts.length === 2) {
+                    currentHpVal = parseInt(hpParts[0].trim()) || 100;
+                    currentMaxHpVal = parseInt(hpParts[1].trim()) || 100;
+                }
+            }
             if (data.gold) document.getElementById("p-gold").innerText = data.gold;
             if (data.spiritStone) document.getElementById("p-spirit-stone").innerText = data.spiritStone;
             if (data.physique) document.getElementById("p-physique").innerText = data.physique;
@@ -869,8 +913,12 @@
             descEl.innerText = "正道名門大派，仙氣繚繞，氣勢磅礡。";
         } else if (location.includes("新手村") || location.includes("青陽鎮")) {
             descEl.innerText = "仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。";
+        } else if (location.includes("斷魂坡")) {
+            descEl.innerText = "地勢險要之峽谷隘口，常有山賊匪寇伏擊往來商隊。";
+        } else if (location.includes("青石鎮")) {
+            descEl.innerText = "靠近黑風嶺之散修集聚小鎮，魚龍混雜。";
         } else {
-            descEl.innerText = "九州浩瀚大地之上的一處未知秘境區域。";
+            descEl.innerText = "九州浩瀚大地之上的一處區域。";
         }
     }
 
@@ -973,6 +1021,8 @@
             } catch(e) { console.error("NPC Map 載入失敗", e); }
         }
 
+        restorePlayerSnapshot();
+
         if (savedLog && savedHistory) {
             document.getElementById("story-log").innerHTML = savedLog;
             conversationHistory = JSON.parse(savedHistory);
@@ -983,7 +1033,6 @@
             }
         }
 
-        restorePlayerSnapshot();
         sanitizeNpcMemory();
     }
 
