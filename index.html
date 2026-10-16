@@ -361,14 +361,18 @@
 【一、 結算列輸出規則】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
 
+【異動列格式鐵律】
+1. 欄位之間必須使用 '|' 垂直線分隔（絕對禁止使用短橫線 '-'）。
+2. 多個道具或裝備必須使用英文逗號 ',' 分隔（絕對禁止使用項目符號 '•'）。
+
 【核心項目】（每回合必須輸出）：
 - HP: 當前HP/上限HP
 - 狀態: 當前簡短狀態描述
 - 位置: 當前地點名稱
 
 【動態異動項目】（僅在當前後台數據發生新增、減少、更換或升級時才輸出，未變動項目絕對禁止印出）：
-- 黃金 / 碎銀 / 靈石
-- Lv: 等級 (等級上限為 Lv.90，格式: Lv:11)
+- 黃金 / 碎銀 / 靈石 (格式如: 靈石:下品*10 或 靈石:下品*0)
+- Lv: 等級 (等級上限為 Lv.90，格式: Lv:1)
 - 六維: [膂力,根骨,身法,神識,悟性,氣運]
 - 體質: 當前體質天賦名稱
 - NPC: 姓名(身份):數值 (只有當玩家在劇情中真實見面或互動時才輸出)
@@ -406,7 +410,7 @@
 
         try {
             const s = JSON.parse(savedSnapshot);
-            const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，絕對禁止將玩家等級誤認為 Lv.1）】:
+            const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，絕對禁止將玩家等級誤認或重置）】:
 - 等級/境界: ${s.level} (${s.realm})
 - 當前血量: ${s.hp}
 - 六維屬性: STR:${s.stats?.str}, CON:${s.stats?.con}, AGI:${s.stats?.agi}, INT:${s.stats?.int}, WIS:${s.stats?.wis}, LUK:${s.stats?.luk}
@@ -698,13 +702,12 @@
     }
 
     function parseCategorySkill(segments, label, elementId) {
-        const targetSeg = segments.find(s => s.trim().startsWith(label + ":"));
+        const targetSeg = segments.find(s => s.trim().replace(/^•\s*/, "").startsWith(label + ":"));
         if (targetSeg) {
             const el = document.getElementById(elementId);
             const raw = targetSeg.split(":")[1] || "";
-            let items = raw.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+            let items = raw.split(/[,，•]/).map(s => s.trim()).filter(Boolean);
             
-            // 自動過濾已消耗/已使用的標籤
             items = items.filter(item => !item.includes("(消耗)") && !item.includes("(已使用)") && !item.includes("(-1)"));
 
             if (items.length > 0) {
@@ -719,13 +722,16 @@
         const statusIndex = text.indexOf("[異動]");
         if (statusIndex === -1) return;
 
-        const statusLine = text.substring(statusIndex).trim();
-        const segments = statusLine.replace("[異動]", "").split("|");
+        const statusLine = text.substring(statusIndex).replace("[異動]", "").trim();
+        // 強力分割器：同時支援 | 以及 - 作為分隔符
+        const segments = statusLine.split(/[|\-]\s*/);
 
         let currentLevel = parseInt(document.getElementById("p-level").innerText) || 1;
 
         segments.forEach(seg => {
-            const s = seg.trim();
+            const s = seg.trim().replace(/^•\s*/, "");
+            if (!s) return;
+
             if (s.startsWith("Lv:")) {
                 const lvlNum = s.match(/Lv:\s*(\d+)/i);
                 if (lvlNum) {
@@ -790,22 +796,25 @@
             } else if (s.startsWith("心法:")) {
                 document.getElementById("p-kungfu").innerText = "• " + s.replace("心法:", "").trim();
             } else if (s.startsWith("裝備:")) {
-                const equipItems = s.replace("裝備:", "").split(/[,，]/).map(item => item.trim()).filter(Boolean);
-                document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
+                let raw = s.replace("裝備:", "").trim();
+                const equipItems = raw.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
+                if (equipItems.length > 0) {
+                    document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
+                }
             } else if (s.startsWith("道具:")) {
                 let rawItemStr = s.replace("道具:", "").trim();
                 const spiritMatch = rawItemStr.match(/下品靈石\*\d+|中品靈石\*\d+/g);
                 if (spiritMatch) {
                     document.getElementById("p-spirit-stone").innerText = spiritMatch.join(", ");
                 }
-                let items = rawItemStr.split(/[,，]/).map(item => item.trim()).filter(Boolean);
-                // 自動清理已被標記消耗的物品
+                let items = rawItemStr.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
                 items = items.filter(item => !item.includes("(消耗)") && !item.includes("(已使用)"));
-                document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
+                if (items.length > 0) {
+                    document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
+                }
             }
         });
 
-        // 完全尊重 AI 的最大血量，不進行暴力硬性覆蓋
         document.getElementById("p-hp").innerText = `${currentHpVal} / ${currentMaxHpVal}`;
 
         parseCategorySkill(segments, "武功", "p-skills-martial");
@@ -1021,12 +1030,15 @@
             } catch(e) { console.error("NPC Map 載入失敗", e); }
         }
 
+        // 1. 先還原歷史快照
         restorePlayerSnapshot();
 
+        // 2. 載入對話與日誌
         if (savedLog && savedHistory) {
             document.getElementById("story-log").innerHTML = savedLog;
             conversationHistory = JSON.parse(savedHistory);
             
+            // 3. 增量解析最後一則訊息
             if (conversationHistory.length > 0) {
                 const lastAiMsg = [...conversationHistory].reverse().find(m => m.role === "assistant");
                 if (lastAiMsg) parseAndUpdateStatus(lastAiMsg.content);
