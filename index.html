@@ -197,7 +197,9 @@
         <div class="stat-item"><span class="stat-label">身份</span><span class="stat-value" style="color:var(--accent-blue)">異世旅者</span></div>
         <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">練氣期 (Lv.1)</span></div>
         <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">1</span></div>
+        <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="p-age">18 / 120 歲</span></div>
         <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">100 / 100</span></div>
+        <div class="stat-item"><span class="stat-label">宗門身份 / 階級</span><span class="stat-value" style="color:#ffd54f" id="p-sect-rank">無 / 散修</span></div>
         <div class="stat-item"><span class="stat-label">世俗資產 (黃金/碎銀)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">10 兩</span></div>
         <div class="stat-item"><span class="stat-label">修仙貨幣 (靈石)</span><span class="stat-value" style="color:var(--hl-cyan)" id="p-spirit-stone">下品*10</span></div>
         <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="p-physique">凡體肉胎</span></div>
@@ -294,7 +296,7 @@
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
                 歡迎踏入九州世界！你是一名初入仙途的異世旅者，當前踏足於九州邊陲的新手村，前路浩瀚，正邪紛爭將由你一手揭開……<br>
-                <div class="status-footer">[異動] HP:100/100 | 黃金:10兩 | 靈石:下品*10 | Lv:1(練氣一層) | 體質:凡體肉胎 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村</div>
+                <div class="status-footer">[異動] HP:100/100 | 年齡:18/120歲 | 黃金:10兩 | 靈石:下品*10 | 階級:散修 | Lv:1(練氣一層) | 體質:凡體肉胎 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村</div>
             </div>
         </div>
         
@@ -356,76 +358,48 @@
 
 <script>
     const BASE_SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【世界觀鐵律】、【方案 B 異動結算規範】與【戰力/邏輯鐵律】：
+請嚴格遵守以下【世界觀鐵律】、【硬核遊戲平衡規範】與【裝備丹藥品級加成鐵律】：
 
 【一、 寫死世界觀鐵律（極重要，嚴禁憑空捏造無關宗門）】
-本世界的勢力與世界觀必須完全依循以下《九州二十大頂級勢力表》。
-**嚴禁寫出如「青雲宗」、「萬劍門」、「三大宗門五大世家」等通用修仙套路！**
-若描寫地方小門派或附屬城鎮，必須明確交代其為以下二十大勢力之一的附屬家族或外門分支（例如：天劍宗山腳下的青陽鎮/落霞鎮）。
-
-📖《九州二十大頂級勢力表》：
-【正道盟（九大名門）】
-1. 太一聖地：姬如煙（合體期）
-2. 玄冰宮：沈冰雁 / 沈清璃
-3. 天劍宗：凌霜雪（煉虛期）
-4. 梵音閣：妙善（煉虛期）
-5. 紫霄道宗：雷元子（合體期）
-6. 丹霞仙宗：丹陽子（煉虛期）
-7. 蓬萊仙島：陸滄海（合體期）
-8. 浩然書院：言聖仙（合體期）
-9. 無極星宮：星宿子（煉虛期）
-
-【邪道盟（四大魔宗）】
-10. 血海宗：慕容嫣（化神期）
-11. 陰煞門：陰風老人（元嬰期）
-12. 萬魂幽冥宗：噬魂魔尊（合體期）
-13. 天魔邪宮：夜煞天魔（合體期）
-
-【中立勢力（五大巨頭）】
-14. 天寶閣：金萬山（元嬰期）
-15. 百花谷：雲渺渺（化神期）
-16. 天妖傀儡城：墨千機（煉虛期）
-17. 黑市散修盟：獨孤狼（化神期）
-18. 四海商會：錢海通（化神期）
-
-【隱世與天道（五大古族）】
-19. 天機閣：洛清寒（煉虛期）
-20. 萬妖谷：夜妖嬈（煉虛期）
-21. 荒古姜家：姜太虛（合體期）
-22. 太古鳳凰族：鳳凰老祖（合體期）
-23. 輪迴仙閣：無塵道尊（合體期）
+本世界的勢力與世界觀必須完全依循《九州二十大頂級勢力表》，嚴禁寫出通用套路宗門！
 
 【二、 結算列輸出規則】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
+格式：[異動] HP:100/100 | 年齡:18/120歲 | 階級:外門弟子 | 黃金/碎銀:10兩 | 靈石:下品*10 | 宗門貢獻點:0 | Lv:1 | 六維:[10,10,10,10,10,10] | 體質:凡體肉胎 | NPC:張三(外門弟子):10 | 主心法:基礎吐納心法 | 術法:基礎劍法 | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村
 
-【異動列格式鐵律】
-1. 欄位之間必須使用 '|' 垂直線分隔（絕對禁止使用短橫線 '-'）。
-2. 多個道具或裝備必須使用英文逗號 ',' 分隔（絕對禁止使用項目符號 '•'）。
-3. NPC 格式必須為：姓名(身份):數值（例如 NPC:天寶閣掌櫃(商人):10，絕對禁止在數值前加入「好感」等文字！若好感度為負數，直接寫負號如 :-30）。
-4. 道具格式請直接標示名稱與數量（如：凝氣丹*2, 九州志），勿寫入 (消耗) 贅詞。
+【三、 裝備與丹藥品級加成與丹毒鐵律（極重要）】
+1. **裝備品級加成階梯**（裝備時，天道必須在 [異動] 六維中精準疊加）：
+   - 凡器（凡鐵/凡品）：單項屬性 +1 ~ +4。
+   - 法器（下/中/上/極品）：六維總加成 +5 ~ +20，並隨附被動被動技能。
+   - 靈寶/靈器：六維總加成 +25 ~ +60，附帶特殊神通或護罩。
+   - 仙器/神器：六維總加成 +70 ~ +150+，附帶毀天滅地之領域或被動效果！
+2. **丹藥品級與【丹毒/藥毒】機制**：
+   - 低階凡丹（如凝氣丹、金創散）：回復微量 HP，修練速度微幅提升。
+   - 中階靈丹（如聚元丹、築基丹）：突破概率 +30%，永久微幅增加六維。
+   - 高階仙丹（如延壽丹、九轉金丹）：100% 突破瓶頸，**永久增加壽命上限（+20~100 歲）**。
+   - **⚠️ 丹毒鐵律**：短期內（同場對話或連續使用）服用低階丹藥超過 3 顆，天道必須強制賦予【丹毒纏身】Debuff（修煉速度 -50%、HP 上限 -20%），需尋求洗髓丹或淨化藥毒！
 
-【三、 天道推演專用規範（境界圓滿觸發鐵律，極重要）】
-1. **發動時機限制**：【天道推演】**僅限在玩家處於「境界圓滿期」（即等級恰好為 Lv.10, Lv.20, Lv.30, Lv.40, Lv.50, Lv.60, Lv.70, Lv.80, Lv.90 時）發動，且每個大境界圓滿期僅限成功發動 1 次**！
-2. **非圓滿期發動之處理**：若玩家在非圓滿等級（如 Lv.1-9, Lv.11-19, Lv.21-29 等）輸入 \`【天道推演】\`，天道必須在劇情中以「當前修為尚未達至該境界圓滿，天機混沌不可窺探」為由溫和婉拒，並引導玩家繼續積累修為至圓滿。天道**絕對禁止判定為作弊，更絕對禁止給予 OOC 扣血懲戒**！
-3. **圓滿發動時之史詩獎勵**：當玩家於圓滿期（如 Lv.10 練氣圓滿）發動【天道推演】時，天道應全力配合玩家意圖演繹史詩級的大境界突破奇遇，賞賜相應的突破契機、獨一無二體質、天階功法或仙器寶物，並順勢引導玩家成功跨越玄關，晉升至下一大境界（如 Lv.11 築基期）！
+【四、 硬核 NPC 智商、城府與高階懷疑度鐵律（極重要）】
+1. 所有 NPC（特別是高修老怪、長老）均具備極高城府。試圖空手套白狼或欺瞞高修 NPC，會引發 NPC 設局反算、暗中施毒或直接鎮壓！
+2. **好感度獲取極度收緊**：一般社交單次好感增加不得超過 2~5 點！達至生死相許（100）需經歷多次生死考驗，絕不可能隨口爆表。
 
-【四、 防作弊與數值權限鐵律】
-1. **非【天道推演】的一般對話**，玩家若無合理的丹藥、功法或劇情觸發而憑空宣稱（如「我突然變金丹期」），天道可給予理性修整，但依然禁止惡意 OOC 扣血。
-2. **血量與基礎六維連動鐵律**：
-   - 每升 1 級，HP 上限必加 20（如 Lv.1:100/100 -> Lv.2:120/120 -> Lv.10:280/280 -> Lv.11:300/300）。
-   - 每升 1 級，基礎六維全屬性 +1，並自動疊加裝備加成。
-3. **裝備更換與背包保留鐵律**：
-   - 當玩家更換新裝備時，替換下來的舊裝備絕對禁止無故碎裂，必須自動轉入【道具欄】（\`道具:\`）中保留。
-4. **NPC 強制輸出與身份準確性鐵律**：
-   - 只要劇情中有 NPC 登場，[異動] 列中必須輸出 NPC 欄位且身份準確。
+【五、 壽命大限與修煉時間嚴格平衡鐵律（極重要）】
+1. **境界壽命上限**：練氣期 120 歲 | 築基期 200 歲 | 金丹期 500 歲 | 元嬰期 1000 歲。
+2. **修煉年限與坐化懲罰**：玩家若輸入「修練 100 年」等長閉關，天道必須計算剩餘壽命！超過壽命上限且未突破者，直接宣告【壽元耗盡，氣血衰竭坐化身亡】！
 
-【五、 玩家吐槽與非劇情行動識別鐵律】
-1. 當玩家輸入為吐槽、詢問、疑問或質疑（例如：「錢不夠啊」、「這不合理」）時，天道先以 OOC 形式解答，絕對禁止自動代操選項推進劇情。
+【六、 宗門階級、定期大比與淘汰制度鐵律（極重要）】
+1. **階級鏈**：雜役弟子 $\rightarrow$ 外門弟子 $\rightarrow$ 內門弟子 $\rightarrow$ 核心弟子 $\rightarrow$ 親傳弟子 $\rightarrow$ 執事/長老。
+2. **定期宗門大比**：每推進 3 年，天道強制展開【宗門大比/考核】！考核落敗會被扣貢獻點甚至降級為雜役弟子！高階資源嚴格與階級掛鉤。
 
-【六、 資產交易與競拍扣除嚴格鐵律】
-1. 喊價與交易必須核對玩家實際持有的靈石，若發生交易或抵押，消耗的物品必須從 \`道具:\` 中徹底扣除。
+【七、 修修練突破與資源難度鐵律】
+1. 嚴禁一次連續跨越多個小境界！每次突破僅限 1 個小境界（如 Lv.3 $\rightarrow$ Lv.4）。
+2. 靈石與貢獻點獲取難度提高，高階法寶極度昂貴。
 
-【七、 境界體系】
+【八、 天道推演專用規範（境界圓滿觸發鐵律）】
+1. 【天道推演】僅限在玩家處於「境界圓滿期」（即 Lv.10, Lv.20, Lv.30 等）發動，每個大境界僅限 1 次。
+2. 非圓滿期發動時，天道以「當前修為尚未圓滿，天機混沌不可窺探」為由溫和婉拒，嚴禁 OOC 扣血。
+
+【九、 境界體系】
 練氣(Lv.1-10) < 築基(Lv.11-20) < 金丹(Lv.21-30) < 元嬰(Lv.31-40) < 化神(Lv.41-50) < 煉虛(Lv.51-60) < 合體(Lv.61-70) < 大乘(Lv.71-80) < 渡劫(Lv.81-90)。`;
 
     let conversationHistory = [];
@@ -449,8 +423,10 @@
 
         try {
             const s = JSON.parse(savedSnapshot);
-            const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，絕對禁止將玩家等級誤認或重置）】:
+            const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，嚴禁將玩家等級或壽命誤認）】:
 - 等級/境界: ${s.level} (${s.realm})
+- 當前年齡與壽命: ${s.age || "18/120歲"}
+- 宗門階級: ${s.sectRank || "散修"}
 - 當前血量: ${s.hp}
 - 六維屬性: STR:${s.stats?.str}, CON:${s.stats?.con}, AGI:${s.stats?.agi}, INT:${s.stats?.int}, WIS:${s.stats?.wis}, LUK:${s.stats?.luk}
 - 體質天賦: ${s.physique}
@@ -785,6 +761,10 @@
                     document.getElementById("p-level").innerText = currentLevel;
                     document.getElementById("p-realm").innerText = getRealmName(currentLevel);
                 }
+            } else if (s.startsWith("年齡:") || s.startsWith("壽命:")) {
+                document.getElementById("p-age").innerText = s.replace(/年齡:|壽命:/, "").trim();
+            } else if (s.startsWith("階級:") || s.startsWith("宗門階級:")) {
+                document.getElementById("p-sect-rank").innerText = s.replace(/階級:|宗門階級:/, "").trim();
             } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:") || s.startsWith("黃金/碎銀:")) {
                 const val = s.replace(/黃金:|金幣:|碎銀:|黃金\/碎銀:/, "").trim();
                 document.getElementById("p-gold").innerText = val.includes("兩") ? val : val + " 兩";
@@ -882,6 +862,8 @@
         const snapshot = {
             level: document.getElementById("p-level").innerText,
             realm: document.getElementById("p-realm").innerText,
+            age: document.getElementById("p-age").innerText,
+            sectRank: document.getElementById("p-sect-rank").innerText,
             hp: document.getElementById("p-hp").innerText,
             gold: document.getElementById("p-gold").innerText,
             spiritStone: document.getElementById("p-spirit-stone").innerText,
@@ -909,6 +891,8 @@
             const data = JSON.parse(saved);
             if (data.level) document.getElementById("p-level").innerText = data.level;
             if (data.realm) document.getElementById("p-realm").innerText = data.realm;
+            if (data.age) document.getElementById("p-age").innerText = data.age;
+            if (data.sectRank) document.getElementById("p-sect-rank").innerText = data.sectRank;
             if (data.hp) {
                 document.getElementById("p-hp").innerText = data.hp;
                 const hpParts = data.hp.split("/");
