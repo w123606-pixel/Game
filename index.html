@@ -17,6 +17,7 @@
             --hl-gold: #ffd700;
             --hl-cyan: #00ffff;
             --hl-red: #ff5252;
+            --accent-pink: #ff80ab;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "微軟正黑體", "Noto Sans TC", sans-serif; }
@@ -158,8 +159,6 @@
             }
 
             .story-panel { order: 1; min-height: 60vh; }
-            #story-log { height: 350px; }
-            
             .left-panel { order: 2; }
             .right-panel { order: 3; }
 
@@ -197,12 +196,13 @@
         <div class="stat-item"><span class="stat-label">身份</span><span class="stat-value" style="color:var(--accent-blue)">異世旅者</span></div>
         <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">練氣期 (Lv.1)</span></div>
         <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">1</span></div>
+        <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value" style="color:#00e676" id="p-linggen">待問心顯化</span></div>
         <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="p-age">18 / 120 歲</span></div>
         <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">100 / 100</span></div>
         <div class="stat-item"><span class="stat-label">宗門身份 / 階級</span><span class="stat-value" style="color:#ffd54f" id="p-sect-rank">無 / 散修</span></div>
         <div class="stat-item"><span class="stat-label">世俗資產 (黃金/碎銀)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">10 兩</span></div>
         <div class="stat-item"><span class="stat-label">修仙貨幣 (靈石)</span><span class="stat-value" style="color:var(--hl-cyan)" id="p-spirit-stone">下品*10</span></div>
-        <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="p-physique">凡體肉胎</span></div>
+        <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="p-physique">待問心覺醒</span></div>
 
         <h2 style="margin-top: 10px;">📊 六維屬性雷達圖</h2>
         <div class="radar-container">
@@ -270,6 +270,15 @@
             • 金創藥*2
         </div>
 
+        <h2 style="margin-top: 15px;">💞 仙侶 / 道侶系統</h2>
+        <div id="p-companion-container" style="background: #10121a; padding: 8px; border-radius: 4px; border: 1px solid #2a2d3d;">
+            <select id="companion-select" onchange="renderCompanionDetails()" style="width:100%; padding:6px; background:#1a1d2a; border:1px solid #3a3d52; color:#fff; border-radius:4px; font-size:0.85rem; margin-bottom:8px; display:none;">
+            </select>
+            <div id="companion-details" class="scroll-list" style="color: var(--accent-pink); white-space: pre-line;">
+                • 暫無結為道侶之伴侶
+            </div>
+        </div>
+
         <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊</h2>
         <div id="p-global-npc-list" class="scroll-list" style="color: #64b5f6;">
             • 暫無結識 NPC
@@ -295,13 +304,19 @@
         <div id="story-log">
             <div class="story-block ai">
                 <strong>天道主持人：</strong><br>
-                歡迎踏入九州世界！你是一名初入仙途的異世旅者，當前踏足於九州邊陲的新手村，前路浩瀚，正邪紛爭將由你一手揭開……<br>
-                <div class="status-footer">[異動] HP:100/100 | 年齡:18/120歲 | 黃金:10兩 | 靈石:下品*10 | 階級:散修 | Lv:1(練氣一層) | 體質:凡體肉胎 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村</div>
+                歡迎踏入九州世界！你是一名凝聚肉身降臨九州邊陲的異世旅者。在踏入浩瀚修仙界之前，天道幻境展開，請完成【身世問心三答】以定下你的前世因果與先天機緣：<br><br>
+                <strong>【問心第一答：前世出身】</strong><br>
+                1. 鑄劍名門之子（傾向金/火靈根與劍道體質）<br>
+                2. 採藥童子出身（傾向木/水靈根與草木親和）<br>
+                3. 大難不死之孤兒（傾向雜靈根、高氣運或特殊煞氣體質）<br>
+                4. 天降異象之奇人（傾向變異雷/冰/風靈根或稀有聖體）<br><br>
+                請在輸入框回答你的選擇（或自行描述你的前世過往）！
+                <div class="status-footer">[異動] HP:100/100 | 年齡:18/120歲 | 靈根:待問心顯化 | 階級:散修 | 黃金:10兩 | 靈石:下品*10 | Lv:1(練氣一層) | 體質:待問心覺醒 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村</div>
             </div>
         </div>
         
         <div class="input-group">
-            <input type="text" id="action-input" placeholder="輸入行動，開始你的九州傳奇..." onkeydown="if(event.key==='Enter') sendAction()">
+            <input type="text" id="action-input" placeholder="輸入抉擇，開啟身世問心測驗..." onkeydown="if(event.key==='Enter') sendAction()">
             <button id="btn-submit" onclick="sendAction()">抉擇</button>
         </div>
 
@@ -358,52 +373,52 @@
 
 <script>
     const BASE_SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【世界觀鐵律】、【硬核遊戲平衡規範】與【裝備丹藥品級加成鐵律】：
+請嚴格遵守以下【世界觀鐵律】、【道侶/伴侶系統轉換鐵律】與【硬核遊戲平衡規範】：
 
 【一、 寫死世界觀鐵律（極重要，嚴禁憑空捏造無關宗門）】
 本世界的勢力與世界觀必須完全依循《九州二十大頂級勢力表》，嚴禁寫出通用套路宗門！
 
 【二、 結算列輸出規則】
 每次回覆最後換行，並以單行輸出 [異動] 標籤。
-格式：[異動] HP:100/100 | 年齡:18/120歲 | 階級:外門弟子 | 黃金/碎銀:10兩 | 靈石:下品*10 | 宗門貢獻點:0 | Lv:1 | 六維:[10,10,10,10,10,10] | 體質:凡體肉胎 | NPC:張三(外門弟子):10 | 主心法:基礎吐納心法 | 術法:基礎劍法 | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村
+格式：[異動] HP:100/100 | 年齡:18/120歲 | 靈根:雙靈根(真靈根) | 階級:散修 | 黃金/碎銀:10兩 | 靈石:下品*10 | 宗門貢獻點:0 | Lv:1 | 六維:[10,12,10,10,10,10] | 體質:先天劍骨 | 伴侶:沈清璃(境界:築基初期, 靈根:天冰靈根, HP:220/220, 心法:玄冰聖訣, 武功:寒霜九劍, 裝備:雪蠶仙衣, 狀態:健康) | NPC:張三(外門弟子):10 | 主心法:基礎吐納心法 | 術法:基礎劍法 | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村
 
-【三、 裝備與丹藥品級加成與丹毒鐵律（極重要）】
-1. **裝備品級加成階梯**（裝備時，天道必須在 [異動] 六維中精準疊加）：
-   - 凡器（凡鐵/凡品）：單項屬性 +1 ~ +4。
-   - 法器（下/中/上/極品）：六維總加成 +5 ~ +20，並隨附被動被動技能。
-   - 靈寶/靈器：六維總加成 +25 ~ +60，附帶特殊神通或護罩。
-   - 仙器/神器：六維總加成 +70 ~ +150+，附帶毀天滅地之領域或被動效果！
-2. **丹藥品級與【丹毒/藥毒】機制**：
-   - 低階凡丹（如凝氣丹、金創散）：回復微量 HP，修練速度微幅提升。
-   - 中階靈丹（如聚元丹、築基丹）：突破概率 +30%，永久微幅增加六維。
-   - 高階仙丹（如延壽丹、九轉金丹）：100% 突破瓶頸，**永久增加壽命上限（+20~100 歲）**。
-   - **⚠️ 丹毒鐵律**：短期內（同場對話或連續使用）服用低階丹藥超過 3 顆，天道必須強制賦予【丹毒纏身】Debuff（修煉速度 -50%、HP 上限 -20%），需尋求洗髓丹或淨化藥毒！
+【三、 仙侶/道侶系統晉升鐵律（極重要）】
+1. **晉升條件**：當某位 NPC 與玩家好感度達到 100 且發生【夫妻之實 / 結為道侶】後，該 NPC 將正式晉升為「道侶/伴侶」。
+2. **數據移出與格式輸出**：天道在輸出 [異動] 列時，必須將該 NPC 從普通 NPC: 列表中**永久移除**，改為寫入 `伴侶:姓名(境界:..., 靈根:..., HP:..., 心法:..., 武功:..., 裝備:..., 狀態:...)`。
+3. **道侶詳細快照**：伴侶屬性比照主角規格輸出，以便前端專屬 UI 讀取展示。若有多位道侶，可在 [異動] 列中同時列出（如 `伴侶:沈清璃(...), 姬如煙(...)`）。
 
-【四、 硬核 NPC 智商、城府與高階懷疑度鐵律（極重要）】
-1. 所有 NPC（特別是高修老怪、長老）均具備極高城府。試圖空手套白狼或欺瞞高修 NPC，會引發 NPC 設局反算、暗中施毒或直接鎮壓！
-2. **好感度獲取極度收緊**：一般社交單次好感增加不得超過 2~5 點！達至生死相許（100）需經歷多次生死考驗，絕不可能隨口爆表。
+【四、 方案 B：身世問心測驗與開局初始化鐵律】
+1. 開局引導：天道透過【身世問心三答】引導玩家，並根據抉擇判定【靈根資質】與【體質天賦】。
+2. 輸出第一回合 [異動] 列時精準載入。
 
-【五、 壽命大限與修煉時間嚴格平衡鐵律（極重要）】
-1. **境界壽命上限**：練氣期 120 歲 | 築基期 200 歲 | 金丹期 500 歲 | 元嬰期 1000 歲。
-2. **修煉年限與坐化懲罰**：玩家若輸入「修練 100 年」等長閉關，天道必須計算剩餘壽命！超過壽命上限且未突破者，直接宣告【壽元耗盡，氣血衰竭坐化身亡】！
+【五、 靈根資質與體質天賦系統鐵律】
+1. 靈根：天靈根(300%) | 變異靈根(200%) | 真靈根(100%) | 雜靈根(30%~50%)。
+2. 體質：神體/聖體(HP+50%) | 靈體/寶體(特化/抗性) | 凡體肉胎。
 
-【六、 宗門階級、定期大比與淘汰制度鐵律（極重要）】
-1. **階級鏈**：雜役弟子 $\rightarrow$ 外門弟子 $\rightarrow$ 內門弟子 $\rightarrow$ 核心弟子 $\rightarrow$ 親傳弟子 $\rightarrow$ 執事/長老。
-2. **定期宗門大比**：每推進 3 年，天道強制展開【宗門大比/考核】！考核落敗會被扣貢獻點甚至降級為雜役弟子！高階資源嚴格與階級掛鉤。
+【六、 裝備/丹藥品級與丹毒鐵律】
+裝備加成：凡器(+1~4) | 法器(+5~20) | 靈寶(+25~60) | 仙器(+70~150+)。連服 3 顆低階丹藥強制觸發【丹毒纏身】Debuff。
 
-【七、 修修練突破與資源難度鐵律】
-1. 嚴禁一次連續跨越多個小境界！每次突破僅限 1 個小境界（如 Lv.3 $\rightarrow$ Lv.4）。
-2. 靈石與貢獻點獲取難度提高，高階法寶極度昂貴。
+【七、 硬核 NPC 智商與城府鐵律】
+高修 NPC 極具城府，欺瞞會引發反算。普通社交單次好感不超 2~5 點！達至生死相許(100)並結為道侶需經生死考驗。
 
-【八、 天道推演專用規範（境界圓滿觸發鐵律）】
-1. 【天道推演】僅限在玩家處於「境界圓滿期」（即 Lv.10, Lv.20, Lv.30 等）發動，每個大境界僅限 1 次。
-2. 非圓滿期發動時，天道以「當前修為尚未圓滿，天機混沌不可窺探」為由溫和婉拒，嚴禁 OOC 扣血。
+【八、 壽命大限與閉關坐化鐵律】
+練氣 120 歲 | 築基 200 歲 | 金丹 500 歲 | 元嬰 1000 歲。閉關超過剩餘壽命且未突破者直接坐化。
 
-【九、 境界體系】
+【九、 宗門階級與定期大比鐵律】
+每 3 年強制舉行【宗門大比/考核】，落敗扣貢獻或降級！
+
+【十、 修練突破與資源難度鐵律】
+嚴禁連續跨越多個小境界，靈石與貢獻點獲取極難。
+
+【十一、 天道推演圓滿觸發鐵律】
+僅限在圓滿期（Lv.10, Lv.20 等）發動，非圓滿期溫和婉拒。
+
+【十二、 境界體系】
 練氣(Lv.1-10) < 築基(Lv.11-20) < 金丹(Lv.21-30) < 元嬰(Lv.31-40) < 化神(Lv.41-50) < 煉虛(Lv.51-60) < 合體(Lv.61-70) < 大乘(Lv.71-80) < 渡劫(Lv.81-90)。`;
 
     let conversationHistory = [];
     let globalNpcMemory = new Map();
+    let globalCompanionMemory = new Map();
     const MAX_DOM_LOGS = 30;
 
     let currentSixStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
@@ -425,11 +440,12 @@
             const s = JSON.parse(savedSnapshot);
             const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，嚴禁將玩家等級或壽命誤認）】:
 - 等級/境界: ${s.level} (${s.realm})
+- 靈根資質: ${s.linggen || "待問心顯化"}
 - 當前年齡與壽命: ${s.age || "18/120歲"}
 - 宗門階級: ${s.sectRank || "散修"}
 - 當前血量: ${s.hp}
 - 六維屬性: STR:${s.stats?.str}, CON:${s.stats?.con}, AGI:${s.stats?.agi}, INT:${s.stats?.int}, WIS:${s.stats?.wis}, LUK:${s.stats?.luk}
-- 體質天賦: ${s.physique}
+- 體質天賦: ${s.physique || "待問心覺醒"}
 - 資產: 黃金/碎銀:${s.gold} | 靈石:${s.spiritStone}
 - 當前位置: ${s.location}
 - 當前裝備: ${s.equipment ? s.equipment.replace(/\n/g, ", ") : "無"}
@@ -547,6 +563,7 @@
 
     function sanitizeNpcMemory() {
         renderGlobalMemoryToDOM();
+        renderCompanionSystem();
     }
 
     function saveApiKey() {
@@ -761,6 +778,8 @@
                     document.getElementById("p-level").innerText = currentLevel;
                     document.getElementById("p-realm").innerText = getRealmName(currentLevel);
                 }
+            } else if (s.startsWith("靈根:") || s.startsWith("靈根資質:")) {
+                document.getElementById("p-linggen").innerText = s.replace(/靈根:|靈根資質:/, "").trim();
             } else if (s.startsWith("年齡:") || s.startsWith("壽命:")) {
                 document.getElementById("p-age").innerText = s.replace(/年齡:|壽命:/, "").trim();
             } else if (s.startsWith("階級:") || s.startsWith("宗門階級:")) {
@@ -805,6 +824,19 @@
                         currentMaxHpVal = parseInt(hpMatch[2]);
                     }
                 }
+            } else if (s.startsWith("伴侶:")) {
+                const rawCompStr = s.replace("伴侶:", "").trim();
+                const compRegex = /([^\(:\,]+)\((.*?)\)/g;
+                let cMatch;
+                while ((cMatch = compRegex.exec(rawCompStr)) !== null) {
+                    const cName = cMatch[1].trim();
+                    const cDetails = cMatch[2].trim();
+                    if (globalNpcMemory.has(cName)) {
+                        globalNpcMemory.delete(cName);
+                    }
+                    globalCompanionMemory.set(cName, cDetails);
+                }
+                renderCompanionSystem();
             } else if (s.startsWith("NPC:")) {
                 const npcEntries = s.replace("NPC:", "").split(/[,，]/);
                 npcEntries.forEach(entry => {
@@ -813,7 +845,9 @@
                         const name = match[1].trim();
                         const info = match[2] ? `${name}(${match[2]})` : name;
                         const val = parseInt(match[3]);
-                        globalNpcMemory.set(name, { info: info, val: val });
+                        if (!globalCompanionMemory.has(name)) {
+                            globalNpcMemory.set(name, { info: info, val: val });
+                        }
                     }
                 });
                 renderGlobalMemoryToDOM();
@@ -862,6 +896,7 @@
         const snapshot = {
             level: document.getElementById("p-level").innerText,
             realm: document.getElementById("p-realm").innerText,
+            linggen: document.getElementById("p-linggen").innerText,
             age: document.getElementById("p-age").innerText,
             sectRank: document.getElementById("p-sect-rank").innerText,
             hp: document.getElementById("p-hp").innerText,
@@ -891,6 +926,7 @@
             const data = JSON.parse(saved);
             if (data.level) document.getElementById("p-level").innerText = data.level;
             if (data.realm) document.getElementById("p-realm").innerText = data.realm;
+            if (data.linggen) document.getElementById("p-linggen").innerText = data.linggen;
             if (data.age) document.getElementById("p-age").innerText = data.age;
             if (data.sectRank) document.getElementById("p-sect-rank").innerText = data.sectRank;
             if (data.hp) {
@@ -931,6 +967,61 @@
         } catch(e) { console.error("Snapshot Restore Fail", e); }
     }
 
+    function renderCompanionSystem() {
+        const selectEl = document.getElementById("companion-select");
+        const detailsEl = document.getElementById("companion-details");
+
+        if (!selectEl || !detailsEl) return;
+
+        if (globalCompanionMemory.size === 0) {
+            selectEl.style.display = "none";
+            detailsEl.innerText = "• 暫無結為道侶之伴侶";
+            return;
+        }
+
+        const currentSelected = selectEl.value;
+        selectEl.innerHTML = "";
+        
+        for (let name of globalCompanionMemory.keys()) {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.innerText = `💞 道侶：${name}`;
+            selectEl.appendChild(opt);
+        }
+
+        selectEl.style.display = "block";
+
+        if (currentSelected && globalCompanionMemory.has(currentSelected)) {
+            selectEl.value = currentSelected;
+        } else {
+            selectEl.selectedIndex = 0;
+        }
+
+        renderCompanionDetails();
+    }
+
+    function renderCompanionDetails() {
+        const selectEl = document.getElementById("companion-select");
+        const detailsEl = document.getElementById("companion-details");
+
+        if (globalCompanionMemory.size === 0) {
+            detailsEl.innerText = "• 暫無結為道侶之伴侶";
+            return;
+        }
+
+        const selectedName = selectEl.value;
+        if (!selectedName || !globalCompanionMemory.has(selectedName)) return;
+
+        const rawDetails = globalCompanionMemory.get(selectedName);
+        const items = rawDetails.split(/[,，]/).map(item => item.trim()).filter(Boolean);
+        
+        if (items.length > 0) {
+            detailsEl.innerText = `【${selectedName}】\n• ` + items.join("\n• ");
+        } else {
+            detailsEl.innerText = `• 【${selectedName}】（數據同步中）`;
+        }
+    }
+
     function renderGlobalMemoryToDOM() {
         const listEl = document.getElementById("p-global-npc-list");
         if (globalNpcMemory.size === 0) {
@@ -939,11 +1030,17 @@
         }
 
         const items = [];
-        globalNpcMemory.forEach((data) => {
-            items.push(`• ${data.info}: ${data.val} (${getAffinityTitle(data.val)})`);
+        globalNpcMemory.forEach((data, name) => {
+            if (!globalCompanionMemory.has(name)) {
+                items.push(`• ${data.info}: ${data.val} (${getAffinityTitle(data.val)})`);
+            }
         });
 
-        listEl.innerHTML = items.join("<br>");
+        if (items.length === 0) {
+            listEl.innerText = "• 暫無普通結識 NPC";
+        } else {
+            listEl.innerHTML = items.join("<br>");
+        }
     }
 
     function updateLocationDescription(location) {
@@ -1045,23 +1142,31 @@
         localStorage.setItem("blade_story_log", document.getElementById("story-log").innerHTML);
         localStorage.setItem("blade_conv_history", JSON.stringify(conversationHistory));
         localStorage.setItem("blade_global_npc_map", JSON.stringify(Array.from(globalNpcMemory.entries())));
+        localStorage.setItem("blade_global_companion_map", JSON.stringify(Array.from(globalCompanionMemory.entries())));
         savePlayerSnapshot();
     }
 
     function manualSaveGame() {
         saveGameState();
-        alert("💾 遊戲進度與技能名冊已成功儲存！");
+        alert("💾 遊戲進度與仙侶名冊已成功儲存！");
     }
 
     function loadGameState() {
         const savedLog = localStorage.getItem("blade_story_log");
         const savedHistory = localStorage.getItem("blade_conv_history");
         const savedNpcMap = localStorage.getItem("blade_global_npc_map");
+        const savedCompanionMap = localStorage.getItem("blade_global_companion_map");
 
         if (savedNpcMap) {
             try {
                 globalNpcMemory = new Map(JSON.parse(savedNpcMap));
             } catch(e) { console.error("NPC Map 載入失敗", e); }
+        }
+
+        if (savedCompanionMap) {
+            try {
+                globalCompanionMemory = new Map(JSON.parse(savedCompanionMap));
+            } catch(e) { console.error("Companion Map 載入失敗", e); }
         }
 
         restorePlayerSnapshot();
@@ -1081,14 +1186,15 @@
 
     function manualLoadGame() {
         loadGameState();
-        alert("📂 已成功讀取歷史存檔！");
+        alert("📂 已成功讀取歷史存檔與道侶數據！");
     }
 
     function resetGame() {
-        if (confirm("確定要重置九州冒險進度嗎？所有紀錄將會被清空。")) {
+        if (confirm("確定要重置九州冒險進度嗎？所有紀錄與道侶數據將會被清空。")) {
             localStorage.removeItem("blade_story_log");
             localStorage.removeItem("blade_conv_history");
             localStorage.removeItem("blade_global_npc_map");
+            localStorage.removeItem("blade_global_companion_map");
             localStorage.removeItem("blade_player_snapshot");
             location.reload();
         }
