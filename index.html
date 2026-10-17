@@ -51,7 +51,7 @@
         .exp-container { height: 4px; background: #222; border-radius: 2px; overflow: hidden; margin-top: 2px; }
         .exp-fill { height: 100%; background: var(--hl-cyan); transition: width 0.3s; }
 
-        /* Story Panel - 放大文字與行高以利閱讀 */
+        /* Story Panel */
         .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; height: 100%; }
         .story-header { background: #12141d; padding: 6px 10px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; font-size: 0.85rem; }
         .quest-box { color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 3px 6px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -98,7 +98,6 @@
         .api-config input, .api-config select { width: 100%; padding: 5px; margin: 3px 0 5px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.8rem; }
         .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 
-        /* 調整手機端比例：上半部 75vh，下半部 25vh */
         @media (max-width: 900px) {
             body { padding: 0; }
             .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; max-width: 100%; }
@@ -355,16 +354,24 @@
     function quickAction(text) { sendAction(text); }
 
     function parseApiResponse(text) {
-        const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        // 強化正規表達式，完美過濾各種變體的 json 區塊
+        const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i) || text.match(/\{[\s\S]*\}/);
         let story = text;
         let state = null;
         if (jsonMatch) {
             try {
-                state = JSON.parse(jsonMatch[1]);
-                story = text.replace(/```(?:json)?\s*[\s\S]*?\s*```/, '').trim();
-            } catch (e) { console.error("JSON Error", e); }
+                // 如果是用 markdown 包覆的
+                const matchFull = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (matchFull) {
+                    state = JSON.parse(matchFull[1]);
+                    story = text.replace(/```(?:json)?\s*[\s\S]*?\s*```/g, '').trim();
+                } else {
+                    state = JSON.parse(jsonMatch[0]);
+                    story = text.replace(jsonMatch[0], '').trim();
+                }
+            } catch (e) { console.error("JSON Parse Error", e); }
         }
-        return { storyText: story, parsedState: state };
+        return { storyText: story || text, parsedState: state };
     }
 
     function getTrimmedHistory(maxTurns = 10) {
@@ -373,7 +380,6 @@
         return trimmed;
     }
 
-    /* 嚴格鎖定只使用 3.8 / 3.7 / 3.5 模型 */
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim();
         const candidateModels = customModel ? [customModel] : ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"];
@@ -445,17 +451,28 @@
         fillList("ui-skills", s.skills);
         fillList("ui-equipItem", s.equipItem);
         
-        const formatArr = (arr, mapFn) => (!arr || arr.length === 0) ? "• 無" : arr.map(mapFn).join("<br>");
-        document.getElementById("ui-npcs").innerHTML = formatArr(s.npcs, n => `• ${n.name}(${n.desc}): ${n.affinity}`);
-        document.getElementById("ui-puppets").innerHTML = formatArr(s.puppets, p => `• ${p.name}: ${p.details}`);
+        // 強化 NPC 與暗子渲染的防呆機制，避免出現 undefined
+        const formatSafeList = (arr, type) => {
+            if (!arr || arr.length === 0) return "• 暫無";
+            return arr.map(item => {
+                if (typeof item === 'string') return `• ${item}`;
+                const name = item.name || item.title || "神秘人物";
+                const desc = item.desc || item.details || item.identity || "";
+                const aff = item.affinity !== undefined ? ` (好感: ${item.affinity})` : "";
+                return `• ${name}${desc ? `(${desc})` : ""}${aff}`;
+            }).join("<br>");
+        };
+
+        document.getElementById("ui-npcs").innerHTML = formatSafeList(s.npcs, 'npc');
+        document.getElementById("ui-puppets").innerHTML = formatSafeList(s.puppets, 'puppet');
 
         const cSel = document.getElementById("ui-comp-select"), cDet = document.getElementById("ui-comp-details");
         if (!s.companions || s.companions.length === 0) {
             cSel.style.display = "none"; cDet.innerText = "• 暫無道侶";
         } else {
             cSel.style.display = "block"; const cur = cSel.value;
-            cSel.innerHTML = s.companions.map(c => `<option value="${c.name}">💞 ${c.name}</option>`).join("");
-            if (s.companions.find(c => c.name === cur)) cSel.value = cur;
+            cSel.innerHTML = s.companions.map(c => `<option value="${c.name || c}">💞 ${c.name || c}</option>`).join("");
+            if (s.companions.find(c => (c.name || c) === cur)) cSel.value = cur;
             renderCompanionDetails();
         }
 
@@ -480,8 +497,15 @@
 
     function renderCompanionDetails() {
         const cName = document.getElementById("ui-comp-select").value;
-        const comp = gameState.companions.find(c => c.name === cName);
-        if (comp) document.getElementById("ui-comp-details").innerText = `【${comp.name}】\n• ` + comp.details.split(/[,，]/).map(x=>x.trim()).filter(Boolean).join("\n• ");
+        const comp = gameState.companions.find(c => (c.name || c) === cName);
+        if (comp) {
+            if (typeof comp === 'string') {
+                document.getElementById("ui-comp-details").innerText = `【${comp}】\n• 結為道侶`;
+            } else {
+                const detailsStr = comp.details || comp.desc || "相伴同行";
+                document.getElementById("ui-comp-details").innerText = `【${comp.name}】\n• ` + detailsStr.split(/[,，]/).map(x=>x.trim()).filter(Boolean).join("\n• ");
+            }
+        }
     }
 
     async function typeWriterLog(role, rawText, type) {
