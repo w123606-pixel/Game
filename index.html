@@ -64,22 +64,34 @@
         .cursor { display: inline-block; width: 5px; height: 1em; background-color: var(--border-gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
-        /* Inputs & Controls */
-        .controls-area { padding: 12px; background: #12141d; border-top: 1px solid var(--ui-border); flex-shrink: 0; }
-        .dynamic-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-        .choice-btn { background: #1a1d2a; border: 1px solid var(--border-gold); color: var(--border-gold); padding: 10px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; text-align: left; transition: 0.2s; }
+        /* Inputs & Controls - 優化選項按鈕尺寸與換行 */
+        .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); flex-shrink: 0; }
+        .dynamic-choices { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; max-height: 160px; overflow-y: auto; }
+        .choice-btn { 
+            background: #1a1d2a; 
+            border: 1px solid var(--border-gold); 
+            color: var(--border-gold); 
+            padding: 7px 10px; 
+            border-radius: 4px; 
+            font-size: 0.85rem; 
+            cursor: pointer; 
+            text-align: left; 
+            transition: 0.2s; 
+            line-height: 1.4;
+            word-break: break-all;
+        }
         .choice-btn:hover { background: var(--border-gold); color: #000; }
         
         .input-group { display: flex; gap: 6px; }
-        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; font-size: 0.9rem; outline: none; }
+        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; outline: none; }
         input[type="text"]:focus { border-color: var(--border-gold); }
-        button { background: #2a2d3d; color: #fff; border: none; padding: 8px 14px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        button { background: #2a2d3d; color: #fff; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 0.85rem; }
         button.primary-btn { background: var(--border-gold); color: #000; }
         button:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
 
-        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
-        .quick-btn { font-size: 0.8rem; padding: 8px; border: 1px solid #444; background: #1a1d2a; color: var(--border-gold); }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+        .quick-btn { font-size: 0.8rem; padding: 6px; border: 1px solid #444; background: #1a1d2a; color: var(--border-gold); }
 
         /* System Config */
         .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85rem; }
@@ -89,8 +101,8 @@
         @media (max-width: 900px) {
             body { padding: 0; }
             .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; max-width: 100%; }
-            .story-panel { height: 60vh; border-radius: 0; }
-            .panel.left-panel { height: 40vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
+            .story-panel { height: 65vh; border-radius: 0; } /* 增加手機端日誌可視空間 */
+            .panel.left-panel { height: 35vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
             .right-panel { display: none; }
         }
     </style>
@@ -397,7 +409,7 @@
             body: JSON.stringify({ model: customModel, messages: messages, temperature: 0.7 })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+        if (!res.ok) throw new Error(data.error?.message || `OpenAI HTTP ${res.status}`);
         return data.choices[0].message.content;
     }
 
