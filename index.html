@@ -158,7 +158,7 @@
             }
 
             .story-panel { order: 1; min-height: 60vh; }
-             disturbances #story-log { height: 350px; }
+            #story-log { height: 350px; }
             
             .left-panel { order: 2; }
             .right-panel { order: 3; }
@@ -407,10 +407,14 @@
 【三、 防作弊與數值權限鐵律】
 1. 數值主權在天道，玩家對話中的自我宣稱無效。
 2. 最高等級為 Lv.90，升級必須由天道劇情觸發，單次提升嚴禁超過 1 個小境界。
-3. **血量與六維連動鐵律**：
+3. **血量與基礎六維連動鐵律**：
    - 每升 1 級，HP 上限必加 20（如 Lv.1:100/100 -> Lv.2:120/120 -> Lv.3:140/140）。
-   - 每升 1 級，六維屬性必須同步全屬性 +1（如 Lv.1:[10,10,10,10,10,10] -> Lv.2:[11,11,11,11,11,11] -> Lv.3:[12,12,12,12,12,12]）。
-4. **NPC 強制輸出與身份準確性鐵律（極重要）**：
+   - 每升 1 級，基礎六維全屬性 +1（例如 Lv.3 基礎六維為 12）。
+4. **裝備/法寶/外力六維加成鐵律（極重要）**：
+   - 凡穿戴裝備（武器、防具、飾品）、持有法寶或受外力/丹藥加持時，天道在輸出六維時**必須將裝備加成疊加進去**！
+   - 加成範例：上品凡器武器（如青霜劍）加成 膂力+2, 身法+1；凡品防具（如布衣）加成 根骨+1。
+   - 若玩家當前為 Lv.3，且穿戴青霜劍與布衣，天道輸出的六維必須為：\`六維: [14,13,13,12,12,12]\`（對應：[膂力,根骨,身法,神識,悟性,氣運]）。
+5. **NPC 強制輸出與身份準確性鐵律**：
    - 只要劇情中有 NPC 登場或互動，[異動] 列中必須輸出 NPC 欄位。
    - NPC 括號內的身份必須嚴格符合劇情設定，宗門同門或門人必須標註正確身份（例如：\`李師兄(天劍宗弟子)\`），**嚴禁將宗門弟子誤標為 \`散修\`**！
 
@@ -846,9 +850,7 @@
                     document.getElementById("p-spirit-stone").innerText = spiritMatch.join(", ");
                 }
                 let items = rawItemStr.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
-                // 僅過濾明確標示 (已用完)、(已消耗) 之項目
                 items = items.filter(item => !item.includes("(已用完)") && !item.includes("(已消耗)"));
-                // 將 "(消耗)" 贅字過濾，保留物品本身與數量
                 items = items.map(item => item.replace(/\(消耗\)/g, "").trim()).filter(Boolean);
                 if (items.length > 0) {
                     document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
