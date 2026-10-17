@@ -28,7 +28,7 @@
         .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { color: var(--border-gold); font-size: 1rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 5px; margin-bottom: 10px; text-align: center; }
         
-        /* Left Panel Tabs (Status / Settings) */
+        /* Left Panel Tabs */
         .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 10px; flex-shrink: 0; }
         .tab-btn { flex: 1; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.3s; }
         .tab-btn.active { color: var(--border-gold); border-bottom: 2px solid var(--border-gold); }
@@ -51,7 +51,7 @@
         .exp-container { height: 5px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 3px; }
         .exp-fill { height: 100%; background: var(--hl-cyan); transition: width 0.3s; }
 
-        /* Story Panel (Main View) */
+        /* Story Panel */
         .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; height: 100%; }
         .story-header { background: #12141d; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; font-size: 0.9rem; }
         .quest-box { color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -91,20 +91,19 @@
         .hl-danger { color: var(--accent-red); font-weight: bold; }
         .hl-item { color: var(--hl-gold); font-weight: bold; }
 
-        /* Mobile Optimization: Single Column Full Screen View */
         @media (max-width: 900px) {
             body { padding: 0; }
             .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; max-width: 100%; }
             .story-panel { height: 60vh; border-radius: 0; }
             .panel.left-panel { height: 40vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
-            .right-panel { display: none; } /* 完全隱藏世界觀看板，騰出手機空間 */
+            .right-panel { display: none; }
         }
     </style>
 </head>
 <body>
 
 <div class="game-container">
-    <!-- Center Story Panel (Main Screen on Mobile) -->
+    <!-- Center Story Panel (Main Screen) -->
     <div class="panel story-panel">
         <div class="story-header">
             <div style="font-weight:bold; color:var(--border-gold);">📜 九州史詩</div>
@@ -126,7 +125,7 @@
         </div>
     </div>
 
-    <!-- Left Panel (Tabs: Status, Skills, Social, Settings) -->
+    <!-- Left Panel (Tabs) -->
     <div class="panel left-panel">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('tab-basic')">🪪 狀態</button>
@@ -137,7 +136,10 @@
 
         <!-- 狀態分頁 -->
         <div id="tab-basic" class="tab-content active">
-            <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="ui-realm">練氣期 (Lv.1)</span></div>
+            <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">練氣期 (Lv.1)</span></div>
+            <!-- 隱藏但保留 UI ID 供 JS 讀取，防止 null 錯誤 -->
+            <span id="ui-level" style="display:none;">1</span>
+            
             <div class="stat-item"><span class="stat-label">修為進度</span>
                 <span class="stat-value" style="flex-grow:1; margin-left:10px;">
                     <div style="font-size:0.75rem; text-align:right;" id="ui-exp-text">0/100</div>
@@ -366,7 +368,7 @@
         return trimmed;
     }
 
-    /* 嚴格鎖定只能使用 3.8 / 3.7 / 3.5 模型 */
+    /* 嚴格鎖定只使用 3.8 / 3.7 / 3.5 模型 */
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim();
         const candidateModels = customModel ? [customModel] : ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"];
@@ -415,7 +417,9 @@
             s.hp = 0; s.status = ["【已身死道消】"];
         }
 
-        document.getElementById("ui-level").innerText = s.level;
+        const elLevel = document.getElementById("ui-level");
+        if (elLevel) elLevel.innerText = s.level;
+
         document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
         document.getElementById("ui-linggen").innerText = s.linggen;
         document.getElementById("ui-age").innerText = `${currentAge} / ${s.maxAge} 歲`;
