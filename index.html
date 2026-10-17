@@ -21,107 +21,91 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "微軟正黑體", "Noto Sans TC", sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 4px; min-height: 100dvh; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 8px; min-height: 100vh; }
         
-        /* Layout */
-        .game-container { display: grid; grid-template-columns: 1fr 320px; gap: 6px; width: 100%; max-width: 1350px; height: calc(100vh - 8px); }
-        .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2 { color: var(--border-gold); font-size: 0.9rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 3px; margin-bottom: 6px; text-align: center; }
+        /* Layout - 整體改為垂直長條流動，唯獨日誌區塊本身擁有固定高度與內建捲軸 */
+        .game-container { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 900px; }
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { color: var(--border-gold); font-size: 0.95rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 4px; margin-bottom: 8px; text-align: center; }
         
-        /* Left Panel Tabs */
-        .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 6px; flex-shrink: 0; }
-        .tab-btn { flex: 1; background: transparent; color: #888; border: none; padding: 5px 0; cursor: pointer; font-size: 0.75rem; font-weight: bold; transition: 0.3s; }
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 10px; }
+        .tab-btn { flex: 1; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.3s; }
         .tab-btn.active { color: var(--border-gold); border-bottom: 2px solid var(--border-gold); }
-        .tab-content { display: none; overflow-y: auto; flex-grow: 1; padding-right: 4px; }
+        .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .tab-content::-webkit-scrollbar, #story-log::-webkit-scrollbar { width: 4px; }
-        .tab-content::-webkit-scrollbar-thumb, #story-log::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 2px; }
 
         /* Stats & UI */
-        .stat-item { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.78rem; }
+        .stat-item { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem; }
         .stat-label { color: #8b8ea8; }
         .stat-value { font-weight: bold; text-align: right; }
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
-        .scroll-list { font-size: 0.78rem; color: #aaa; line-height: 1.35; white-space: pre-line; margin-bottom: 8px; }
+        .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.4; white-space: pre-line; margin-bottom: 10px; }
         
-        .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 4px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 6px; }
-        .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: #0a0b10; padding: 6px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.72rem; margin-bottom: 6px; }
+        .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 6px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 8px; }
+        .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.8rem; margin-bottom: 8px; }
 
         /* Exp Bar */
-        .exp-container { height: 3px; background: #222; border-radius: 2px; overflow: hidden; margin-top: 2px; }
+        .exp-container { height: 4px; background: #222; border-radius: 2px; overflow: hidden; margin-top: 2px; }
         .exp-fill { height: 100%; background: var(--hl-cyan); transition: width 0.3s; }
 
-        /* Story Panel */
-        .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; height: 100%; }
-        .story-header { background: #12141d; padding: 5px 8px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; font-size: 0.8rem; }
-        .quest-box { color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Story Panel - 獨立固定高度與捲軸 */
+        .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; overflow: hidden; }
+        .story-header { background: #12141d; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+        .quest-box { color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 3px 6px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* 日誌文字縮小、行距優化，釋放極大空間 */
-        #story-log { flex-grow: 1; padding: 10px; overflow-y: auto; font-size: 0.9rem; line-height: 1.5; }
-        .story-block { margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px dashed var(--ui-border); }
+        #story-log { padding: 12px; font-size: 0.95rem; line-height: 1.6; height: 380px; overflow-y: auto; }
+        #story-log::-webkit-scrollbar { width: 4px; }
+        #story-log::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 2px; }
+
+        .story-block { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--ui-border); }
         .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 8px; background: rgba(2, 136, 209, 0.05); }
         .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
         
         .cursor { display: inline-block; width: 4px; height: 1em; background-color: var(--border-gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
-        /* Inputs & Controls - 黃字選項改為水平並排或精簡網格 */
-        .controls-area { padding: 8px; background: #12141d; border-top: 1px solid var(--ui-border); flex-shrink: 0; }
-        .dynamic-choices { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; /* 水平並排 2 列 */
-            gap: 4px; 
-            margin-bottom: 6px; 
-            max-height: 90px; 
-            overflow-y: auto; 
-        }
+        /* Inputs & Controls - 黃字選項水平並排 */
+        .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); }
+        .dynamic-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
         .choice-btn { 
             background: #1a1d2a; 
             border: 1px solid var(--border-gold); 
             color: var(--border-gold); 
-            padding: 5px 8px; 
+            padding: 6px 10px; 
             border-radius: 4px; 
-            font-size: 0.78rem; 
+            font-size: 0.8rem; 
             cursor: pointer; 
             text-align: left; 
             transition: 0.2s; 
-            line-height: 1.25;
+            line-height: 1.3;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .choice-btn:hover { background: var(--border-gold); color: #000; }
         
-        .input-group { display: flex; gap: 4px; }
-        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 7px 8px; border-radius: 4px; font-size: 0.85rem; outline: none; }
+        .input-group { display: flex; gap: 6px; }
+        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; }
         input[type="text"]:focus { border-color: var(--border-gold); }
-        button { background: #2a2d3d; color: #fff; border: none; padding: 6px 10px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 0.8rem; }
+        button { background: #2a2d3d; color: #fff; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 0.85rem; }
         button.primary-btn { background: var(--border-gold); color: #000; }
         button:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
 
-        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; }
-        .quick-btn { font-size: 0.75rem; padding: 5px; border: 1px solid #444; background: #1a1d2a; color: var(--border-gold); }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+        .quick-btn { font-size: 0.8rem; padding: 6px; border: 1px solid #444; background: #1a1d2a; color: var(--border-gold); }
 
         /* System Config */
-        .api-config { background: #0a0b10; padding: 6px; border-radius: 4px; margin-bottom: 6px; font-size: 0.78rem; }
-        .api-config input, .api-config select { width: 100%; padding: 4px; margin: 2px 0 4px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.78rem; }
-        .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; }
-
-        /* 手機端比例：上半部 82vh，下半部 18vh */
-        @media (max-width: 900px) {
-            body { padding: 0; }
-            .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; max-width: 100%; }
-            .story-panel { height: 82vh; border-radius: 0; } 
-            .panel.left-panel { height: 18vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
-            .right-panel { display: none; }
-        }
+        .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-size: 0.85rem; }
+        .api-config input, .api-config select { width: 100%; padding: 6px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
+        .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
     </style>
 </head>
 <body>
 
 <div class="game-container">
-    <!-- Center Story Panel (Main Screen) -->
+    <!-- Story Panel (Main Screen with Fixed Log Height) -->
     <div class="panel story-panel">
         <div class="story-header">
             <div style="font-weight:bold; color:var(--border-gold);">📜 九州史詩</div>
@@ -143,8 +127,8 @@
         </div>
     </div>
 
-    <!-- Left Panel (Tabs) -->
-    <div class="panel left-panel">
+    <!-- Bottom Status Panel (Scrollable Page Down) -->
+    <div class="panel">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('tab-basic')">🪪 狀態</button>
             <button class="tab-btn" onclick="switchTab('tab-skills')">⚔️ 功法</button>
@@ -156,8 +140,8 @@
         <div id="tab-basic" class="tab-content active">
             <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">練氣期 (Lv.1)</span></div>
             <div class="stat-item"><span class="stat-label">修為進度</span>
-                <span class="stat-value" style="flex-grow:1; margin-left:8px;">
-                    <div style="font-size:0.65rem; text-align:right;" id="ui-exp-text">0/100</div>
+                <span class="stat-value" style="flex-grow:1; margin-left:10px;">
+                    <div style="font-size:0.75rem; text-align:right;" id="ui-exp-text">0/100</div>
                     <div class="exp-container"><div class="exp-fill" id="ui-exp-fill" style="width: 0%;"></div></div>
                 </span>
             </div>
@@ -169,8 +153,8 @@
             <div class="stat-item"><span class="stat-label">貢獻點數</span><span class="stat-value" style="color:#a5d6a7" id="ui-contribution">0</span></div>
             <div class="stat-item"><span class="stat-label">靈石貨幣</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">下品*10</span></div>
             
-            <h2 style="margin-top: 6px;">📊 六維屬性</h2>
-            <div class="radar-container"><canvas id="radarCanvas" width="140" height="140"></canvas></div>
+            <h2 style="margin-top: 10px;">📊 六維屬性</h2>
+            <div class="radar-container"><canvas id="radarCanvas" width="160" height="160"></canvas></div>
             <div class="six-stats-grid">
                 <div>膂力: <span id="st-str" style="color:var(--hl-gold)">10</span></div>
                 <div>根骨: <span id="st-con" style="color:var(--accent-green)">10</span></div>
@@ -196,7 +180,7 @@
         <!-- 人際分頁 -->
         <div id="tab-social" class="tab-content">
             <h2>💞 道侶系統</h2>
-            <select id="ui-comp-select" onchange="renderCompanionDetails()" style="width:100%; padding:4px; background:#1a1d2a; border:1px solid #3a3d52; color:#fff; border-radius:4px; margin-bottom:4px; display:none;"></select>
+            <select id="ui-comp-select" onchange="renderCompanionDetails()" style="width:100%; padding:6px; background:#1a1d2a; border:1px solid #3a3d52; color:#fff; border-radius:4px; margin-bottom:8px; display:none;"></select>
             <div id="ui-comp-details" class="scroll-list" style="color: var(--accent-pink);">• 暫無道侶</div>
             <h2>📜 結識 NPC</h2>
             <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 暫無結識</div>
@@ -216,16 +200,16 @@
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
                 <label>模型名稱鎖定 (支援 3.8 / 3.7 / 3.5)：</label>
                 <input type="text" id="api-model" placeholder="預設留空自動使用 3.8-flash">
-                <button onclick="saveApiKey()" style="width:100%; margin-top:3px;">儲存設定</button>
+                <button onclick="saveApiKey()" style="width:100%; margin-top:5px;">儲存設定</button>
             </div>
             
-            <h2 style="margin-top:6px;">💾 存檔管理</h2>
+            <h2 style="margin-top:10px;">💾 存檔管理</h2>
             <div class="save-controls">
                 <button onclick="exportSave()">📥 匯出</button>
                 <button onclick="document.getElementById('import-file').click()">📤 匯入</button>
                 <input type="file" id="import-file" style="display:none" accept=".json" onchange="importSave(event)">
             </div>
-            <button style="width:100%; background:#4a1515; color:#fff; margin-top:5px;" onclick="resetGame()">🗑️ 重置遊戲</button>
+            <button style="width:100%; background:#4a1515; color:#fff; margin-top:8px;" onclick="resetGame()">🗑️ 重置遊戲</button>
         </div>
     </div>
 </div>
@@ -324,7 +308,7 @@
         const d20 = Math.floor(Math.random() * 20) + 1;
         const actionWithDice = `${actionText}\n\n[系統附加：玩家命運檢定 D20 骰出 ${d20} 點，請依此判定成敗]`;
 
-        appendLogHTML("異世旅者", escapeHTML(actionText) + ` <span style="font-size:0.65rem; color:#888;">(D20: ${d20})</span>`, "player");
+        appendLogHTML("異世旅者", escapeHTML(actionText) + ` <span style="font-size:0.7rem; color:#888;">(D20: ${d20})</span>`, "player");
 
         const historyBackup = JSON.stringify(conversationHistory);
         const stateBackup = JSON.stringify(gameState);
@@ -582,9 +566,9 @@
     function drawRadarChart(s) {
         const cvs = document.getElementById('radarCanvas'); if(!cvs) return;
         const ctx = cvs.getContext('2d'), dpr = window.devicePixelRatio || 1;
-        cvs.width = 140*dpr; cvs.height = 140*dpr; cvs.style.width='140px'; cvs.style.height='140px'; ctx.scale(dpr,dpr);
-        ctx.clearRect(0,0,140,140); const vals = [s.str,s.con,s.agi,s.int,s.wis,s.luk].map(v=>Math.min(v||10,100)), maxVal=Math.max(...vals,20);
-        const cx=70, cy=70, r=45;
+        cvs.width = 160*dpr; cvs.height = 160*dpr; cvs.style.width='160px'; cvs.style.height='160px'; ctx.scale(dpr,dpr);
+        ctx.clearRect(0,0,160,160); const vals = [s.str,s.con,s.agi,s.int,s.wis,s.luk].map(v=>Math.min(v||10,100)), maxVal=Math.max(...vals,20);
+        const cx=80, cy=80, r=50;
         for(let l=1;l<=3;l++){ ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, x=cx+(r/3)*l*Math.cos(a), y=cy+(r/3)*l*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.strokeStyle="rgba(197,160,89,0.25)"; ctx.stroke(); }
         ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, rr=r*(vals[i]/maxVal), x=cx+rr*Math.cos(a), y=cy+rr*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.fillStyle="rgba(0,255,255,0.25)"; ctx.fill(); ctx.strokeStyle="#00ffff"; ctx.stroke();
     }
