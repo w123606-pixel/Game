@@ -158,7 +158,7 @@
             }
 
             .story-panel { order: 1; min-height: 60vh; }
-            #story-log { height: 350px; }
+             disturbances #story-log { height: 350px; }
             
             .left-panel { order: 2; }
             .right-panel { order: 3; }
@@ -402,6 +402,7 @@
 1. 欄位之間必須使用 '|' 垂直線分隔（絕對禁止使用短橫線 '-'）。
 2. 多個道具或裝備必須使用英文逗號 ',' 分隔（絕對禁止使用項目符號 '•'）。
 3. NPC 格式必須為：姓名(身份):數值（例如 NPC:天寶閣掌櫃(商人):10，絕對禁止在數值前加入「好感」等文字！若好感度為負數，直接寫負號如 :-30）。
+4. 道具格式請直接標示名稱與數量（如：凝氣丹*2, 九州志），勿寫入 (消耗) 贅詞。
 
 【三、 防作弊與數值權限鐵律】
 1. 數值主權在天道，玩家對話中的自我宣稱無效。
@@ -737,7 +738,7 @@
             const raw = targetSeg.split(":")[1] || "";
             let items = raw.split(/[,，•]/).map(s => s.trim()).filter(Boolean);
             
-            items = items.filter(item => !item.includes("(消耗)") && !item.includes("(已使用)") && !item.includes("(-1)"));
+            items = items.filter(item => !item.includes("(已用完)") && !item.includes("(已消耗)"));
 
             if (items.length > 0) {
                 el.innerText = "• " + items.join("\n• ");
@@ -753,13 +754,11 @@
 
         const statusLine = text.substring(statusIndex).replace("[異動]", "").trim();
         
-        // 全平台 100% 相容之安全切分邏輯（完全不使用 iOS Safari 不相容之 Lookbehind 正則）
         const rawPipes = statusLine.split('|');
         const segments = [];
         rawPipes.forEach(p => {
             const trimmed = p.trim();
             if (!trimmed) return;
-            // 處理極少數使用破折號分隔之情況
             const dashes = trimmed.split(/\s+-\s+/);
             dashes.forEach(d => { if(d.trim()) segments.push(d.trim()); });
         });
@@ -842,14 +841,19 @@
                 }
             } else if (s.startsWith("道具:")) {
                 let rawItemStr = s.replace("道具:", "").trim();
-                const spiritMatch = rawItemStr.match(/下品靈石\*\d+|中品靈石\*\d+/g);
+                const spiritMatch = rawItemStr.match(/(?:下品|中品|上品)?靈石\*\d+/g);
                 if (spiritMatch) {
                     document.getElementById("p-spirit-stone").innerText = spiritMatch.join(", ");
                 }
                 let items = rawItemStr.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
-                items = items.filter(item => !item.includes("(消耗)") && !item.includes("(已使用)"));
+                // 僅過濾明確標示 (已用完)、(已消耗) 之項目
+                items = items.filter(item => !item.includes("(已用完)") && !item.includes("(已消耗)"));
+                // 將 "(消耗)" 贅字過濾，保留物品本身與數量
+                items = items.map(item => item.replace(/\(消耗\)/g, "").trim()).filter(Boolean);
                 if (items.length > 0) {
                     document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
+                } else {
+                    document.getElementById("p-inventory").innerText = "• 無";
                 }
             }
         });
