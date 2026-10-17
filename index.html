@@ -316,7 +316,7 @@
         </div>
         
         <div class="input-group">
-            <input type="text" id="action-input" placeholder="輸入抉擇，開啟身世問心測驗..." onkeydown="if(event.key==='Enter') sendAction()">
+            <input type="text" id="action-input" placeholder="輸入抉擇，開啟身世問心測驗..." onkeydown="if(event.key==='Enter'||event.keyCode===13) sendAction()">
             <button id="btn-submit" onclick="sendAction()">抉擇</button>
         </div>
 
@@ -384,8 +384,8 @@
 
 【三、 仙侶/道侶系統晉升鐵律（極重要）】
 1. **晉升條件**：當某位 NPC 與玩家好感度達到 100 且發生【夫妻之實 / 結為道侶】後，該 NPC 將正式晉升為「道侶/伴侶」。
-2. **數據移出與格式輸出**：天道在輸出 [異動] 列時，必須將該 NPC 從普通 NPC: 列表中**永久移除**，改為寫入 `伴侶:姓名(境界:..., 靈根:..., HP:..., 心法:..., 武功:..., 裝備:..., 狀態:...)`。
-3. **道侶詳細快照**：伴侶屬性比照主角規格輸出，以便前端專屬 UI 讀取展示。若有多位道侶，可在 [異動] 列中同時列出（如 `伴侶:沈清璃(...), 姬如煙(...)`）。
+2. **數據移出與格式輸出**：天道在輸出 [異動] 列時，必須將該 NPC 從普通 NPC: 列表中**永久移除**，改為寫入 \`伴侶:姓名(境界:..., 靈根:..., HP:..., 心法:..., 武功:..., 裝備:..., 狀態:...)\`。
+3. **道侶詳細快照**：伴侶屬性比照主角規格輸出，以便前端專屬 UI 讀取展示。若有多位道侶，可在 [異動] 列中同時列出。
 
 【四、 方案 B：身世問心測驗與開局初始化鐵律】
 1. 開局引導：天道透過【身世問心三答】引導玩家，並根據抉擇判定【靈根資質】與【體質天賦】。
@@ -479,12 +479,12 @@
 
         const labels = ['膂力', '根骨', '身法', '神識', '悟性', '氣運'];
         const values = [
-            Math.min(stats.str, 100),
-            Math.min(stats.con, 100),
-            Math.min(stats.agi, 100),
-            Math.min(stats.int, 100),
-            Math.min(stats.wis, 100),
-            Math.min(stats.luk, 100)
+            Math.min(stats.str || 10, 100),
+            Math.min(stats.con || 10, 100),
+            Math.min(stats.agi || 10, 100),
+            Math.min(stats.int || 10, 100),
+            Math.min(stats.wis || 10, 100),
+            Math.min(stats.luk || 10, 100)
         ];
         const numAxes = labels.length;
 
@@ -524,7 +524,7 @@
 
             const labelX = centerX + (radius + 20) * Math.cos(angle);
             const labelY = centerY + (radius + 18) * Math.sin(angle);
-            ctx.fillText(`${labels[i]}:${stats[Object.keys(stats)[i]]}`, labelX, labelY);
+            ctx.fillText(`${labels[i]}:${values[i]}`, labelX, labelY);
         }
 
         ctx.beginPath();
@@ -569,9 +569,13 @@
     function saveApiKey() {
         const key = document.getElementById("api-key").value.trim();
         const provider = document.getElementById("api-provider").value;
+        if (!key) {
+            alert("請先輸入有效的 API Key！");
+            return;
+        }
         localStorage.setItem("blade_api_key", key);
         localStorage.setItem("blade_api_provider", provider);
-        alert("API Key 設定已儲存！");
+        alert("API Key 設定已成功儲存！");
     }
 
     function loadApiKey() {
@@ -582,15 +586,24 @@
     }
 
     async function sendAction() {
-        const apiKey = document.getElementById("api-key").value.trim();
+        let apiKey = document.getElementById("api-key").value.trim();
         if (!apiKey) {
-            alert("請先在左側設定區輸入並儲存 API Key！");
+            apiKey = localStorage.getItem("blade_api_key") || "";
+        }
+        
+        if (!apiKey) {
+            alert("⚠️ 請先在左側「⚙️ 遊戲設定」區輸入並點擊「儲存 Key」！");
+            document.getElementById("api-key").focus();
             return;
         }
 
         const inputEl = document.getElementById("action-input");
         const actionText = inputEl.value.trim();
-        if (!actionText) return;
+        if (!actionText) {
+            alert("⚠️ 請先在輸入框填寫你的抉擇或回答選項！");
+            inputEl.focus();
+            return;
+        }
 
         inputEl.value = "";
         toggleLoading(true, "天道推導中...");
@@ -610,12 +623,18 @@
 
             conversationHistory.push({ role: "assistant", content: aiResponseText });
             appendLog("天道主持人", aiResponseText, "ai");
-            parseAndUpdateStatus(aiResponseText);
+            
+            try {
+                parseAndUpdateStatus(aiResponseText);
+            } catch (pErr) {
+                console.warn("狀態解析異常，已自動跳過化解:", pErr);
+            }
+
             saveGameState();
 
         } catch (error) {
             console.error("API 呼叫失敗:", error);
-            appendLog("系統異常", `連線失敗: ${error.message}，請檢查 API Key 或網路連線。`, "ai");
+            appendLog("系統異常", `連線失敗: ${error.message}。請確認 API Key 是否正確或網路狀況是否良好。`, "ai");
         } finally {
             toggleLoading(false);
         }
@@ -638,10 +657,11 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
+        // 官方標準可用 model 列表
         const candidateModels = [
-            "gemini-3.5-flash-lite",
-            "gemini-3.7-flash",
-            "gemini-3.8-flash"
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -668,7 +688,7 @@
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 45000);
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超時機制
 
                 const response = await fetch(url, {
                     method: "POST",
@@ -680,8 +700,8 @@
                 clearTimeout(timeoutId);
 
                 if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.error?.message || `HTTP 錯誤 ${response.status}`);
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
@@ -689,12 +709,12 @@
                     return data.candidates[0].content.parts[0].text;
                 }
             } catch (err) {
-                console.warn(`[${modelName}] 嘗試失敗，順延下一個模型:`, err.message);
+                console.warn(`[${modelName}] 呼叫失敗，順延下一個模型:`, err.message);
                 lastError = err;
             }
         }
 
-        throw lastError || new Error("Gemini API 連線失敗，請確認 API Key 是否有效或網路是否穩定！");
+        throw lastError || new Error("Gemini API 連線失敗，請檢查 API Key 是否有效！");
     }
 
     async function callOpenAiApi(apiKey, history) {
@@ -710,6 +730,9 @@
             }))
         ];
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
         const response = await fetch(url, {
             method: "POST",
             headers: {
@@ -721,12 +744,15 @@
                 messages: messages,
                 temperature: 0.7,
                 max_tokens: 1500
-            })
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || "OpenAI API 請求錯誤");
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `OpenAI HTTP ${response.status}`);
         }
 
         const data = await response.json();
@@ -737,6 +763,7 @@
         const targetSeg = segments.find(s => s.trim().replace(/^•\s*/, "").startsWith(label + ":"));
         if (targetSeg) {
             const el = document.getElementById(elementId);
+            if (!el) return;
             const raw = targetSeg.split(":")[1] || "";
             let items = raw.split(/[,，•]/).map(s => s.trim()).filter(Boolean);
             
@@ -942,12 +969,12 @@
             if (data.physique) document.getElementById("p-physique").innerText = data.physique;
             if (data.stats) {
                 currentSixStats = data.stats;
-                document.getElementById("st-str").innerText = currentSixStats.str;
-                document.getElementById("st-con").innerText = currentSixStats.con;
-                document.getElementById("st-agi").innerText = currentSixStats.agi;
-                document.getElementById("st-int").innerText = currentSixStats.int;
-                document.getElementById("st-wis").innerText = currentSixStats.wis;
-                document.getElementById("st-luk").innerText = currentSixStats.luk;
+                document.getElementById("st-str").innerText = currentSixStats.str || 10;
+                document.getElementById("st-con").innerText = currentSixStats.con || 10;
+                document.getElementById("st-agi").innerText = currentSixStats.agi || 10;
+                document.getElementById("st-int").innerText = currentSixStats.int || 10;
+                document.getElementById("st-wis").innerText = currentSixStats.wis || 10;
+                document.getElementById("st-luk").innerText = currentSixStats.luk || 10;
                 drawRadarChart(currentSixStats);
             }
             if (data.status) document.getElementById("p-status-effects").innerText = data.status;
