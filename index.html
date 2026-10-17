@@ -21,106 +21,112 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "微軟正黑體", "Noto Sans TC", sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 15px; min-height: 100dvh; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 10px; min-height: 100dvh; }
         
         /* Layout */
-        .game-container { display: grid; grid-template-columns: 300px 1fr 260px; gap: 15px; width: 100%; max-width: 1350px; height: calc(100vh - 30px); }
-        .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2 { color: var(--border-gold); font-size: 1.1rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 6px; margin-bottom: 12px; text-align: center; }
+        .game-container { display: grid; grid-template-columns: 1fr 320px; gap: 12px; width: 100%; max-width: 1350px; height: calc(100vh - 20px); }
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { color: var(--border-gold); font-size: 1rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 5px; margin-bottom: 10px; text-align: center; }
         
-        /* Mobile Sticky Header (Hidden by default) */
-        #mobile-sticky-header { display: none; background: #090a0f; border-bottom: 2px solid var(--border-gold); padding: 10px; position: sticky; top: 0; z-index: 100; justify-content: space-between; align-items: center; font-size: 0.9rem; font-weight: bold; }
-        .hp-bar-container { width: 100px; height: 12px; background: #222; border: 1px solid #444; border-radius: 6px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 5px; }
-        .hp-bar-fill { height: 100%; background: var(--accent-red); transition: width 0.3s; }
-
-        /* Left Panel Tabs */
-        .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 15px; flex-shrink: 0; }
-        .tab-btn { flex: 1; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: 0.3s; }
+        /* Left Panel Tabs (Status / Settings) */
+        .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 10px; flex-shrink: 0; }
+        .tab-btn { flex: 1; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.3s; }
         .tab-btn.active { color: var(--border-gold); border-bottom: 2px solid var(--border-gold); }
-        .tab-content { display: none; overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .tab-content { display: none; overflow-y: auto; flex-grow: 1; padding-right: 4px; }
         .tab-content.active { display: block; }
         .tab-content::-webkit-scrollbar, #story-log::-webkit-scrollbar { width: 4px; }
         .tab-content::-webkit-scrollbar-thumb, #story-log::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 2px; }
 
         /* Stats & UI */
-        .stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .stat-item { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem; }
         .stat-label { color: #8b8ea8; }
         .stat-value { font-weight: bold; text-align: right; }
-        .realm-badge { color: var(--accent-purple); font-weight: bold; text-shadow: 0 0 5px rgba(171, 71, 188, 0.4); }
-        .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.6; white-space: pre-line; margin-bottom: 15px; }
+        .realm-badge { color: var(--accent-purple); font-weight: bold; }
+        .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.5; white-space: pre-line; margin-bottom: 12px; }
         
-        .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 10px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 12px; }
-        .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.85rem; margin-bottom: 12px; }
+        .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 8px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 10px; }
+        .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.8rem; margin-bottom: 10px; }
 
         /* Exp Bar */
-        .exp-container { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+        .exp-container { height: 5px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 3px; }
         .exp-fill { height: 100%; background: var(--hl-cyan); transition: width 0.3s; }
 
-        /* Story Panel */
-        .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); }
-        .story-header { background: #12141d; padding: 10px 15px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        .quest-box { font-size: 0.85rem; color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Story Panel (Main View) */
+        .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; height: 100%; }
+        .story-header { background: #12141d; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; font-size: 0.9rem; }
+        .quest-box { color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 65%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        #story-log { flex-grow: 1; padding: 15px; overflow-y: auto; font-size: 0.95rem; line-height: 1.7; scroll-behavior: smooth; }
-        .story-block { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed var(--ui-border); opacity: 1; transition: opacity 0.3s; }
-        .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 10px; background: rgba(2, 136, 209, 0.05); }
-        .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 10px; background: rgba(197, 160, 89, 0.05); }
+        #story-log { flex-grow: 1; padding: 12px; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; }
+        .story-block { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed var(--ui-border); }
+        .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 8px; background: rgba(2, 136, 209, 0.05); }
+        .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
         
-        /* Cursor for Typewriter */
-        .cursor { display: inline-block; width: 6px; height: 1em; background-color: var(--border-gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+        .cursor { display: inline-block; width: 5px; height: 1em; background-color: var(--border-gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
         /* Inputs & Controls */
-        .controls-area { padding: 15px; background: #12141d; border-top: 1px solid var(--ui-border); flex-shrink: 0; }
-        .dynamic-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .choice-btn { background: #1a1d2a; border: 1px solid var(--border-gold); color: var(--border-gold); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; flex: 1 1 calc(50% - 4px); text-align: center; transition: 0.2s; }
+        .controls-area { padding: 12px; background: #12141d; border-top: 1px solid var(--ui-border); flex-shrink: 0; }
+        .dynamic-choices { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+        .choice-btn { background: #1a1d2a; border: 1px solid var(--border-gold); color: var(--border-gold); padding: 10px; border-radius: 4px; font-size: 0.9rem; cursor: pointer; text-align: left; transition: 0.2s; }
         .choice-btn:hover { background: var(--border-gold); color: #000; }
         
-        .input-group { display: flex; gap: 8px; }
-        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 4px; font-size: 0.95rem; outline: none; }
+        .input-group { display: flex; gap: 6px; }
+        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 4px; font-size: 0.9rem; outline: none; }
         input[type="text"]:focus { border-color: var(--border-gold); }
-        button { background: #2a2d3d; color: #fff; border: none; padding: 10px 18px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        button { background: #2a2d3d; color: #fff; border: none; padding: 8px 14px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
         button.primary-btn { background: var(--border-gold); color: #000; }
         button:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
 
-        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .quick-btn { font-size: 0.85rem; padding: 8px; border: 1px solid #444; background: #1a1d2a; }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+        .quick-btn { font-size: 0.8rem; padding: 8px; border: 1px solid #444; background: #1a1d2a; color: var(--border-gold); }
 
         /* System Config */
-        .api-config { background: #0a0b10; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 0.85rem; }
-        .api-config input, .api-config select { width: 100%; padding: 6px; margin: 4px 0 8px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
-        .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-size: 0.85rem; }
+        .api-config input, .api-config select { width: 100%; padding: 6px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
+        .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 
         /* Highlights */
         .hl-skill { color: var(--hl-cyan); font-weight: bold; }
         .hl-danger { color: var(--accent-red); font-weight: bold; }
         .hl-item { color: var(--hl-gold); font-weight: bold; }
 
+        /* Mobile Optimization: Single Column Full Screen View */
         @media (max-width: 900px) {
             body { padding: 0; }
-            .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; border-radius: 0; max-width: 100%; }
-            #mobile-sticky-header { display: flex; }
-            .story-panel { flex-grow: 1; border: none; height: auto; order: 1; border-radius: 0; }
-            .story-header { display: none; } /* Hide desktop header on mobile */
-            .left-panel { order: 2; height: 40vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
-            .right-panel { display: none; } /* Hide world lore on mobile to save space */
-            .dynamic-choices { flex-direction: column; }
-            .choice-btn { flex: 1 1 100%; padding: 12px; font-size: 0.95rem; }
+            .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; max-width: 100%; }
+            .story-panel { height: 60vh; border-radius: 0; }
+            .panel.left-panel { height: 40vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
+            .right-panel { display: none; } /* 完全隱藏世界觀看板，騰出手機空間 */
         }
     </style>
 </head>
 <body>
 
-<!-- Mobile Sticky Bar -->
-<div id="mobile-sticky-header">
-    <div style="color:var(--accent-purple)" id="m-realm">練氣期</div>
-    <div>HP <div class="hp-bar-container"><div class="hp-bar-fill" id="m-hp-fill" style="width: 100%;"></div></div></div>
-    <div style="color:#aaa; font-size:0.8rem; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="m-loc">新手村</div>
-</div>
-
 <div class="game-container">
-    <!-- Left Panel (Tabs) -->
+    <!-- Center Story Panel (Main Screen on Mobile) -->
+    <div class="panel story-panel">
+        <div class="story-header">
+            <div style="font-weight:bold; color:var(--border-gold);">📜 九州史詩</div>
+            <div class="quest-box" id="ui-quest">主線：凝聚肉身，踏入修仙界</div>
+        </div>
+
+        <div id="story-log"></div>
+        
+        <div class="controls-area">
+            <div id="dynamic-choices-container" class="dynamic-choices"></div>
+            <div class="input-group">
+                <input type="text" id="action-input" placeholder="輸入行動或選擇上方選項..." onkeydown="if(event.key==='Enter') sendAction()">
+                <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
+            </div>
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="quickAction('原地打坐修練')">🧘 閉關修練</button>
+                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple);" onclick="quickAction('【天道推演，突破大境界】')" disabled>✨ 突破境界</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Panel (Tabs: Status, Skills, Social, Settings) -->
     <div class="panel left-panel">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('tab-basic')">🪪 狀態</button>
@@ -141,13 +147,13 @@
             <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18 / 120 歲</span></div>
             <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">100 / 100</span></div>
             <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value" style="color:#00e676" id="ui-linggen">待顯化</span></div>
-            <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="ui-physique">待覺醒</span></div>
+            <div class="stat-item"><span class="stat-label">體質天賦</span><span class="stat-value" style="color:#e040fb" id="ui-physique">待覺醒</span></div>
             <div class="stat-item"><span class="stat-label">宗門身份</span><span class="stat-value" style="color:#ffd54f" id="ui-sectRank">散修</span></div>
             <div class="stat-item"><span class="stat-label">貢獻點數</span><span class="stat-value" style="color:#a5d6a7" id="ui-contribution">0</span></div>
-            <div class="stat-item"><span class="stat-label">靈石</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">下品*10</span></div>
+            <div class="stat-item"><span class="stat-label">靈石貨幣</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">下品*10</span></div>
             
-            <h2 style="margin-top: 15px;">📊 六維屬性</h2>
-            <div class="radar-container"><canvas id="radarCanvas" width="200" height="200"></canvas></div>
+            <h2 style="margin-top: 10px;">📊 六維屬性</h2>
+            <div class="radar-container"><canvas id="radarCanvas" width="180" height="180"></canvas></div>
             <div class="six-stats-grid">
                 <div>膂力: <span id="st-str" style="color:var(--hl-gold)">10</span></div>
                 <div>根骨: <span id="st-con" style="color:var(--accent-green)">10</span></div>
@@ -158,9 +164,9 @@
             </div>
         </div>
 
-        <!-- 功法/物品分頁 -->
+        <!-- 功法物品分頁 -->
         <div id="tab-skills" class="tab-content">
-            <h2>💫 狀態與增益</h2>
+            <h2>💫 狀態異常</h2>
             <div id="ui-status" class="scroll-list" style="color: var(--accent-green);">• 健康</div>
             <h2>📖 主修心法</h2>
             <div id="ui-kungfu" class="scroll-list" style="color: var(--hl-cyan);">• 無</div>
@@ -177,7 +183,7 @@
             <div id="ui-comp-details" class="scroll-list" style="color: var(--accent-pink);">• 暫無道侶</div>
             <h2>📜 結識 NPC</h2>
             <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 暫無結識</div>
-            <h2>🥷 麾下暗子/傀儡</h2>
+            <h2>🥷 麾下暗子</h2>
             <div id="ui-puppets" class="scroll-list" style="color: var(--accent-purple);">• 無</div>
         </div>
 
@@ -191,12 +197,12 @@
                 </select>
                 <label>API Key：</label>
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
-                <label>自訂模型 (選填)：</label>
-                <input type="text" id="api-model" placeholder="預設 gemini-2.0-flash">
+                <label>模型名稱鎖定 (支援 3.8 / 3.7 / 3.5)：</label>
+                <input type="text" id="api-model" placeholder="預設留空自動使用 3.8-flash">
                 <button onclick="saveApiKey()" style="width:100%; margin-top:5px;">儲存設定</button>
             </div>
             
-            <h2 style="margin-top:15px;">💾 存檔管理</h2>
+            <h2 style="margin-top:10px;">💾 存檔管理</h2>
             <div class="save-controls">
                 <button onclick="exportSave()">📥 匯出存檔</button>
                 <button onclick="document.getElementById('import-file').click()">📤 匯入存檔</button>
@@ -205,46 +211,9 @@
             <button style="width:100%; background:#4a1515; color:#fff; margin-top:8px;" onclick="resetGame()">🗑️ 重置遊戲</button>
         </div>
     </div>
-
-    <!-- Center Story Panel -->
-    <div class="panel story-panel">
-        <div class="story-header">
-            <div style="font-weight:bold; color:var(--border-gold);">📜 九州史詩</div>
-            <div class="quest-box" id="ui-quest">主線：凝聚肉身，踏入修仙界</div>
-        </div>
-
-        <div id="story-log"></div>
-        
-        <div class="controls-area">
-            <!-- Dynamic Choices -->
-            <div id="dynamic-choices-container" class="dynamic-choices"></div>
-
-            <div class="input-group">
-                <input type="text" id="action-input" placeholder="自訂你的行動..." onkeydown="if(event.key==='Enter') sendAction()">
-                <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
-            </div>
-            <div class="quick-actions">
-                <button class="quick-btn" onclick="quickAction('原地打坐修練')">🧘 閉關修練</button>
-                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple);" onclick="quickAction('【天道推演，突破大境界】')" disabled>✨ 天道推演 (未滿足)</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Panel -->
-    <div class="panel right-panel">
-        <h2>🗺️ 當前位置</h2>
-        <div style="font-size: 0.9rem; margin-bottom: 15px; text-align:center;">
-            <strong id="ui-location" style="color:var(--hl-cyan);">【九州邊陲·新手村】</strong>
-        </div>
-        <details open>
-            <summary>📖 九州頂級勢力表</summary>
-            <div style="font-size: 0.8rem; line-height: 1.6; color: #bbb; padding-top: 8px;" id="ui-world-factions"></div>
-        </details>
-    </div>
 </div>
 
 <script>
-    /* ================= 核心狀態管理 (State) ================= */
     let gameState = {
         level: 1, realm: "練氣期", linggen: "待問心顯化",
         monthsPassed: 0, ageBase: 18, maxAge: 120,
@@ -264,64 +233,46 @@
     const MAX_DOM_LOGS = 30;
 
     const WORLD_FACTIONS = `【正道九大名門】:1.太一聖地(姬如煙) 2.玄冰宮(沈清璃) 3.天劍宗(凌霜雪) 4.梵音閣(妙善) 5.紫霄道宗(雷元子) 6.丹霞仙宗(丹陽子) 7.蓬萊仙島 8.浩然書院 9.無極星宮\n【四大魔宗】:10.血海宗(慕容嫣) 11.陰煞門 12.萬魂幽冥宗 13.天魔邪宮\n【中立五大巨頭】:14.天寶閣 15.百花谷 16.天妖傀儡城 17.黑市散修盟 18.四海商會\n【隱世五大古族】:19.天機閣 20.萬妖谷 21.荒古姜家 22.太古鳳凰族 23.輪迴仙閣`;
-    const OPENING_TEXT = `歡迎踏入九州世界！你是一名凝聚肉身降臨九州邊陲的異世旅者。在踏入浩瀚修仙界之前，天道幻境展開，請完成【身世問心】以定下你的前世因果與先天機緣。請由下方選擇，或自行輸入！`;
+    const OPENING_TEXT = `歡迎踏入九州世界！你是一名凝聚肉身降臨九州邊陲的異世旅者。在踏入浩瀚修仙界之前，天道幻境展開，請完成【身世問心】以定下你的前世因果與先天機緣。請由下方選擇，或直接輸入！`;
 
-    /* ================= 系統提示詞產生器 ================= */
     function getSystemPrompt() {
         return `你現在是網頁文字 RPG《九州裂天錄》的天道 DM。
 嚴格遵守以下【世界觀】與【JSON 輸出鐵律】：
-
-【一、 世界觀鐵律】
-勢力與人物必須依循此名單，嚴禁捏造無關的頂級宗門：${WORLD_FACTIONS}
-
-【二、 JSON 狀態機輸出鐵律（絕對關鍵）】
-為讓前端正確渲染，你在每次推演劇情後，必須在回覆的「最後方」附上 markdown 的 \`\`\`json 區塊。
-請根據玩家行動結果，更新該 JSON（例如戰鬥扣 hp，獲得道具更新 equipItem）。
-* 新增機制：你可透過 \`advanceMonths\` 欄位來快轉時間（如閉關十年填 120），前端會自動計算年齡。
-* 新增機制：你必須透過 \`choices\` 提供 3~4 個符合當前情境的選項陣列給玩家。
-* JSON 格式範例：
+勢力與人物必須依循此名單：${WORLD_FACTIONS}
+每次推演劇情後，必須在回覆的「最後方」附上 markdown 的 \`\`\`json 區塊更新狀態。
 \`\`\`json
 {
   "advanceMonths": 1,
-  "level": 2,
+  "level": 1,
   "realm": "練氣期",
   "linggen": "雙靈根",
   "maxAge": 120,
-  "hp": 90,
+  "hp": 100,
   "maxHp": 100,
-  "exp": 25,
+  "exp": 10,
   "maxExp": 100,
-  "sectRank": "外門弟子",
-  "contribution": 50,
-  "gold": "15兩",
-  "spiritStone": "下品*12",
+  "sectRank": "散修",
+  "contribution": 0,
+  "gold": "10兩",
+  "spiritStone": "下品*10",
   "physique": "凡體肉胎",
-  "stats": {"str":10, "con":12, "agi":10, "int":10, "wis":10, "luk":15},
+  "stats": {"str":10, "con":10, "agi":10, "int":10, "wis":10, "luk":10},
   "status": ["健康"],
   "kungfu": ["基礎吐納心法"],
   "skills": ["基礎劍法"],
-  "equipItem": ["粗鐵劍", "金創藥*1"],
-  "location": "青陽鎮",
-  "companions": [{"name":"沈清璃", "details":"境界:築基初期, 好感:滿"}],
-  "npcs": [{"name":"張三", "affinity": 15, "desc":"外門管事"}],
+  "equipItem": ["粗鐵劍", "金創藥*2"],
+  "location": "九州邊陲·新手村",
+  "companions": [],
+  "npcs": [],
   "puppets": [],
-  "mainQuest": "突破至練氣三層",
-  "choices": ["前往後山採藥", "在房內打坐", "去坊市交易"]
+  "mainQuest": "探索周圍環境",
+  "choices": ["前往坊市", "向長老請益", "閉關修練"]
 }
 \`\`\`
-
-【三、 數值與推演鐵律】
-1. 開局初始為 18 歲，NPC 陣列為空。不准天降道侶！
-2. EXP滿後不可自動跨越大境界（逢10等級如Lv10），需玩家點擊「天道推演」才能突破。
-3. 玩家的行動後面會附帶 [系統 D20 骰子判定]，請依據骰子點數 (1大失敗, 20大成功) 與屬性，客觀判定該行動的成敗與傷亡。
-
-【目前玩家真實 JSON 快照】
-${JSON.stringify(gameState)}`;
+目前玩家狀態快照：${JSON.stringify(gameState)}`;
     }
 
-    /* ================= 啟動與 UI 綁定 ================= */
     window.onload = () => {
-        document.getElementById('ui-world-factions').innerHTML = WORLD_FACTIONS.replace(/\n/g, '<br>');
         loadApiKey();
         loadGameState();
     };
@@ -340,12 +291,11 @@ ${JSON.stringify(gameState)}`;
         event.currentTarget.classList.add('active');
     }
 
-    /* ================= 核心邏輯與 API 呼叫 ================= */
     async function sendAction(choiceText = null) {
         if (isTyping) return;
         const keyEl = document.getElementById("api-key");
         let apiKey = keyEl.value.trim() || localStorage.getItem("blade_api_key");
-        if (!apiKey) { alert("⚠️ 請先在『系統』分頁輸入 API Key！"); return; }
+        if (!apiKey) { alert("⚠️ 請先至『系統』分頁輸入 API Key！"); return; }
 
         const inputEl = document.getElementById("action-input");
         let actionText = choiceText || inputEl.value.trim();
@@ -354,16 +304,13 @@ ${JSON.stringify(gameState)}`;
         inputEl.value = "";
         toggleLoading(true);
 
-        // 系統暗骰 D20
         const d20 = Math.floor(Math.random() * 20) + 1;
-        const actionWithDice = `${actionText}\n\n[系統附加：玩家本回合命運檢定 D20 骰出 ${d20} 點。請依此點數客觀判定結果，並更新 JSON]`;
+        const actionWithDice = `${actionText}\n\n[系統附加：玩家命運檢定 D20 骰出 ${d20} 點，請依此判定成敗]`;
 
         appendLogHTML("異世旅者", escapeHTML(actionText) + ` <span style="font-size:0.7rem; color:#888;">(D20: ${d20})</span>`, "player");
 
-        // 建立 Rollback 備份
         const historyBackup = JSON.stringify(conversationHistory);
         const stateBackup = JSON.stringify(gameState);
-
         conversationHistory.push({ role: "user", content: actionWithDice });
 
         try {
@@ -373,27 +320,23 @@ ${JSON.stringify(gameState)}`;
             conversationHistory.push({ role: "assistant", content: aiResponseText });
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
-            // 處理時間與狀態更新
             if (parsedState) {
                 if (parsedState.advanceMonths) {
                     gameState.monthsPassed += parsedState.advanceMonths;
                     delete parsedState.advanceMonths;
                 } else {
-                    gameState.monthsPassed += 1; // 預設消耗1個月
+                    gameState.monthsPassed += 1;
                 }
                 gameState = { ...gameState, ...parsedState };
-                gameState.ageBase = 18; // 鎖定基礎年齡
+                gameState.ageBase = 18;
             }
             
             renderUI();
-            
-            // 打字機特效渲染故事
             await typeWriterLog("天道主持人", storyText, "ai");
             saveGameState();
-
         } catch (error) {
             console.error(error);
-            appendLogHTML("系統警告", `連線或解析失敗: ${error.message}。<br>狀態已回滾。`, "ai");
+            appendLogHTML("系統警告", `連線或解析失敗: ${error.message}。<br>狀態已安全回滾。`, "ai");
             conversationHistory = JSON.parse(historyBackup);
             gameState = JSON.parse(stateBackup);
             inputEl.value = actionText;
@@ -423,19 +366,33 @@ ${JSON.stringify(gameState)}`;
         return trimmed;
     }
 
+    /* 嚴格鎖定只能使用 3.8 / 3.7 / 3.5 模型 */
     async function callGeminiApi(apiKey) {
-        const customModel = document.getElementById("api-model").value.trim() || "gemini-2.0-flash";
+        const customModel = document.getElementById("api-model").value.trim();
+        const candidateModels = customModel ? [customModel] : ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"];
+        
+        const contents = getTrimmedHistory().map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
         const bodyData = {
             system_instruction: { parts: [{ text: getSystemPrompt() }] },
-            contents: getTrimmedHistory().map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] })),
+            contents: contents,
             generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
         };
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${customModel}:generateContent?key=${apiKey}`, {
-            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-        return data.candidates[0].content.parts[0].text;
+
+        let lastError = null;
+        for (const modelName of candidateModels) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            try {
+                const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+                if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+                    return data.candidates[0].content.parts[0].text;
+                }
+            } catch (err) {
+                lastError = err;
+            }
+        }
+        throw lastError || new Error("Gemini API 連線失敗，請確認 Key 或模型版本支援狀況。");
     }
 
     async function callOpenAiApi(apiKey) {
@@ -450,43 +407,32 @@ ${JSON.stringify(gameState)}`;
         return data.choices[0].message.content;
     }
 
-    /* ================= UI 渲染邏輯 ================= */
     function renderUI() {
         const s = gameState;
         const currentAge = s.ageBase + Math.floor(s.monthsPassed / 12);
         
-        // 死亡判定
         if (s.hp <= 0 || currentAge >= s.maxAge) {
             s.hp = 0; s.status = ["【已身死道消】"];
         }
 
-        // 基本數值
         document.getElementById("ui-level").innerText = s.level;
         document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
-        document.getElementById("m-realm").innerText = s.realm;
         document.getElementById("ui-linggen").innerText = s.linggen;
         document.getElementById("ui-age").innerText = `${currentAge} / ${s.maxAge} 歲`;
         document.getElementById("ui-hp").innerText = `${s.hp} / ${s.maxHp}`;
         document.getElementById("ui-sectRank").innerText = s.sectRank;
         document.getElementById("ui-contribution").innerText = s.contribution;
-        document.getElementById("ui-gold").innerText = s.gold;
         document.getElementById("ui-spiritStone").innerText = s.spiritStone;
         document.getElementById("ui-physique").innerText = s.physique;
-        document.getElementById("ui-location").innerText = `【${s.location}】`;
-        document.getElementById("m-loc").innerText = s.location;
         document.getElementById("ui-quest").innerText = `主線：${s.mainQuest || "自由探索"}`;
 
-        // 經驗值條與 HP 條
         const expPct = Math.min(100, (s.exp / s.maxExp) * 100) || 0;
         document.getElementById("ui-exp-text").innerText = `${s.exp}/${s.maxExp}`;
         document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
-        document.getElementById("m-hp-fill").style.width = `${Math.max(0, (s.hp/s.maxHp)*100)}%`;
 
-        // 屬性雷達
         ['str','con','agi','int','wis','luk'].forEach(st => document.getElementById(`st-${st}`).innerText = s.stats[st] || 10);
         drawRadarChart(s.stats);
 
-        // 陣列列表渲染
         const fillList = (id, arr) => document.getElementById(id).innerText = (!arr || arr.length === 0) ? "• 無" : "• " + arr.join("\n• ");
         fillList("ui-status", s.status);
         fillList("ui-kungfu", s.kungfu);
@@ -497,7 +443,6 @@ ${JSON.stringify(gameState)}`;
         document.getElementById("ui-npcs").innerHTML = formatArr(s.npcs, n => `• ${n.name}(${n.desc}): ${n.affinity}`);
         document.getElementById("ui-puppets").innerHTML = formatArr(s.puppets, p => `• ${p.name}: ${p.details}`);
 
-        // 道侶
         const cSel = document.getElementById("ui-comp-select"), cDet = document.getElementById("ui-comp-details");
         if (!s.companions || s.companions.length === 0) {
             cSel.style.display = "none"; cDet.innerText = "• 暫無道侶";
@@ -508,24 +453,22 @@ ${JSON.stringify(gameState)}`;
             renderCompanionDetails();
         }
 
-        // 動態選項生成
         const choiceContainer = document.getElementById("dynamic-choices-container");
         if (s.hp <= 0) {
-            choiceContainer.innerHTML = `<button class="choice-btn" onclick="resetGame()" style="background:#4a1515;color:#fff;">輪迴重啟</button>`;
+            choiceContainer.innerHTML = `<button class="choice-btn" onclick="resetGame()" style="background:#4a1515;color:#fff;text-align:center;">💀 壽盡身亡 / 輪迴重啟</button>`;
         } else if (s.choices && s.choices.length > 0) {
             choiceContainer.innerHTML = s.choices.map(c => `<button class="choice-btn" onclick="sendAction('${escapeHTML(c)}')">${escapeHTML(c)}</button>`).join("");
         } else {
             choiceContainer.innerHTML = "";
         }
 
-        // 鎖定天道推演按鈕 (每 10 級解鎖)
         const btnDeduce = document.getElementById("btn-deduce");
         if (s.level % 10 === 0 && s.level > 0 && s.exp >= s.maxExp) {
             btnDeduce.disabled = false;
             btnDeduce.innerText = "✨ 突破大境界 (已解鎖)";
         } else {
             btnDeduce.disabled = true;
-            btnDeduce.innerText = `✨ 天道推演 (需滿經驗且逢10級)`;
+            btnDeduce.innerText = `✨ 突破境界`;
         }
     }
 
@@ -535,12 +478,9 @@ ${JSON.stringify(gameState)}`;
         if (comp) document.getElementById("ui-comp-details").innerText = `【${comp.name}】\n• ` + comp.details.split(/[,，]/).map(x=>x.trim()).filter(Boolean).join("\n• ");
     }
 
-    /* ================= 打字機與顯示特效 ================= */
     async function typeWriterLog(role, rawText, type) {
         isTyping = true;
         const logBox = document.getElementById("story-log");
-        
-        // 預處理高亮標籤，避免破壞 HTML
         let htmlText = escapeHTML(rawText).replace(/\n/g, "<br>")
             .replace(/(獲得|突破|頓悟|成功|修為大進)/g, '<span class="hl-skill">$1</span>')
             .replace(/(重傷|死士|毒煞|暗算|反噬|壽元將盡)/g, '<span class="hl-danger">$1</span>')
@@ -554,7 +494,6 @@ ${JSON.stringify(gameState)}`;
         const contentSpan = block.querySelector('.type-content');
         const cursor = block.querySelector('.cursor');
         
-        // 簡易 HTML 安全打字機
         let i = 0; let isTag = false; let currentHTML = '';
         return new Promise(resolve => {
             function typeChar() {
@@ -563,11 +502,10 @@ ${JSON.stringify(gameState)}`;
                     currentHTML += char;
                     if (char === '<') isTag = true;
                     if (char === '>') isTag = false;
-                    
                     contentSpan.innerHTML = currentHTML;
                     logBox.scrollTop = logBox.scrollHeight;
                     i++;
-                    setTimeout(typeChar, isTag ? 0 : 15); // 遇到 Tag 瞬間印出不延遲
+                    setTimeout(typeChar, isTag ? 0 : 12);
                 } else {
                     cursor.remove();
                     cleanDomLogs();
@@ -599,18 +537,16 @@ ${JSON.stringify(gameState)}`;
         btn.disabled = isLoading; input.disabled = isLoading;
         btn.innerText = isLoading ? "推演中..." : "抉擇";
         dBtns.forEach(b => b.disabled = isLoading);
-        if (!isLoading && window.innerWidth > 900) input.focus();
     }
 
-    /* ================= 存檔與匯出系統 ================= */
     function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[t])); }
 
     function drawRadarChart(s) {
         const cvs = document.getElementById('radarCanvas'); if(!cvs) return;
         const ctx = cvs.getContext('2d'), dpr = window.devicePixelRatio || 1;
-        cvs.width = 200*dpr; cvs.height = 200*dpr; cvs.style.width='200px'; cvs.style.height='200px'; ctx.scale(dpr,dpr);
-        ctx.clearRect(0,0,200,200); const vals = [s.str,s.con,s.agi,s.int,s.wis,s.luk].map(v=>Math.min(v||10,100)), maxVal=Math.max(...vals,20);
-        const cx=100, cy=100, r=70;
+        cvs.width = 180*dpr; cvs.height = 180*dpr; cvs.style.width='180px'; cvs.style.height='180px'; ctx.scale(dpr,dpr);
+        ctx.clearRect(0,0,180,180); const vals = [s.str,s.con,s.agi,s.int,s.wis,s.luk].map(v=>Math.min(v||10,100)), maxVal=Math.max(...vals,20);
+        const cx=90, cy=90, r=60;
         for(let l=1;l<=3;l++){ ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, x=cx+(r/3)*l*Math.cos(a), y=cy+(r/3)*l*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.strokeStyle="rgba(197,160,89,0.25)"; ctx.stroke(); }
         ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, rr=r*(vals[i]/maxVal), x=cx+rr*Math.cos(a), y=cy+rr*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.fillStyle="rgba(0,255,255,0.25)"; ctx.fill(); ctx.strokeStyle="#00ffff"; ctx.stroke();
     }
@@ -665,15 +601,15 @@ ${JSON.stringify(gameState)}`;
                 if (data.state && data.history) {
                     gameState = data.state; conversationHistory = data.history;
                     document.getElementById("story-log").innerHTML = data.log || "";
-                    saveGameState(); renderUI(); alert("📂 讀檔成功，歡迎回歸九州！");
+                    saveGameState(); renderUI(); alert("📂 讀檔成功！");
                 } else alert("❌ 存檔格式錯誤！");
-            } catch (err) { alert("❌ 無法解析存檔檔案！"); }
+            } catch (err) { alert("❌ 無法解析檔案！"); }
         };
         reader.readAsText(file);
     }
 
     function resetGame() {
-        if (confirm("⚠️ 確定重置？這將清空所有遊戲進度，建議先匯出存檔！")) {
+        if (confirm("⚠️ 確定重置？所有進度將會清空。")) {
             localStorage.removeItem("blade_state"); localStorage.removeItem("blade_history"); localStorage.removeItem("blade_dom_log");
             location.reload();
         }
