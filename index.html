@@ -411,7 +411,7 @@
    - 每升 1 級，六維屬性必須同步全屬性 +1（如 Lv.1:[10,10,10,10,10,10] -> Lv.2:[11,11,11,11,11,11] -> Lv.3:[12,12,12,12,12,12]）。
 4. **NPC 強制輸出與身份準確性鐵律（極重要）**：
    - 只要劇情中有 NPC 登場或互動，[異動] 列中必須輸出 NPC 欄位。
-   - NPC 括號內的身份必須嚴格符合劇情設定，宗門同門或門人必須標註正確身份（例如：`李師兄(天劍宗弟子)` 或 `李師兄(外門弟子)`），**嚴禁將宗門弟子誤標為 `散修`**！
+   - NPC 括號內的身份必須嚴格符合劇情設定，宗門同門或門人必須標註正確身份（例如：\`李師兄(天劍宗弟子)\`），**嚴禁將宗門弟子誤標為 \`散修\`**！
 
 【四、 境界體系】
 練氣(Lv.1-10) < 築基(Lv.11-20) < 金丹(Lv.21-30) < 元嬰(Lv.31-40) < 化神(Lv.41-50) < 煉虛(Lv.51-60) < 合體(Lv.61-70) < 大乘(Lv.71-80) < 渡劫(Lv.81-90)。`;
@@ -752,7 +752,17 @@
         if (statusIndex === -1) return;
 
         const statusLine = text.substring(statusIndex).replace("[異動]", "").trim();
-        const segments = statusLine.split(/\s*\|\s*|(?<![:=])\s+-\s+/);
+        
+        // 全平台 100% 相容之安全切分邏輯（完全不使用 iOS Safari 不相容之 Lookbehind 正則）
+        const rawPipes = statusLine.split('|');
+        const segments = [];
+        rawPipes.forEach(p => {
+            const trimmed = p.trim();
+            if (!trimmed) return;
+            // 處理極少數使用破折號分隔之情況
+            const dashes = trimmed.split(/\s+-\s+/);
+            dashes.forEach(d => { if(d.trim()) segments.push(d.trim()); });
+        });
 
         let currentLevel = parseInt(document.getElementById("p-level").innerText) || 1;
 
