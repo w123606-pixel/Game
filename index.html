@@ -86,11 +86,6 @@
         .api-config input, .api-config select { width: 100%; padding: 6px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
         .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 
-        /* Highlights */
-        .hl-skill { color: var(--hl-cyan); font-weight: bold; }
-        .hl-danger { color: var(--accent-red); font-weight: bold; }
-        .hl-item { color: var(--hl-gold); font-weight: bold; }
-
         @media (max-width: 900px) {
             body { padding: 0; }
             .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; max-width: 100%; }
@@ -137,9 +132,6 @@
         <!-- 狀態分頁 -->
         <div id="tab-basic" class="tab-content active">
             <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">練氣期 (Lv.1)</span></div>
-            <!-- 隱藏但保留 UI ID 供 JS 讀取，防止 null 錯誤 -->
-            <span id="ui-level" style="display:none;">1</span>
-            
             <div class="stat-item"><span class="stat-label">修為進度</span>
                 <span class="stat-value" style="flex-grow:1; margin-left:10px;">
                     <div style="font-size:0.75rem; text-align:right;" id="ui-exp-text">0/100</div>
@@ -416,9 +408,6 @@
         if (s.hp <= 0 || currentAge >= s.maxAge) {
             s.hp = 0; s.status = ["【已身死道消】"];
         }
-
-        const elLevel = document.getElementById("ui-level");
-        if (elLevel) elLevel.innerText = s.level;
 
         document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
         document.getElementById("ui-linggen").innerText = s.linggen;
