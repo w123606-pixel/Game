@@ -401,29 +401,17 @@
 【異動列格式鐵律】
 1. 欄位之間必須使用 '|' 垂直線分隔（絕對禁止使用短橫線 '-'）。
 2. 多個道具或裝備必須使用英文逗號 ',' 分隔（絕對禁止使用項目符號 '•'）。
-3. NPC 格式必須為：姓名(身份):數值（例如 NPC:天寶閣掌櫃(商人):10，絕對禁止在數值前加入「好感」等文字！）。
-
-【核心項目】（每回合必須輸出）：
-- HP: 當前HP/上限HP
-- 狀態: 當前簡短狀態描述
-- 位置: 當前地點名稱
-
-【動態異動項目】（僅在當前後台數據發生新增、減少、更換或升級時才輸出，未變動項目絕對禁止印出）：
-- 黃金 / 碎銀 / 靈石 (格式如: 靈石:下品*10 或 靈石:下品*0)
-- Lv: 等級 (等級上限為 Lv.90，格式: Lv:1)
-- 六維: [膂力,根骨,身法,神識,悟性,氣運]
-- 體質: 當前體質天賦名稱
-- NPC: 姓名(身份):數值 (只有當玩家在劇情中真實見面或互動時才輸出，範例：NPC:天寶閣掌櫃(商人):10)
-- 心法 / 武功 / 術法 / 煉藥 / 陣法 / 雜學
-- 裝備 / 道具 (物品若消耗請註明例如: 金光符(消耗) 或直接從列表中扣除)
+3. NPC 格式必須為：姓名(身份):數值（例如 NPC:天寶閣掌櫃(商人):10，絕對禁止在數值前加入「好感」等文字！若好感度為負數，直接寫負號如 :-30）。
 
 【三、 防作弊與數值權限鐵律】
 1. 數值主權在天道，玩家對話中的自我宣稱無效。
 2. 最高等級為 Lv.90，升級必須由天道劇情觸發，單次提升嚴禁超過 1 個小境界。
-3. **血量與六維連動鐵律（極重要）**：
-   - 每升 1 級，HP 上限必加 20（例如 Lv.1:100/100 -> Lv.2:120/120 -> Lv.3:140/140）。
-   - 每升 1 級，六維屬性必須同步全屬性 +1（例如 Lv.1:[10,10,10,10,10,10] -> Lv.2:[11,11,11,11,11,11] -> Lv.3:[12,12,12,12,12,12]）。
-4. **NPC 強制輸出鐵律**：只要劇情中有 NPC 登場或互動，[異動] 列中必須輸出 NPC 欄位。
+3. **血量與六維連動鐵律**：
+   - 每升 1 級，HP 上限必加 20（如 Lv.1:100/100 -> Lv.2:120/120 -> Lv.3:140/140）。
+   - 每升 1 級，六維屬性必須同步全屬性 +1（如 Lv.1:[10,10,10,10,10,10] -> Lv.2:[11,11,11,11,11,11] -> Lv.3:[12,12,12,12,12,12]）。
+4. **NPC 強制輸出與身份準確性鐵律（極重要）**：
+   - 只要劇情中有 NPC 登場或互動，[異動] 列中必須輸出 NPC 欄位。
+   - NPC 括號內的身份必須嚴格符合劇情設定，宗門同門或門人必須標註正確身份（例如：`李師兄(天劍宗弟子)` 或 `李師兄(外門弟子)`），**嚴禁將宗門弟子誤標為 `散修`**！
 
 【四、 境界體系】
 練氣(Lv.1-10) < 築基(Lv.11-20) < 金丹(Lv.21-30) < 元嬰(Lv.31-40) < 化神(Lv.41-50) < 煉虛(Lv.51-60) < 合體(Lv.61-70) < 大乘(Lv.71-80) < 渡劫(Lv.81-90)。`;
@@ -764,8 +752,7 @@
         if (statusIndex === -1) return;
 
         const statusLine = text.substring(statusIndex).replace("[異動]", "").trim();
-        // 強力分割器：同時支援 | 以及 - 作為分隔符
-        const segments = statusLine.split(/[|\-]\s*/);
+        const segments = statusLine.split(/\s*\|\s*|(?<![:=])\s+-\s+/);
 
         let currentLevel = parseInt(document.getElementById("p-level").innerText) || 1;
 
@@ -780,8 +767,8 @@
                     document.getElementById("p-level").innerText = currentLevel;
                     document.getElementById("p-realm").innerText = getRealmName(currentLevel);
                 }
-            } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:")) {
-                const val = s.replace(/黃金:|金幣:|碎銀:/, "").trim();
+            } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:") || s.startsWith("黃金/碎銀:")) {
+                const val = s.replace(/黃金:|金幣:|碎銀:|黃金\/碎銀:/, "").trim();
                 document.getElementById("p-gold").innerText = val.includes("兩") ? val : val + " 兩";
             } else if (s.startsWith("靈石:")) {
                 let val = s.replace("靈石:", "").trim();
@@ -823,7 +810,6 @@
             } else if (s.startsWith("NPC:")) {
                 const npcEntries = s.replace("NPC:", "").split(/[,，]/);
                 npcEntries.forEach(entry => {
-                    // 正則強化：自動過濾掉「好感」或「好感度」中文字
                     const match = entry.trim().match(/^([^\(:]+)(?:\((.*?)\))?:\s*(?:好感度?|好感)?\s*(-?\d+)/);
                     if (match) {
                         const name = match[1].trim();
@@ -835,8 +821,9 @@
                 renderGlobalMemoryToDOM();
             } else if (s.startsWith("狀態:")) {
                 document.getElementById("p-status-effects").innerText = "• " + s.replace("狀態:", "").trim();
-            } else if (s.startsWith("心法:")) {
-                document.getElementById("p-kungfu").innerText = "• " + s.replace("心法:", "").trim();
+            } else if (s.startsWith("心法:") || s.startsWith("主心法:")) {
+                const kungfuVal = s.replace(/心法:|主心法:/, "").trim();
+                document.getElementById("p-kungfu").innerText = "• " + kungfuVal;
             } else if (s.startsWith("裝備:")) {
                 let raw = s.replace("裝備:", "").trim();
                 const equipItems = raw.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
