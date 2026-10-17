@@ -6,1244 +6,675 @@
     <title>九州裂天錄 - 異世旅者傳奇</title>
     <style>
         :root {
-            --bg-color: #0d0e15;
-            --panel-bg: #161823;
+            --bg-color: #050608;
+            --panel-bg: #12141d;
             --border-gold: #c5a059;
             --text-color: #e1e1e6;
-            --accent-red: #e64a19;
+            --accent-red: #ff5252;
             --accent-green: #43a047;
             --accent-blue: #0288d1;
-            --accent-purple: #8e24aa;
+            --accent-purple: #ab47bc;
             --hl-gold: #ffd700;
             --hl-cyan: #00ffff;
-            --hl-red: #ff5252;
             --accent-pink: #ff80ab;
+            --ui-border: #2a2d3d;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: "微軟正黑體", "Noto Sans TC", sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 15px; min-height: 100dvh; }
         
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-color); 
-            display: flex; 
-            justify-content: center; 
-            padding: 15px; 
-            min-height: 100dvh;
-        }
-        
-        .game-container {
-            display: grid;
-            grid-template-columns: 280px 1fr 260px;
-            gap: 15px;
-            width: 100%;
-            max-width: 1300px;
-            height: 90vh;
-            background-color: #050608;
-            border: 2px solid var(--border-gold);
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 0 25px rgba(197, 160, 89, 0.2);
-        }
-
-        .panel {
-            background-color: var(--panel-bg);
-            border: 1px solid #2a2d3d;
-            border-radius: 6px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
+        /* Layout */
+        .game-container { display: grid; grid-template-columns: 300px 1fr 260px; gap: 15px; width: 100%; max-width: 1350px; height: calc(100vh - 30px); }
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 15px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { color: var(--border-gold); font-size: 1.1rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 6px; margin-bottom: 12px; text-align: center; }
+        
+        /* Mobile Sticky Header (Hidden by default) */
+        #mobile-sticky-header { display: none; background: #090a0f; border-bottom: 2px solid var(--border-gold); padding: 10px; position: sticky; top: 0; z-index: 100; justify-content: space-between; align-items: center; font-size: 0.9rem; font-weight: bold; }
+        .hp-bar-container { width: 100px; height: 12px; background: #222; border: 1px solid #444; border-radius: 6px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 5px; }
+        .hp-bar-fill { height: 100%; background: var(--accent-red); transition: width 0.3s; }
 
-        .api-config {
-            background: #10121a;
-            border: 1px dashed var(--border-gold);
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 12px;
-            font-size: 0.85rem;
-        }
-        .api-config input, .api-config select {
-            width: 100%;
-            padding: 8px;
-            margin-top: 4px;
-            margin-bottom: 8px;
-            background: #1a1d2a;
-            border: 1px solid #3a3d52;
-            color: #fff;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
+        /* Left Panel Tabs */
+        .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 15px; flex-shrink: 0; }
+        .tab-btn { flex: 1; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { color: var(--border-gold); border-bottom: 2px solid var(--border-gold); }
+        .tab-content { display: none; overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .tab-content.active { display: block; }
+        .tab-content::-webkit-scrollbar, #story-log::-webkit-scrollbar { width: 4px; }
+        .tab-content::-webkit-scrollbar-thumb, #story-log::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 2px; }
 
+        /* Stats & UI */
         .stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
         .stat-label { color: #8b8ea8; }
-        .stat-value { font-weight: bold; }
-        .realm-badge { color: var(--accent-purple); font-weight: bold; }
-
-        .radar-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #10121a;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #2a2d3d;
-            margin-bottom: 12px;
-        }
-
-        .six-stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            background: #10121a;
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #2a2d3d;
-            font-size: 0.85rem;
-            margin-bottom: 12px;
-        }
-
-        .scroll-list {
-            max-height: 120px;
-            overflow-y: auto;
-            font-size: 0.85rem;
-            color: #aaa;
-            line-height: 1.6;
-            padding-right: 4px;
-        }
-        .scroll-list::-webkit-scrollbar { width: 4px; }
-        .scroll-list::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 2px; }
-
-        .save-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
-
-        .story-panel { 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden; /* 防止外層容器滾動 */
-        }
+        .stat-value { font-weight: bold; text-align: right; }
+        .realm-badge { color: var(--accent-purple); font-weight: bold; text-shadow: 0 0 5px rgba(171, 71, 188, 0.4); }
+        .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.6; white-space: pre-line; margin-bottom: 15px; }
         
-        #story-log { 
-            flex: 1 1 0%;
-            min-height: 0; /* 關鍵：讓 flex 內容正確出現內部滾動條 */
-            background: #090a0f; 
-            border: 1px solid #232635; 
-            padding: 15px; 
-            overflow-y: auto; 
-            border-radius: 4px; 
-            margin-bottom: 12px; 
-            font-size: 0.95rem; 
-            line-height: 1.7; 
-        }
+        .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 10px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 12px; }
+        .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.85rem; margin-bottom: 12px; }
 
-        .story-block { margin-bottom: 15px; border-bottom: 1px dashed #2a2d3d; padding-bottom: 10px; }
-        .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 8px; background: rgba(2, 136, 209, 0.05); }
-        .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
-        .status-footer { background: #131520; color: var(--border-gold); padding: 8px; border-radius: 4px; font-size: 0.85rem; margin-top: 8px; font-family: monospace; word-break: break-all; }
+        /* Exp Bar */
+        .exp-container { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+        .exp-fill { height: 100%; background: var(--hl-cyan); transition: width 0.3s; }
 
-        .hl-item { color: var(--hl-gold); font-weight: bold; }
-        .hl-skill { color: var(--hl-cyan); font-weight: bold; }
-        .hl-danger { color: var(--hl-red); font-weight: bold; }
-        .hl-deduce { color: var(--accent-purple); font-weight: bold; }
+        /* Story Panel */
+        .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); }
+        .story-header { background: #12141d; padding: 10px 15px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .quest-box { font-size: 0.85rem; color: var(--hl-gold); background: rgba(197, 160, 89, 0.1); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(197, 160, 89, 0.3); max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        #story-log { flex-grow: 1; padding: 15px; overflow-y: auto; font-size: 0.95rem; line-height: 1.7; scroll-behavior: smooth; }
+        .story-block { margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed var(--ui-border); opacity: 1; transition: opacity 0.3s; }
+        .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 10px; background: rgba(2, 136, 209, 0.05); }
+        .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 10px; background: rgba(197, 160, 89, 0.05); }
+        
+        /* Cursor for Typewriter */
+        .cursor { display: inline-block; width: 6px; height: 1em; background-color: var(--border-gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
 
+        /* Inputs & Controls */
+        .controls-area { padding: 15px; background: #12141d; border-top: 1px solid var(--ui-border); flex-shrink: 0; }
+        .dynamic-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .choice-btn { background: #1a1d2a; border: 1px solid var(--border-gold); color: var(--border-gold); padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; flex: 1 1 calc(50% - 4px); text-align: center; transition: 0.2s; }
+        .choice-btn:hover { background: var(--border-gold); color: #000; }
+        
         .input-group { display: flex; gap: 8px; }
-        input[type="text"] { flex-grow: 1; background: #10121a; border: 1px solid var(--border-gold); color: #fff; padding: 12px; border-radius: 4px; font-size: 0.95rem; }
-        button { background: #2a2d3d; color: var(--border-gold); border: 1px solid var(--border-gold); padding: 10px 18px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
-        button:hover:not(:disabled) { background: var(--border-gold); color: #000; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 12px; border-radius: 4px; font-size: 0.95rem; outline: none; }
+        input[type="text"]:focus { border-color: var(--border-gold); }
+        button { background: #2a2d3d; color: #fff; border: none; padding: 10px 18px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }
+        button.primary-btn { background: var(--border-gold); color: #000; }
+        button:hover:not(:disabled) { filter: brightness(1.2); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
 
         .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-        .quick-btn { font-size: 0.85rem; padding: 10px; min-height: 44px; }
+        .quick-btn { font-size: 0.85rem; padding: 8px; border: 1px solid #444; background: #1a1d2a; }
 
-        details summary { cursor: pointer; padding: 6px 0; color: var(--border-gold); font-weight: bold; font-size: 0.9rem; outline: none; }
+        /* System Config */
+        .api-config { background: #0a0b10; padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 0.85rem; }
+        .api-config input, .api-config select { width: 100%; padding: 6px; margin: 4px 0 8px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
+        .save-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+
+        /* Highlights */
+        .hl-skill { color: var(--hl-cyan); font-weight: bold; }
+        .hl-danger { color: var(--accent-red); font-weight: bold; }
+        .hl-item { color: var(--hl-gold); font-weight: bold; }
 
         @media (max-width: 900px) {
-            body { padding: 8px; }
-            .game-container {
-                display: flex;
-                flex-direction: column;
-                height: auto;
-                min-height: calc(100dvh - 16px);
-                padding: 10px;
-                gap: 10px;
-            }
-
-            .story-panel { 
-                order: 1; 
-                height: 70vh; /* 手機端固定故事面板高度，保證內部滾動與輸入框可見 */
-                overflow: hidden; 
-            }
-
-            .left-panel { order: 2; }
-            .right-panel { order: 3; }
-
-            .quick-actions {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            input[type="text"] {
-                font-size: 16px;
-            }
-
-            button {
-                min-height: 44px;
-            }
+            body { padding: 0; }
+            .game-container { display: flex; flex-direction: column; height: 100dvh; gap: 0; border: none; border-radius: 0; max-width: 100%; }
+            #mobile-sticky-header { display: flex; }
+            .story-panel { flex-grow: 1; border: none; height: auto; order: 1; border-radius: 0; }
+            .story-header { display: none; } /* Hide desktop header on mobile */
+            .left-panel { order: 2; height: 40vh; border: none; border-top: 2px solid var(--border-gold); border-radius: 0; }
+            .right-panel { display: none; } /* Hide world lore on mobile to save space */
+            .dynamic-choices { flex-direction: column; }
+            .choice-btn { flex: 1 1 100%; padding: 12px; font-size: 0.95rem; }
         }
     </style>
 </head>
 <body>
 
+<!-- Mobile Sticky Bar -->
+<div id="mobile-sticky-header">
+    <div style="color:var(--accent-purple)" id="m-realm">練氣期</div>
+    <div>HP <div class="hp-bar-container"><div class="hp-bar-fill" id="m-hp-fill" style="width: 100%;"></div></div></div>
+    <div style="color:#aaa; font-size:0.8rem; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="m-loc">新手村</div>
+</div>
+
 <div class="game-container">
+    <!-- Left Panel (Tabs) -->
     <div class="panel left-panel">
-        <h2>⚙️ 遊戲設定</h2>
-        <div class="api-config">
-            <label>選擇 AI 提供商：</label>
-            <select id="api-provider">
-                <option value="gemini">Google Gemini</option>
-                <option value="openai">OpenAI (ChatGPT)</option>
-            </select>
-            <label>API Key：</label>
-            <input type="password" id="api-key" placeholder="貼上你的 API Key">
-            <button onclick="saveApiKey()" style="width:100%; padding:8px; font-size:0.85rem;">儲存 Key</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-basic')">🪪 狀態</button>
+            <button class="tab-btn" onclick="switchTab('tab-skills')">⚔️ 功法</button>
+            <button class="tab-btn" onclick="switchTab('tab-social')">👥 人際</button>
+            <button class="tab-btn" onclick="switchTab('tab-sys')">⚙️ 系統</button>
         </div>
 
-        <h2>☯️ 旅者基本資訊</h2>
-        <div class="stat-item"><span class="stat-label">身份</span><span class="stat-value" style="color:var(--accent-blue)">異世旅者</span></div>
-        <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="p-realm">練氣期 (Lv.1)</span></div>
-        <div class="stat-item"><span class="stat-label">等級</span><span class="stat-value" id="p-level">1</span></div>
-        <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value" style="color:#00e676" id="p-linggen">待問心顯化</span></div>
-        <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="p-age">18 / 120 歲</span></div>
-        <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="p-hp">100 / 100</span></div>
-        <div class="stat-item"><span class="stat-label">宗門身份 / 階級</span><span class="stat-value" style="color:#ffd54f" id="p-sect-rank">無 / 散修</span></div>
-        <div class="stat-item"><span class="stat-label">世俗資產 (黃金/碎銀)</span><span class="stat-value" style="color:var(--border-gold)" id="p-gold">10 兩</span></div>
-        <div class="stat-item"><span class="stat-label">修仙貨幣 (靈石)</span><span class="stat-value" style="color:var(--hl-cyan)" id="p-spirit-stone">下品*10</span></div>
-        <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="p-physique">待問心覺醒</span></div>
-
-        <h2 style="margin-top: 10px;">📊 六維屬性雷達圖</h2>
-        <div class="radar-container">
-            <canvas id="radarCanvas" width="220" height="220"></canvas>
-        </div>
-
-        <div class="six-stats-grid">
-            <div>膂力 (STR): <span id="st-str" style="color:var(--hl-gold)">10</span></div>
-            <div>根骨 (CON): <span id="st-con" style="color:var(--accent-green)">10</span></div>
-            <div>身法 (AGI): <span id="st-agi" style="color:var(--hl-cyan)">10</span></div>
-            <div>神識 (INT): <span id="st-int" style="color:#64b5f6">10</span></div>
-            <div>悟性 (WIS): <span id="st-wis" style="color:var(--accent-purple)">10</span></div>
-            <div>氣運 (LUK): <span id="st-luk" style="color:#ffb74d">10</span></div>
-        </div>
-
-        <h2 style="margin-top: 5px;">💫 目前狀態 / 增益異常</h2>
-        <div id="p-status-effects" class="scroll-list" style="color: var(--accent-green);">
-            • 【健康】無特殊狀態
-        </div>
-
-        <h2 style="margin-top: 15px;">📖 主修心法與心境</h2>
-        <div id="p-kungfu" class="scroll-list" style="color: var(--hl-cyan); white-space: pre-line;">
-            • 基礎吐納心法（入門）
-        </div>
-
-        <h2 style="margin-top: 15px;">⚔️ 武功技能（劍/刀/身法）</h2>
-        <div id="p-skills-martial" class="scroll-list" style="color: #81c784; white-space: pre-line;">
-            • 基礎劍法（入門）
-            • 輕功草上飛（入門）
-        </div>
-
-        <h2 style="margin-top: 15px;">🔥 術法與神通</h2>
-        <div id="p-skills-spells" class="scroll-list" style="color: #64b5f6; white-space: pre-line;">
-            • 暫無
-        </div>
-
-        <h2 style="margin-top: 15px;">☯️ 陣法藝能</h2>
-        <div id="p-skills-array" class="scroll-list" style="color: #ba68c8; white-space: pre-line;">
-            • 暫無
-        </div>
-
-        <h2 style="margin-top: 15px;">🔨 煉器造詣</h2>
-        <div id="p-skills-craft" class="scroll-list" style="color: #ffb74d; white-space: pre-line;">
-            • 暫無
-        </div>
-
-        <h2 style="margin-top: 15px;">🌿 煉藥/毒理</h2>
-        <div id="p-skills-alchemy" class="scroll-list" style="color: #aed581; white-space: pre-line;">
-            • 基礎草藥辨識（入門）
-        </div>
-
-        <h2 style="margin-top: 15px;">📜 雜學技藝（符/卜/御獸）</h2>
-        <div id="p-skills-misc" class="scroll-list" style="color: #e0e0e0; white-space: pre-line;">
-            • 暫無
-        </div>
-
-        <h2 style="margin-top: 15px;">⚔️ 裝備與法寶</h2>
-        <div id="p-equipment" class="scroll-list" style="white-space: pre-line;">
-            • 粗鐵劍（凡鐵武器）
-            • 布衣（凡品防具）
-        </div>
-
-        <h2 style="margin-top: 15px;">🎒 道具與物品</h2>
-        <div id="p-inventory" class="scroll-list" style="white-space: pre-line;">
-            • 金創藥*2
-        </div>
-
-        <h2 style="margin-top: 15px;">💞 仙侶 / 道侶系統</h2>
-        <div id="p-companion-container" style="background: #10121a; padding: 8px; border-radius: 4px; border: 1px solid #2a2d3d;">
-            <select id="companion-select" onchange="renderCompanionDetails()" style="width:100%; padding:6px; background:#1a1d2a; border:1px solid #3a3d52; color:#fff; border-radius:4px; font-size:0.85rem; margin-bottom:8px; display:none;">
-            </select>
-            <div id="companion-details" class="scroll-list" style="color: var(--accent-pink); white-space: pre-line;">
-                • 暫無結為道侶之伴侶
+        <!-- 狀態分頁 -->
+        <div id="tab-basic" class="tab-content active">
+            <div class="stat-item"><span class="stat-label">境界</span><span class="stat-value realm-badge" id="ui-realm">練氣期 (Lv.1)</span></div>
+            <div class="stat-item"><span class="stat-label">修為進度</span>
+                <span class="stat-value" style="flex-grow:1; margin-left:10px;">
+                    <div style="font-size:0.75rem; text-align:right;" id="ui-exp-text">0/100</div>
+                    <div class="exp-container"><div class="exp-fill" id="ui-exp-fill" style="width: 0%;"></div></div>
+                </span>
+            </div>
+            <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18 / 120 歲</span></div>
+            <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">100 / 100</span></div>
+            <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value" style="color:#00e676" id="ui-linggen">待顯化</span></div>
+            <div class="stat-item"><span class="stat-label">體質/天賦</span><span class="stat-value" style="color:#e040fb" id="ui-physique">待覺醒</span></div>
+            <div class="stat-item"><span class="stat-label">宗門身份</span><span class="stat-value" style="color:#ffd54f" id="ui-sectRank">散修</span></div>
+            <div class="stat-item"><span class="stat-label">貢獻點數</span><span class="stat-value" style="color:#a5d6a7" id="ui-contribution">0</span></div>
+            <div class="stat-item"><span class="stat-label">靈石</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">下品*10</span></div>
+            
+            <h2 style="margin-top: 15px;">📊 六維屬性</h2>
+            <div class="radar-container"><canvas id="radarCanvas" width="200" height="200"></canvas></div>
+            <div class="six-stats-grid">
+                <div>膂力: <span id="st-str" style="color:var(--hl-gold)">10</span></div>
+                <div>根骨: <span id="st-con" style="color:var(--accent-green)">10</span></div>
+                <div>身法: <span id="st-agi" style="color:var(--hl-cyan)">10</span></div>
+                <div>神識: <span id="st-int" style="color:#64b5f6">10</span></div>
+                <div>悟性: <span id="st-wis" style="color:var(--accent-purple)">10</span></div>
+                <div>氣運: <span id="st-luk" style="color:#ffb74d">10</span></div>
             </div>
         </div>
 
-        <h2 style="margin-top: 15px;">📜 全域結識 NPC 名冊</h2>
-        <div id="p-global-npc-list" class="scroll-list" style="color: #64b5f6;">
-            • 暫無結識 NPC
+        <!-- 功法/物品分頁 -->
+        <div id="tab-skills" class="tab-content">
+            <h2>💫 狀態與增益</h2>
+            <div id="ui-status" class="scroll-list" style="color: var(--accent-green);">• 健康</div>
+            <h2>📖 主修心法</h2>
+            <div id="ui-kungfu" class="scroll-list" style="color: var(--hl-cyan);">• 無</div>
+            <h2>⚔️ 術法技能</h2>
+            <div id="ui-skills" class="scroll-list" style="color: #81c784;">• 無</div>
+            <h2>🎒 裝備道具</h2>
+            <div id="ui-equipItem" class="scroll-list" style="color: #fff;">• 粗鐵劍</div>
         </div>
 
-        <h2 style="margin-top: 15px;">♟️ 麾下傀儡 / 暗子</h2>
-        <div id="p-puppets-list" class="scroll-list" style="color: var(--accent-purple);">
-            • 無
+        <!-- 人際分頁 -->
+        <div id="tab-social" class="tab-content">
+            <h2>💞 道侶系統</h2>
+            <select id="ui-comp-select" onchange="renderCompanionDetails()" style="width:100%; padding:6px; background:#1a1d2a; border:1px solid #3a3d52; color:#fff; border-radius:4px; margin-bottom:8px; display:none;"></select>
+            <div id="ui-comp-details" class="scroll-list" style="color: var(--accent-pink);">• 暫無道侶</div>
+            <h2>📜 結識 NPC</h2>
+            <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 暫無結識</div>
+            <h2>🥷 麾下暗子/傀儡</h2>
+            <div id="ui-puppets" class="scroll-list" style="color: var(--accent-purple);">• 無</div>
         </div>
 
-        <div style="margin-top: 15px;">
-            <h2>💾 存檔管理</h2>
+        <!-- 系統分頁 -->
+        <div id="tab-sys" class="tab-content">
+            <div class="api-config">
+                <label>AI 提供商：</label>
+                <select id="api-provider">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openai">OpenAI (ChatGPT)</option>
+                </select>
+                <label>API Key：</label>
+                <input type="password" id="api-key" placeholder="貼上你的 API Key">
+                <label>自訂模型 (選填)：</label>
+                <input type="text" id="api-model" placeholder="預設 gemini-2.0-flash">
+                <button onclick="saveApiKey()" style="width:100%; margin-top:5px;">儲存設定</button>
+            </div>
+            
+            <h2 style="margin-top:15px;">💾 存檔管理</h2>
             <div class="save-controls">
-                <button onclick="manualSaveGame()" style="font-size: 0.8rem;">💾 儲存進度</button>
-                <button onclick="manualLoadGame()" style="font-size: 0.8rem;">📂 讀取存檔</button>
+                <button onclick="exportSave()">📥 匯出存檔</button>
+                <button onclick="document.getElementById('import-file').click()">📤 匯入存檔</button>
+                <input type="file" id="import-file" style="display:none" accept=".json" onchange="importSave(event)">
             </div>
-            <button style="width: 100%; background: #4a1515; border-color: #ff4d4d; color: #fff; font-size: 0.8rem;" onclick="resetGame()">🗑️ 重置遊戲進度</button>
+            <button style="width:100%; background:#4a1515; color:#fff; margin-top:8px;" onclick="resetGame()">🗑️ 重置遊戲</button>
         </div>
     </div>
 
+    <!-- Center Story Panel -->
     <div class="panel story-panel">
-        <h2>📜 九州史詩日誌</h2>
-        <div id="story-log">
-            <div class="story-block ai">
-                <strong>天道主持人：</strong><br>
-                歡迎踏入九州世界！你是一名凝聚肉身降臨九州邊陲的異世旅者。在踏入浩瀚修仙界之前，天道幻境展開，請完成【身世問心三答】以定下你的前世因果與先天機緣：<br><br>
-                <strong>【問心第一答：前世出身】</strong><br>
-                1. 鑄劍名門之子（傾向金/火靈根與劍道體質）<br>
-                2. 採藥童子出身（傾向木/水靈根與草木親和）<br>
-                3. 大難不死之孤兒（傾向雜靈根、高氣運或特殊煞氣體質）<br>
-                4. 天降異象之奇人（傾向變異雷/冰/風靈根或稀有聖體）<br><br>
-                請在輸入框回答你的選擇（或自行描述你的前世過往）！
-                <div class="status-footer">[異動] HP:100/100 | 年齡:18/120歲 | 靈根:待問心顯化 | 階級:散修 | 黃金:10兩 | 靈石:下品*10 | Lv:1(練氣一層) | 體質:待問心覺醒 | 六維:[10,10,10,10,10,10] | 狀態:【健康】 | 心法:基礎吐納心法(入門) | 武功:基礎劍法(入門),輕功草上飛(入門) | 煉藥:基礎草藥辨識(入門) | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村</div>
-            </div>
-        </div>
-        
-        <div class="input-group">
-            <input type="text" id="action-input" placeholder="輸入抉擇，開啟身世問心測驗..." onkeydown="if(event.key==='Enter'||event.keyCode===13) sendAction()">
-            <button id="btn-submit" onclick="sendAction()">抉擇</button>
+        <div class="story-header">
+            <div style="font-weight:bold; color:var(--border-gold);">📜 九州史詩</div>
+            <div class="quest-box" id="ui-quest">主線：凝聚肉身，踏入修仙界</div>
         </div>
 
-        <div class="quick-actions">
-            <button class="quick-btn" onclick="quickAction('【天道推演】')">✨ 發動天道推演</button>
-            <button class="quick-btn" onclick="quickAction('查閱《九州志》與探索周圍情報')">🔍 探查情報</button>
+        <div id="story-log"></div>
+        
+        <div class="controls-area">
+            <!-- Dynamic Choices -->
+            <div id="dynamic-choices-container" class="dynamic-choices"></div>
+
+            <div class="input-group">
+                <input type="text" id="action-input" placeholder="自訂你的行動..." onkeydown="if(event.key==='Enter') sendAction()">
+                <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
+            </div>
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="quickAction('原地打坐修練')">🧘 閉關修練</button>
+                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple);" onclick="quickAction('【天道推演，突破大境界】')" disabled>✨ 天道推演 (未滿足)</button>
+            </div>
         </div>
     </div>
 
+    <!-- Right Panel -->
     <div class="panel right-panel">
         <h2>🗺️ 當前位置</h2>
-        <div style="font-size: 0.9rem; margin-bottom: 15px;">
-            <strong id="p-location">【九州邊陲·新手村】</strong><br>
-            <small id="p-location-desc" style="color:#888;">仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。</small>
+        <div style="font-size: 0.9rem; margin-bottom: 15px; text-align:center;">
+            <strong id="ui-location" style="color:var(--hl-cyan);">【九州邊陲·新手村】</strong>
         </div>
-
         <details open>
-            <summary>📖 九州二十大頂級勢力表 (寫死世界觀)</summary>
-            <div style="font-size: 0.8rem; line-height: 1.6; color: #bbb; padding-top: 8px;">
-                <strong style="color: var(--accent-blue)">【正道盟（九大名門）】</strong><br>
-                1. 太一聖地：姬如煙（合體期）<br>
-                2. 玄冰宮：沈冰雁 / 沈清璃<br>
-                3. 天劍宗：凌霜雪（煉虛期）<br>
-                4. 梵音閣：妙善（煉虛期）<br>
-                5. 紫霄道宗：雷元子（合體期）<br>
-                6. 丹霞仙宗：丹陽子（煉虛期）<br>
-                7. 蓬萊仙島：陸滄海（合體期）<br>
-                8. 浩然書院：言聖仙（合體期）<br>
-                9. 無極星宮：星宿子（煉虛期）<br><br>
-
-                <strong style="color: var(--accent-red)">【邪道盟（四大魔宗）】</strong><br>
-                10. 血海宗：慕容嫣（化神期）<br>
-                11. 陰煞門：陰風老人（元嬰期）<br>
-                12. 萬魂幽冥宗：噬魂魔尊（合體期）<br>
-                13. 天魔邪宮：夜煞天魔（合體期）<br><br>
-
-                <strong style="color: var(--border-gold)">【中立勢力（五大巨頭）】</strong><br>
-                14. 天寶閣：金萬山（元嬰期）<br>
-                15. 百花谷：雲渺渺（化神期）<br>
-                16. 天妖傀儡城：墨千機（煉虛期）<br>
-                17. 黑市散修盟：獨孤狼（化神期）<br>
-                18. 四海商會：錢海通（化神期）<br><br>
-
-                <strong style="color: var(--accent-purple)">【隱世與天道（五大古族）】</strong><br>
-                19. 天機閣：洛清寒（煉虛期）<br>
-                20. 萬妖谷：夜妖嬈（煉虛期）<br>
-                21. 荒古姜家：姜太虛（合體期）<br>
-                22. 太古鳳凰族：鳳凰老祖（合體期）<br>
-                23. 輪迴仙閣：無塵道尊（合體期）
-            </div>
+            <summary>📖 九州頂級勢力表</summary>
+            <div style="font-size: 0.8rem; line-height: 1.6; color: #bbb; padding-top: 8px;" id="ui-world-factions"></div>
         </details>
     </div>
 </div>
 
 <script>
-    const BASE_SYSTEM_PROMPT = `你現在是網頁文字 RPG《九州裂天錄》的遊戲主持人 (DM)。
-請嚴格遵守以下【世界觀鐵律】、【道侶/伴侶系統轉換鐵律】與【硬核遊戲平衡規範】：
-
-【一、 寫死世界觀鐵律（極重要，嚴禁憑空捏造無關宗門）】
-本世界的勢力與世界觀必須完全依循《九州二十大頂級勢力表》，嚴禁寫出通用套路宗門！
-
-【二、 結算列輸出規則】
-每次回覆最後換行，並以單行輸出 [異動] 標籤。
-格式：[異動] HP:100/100 | 年齡:18/120歲 | 靈根:雙靈根(真靈根) | 階級:散修 | 黃金/碎銀:10兩 | 靈石:下品*10 | 宗門貢獻點:0 | Lv:1 | 六維:[10,12,10,10,10,10] | 體質:先天劍骨 | 伴侶:沈清璃(境界:築基初期, 靈根:天冰靈根, HP:220/220, 心法:玄冰聖訣, 武功:寒霜九劍, 裝備:雪蠶仙衣, 狀態:健康) | NPC:張三(外門弟子):10 | 主心法:基礎吐納心法 | 術法:基礎劍法 | 裝備:粗鐵劍,布衣 | 道具:金創藥*2 | 位置:九州邊陲·新手村
-
-【三、 仙侶/道侶系統晉升鐵律（極重要）】
-1. **晉升條件**：當某位 NPC 與玩家好感度達到 100 且發生【夫妻之實 / 結為道侶】後，該 NPC 將正式晉升為「道侶/伴侶」。
-2. **數據移出與格式輸出**：天道在輸出 [異動] 列時，必須將該 NPC 從普通 NPC: 列表中**永久移除**，改為寫入 \`伴侶:姓名(境界:..., 靈根:..., HP:..., 心法:..., 武功:..., 裝備:..., 狀態:...)\`。
-3. **道侶詳細快照**：伴侶屬性比照主角規格輸出，以便前端專屬 UI 讀取展示。若有多位道侶，可在 [異動] 列中同時列出。
-
-【四、 方案 B：身世問心測驗與開局初始化鐵律】
-1. 開局引導：天道透過【身世問心三答】引導玩家，並根據抉擇判定【靈根資質】與【體質天賦】。
-2. 輸出第一回合 [異動] 列時精準載入。
-
-【五、 靈根資質與體質天賦系統鐵律】
-1. 靈根：天靈根(300%) | 變異靈根(200%) | 真靈根(100%) | 雜靈根(30%~50%)。
-2. 體質：神體/聖體(HP+50%) | 靈體/寶體(特化/抗性) | 凡體肉胎。
-
-【六、 裝備/丹藥品級與丹毒鐵律】
-裝備加成：凡器(+1~4) | 法器(+5~20) | 靈寶(+25~60) | 仙器(+70~150+)。連服 3 顆低階丹藥強制觸發【丹毒纏身】Debuff。
-
-【七、 硬核 NPC 智商與城府鐵律】
-高修 NPC 極具城府，欺瞞會引發反算。普通社交單次好感不超 2~5 點！達至生死相許(100)並結為道侶需經生死考驗。
-
-【八、 壽命大限與閉關坐化鐵律】
-練氣 120 歲 | 築基 200 歲 | 金丹 500 歲 | 元嬰 1000 歲。閉關超過剩餘壽命且未突破者直接坐化。
-
-【九、 宗門階級與定期大比鐵律】
-每 3 年強制舉行【宗門大比/考核】，落敗扣貢獻或降級！
-
-【十、 修練突破與資源難度鐵律】
-嚴禁連續跨越多個小境界，靈石與貢獻點獲取極難。
-
-【十一、 天道推演圓滿觸發鐵律】
-僅限在圓滿期（Lv.10, Lv.20 等）發動，非圓滿期溫和婉拒。
-
-【十二、 境界體系】
-練氣(Lv.1-10) < 築基(Lv.11-20) < 金丹(Lv.21-30) < 元嬰(Lv.31-40) < 化神(Lv.41-50) < 煉虛(Lv.51-60) < 合體(Lv.61-70) < 大乘(Lv.71-80) < 渡劫(Lv.81-90)。`;
-
-    let conversationHistory = [];
-    let globalNpcMemory = new Map();
-    let globalCompanionMemory = new Map();
-    const MAX_DOM_LOGS = 30;
-
-    let currentSixStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
-    let currentHpVal = 100;
-    let currentMaxHpVal = 100;
-
-    window.onload = () => {
-        loadApiKey();
-        loadGameState();
-        sanitizeNpcMemory();
-        drawRadarChart(currentSixStats);
+    /* ================= 核心狀態管理 (State) ================= */
+    let gameState = {
+        level: 1, realm: "練氣期", linggen: "待問心顯化",
+        monthsPassed: 0, ageBase: 18, maxAge: 120,
+        hp: 100, maxHp: 100, exp: 0, maxExp: 100,
+        sectRank: "散修", contribution: 0, gold: "10兩", spiritStone: "下品*10",
+        physique: "待問心覺醒",
+        stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
+        status: ["健康"], kungfu: ["基礎吐納心法(入門)"], skills: ["基礎劍法(入門)"],
+        equipItem: ["粗鐵劍", "布衣", "金創藥*2"], location: "九州邊陲·新手村",
+        companions: [], npcs: [], puppets: [],
+        mainQuest: "完成身世問心，覺醒天賦。",
+        choices: ["1. 鑄劍名門之子", "2. 採藥童子出身", "3. 大難不死之孤兒", "4. 天降異象之奇人"]
     };
 
-    function getDynamicSystemPrompt() {
-        const savedSnapshot = localStorage.getItem("blade_player_snapshot");
-        if (!savedSnapshot) return BASE_SYSTEM_PROMPT;
+    let conversationHistory = [];
+    let isTyping = false;
+    const MAX_DOM_LOGS = 30;
 
-        try {
-            const s = JSON.parse(savedSnapshot);
-            const stateContext = `\n\n【目前玩家真實面板數據快照（極重要，請務必以此為基準推進劇情與輸出異動，嚴禁將玩家等級或壽命誤認）】:
-- 等級/境界: ${s.level} (${s.realm})
-- 靈根資質: ${s.linggen || "待問心顯化"}
-- 當前年齡與壽命: ${s.age || "18/120歲"}
-- 宗門階級: ${s.sectRank || "散修"}
-- 當前血量: ${s.hp}
-- 六維屬性: STR:${s.stats?.str}, CON:${s.stats?.con}, AGI:${s.stats?.agi}, INT:${s.stats?.int}, WIS:${s.stats?.wis}, LUK:${s.stats?.luk}
-- 體質天賦: ${s.physique || "待問心覺醒"}
-- 資產: 黃金/碎銀:${s.gold} | 靈石:${s.spiritStone}
-- 當前位置: ${s.location}
-- 當前裝備: ${s.equipment ? s.equipment.replace(/\n/g, ", ") : "無"}
-- 當前道具: ${s.inventory ? s.inventory.replace(/\n/g, ", ") : "無"}
-- 主修心法: ${s.kungfu ? s.kungfu.replace(/\n/g, ", ") : "無"}`;
-            return BASE_SYSTEM_PROMPT + stateContext;
-        } catch(e) {
-            return BASE_SYSTEM_PROMPT;
-        }
+    const WORLD_FACTIONS = `【正道九大名門】:1.太一聖地(姬如煙) 2.玄冰宮(沈清璃) 3.天劍宗(凌霜雪) 4.梵音閣(妙善) 5.紫霄道宗(雷元子) 6.丹霞仙宗(丹陽子) 7.蓬萊仙島 8.浩然書院 9.無極星宮\n【四大魔宗】:10.血海宗(慕容嫣) 11.陰煞門 12.萬魂幽冥宗 13.天魔邪宮\n【中立五大巨頭】:14.天寶閣 15.百花谷 16.天妖傀儡城 17.黑市散修盟 18.四海商會\n【隱世五大古族】:19.天機閣 20.萬妖谷 21.荒古姜家 22.太古鳳凰族 23.輪迴仙閣`;
+    const OPENING_TEXT = `歡迎踏入九州世界！你是一名凝聚肉身降臨九州邊陲的異世旅者。在踏入浩瀚修仙界之前，天道幻境展開，請完成【身世問心】以定下你的前世因果與先天機緣。請由下方選擇，或自行輸入！`;
+
+    /* ================= 系統提示詞產生器 ================= */
+    function getSystemPrompt() {
+        return `你現在是網頁文字 RPG《九州裂天錄》的天道 DM。
+嚴格遵守以下【世界觀】與【JSON 輸出鐵律】：
+
+【一、 世界觀鐵律】
+勢力與人物必須依循此名單，嚴禁捏造無關的頂級宗門：${WORLD_FACTIONS}
+
+【二、 JSON 狀態機輸出鐵律（絕對關鍵）】
+為讓前端正確渲染，你在每次推演劇情後，必須在回覆的「最後方」附上 markdown 的 \`\`\`json 區塊。
+請根據玩家行動結果，更新該 JSON（例如戰鬥扣 hp，獲得道具更新 equipItem）。
+* 新增機制：你可透過 \`advanceMonths\` 欄位來快轉時間（如閉關十年填 120），前端會自動計算年齡。
+* 新增機制：你必須透過 \`choices\` 提供 3~4 個符合當前情境的選項陣列給玩家。
+* JSON 格式範例：
+\`\`\`json
+{
+  "advanceMonths": 1,
+  "level": 2,
+  "realm": "練氣期",
+  "linggen": "雙靈根",
+  "maxAge": 120,
+  "hp": 90,
+  "maxHp": 100,
+  "exp": 25,
+  "maxExp": 100,
+  "sectRank": "外門弟子",
+  "contribution": 50,
+  "gold": "15兩",
+  "spiritStone": "下品*12",
+  "physique": "凡體肉胎",
+  "stats": {"str":10, "con":12, "agi":10, "int":10, "wis":10, "luk":15},
+  "status": ["健康"],
+  "kungfu": ["基礎吐納心法"],
+  "skills": ["基礎劍法"],
+  "equipItem": ["粗鐵劍", "金創藥*1"],
+  "location": "青陽鎮",
+  "companions": [{"name":"沈清璃", "details":"境界:築基初期, 好感:滿"}],
+  "npcs": [{"name":"張三", "affinity": 15, "desc":"外門管事"}],
+  "puppets": [],
+  "mainQuest": "突破至練氣三層",
+  "choices": ["前往後山採藥", "在房內打坐", "去坊市交易"]
+}
+\`\`\`
+
+【三、 數值與推演鐵律】
+1. 開局初始為 18 歲，NPC 陣列為空。不准天降道侶！
+2. EXP滿後不可自動跨越大境界（逢10等級如Lv10），需玩家點擊「天道推演」才能突破。
+3. 玩家的行動後面會附帶 [系統 D20 骰子判定]，請依據骰子點數 (1大失敗, 20大成功) 與屬性，客觀判定該行動的成敗與傷亡。
+
+【目前玩家真實 JSON 快照】
+${JSON.stringify(gameState)}`;
     }
 
-    function drawRadarChart(stats) {
-        const canvas = document.getElementById('radarCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = 220 * dpr;
-        canvas.height = 220 * dpr;
-        canvas.style.width = '220px';
-        canvas.style.height = '220px';
-        ctx.scale(dpr, dpr);
+    /* ================= 啟動與 UI 綁定 ================= */
+    window.onload = () => {
+        document.getElementById('ui-world-factions').innerHTML = WORLD_FACTIONS.replace(/\n/g, '<br>');
+        loadApiKey();
+        loadGameState();
+    };
 
-        const width = 220;
-        const height = 220;
-        const centerX = width / 2;
-        const centerY = height / 2;
-        const radius = 75;
-
-        ctx.clearRect(0, 0, width, height);
-
-        const labels = ['膂力', '根骨', '身法', '神識', '悟性', '氣運'];
-        const values = [
-            Math.min(stats.str || 10, 100),
-            Math.min(stats.con || 10, 100),
-            Math.min(stats.agi || 10, 100),
-            Math.min(stats.int || 10, 100),
-            Math.min(stats.wis || 10, 100),
-            Math.min(stats.luk || 10, 100)
-        ];
-        const numAxes = labels.length;
-
-        const maxStatVal = Math.max(...values, 20);
-
-        for (let level = 1; level <= 3; level++) {
-            const r = (radius / 3) * level;
-            ctx.beginPath();
-            for (let i = 0; i < numAxes; i++) {
-                const angle = (Math.PI / 3) * i - Math.PI / 2;
-                const x = centerX + r * Math.cos(angle);
-                const y = centerY + r * Math.sin(angle);
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.strokeStyle = "rgba(197, 160, 89, 0.25)";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-
-        ctx.font = "11px 微軟正黑體";
-        ctx.fillStyle = "#c5a059";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        for (let i = 0; i < numAxes; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
-
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(x, y);
-            ctx.strokeStyle = "rgba(197, 160, 89, 0.2)";
-            ctx.stroke();
-
-            const labelX = centerX + (radius + 20) * Math.cos(angle);
-            const labelY = centerY + (radius + 18) * Math.sin(angle);
-            ctx.fillText(`${labels[i]}:${values[i]}`, labelX, labelY);
-        }
-
-        ctx.beginPath();
-        for (let i = 0; i < numAxes; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const valRatio = Math.min(1, values[i] / maxStatVal);
-            const r = radius * valRatio;
-            const x = centerX + r * Math.cos(angle);
-            const y = centerY + r * Math.sin(angle);
-
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-
-        ctx.fillStyle = "rgba(0, 255, 255, 0.25)";
-        ctx.fill();
-
-        ctx.strokeStyle = "#00ffff";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        for (let i = 0; i < numAxes; i++) {
-            const angle = (Math.PI / 3) * i - Math.PI / 2;
-            const valRatio = Math.min(1, values[i] / maxStatVal);
-            const r = radius * valRatio;
-            const x = centerX + r * Math.cos(angle);
-            const y = centerY + r * Math.sin(angle);
-
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fillStyle = "#ffd700";
-            ctx.fill();
-        }
+    function initNewGame() {
+        conversationHistory = [];
+        document.getElementById("story-log").innerHTML = "";
+        appendLogHTML("天道主持人", OPENING_TEXT, "ai");
+        renderUI();
     }
 
-    function sanitizeNpcMemory() {
-        renderGlobalMemoryToDOM();
-        renderCompanionSystem();
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
     }
 
-    function saveApiKey() {
-        const key = document.getElementById("api-key").value.trim();
-        const provider = document.getElementById("api-provider").value;
-        if (!key) {
-            alert("請先輸入有效的 API Key！");
-            return;
-        }
-        localStorage.setItem("blade_api_key", key);
-        localStorage.setItem("blade_api_provider", provider);
-        alert("API Key 設定已成功儲存！");
-    }
-
-    function loadApiKey() {
-        const key = localStorage.getItem("blade_api_key");
-        const provider = localStorage.getItem("blade_api_provider");
-        if (key) document.getElementById("api-key").value = key;
-        if (provider) document.getElementById("api-provider").value = provider;
-    }
-
-    async function sendAction() {
-        let apiKey = document.getElementById("api-key").value.trim();
-        if (!apiKey) {
-            apiKey = localStorage.getItem("blade_api_key") || "";
-        }
-        
-        if (!apiKey) {
-            alert("⚠️ 請先在左側「⚙️ 遊戲設定」區輸入並點擊「儲存 Key」！");
-            document.getElementById("api-key").focus();
-            return;
-        }
+    /* ================= 核心邏輯與 API 呼叫 ================= */
+    async function sendAction(choiceText = null) {
+        if (isTyping) return;
+        const keyEl = document.getElementById("api-key");
+        let apiKey = keyEl.value.trim() || localStorage.getItem("blade_api_key");
+        if (!apiKey) { alert("⚠️ 請先在『系統』分頁輸入 API Key！"); return; }
 
         const inputEl = document.getElementById("action-input");
-        const actionText = inputEl.value.trim();
-        if (!actionText) {
-            alert("⚠️ 請先在輸入框填寫你的抉擇或回答選項！");
-            inputEl.focus();
-            return;
-        }
+        let actionText = choiceText || inputEl.value.trim();
+        if (!actionText) return;
 
         inputEl.value = "";
-        toggleLoading(true, "天道推導中...");
+        toggleLoading(true);
 
-        appendLog("異世旅者", actionText, "player");
-        conversationHistory.push({ role: "user", content: actionText });
+        // 系統暗骰 D20
+        const d20 = Math.floor(Math.random() * 20) + 1;
+        const actionWithDice = `${actionText}\n\n[系統附加：玩家本回合命運檢定 D20 骰出 ${d20} 點。請依此點數客觀判定結果，並更新 JSON]`;
+
+        appendLogHTML("異世旅者", escapeHTML(actionText) + ` <span style="font-size:0.7rem; color:#888;">(D20: ${d20})</span>`, "player");
+
+        // 建立 Rollback 備份
+        const historyBackup = JSON.stringify(conversationHistory);
+        const stateBackup = JSON.stringify(gameState);
+
+        conversationHistory.push({ role: "user", content: actionWithDice });
 
         try {
             const provider = document.getElementById("api-provider").value;
-            let aiResponseText = "";
-
-            if (provider === "gemini") {
-                aiResponseText = await callGeminiApiWithFallback(apiKey, conversationHistory);
-            } else {
-                aiResponseText = await callOpenAiApi(apiKey, conversationHistory);
-            }
+            let aiResponseText = provider === "gemini" ? await callGeminiApi(apiKey) : await callOpenAiApi(apiKey);
 
             conversationHistory.push({ role: "assistant", content: aiResponseText });
-            appendLog("天道主持人", aiResponseText, "ai");
+            const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
-            try {
-                parseAndUpdateStatus(aiResponseText);
-            } catch (pErr) {
-                console.warn("狀態解析異常，已自動跳過化解:", pErr);
+            // 處理時間與狀態更新
+            if (parsedState) {
+                if (parsedState.advanceMonths) {
+                    gameState.monthsPassed += parsedState.advanceMonths;
+                    delete parsedState.advanceMonths;
+                } else {
+                    gameState.monthsPassed += 1; // 預設消耗1個月
+                }
+                gameState = { ...gameState, ...parsedState };
+                gameState.ageBase = 18; // 鎖定基礎年齡
             }
-
+            
+            renderUI();
+            
+            // 打字機特效渲染故事
+            await typeWriterLog("天道主持人", storyText, "ai");
             saveGameState();
 
         } catch (error) {
-            console.error("API 呼叫失敗:", error);
-            appendLog("系統異常", `連線失敗: ${error.message}。請確認 API Key 是否正確或網路狀況是否良好。`, "ai");
+            console.error(error);
+            appendLogHTML("系統警告", `連線或解析失敗: ${error.message}。<br>狀態已回滾。`, "ai");
+            conversationHistory = JSON.parse(historyBackup);
+            gameState = JSON.parse(stateBackup);
+            inputEl.value = actionText;
         } finally {
             toggleLoading(false);
         }
     }
 
-    function quickAction(text) {
-        const inputEl = document.getElementById("action-input");
-        if (text === '【天道推演】') {
-            inputEl.value = '【天道推演】';
-            inputEl.focus();
-        } else {
-            inputEl.value = text;
-            sendAction();
-        }
-    }
+    function quickAction(text) { sendAction(text); }
 
-    function getTrimmedHistory(history, maxTurns = 10) {
-        if (history.length <= maxTurns * 2) return history;
-        return history.slice(-maxTurns * 2);
-    }
-
-    async function callGeminiApiWithFallback(apiKey, history) {
-        const candidateModels = [
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.5-flash-lite"
-        ];
-
-        const trimmedHistory = getTrimmedHistory(history, 10);
-        const dynamicPrompt = getDynamicSystemPrompt();
-
-        const contents = trimmedHistory.map(msg => ({
-            role: msg.role === "user" ? "user" : "model",
-            parts: [{ text: msg.content }]
-        }));
-
-        const bodyData = {
-            system_instruction: { parts: [{ text: dynamicPrompt }] },
-            contents: contents,
-            generationConfig: { 
-                temperature: 0.7, 
-                maxOutputTokens: 1500
-            }
-        };
-
-        let lastError = null;
-
-        for (const modelName of candidateModels) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
+    function parseApiResponse(text) {
+        const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        let story = text;
+        let state = null;
+        if (jsonMatch) {
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyData),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-                    return data.candidates[0].content.parts[0].text;
-                }
-            } catch (err) {
-                console.warn(`[${modelName}] 呼叫失敗，順延下一個模型:`, err.message);
-                lastError = err;
-            }
+                state = JSON.parse(jsonMatch[1]);
+                story = text.replace(/```(?:json)?\s*[\s\S]*?\s*```/, '').trim();
+            } catch (e) { console.error("JSON Error", e); }
         }
-
-        throw lastError || new Error("Gemini API 連線失敗，請檢查 API Key 是否有效！");
+        return { storyText: story, parsedState: state };
     }
 
-    async function callOpenAiApi(apiKey, history) {
-        const url = "https://api.openai.com/v1/chat/completions";
-        const trimmedHistory = getTrimmedHistory(history, 10);
-        const dynamicPrompt = getDynamicSystemPrompt();
+    function getTrimmedHistory(maxTurns = 10) {
+        let trimmed = conversationHistory.slice(-(maxTurns * 2));
+        if (trimmed.length > 0 && trimmed[0].role === "assistant") trimmed.shift();
+        return trimmed;
+    }
 
-        const messages = [
-            { role: "system", content: dynamicPrompt },
-            ...trimmedHistory.map(msg => ({
-                role: msg.role === "user" ? "user" : "assistant",
-                content: msg.content
-            }))
-        ];
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: messages,
-                temperature: 0.7,
-                max_tokens: 1500
-            }),
-            signal: controller.signal
+    async function callGeminiApi(apiKey) {
+        const customModel = document.getElementById("api-model").value.trim() || "gemini-2.0-flash";
+        const bodyData = {
+            system_instruction: { parts: [{ text: getSystemPrompt() }] },
+            contents: getTrimmedHistory().map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] })),
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1500 }
+        };
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${customModel}:generateContent?key=${apiKey}`, {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
+        return data.candidates[0].content.parts[0].text;
+    }
 
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error?.message || `OpenAI HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
+    async function callOpenAiApi(apiKey) {
+        const customModel = document.getElementById("api-model").value.trim() || "gpt-4o-mini";
+        const messages = [{ role: "system", content: getSystemPrompt() }, ...getTrimmedHistory().map(m => ({ role: m.role, content: m.content }))];
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            body: JSON.stringify({ model: customModel, messages: messages, temperature: 0.7 })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         return data.choices[0].message.content;
     }
 
-    function parseCategorySkill(segments, label, elementId) {
-        const targetSeg = segments.find(s => s.trim().replace(/^•\s*/, "").startsWith(label + ":"));
-        if (targetSeg) {
-            const el = document.getElementById(elementId);
-            if (!el) return;
-            const raw = targetSeg.split(":")[1] || "";
-            let items = raw.split(/[,，•]/).map(s => s.trim()).filter(Boolean);
-            
-            items = items.filter(item => !item.includes("(已用完)") && !item.includes("(已消耗)"));
-
-            if (items.length > 0) {
-                el.innerText = "• " + items.join("\n• ");
-            } else if (raw.includes("無") || raw.includes("暫無")) {
-                el.innerText = "• 暫無";
-            }
-        }
-    }
-
-    function parseAndUpdateStatus(text) {
-        const statusIndex = text.indexOf("[異動]");
-        if (statusIndex === -1) return;
-
-        const statusLine = text.substring(statusIndex).replace("[異動]", "").trim();
+    /* ================= UI 渲染邏輯 ================= */
+    function renderUI() {
+        const s = gameState;
+        const currentAge = s.ageBase + Math.floor(s.monthsPassed / 12);
         
-        const rawPipes = statusLine.split('|');
-        const segments = [];
-        rawPipes.forEach(p => {
-            const trimmed = p.trim();
-            if (!trimmed) return;
-            const dashes = trimmed.split(/\s+-\s+/);
-            dashes.forEach(d => { if(d.trim()) segments.push(d.trim()); });
-        });
-
-        let currentLevel = parseInt(document.getElementById("p-level").innerText) || 1;
-
-        segments.forEach(seg => {
-            const s = seg.trim().replace(/^•\s*/, "");
-            if (!s) return;
-
-            if (s.startsWith("Lv:")) {
-                const lvlNum = s.match(/Lv:\s*(\d+)/i);
-                if (lvlNum) {
-                    currentLevel = Math.min(parseInt(lvlNum[1]), 90);
-                    document.getElementById("p-level").innerText = currentLevel;
-                    document.getElementById("p-realm").innerText = getRealmName(currentLevel);
-                }
-            } else if (s.startsWith("靈根:") || s.startsWith("靈根資質:")) {
-                document.getElementById("p-linggen").innerText = s.replace(/靈根:|靈根資質:/, "").trim();
-            } else if (s.startsWith("年齡:") || s.startsWith("壽命:")) {
-                document.getElementById("p-age").innerText = s.replace(/年齡:|壽命:/, "").trim();
-            } else if (s.startsWith("階級:") || s.startsWith("宗門階級:")) {
-                document.getElementById("p-sect-rank").innerText = s.replace(/階級:|宗門階級:/, "").trim();
-            } else if (s.startsWith("黃金:") || s.startsWith("金幣:") || s.startsWith("碎銀:") || s.startsWith("黃金/碎銀:")) {
-                const val = s.replace(/黃金:|金幣:|碎銀:|黃金\/碎銀:/, "").trim();
-                document.getElementById("p-gold").innerText = val.includes("兩") ? val : val + " 兩";
-            } else if (s.startsWith("靈石:")) {
-                let val = s.replace("靈石:", "").trim();
-                if (/^\d+$/.test(val)) val = `下品*${val}`;
-                document.getElementById("p-spirit-stone").innerText = val;
-            } else if (s.startsWith("體質:")) {
-                document.getElementById("p-physique").innerText = s.replace("體質:", "").trim();
-            } else if (s.startsWith("位置:")) {
-                const locName = s.replace("位置:", "").trim();
-                document.getElementById("p-location").innerText = `【${locName}】`;
-                updateLocationDescription(locName);
-            } else if (s.startsWith("六維:")) {
-                const arrMatch = s.match(/\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]/);
-                if (arrMatch) {
-                    currentSixStats.str = parseInt(arrMatch[1]);
-                    currentSixStats.con = parseInt(arrMatch[2]);
-                    currentSixStats.agi = parseInt(arrMatch[3]);
-                    currentSixStats.int = parseInt(arrMatch[4]);
-                    currentSixStats.wis = parseInt(arrMatch[5]);
-                    currentSixStats.luk = parseInt(arrMatch[6]);
-
-                    document.getElementById("st-str").innerText = currentSixStats.str;
-                    document.getElementById("st-con").innerText = currentSixStats.con;
-                    document.getElementById("st-agi").innerText = currentSixStats.agi;
-                    document.getElementById("st-int").innerText = currentSixStats.int;
-                    document.getElementById("st-wis").innerText = currentSixStats.wis;
-                    document.getElementById("st-luk").innerText = currentSixStats.luk;
-
-                    drawRadarChart(currentSixStats);
-                }
-            } else if (s.startsWith("HP:")) {
-                const hpMatch = s.match(/HP:\s*(\d+)(?:\/(\d+))?/i);
-                if (hpMatch) {
-                    currentHpVal = parseInt(hpMatch[1]);
-                    if (hpMatch[2]) {
-                        currentMaxHpVal = parseInt(hpMatch[2]);
-                    }
-                }
-            } else if (s.startsWith("伴侶:")) {
-                const rawCompStr = s.replace("伴侶:", "").trim();
-                const compRegex = /([^\(:\,]+)\((.*?)\)/g;
-                let cMatch;
-                while ((cMatch = compRegex.exec(rawCompStr)) !== null) {
-                    const cName = cMatch[1].trim();
-                    const cDetails = cMatch[2].trim();
-                    if (globalNpcMemory.has(cName)) {
-                        globalNpcMemory.delete(cName);
-                    }
-                    globalCompanionMemory.set(cName, cDetails);
-                }
-                renderCompanionSystem();
-            } else if (s.startsWith("NPC:")) {
-                const npcEntries = s.replace("NPC:", "").split(/[,，]/);
-                npcEntries.forEach(entry => {
-                    const match = entry.trim().match(/^([^\(:]+)(?:\((.*?)\))?:\s*(?:好感度?|好感)?\s*(-?\d+)/);
-                    if (match) {
-                        const name = match[1].trim();
-                        const info = match[2] ? `${name}(${match[2]})` : name;
-                        const val = parseInt(match[3]);
-                        if (!globalCompanionMemory.has(name)) {
-                            globalNpcMemory.set(name, { info: info, val: val });
-                        }
-                    }
-                });
-                renderGlobalMemoryToDOM();
-            } else if (s.startsWith("狀態:")) {
-                document.getElementById("p-status-effects").innerText = "• " + s.replace("狀態:", "").trim();
-            } else if (s.startsWith("心法:") || s.startsWith("主心法:")) {
-                const kungfuVal = s.replace(/心法:|主心法:/, "").trim();
-                document.getElementById("p-kungfu").innerText = "• " + kungfuVal;
-            } else if (s.startsWith("裝備:")) {
-                let raw = s.replace("裝備:", "").trim();
-                const equipItems = raw.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
-                if (equipItems.length > 0) {
-                    document.getElementById("p-equipment").innerText = "• " + equipItems.join("\n• ");
-                }
-            } else if (s.startsWith("道具:")) {
-                let rawItemStr = s.replace("道具:", "").trim();
-                const spiritMatch = rawItemStr.match(/(?:下品|中品|上品)?靈石\*\d+/g);
-                if (spiritMatch) {
-                    document.getElementById("p-spirit-stone").innerText = spiritMatch.join(", ");
-                }
-                let items = rawItemStr.split(/[,，•]/).map(item => item.trim()).filter(Boolean);
-                items = items.filter(item => !item.includes("(已用完)") && !item.includes("(已消耗)"));
-                items = items.map(item => item.replace(/\(消耗\)/g, "").trim()).filter(Boolean);
-                if (items.length > 0) {
-                    document.getElementById("p-inventory").innerText = "• " + items.join("\n• ");
-                } else {
-                    document.getElementById("p-inventory").innerText = "• 無";
-                }
-            }
-        });
-
-        document.getElementById("p-hp").innerText = `${currentHpVal} / ${currentMaxHpVal}`;
-
-        parseCategorySkill(segments, "武功", "p-skills-martial");
-        parseCategorySkill(segments, "術法", "p-skills-spells");
-        parseCategorySkill(segments, "陣法", "p-skills-array");
-        parseCategorySkill(segments, "煉器", "p-skills-craft");
-        parseCategorySkill(segments, "煉藥", "p-skills-alchemy");
-        parseCategorySkill(segments, "雜學", "p-skills-misc");
-
-        savePlayerSnapshot();
-        sanitizeNpcMemory();
-    }
-
-    function savePlayerSnapshot() {
-        const snapshot = {
-            level: document.getElementById("p-level").innerText,
-            realm: document.getElementById("p-realm").innerText,
-            linggen: document.getElementById("p-linggen").innerText,
-            age: document.getElementById("p-age").innerText,
-            sectRank: document.getElementById("p-sect-rank").innerText,
-            hp: document.getElementById("p-hp").innerText,
-            gold: document.getElementById("p-gold").innerText,
-            spiritStone: document.getElementById("p-spirit-stone").innerText,
-            physique: document.getElementById("p-physique").innerText,
-            stats: currentSixStats,
-            status: document.getElementById("p-status-effects").innerText,
-            kungfu: document.getElementById("p-kungfu").innerText,
-            martial: document.getElementById("p-skills-martial").innerText,
-            spells: document.getElementById("p-skills-spells").innerText,
-            array: document.getElementById("p-skills-array").innerText,
-            craft: document.getElementById("p-skills-craft").innerText,
-            alchemy: document.getElementById("p-skills-alchemy").innerText,
-            misc: document.getElementById("p-skills-misc").innerText,
-            equipment: document.getElementById("p-equipment").innerText,
-            inventory: document.getElementById("p-inventory").innerText,
-            location: document.getElementById("p-location").innerText
-        };
-        localStorage.setItem("blade_player_snapshot", JSON.stringify(snapshot));
-    }
-
-    function restorePlayerSnapshot() {
-        const saved = localStorage.getItem("blade_player_snapshot");
-        if (!saved) return;
-        try {
-            const data = JSON.parse(saved);
-            if (data.level) document.getElementById("p-level").innerText = data.level;
-            if (data.realm) document.getElementById("p-realm").innerText = data.realm;
-            if (data.linggen) document.getElementById("p-linggen").innerText = data.linggen;
-            if (data.age) document.getElementById("p-age").innerText = data.age;
-            if (data.sectRank) document.getElementById("p-sect-rank").innerText = data.sectRank;
-            if (data.hp) {
-                document.getElementById("p-hp").innerText = data.hp;
-                const hpParts = data.hp.split("/");
-                if (hpParts.length === 2) {
-                    currentHpVal = parseInt(hpParts[0].trim()) || 100;
-                    currentMaxHpVal = parseInt(hpParts[1].trim()) || 100;
-                }
-            }
-            if (data.gold) document.getElementById("p-gold").innerText = data.gold;
-            if (data.spiritStone) document.getElementById("p-spirit-stone").innerText = data.spiritStone;
-            if (data.physique) document.getElementById("p-physique").innerText = data.physique;
-            if (data.stats) {
-                currentSixStats = data.stats;
-                document.getElementById("st-str").innerText = currentSixStats.str || 10;
-                document.getElementById("st-con").innerText = currentSixStats.con || 10;
-                document.getElementById("st-agi").innerText = currentSixStats.agi || 10;
-                document.getElementById("st-int").innerText = currentSixStats.int || 10;
-                document.getElementById("st-wis").innerText = currentSixStats.wis || 10;
-                document.getElementById("st-luk").innerText = currentSixStats.luk || 10;
-                drawRadarChart(currentSixStats);
-            }
-            if (data.status) document.getElementById("p-status-effects").innerText = data.status;
-            if (data.kungfu) document.getElementById("p-kungfu").innerText = data.kungfu;
-            if (data.martial) document.getElementById("p-skills-martial").innerText = data.martial;
-            if (data.spells) document.getElementById("p-skills-spells").innerText = data.spells;
-            if (data.array) document.getElementById("p-skills-array").innerText = data.array;
-            if (data.craft) document.getElementById("p-skills-craft").innerText = data.craft;
-            if (data.alchemy) document.getElementById("p-skills-alchemy").innerText = data.alchemy;
-            if (data.misc) document.getElementById("p-skills-misc").innerText = data.misc;
-            if (data.equipment) document.getElementById("p-equipment").innerText = data.equipment;
-            if (data.inventory) document.getElementById("p-inventory").innerText = data.inventory;
-            if (data.location) {
-                document.getElementById("p-location").innerText = data.location;
-                updateLocationDescription(data.location);
-            }
-        } catch(e) { console.error("Snapshot Restore Fail", e); }
-    }
-
-    function renderCompanionSystem() {
-        const selectEl = document.getElementById("companion-select");
-        const detailsEl = document.getElementById("companion-details");
-
-        if (!selectEl || !detailsEl) return;
-
-        if (globalCompanionMemory.size === 0) {
-            selectEl.style.display = "none";
-            detailsEl.innerText = "• 暫無結為道侶之伴侶";
-            return;
+        // 死亡判定
+        if (s.hp <= 0 || currentAge >= s.maxAge) {
+            s.hp = 0; s.status = ["【已身死道消】"];
         }
 
-        const currentSelected = selectEl.value;
-        selectEl.innerHTML = "";
+        // 基本數值
+        document.getElementById("ui-level").innerText = s.level;
+        document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
+        document.getElementById("m-realm").innerText = s.realm;
+        document.getElementById("ui-linggen").innerText = s.linggen;
+        document.getElementById("ui-age").innerText = `${currentAge} / ${s.maxAge} 歲`;
+        document.getElementById("ui-hp").innerText = `${s.hp} / ${s.maxHp}`;
+        document.getElementById("ui-sectRank").innerText = s.sectRank;
+        document.getElementById("ui-contribution").innerText = s.contribution;
+        document.getElementById("ui-gold").innerText = s.gold;
+        document.getElementById("ui-spiritStone").innerText = s.spiritStone;
+        document.getElementById("ui-physique").innerText = s.physique;
+        document.getElementById("ui-location").innerText = `【${s.location}】`;
+        document.getElementById("m-loc").innerText = s.location;
+        document.getElementById("ui-quest").innerText = `主線：${s.mainQuest || "自由探索"}`;
+
+        // 經驗值條與 HP 條
+        const expPct = Math.min(100, (s.exp / s.maxExp) * 100) || 0;
+        document.getElementById("ui-exp-text").innerText = `${s.exp}/${s.maxExp}`;
+        document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
+        document.getElementById("m-hp-fill").style.width = `${Math.max(0, (s.hp/s.maxHp)*100)}%`;
+
+        // 屬性雷達
+        ['str','con','agi','int','wis','luk'].forEach(st => document.getElementById(`st-${st}`).innerText = s.stats[st] || 10);
+        drawRadarChart(s.stats);
+
+        // 陣列列表渲染
+        const fillList = (id, arr) => document.getElementById(id).innerText = (!arr || arr.length === 0) ? "• 無" : "• " + arr.join("\n• ");
+        fillList("ui-status", s.status);
+        fillList("ui-kungfu", s.kungfu);
+        fillList("ui-skills", s.skills);
+        fillList("ui-equipItem", s.equipItem);
         
-        for (let name of globalCompanionMemory.keys()) {
-            const opt = document.createElement("option");
-            opt.value = name;
-            opt.innerText = `💞 道侶：${name}`;
-            selectEl.appendChild(opt);
-        }
+        const formatArr = (arr, mapFn) => (!arr || arr.length === 0) ? "• 無" : arr.map(mapFn).join("<br>");
+        document.getElementById("ui-npcs").innerHTML = formatArr(s.npcs, n => `• ${n.name}(${n.desc}): ${n.affinity}`);
+        document.getElementById("ui-puppets").innerHTML = formatArr(s.puppets, p => `• ${p.name}: ${p.details}`);
 
-        selectEl.style.display = "block";
-
-        if (currentSelected && globalCompanionMemory.has(currentSelected)) {
-            selectEl.value = currentSelected;
+        // 道侶
+        const cSel = document.getElementById("ui-comp-select"), cDet = document.getElementById("ui-comp-details");
+        if (!s.companions || s.companions.length === 0) {
+            cSel.style.display = "none"; cDet.innerText = "• 暫無道侶";
         } else {
-            selectEl.selectedIndex = 0;
+            cSel.style.display = "block"; const cur = cSel.value;
+            cSel.innerHTML = s.companions.map(c => `<option value="${c.name}">💞 ${c.name}</option>`).join("");
+            if (s.companions.find(c => c.name === cur)) cSel.value = cur;
+            renderCompanionDetails();
         }
 
-        renderCompanionDetails();
+        // 動態選項生成
+        const choiceContainer = document.getElementById("dynamic-choices-container");
+        if (s.hp <= 0) {
+            choiceContainer.innerHTML = `<button class="choice-btn" onclick="resetGame()" style="background:#4a1515;color:#fff;">輪迴重啟</button>`;
+        } else if (s.choices && s.choices.length > 0) {
+            choiceContainer.innerHTML = s.choices.map(c => `<button class="choice-btn" onclick="sendAction('${escapeHTML(c)}')">${escapeHTML(c)}</button>`).join("");
+        } else {
+            choiceContainer.innerHTML = "";
+        }
+
+        // 鎖定天道推演按鈕 (每 10 級解鎖)
+        const btnDeduce = document.getElementById("btn-deduce");
+        if (s.level % 10 === 0 && s.level > 0 && s.exp >= s.maxExp) {
+            btnDeduce.disabled = false;
+            btnDeduce.innerText = "✨ 突破大境界 (已解鎖)";
+        } else {
+            btnDeduce.disabled = true;
+            btnDeduce.innerText = `✨ 天道推演 (需滿經驗且逢10級)`;
+        }
     }
 
     function renderCompanionDetails() {
-        const selectEl = document.getElementById("companion-select");
-        const detailsEl = document.getElementById("companion-details");
-
-        if (globalCompanionMemory.size === 0) {
-            detailsEl.innerText = "• 暫無結為道侶之伴侶";
-            return;
-        }
-
-        const selectedName = selectEl.value;
-        if (!selectedName || !globalCompanionMemory.has(selectedName)) return;
-
-        const rawDetails = globalCompanionMemory.get(selectedName);
-        const items = rawDetails.split(/[,，]/).map(item => item.trim()).filter(Boolean);
-        
-        if (items.length > 0) {
-            detailsEl.innerText = `【${selectedName}】\n• ` + items.join("\n• ");
-        } else {
-            detailsEl.innerText = `• 【${selectedName}】（數據同步中）`;
-        }
+        const cName = document.getElementById("ui-comp-select").value;
+        const comp = gameState.companions.find(c => c.name === cName);
+        if (comp) document.getElementById("ui-comp-details").innerText = `【${comp.name}】\n• ` + comp.details.split(/[,，]/).map(x=>x.trim()).filter(Boolean).join("\n• ");
     }
 
-    function renderGlobalMemoryToDOM() {
-        const listEl = document.getElementById("p-global-npc-list");
-        if (globalNpcMemory.size === 0) {
-            listEl.innerText = "• 暫無結識 NPC";
-            return;
-        }
-
-        const items = [];
-        globalNpcMemory.forEach((data, name) => {
-            if (!globalCompanionMemory.has(name)) {
-                items.push(`• ${data.info}: ${data.val} (${getAffinityTitle(data.val)})`);
-            }
-        });
-
-        if (items.length === 0) {
-            listEl.innerText = "• 暫無普通結識 NPC";
-        } else {
-            listEl.innerHTML = items.join("<br>");
-        }
-    }
-
-    function updateLocationDescription(location) {
-        const descEl = document.getElementById("p-location-desc");
-        if (location.includes("落魂禁地") || location.includes("寒潭")) {
-            descEl.innerText = "黑紫瘴氣瀰漫之凶險禁地，妖獸與魔修常在此出沒。";
-        } else if (location.includes("血煞宗") || location.includes("秘庫")) {
-            descEl.innerText = "邪道宗門重地，煞氣滔天，藏有血煞宗百年積攢之凶具與重寶。";
-        } else if (location.includes("天劍宗") || location.includes("凌霄閣") || location.includes("玄冰宮") || location.includes("雲霧峰")) {
-            descEl.innerText = "正道名門大派，仙氣繚繞，氣勢磅礡。";
-        } else if (location.includes("新手村") || location.includes("青陽鎮") || location.includes("落霞鎮")) {
-            descEl.innerText = "仙道與凡人江湖交界之地，常有異世旅者在此凝聚肉身。";
-        } else if (location.includes("斷魂坡")) {
-            descEl.innerText = "地勢險要之峽谷隘口，常有山賊匪寇伏擊往來商隊。";
-        } else if (location.includes("青石鎮")) {
-            descEl.innerText = "靠近黑風嶺之散修集聚小鎮，魚龍混雜。";
-        } else {
-            descEl.innerText = "九州浩瀚大地之上的一處區域。";
-        }
-    }
-
-    function getRealmName(lvl) {
-        if (lvl <= 10) return `練氣期 (Lv.${lvl})`;
-        if (lvl <= 20) return `築基期 (Lv.${lvl})`;
-        if (lvl <= 30) return `金丹期 (Lv.${lvl})`;
-        if (lvl <= 40) return `元嬰期 (Lv.${lvl})`;
-        if (lvl <= 50) return `化神期 (Lv.${lvl})`;
-        if (lvl <= 60) return `煉虛期 (Lv.${lvl})`;
-        if (lvl <= 70) return `合體期 (Lv.${lvl})`;
-        if (lvl <= 80) return `大乘期 (Lv.${lvl})`;
-        if (lvl <= 90) return `渡劫期 (Lv.${lvl})`;
-        return `真仙境 (Lv.${lvl})`;
-    }
-
-    function getAffinityTitle(aff) {
-        if (aff >= 100) return "生死相許/死士";
-        if (aff >= 80) return "摯友/敬佩";
-        if (aff > 0) return "友好";
-        if (aff === 0) return "中立";
-        if (aff >= -50) return "厭惡/敵視";
-        return "不共戴天/生死仇敵";
-    }
-
-    function applyKeywordHighlight(htmlText) {
-        return htmlText
-            .replace(/【天道推演】/g, '<span class="hl-deduce">【天道推演】</span>')
-            .replace(/(獲得|搜刮|獲得法寶|獲得神器|收歸囊中)/g, '<span class="hl-item">$1</span>')
-            .replace(/(突破|破境|昇華|頓悟|成功破丹成嬰|晉升)/g, '<span class="hl-skill">$1</span>')
-            .replace(/(灰飛煙滅|神形俱滅|全滅|重傷|死士|傀儡|毒煞|暗算|陷阱|反噬)/g, '<span class="hl-danger">$1</span>');
-    }
-
-    function appendLog(role, text, type) {
+    /* ================= 打字機與顯示特效 ================= */
+    async function typeWriterLog(role, rawText, type) {
+        isTyping = true;
         const logBox = document.getElementById("story-log");
         
-        const statusIdx = text.indexOf("[異動]");
-        let formattedText = text;
-        let statusHtml = "";
+        // 預處理高亮標籤，避免破壞 HTML
+        let htmlText = escapeHTML(rawText).replace(/\n/g, "<br>")
+            .replace(/(獲得|突破|頓悟|成功|修為大進)/g, '<span class="hl-skill">$1</span>')
+            .replace(/(重傷|死士|毒煞|暗算|反噬|壽元將盡)/g, '<span class="hl-danger">$1</span>')
+            .replace(/(法寶|靈器|丹藥|靈石)/g, '<span class="hl-item">$1</span>');
 
-        if (statusIdx !== -1) {
-            const rawStory = text.substring(0, statusIdx).replace(/(---|——)\s*$/, "").trim();
-            const rawStatus = text.substring(statusIdx).trim();
-            formattedText = rawStory;
-            statusHtml = `<div class="status-footer">${rawStatus}</div>`;
-        }
+        const block = document.createElement('div');
+        block.className = `story-block ${type}`;
+        block.innerHTML = `<strong>${role}：</strong><br><span class="type-content"></span><span class="cursor"></span>`;
+        logBox.appendChild(block);
+        
+        const contentSpan = block.querySelector('.type-content');
+        const cursor = block.querySelector('.cursor');
+        
+        // 簡易 HTML 安全打字機
+        let i = 0; let isTag = false; let currentHTML = '';
+        return new Promise(resolve => {
+            function typeChar() {
+                if (i < htmlText.length) {
+                    let char = htmlText.charAt(i);
+                    currentHTML += char;
+                    if (char === '<') isTag = true;
+                    if (char === '>') isTag = false;
+                    
+                    contentSpan.innerHTML = currentHTML;
+                    logBox.scrollTop = logBox.scrollHeight;
+                    i++;
+                    setTimeout(typeChar, isTag ? 0 : 15); // 遇到 Tag 瞬間印出不延遲
+                } else {
+                    cursor.remove();
+                    cleanDomLogs();
+                    isTyping = false;
+                    resolve();
+                }
+            }
+            typeChar();
+        });
+    }
 
-        let highlightedContent = applyKeywordHighlight(formattedText.replace(/\n/g, "<br>"));
+    function appendLogHTML(role, htmlText, type) {
+        const logBox = document.getElementById("story-log");
+        logBox.innerHTML += `<div class="story-block ${type}"><strong>${role}：</strong><br>${htmlText}</div>`;
+        cleanDomLogs();
+    }
 
-        logBox.innerHTML += `
-            <div class="story-block ${type}">
-                <strong>${role}：</strong><br>
-                ${highlightedContent}
-                ${statusHtml}
-            </div>`;
-
+    function cleanDomLogs() {
+        const logBox = document.getElementById("story-log");
         const blocks = logBox.getElementsByClassName("story-block");
-        while (blocks.length > MAX_DOM_LOGS) {
-            blocks[0].remove();
-        }
-
+        while (blocks.length > MAX_DOM_LOGS) blocks[0].remove();
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function toggleLoading(isLoading, text = "天道推導中...") {
+    function toggleLoading(isLoading) {
         const btn = document.getElementById("btn-submit");
         const input = document.getElementById("action-input");
-        if (isLoading) {
-            btn.disabled = true;
-            btn.innerText = text;
-            input.disabled = true;
-        } else {
-            btn.disabled = false;
-            btn.innerText = "抉擇";
-            input.disabled = false;
-            input.focus();
-        }
+        const dBtns = document.querySelectorAll(".choice-btn");
+        btn.disabled = isLoading; input.disabled = isLoading;
+        btn.innerText = isLoading ? "推演中..." : "抉擇";
+        dBtns.forEach(b => b.disabled = isLoading);
+        if (!isLoading && window.innerWidth > 900) input.focus();
+    }
+
+    /* ================= 存檔與匯出系統 ================= */
+    function escapeHTML(str) { return str.replace(/[&<>'"]/g, t => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[t])); }
+
+    function drawRadarChart(s) {
+        const cvs = document.getElementById('radarCanvas'); if(!cvs) return;
+        const ctx = cvs.getContext('2d'), dpr = window.devicePixelRatio || 1;
+        cvs.width = 200*dpr; cvs.height = 200*dpr; cvs.style.width='200px'; cvs.style.height='200px'; ctx.scale(dpr,dpr);
+        ctx.clearRect(0,0,200,200); const vals = [s.str,s.con,s.agi,s.int,s.wis,s.luk].map(v=>Math.min(v||10,100)), maxVal=Math.max(...vals,20);
+        const cx=100, cy=100, r=70;
+        for(let l=1;l<=3;l++){ ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, x=cx+(r/3)*l*Math.cos(a), y=cy+(r/3)*l*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.strokeStyle="rgba(197,160,89,0.25)"; ctx.stroke(); }
+        ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, rr=r*(vals[i]/maxVal), x=cx+rr*Math.cos(a), y=cy+rr*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.fillStyle="rgba(0,255,255,0.25)"; ctx.fill(); ctx.strokeStyle="#00ffff"; ctx.stroke();
+    }
+
+    function saveApiKey() {
+        localStorage.setItem("blade_api_key", document.getElementById("api-key").value.trim());
+        localStorage.setItem("blade_api_provider", document.getElementById("api-provider").value);
+        localStorage.setItem("blade_api_model", document.getElementById("api-model").value.trim());
+        alert("⚙️ 設定已儲存！");
+    }
+
+    function loadApiKey() {
+        if(localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key");
+        if(localStorage.getItem("blade_api_provider")) document.getElementById("api-provider").value = localStorage.getItem("blade_api_provider");
+        if(localStorage.getItem("blade_api_model")) document.getElementById("api-model").value = localStorage.getItem("blade_api_model");
     }
 
     function saveGameState() {
-        localStorage.setItem("blade_story_log", document.getElementById("story-log").innerHTML);
-        localStorage.setItem("blade_conv_history", JSON.stringify(conversationHistory));
-        localStorage.setItem("blade_global_npc_map", JSON.stringify(Array.from(globalNpcMemory.entries())));
-        localStorage.setItem("blade_global_companion_map", JSON.stringify(Array.from(globalCompanionMemory.entries())));
-        savePlayerSnapshot();
-    }
-
-    function manualSaveGame() {
-        saveGameState();
-        alert("💾 遊戲進度與仙侶名冊已成功儲存！");
+        localStorage.setItem("blade_state", JSON.stringify(gameState));
+        localStorage.setItem("blade_history", JSON.stringify(conversationHistory));
+        localStorage.setItem("blade_dom_log", document.getElementById("story-log").innerHTML);
     }
 
     function loadGameState() {
-        const savedLog = localStorage.getItem("blade_story_log");
-        const savedHistory = localStorage.getItem("blade_conv_history");
-        const savedNpcMap = localStorage.getItem("blade_global_npc_map");
-        const savedCompanionMap = localStorage.getItem("blade_global_companion_map");
-
-        if (savedNpcMap) {
-            try {
-                globalNpcMemory = new Map(JSON.parse(savedNpcMap));
-            } catch(e) { console.error("NPC Map 載入失敗", e); }
+        const savedState = localStorage.getItem("blade_state");
+        if (savedState && localStorage.getItem("blade_history")) {
+            gameState = JSON.parse(savedState);
+            conversationHistory = JSON.parse(localStorage.getItem("blade_history"));
+            document.getElementById("story-log").innerHTML = localStorage.getItem("blade_dom_log");
+            renderUI();
+        } else {
+            initNewGame();
         }
-
-        if (savedCompanionMap) {
-            try {
-                globalCompanionMemory = new Map(JSON.parse(savedCompanionMap));
-            } catch(e) { console.error("Companion Map 載入失敗", e); }
-        }
-
-        restorePlayerSnapshot();
-
-        if (savedLog && savedHistory) {
-            document.getElementById("story-log").innerHTML = savedLog;
-            conversationHistory = JSON.parse(savedHistory);
-            
-            if (conversationHistory.length > 0) {
-                const lastAiMsg = [...conversationHistory].reverse().find(m => m.role === "assistant");
-                if (lastAiMsg) parseAndUpdateStatus(lastAiMsg.content);
-            }
-        }
-
-        sanitizeNpcMemory();
     }
 
-    function manualLoadGame() {
-        loadGameState();
-        alert("📂 已成功讀取歷史存檔與道侶數據！");
+    function exportSave() {
+        const saveData = JSON.stringify({ state: gameState, history: conversationHistory, log: document.getElementById("story-log").innerHTML });
+        const blob = new Blob([saveData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = `九州存檔_Lv${gameState.level}_${new Date().getTime()}.json`;
+        a.click(); URL.revokeObjectURL(url);
+    }
+
+    function importSave(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.state && data.history) {
+                    gameState = data.state; conversationHistory = data.history;
+                    document.getElementById("story-log").innerHTML = data.log || "";
+                    saveGameState(); renderUI(); alert("📂 讀檔成功，歡迎回歸九州！");
+                } else alert("❌ 存檔格式錯誤！");
+            } catch (err) { alert("❌ 無法解析存檔檔案！"); }
+        };
+        reader.readAsText(file);
     }
 
     function resetGame() {
-        if (confirm("確定要重置九州冒險進度嗎？所有紀錄與道侶數據將會被清空。")) {
-            localStorage.removeItem("blade_story_log");
-            localStorage.removeItem("blade_conv_history");
-            localStorage.removeItem("blade_global_npc_map");
-            localStorage.removeItem("blade_global_companion_map");
-            localStorage.removeItem("blade_player_snapshot");
+        if (confirm("⚠️ 確定重置？這將清空所有遊戲進度，建議先匯出存檔！")) {
+            localStorage.removeItem("blade_state"); localStorage.removeItem("blade_history"); localStorage.removeItem("blade_dom_log");
             location.reload();
         }
     }
