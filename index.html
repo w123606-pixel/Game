@@ -657,11 +657,10 @@
     }
 
     async function callGeminiApiWithFallback(apiKey, history) {
-        // 官方標準可用 model 列表
         const candidateModels = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro"
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite"
         ];
 
         const trimmedHistory = getTrimmedHistory(history, 10);
@@ -688,7 +687,7 @@
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15秒超時機制
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
 
                 const response = await fetch(url, {
                     method: "POST",
