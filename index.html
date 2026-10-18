@@ -158,11 +158,11 @@
 
         <div id="tab-social" class="tab-content">
             <h2>📜 當前任務</h2>
-            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);">• 主線：身世問心，尋求仙緣與靈根顯化</div>
+            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);">• 主線：身世問心，選擇身世踏入修仙界</div>
             <h2>👥 結識人物 (NPC)</h2>
-            <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 暫無結識</div>
+            <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 無</div>
             <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (長期記憶)</h2>
-            <div id="ui-world-events" class="scroll-list" style="color: #c5a059;">• 尚無重大事件</div>
+            <div id="ui-world-events" class="scroll-list" style="color: #c5a059;">• 無</div>
         </div>
 
         <div id="tab-sys" class="tab-content">
@@ -196,7 +196,7 @@
     }
 
     let gameState = {
-        version: "2.9",
+        version: "2.10",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -226,28 +226,15 @@
 1. 玩家目前為【凡人 (Lv.0)】開局。靈根尚未顯化。
 2. 【絕對禁止】在故事中出現任何類似「(判定: 成功)」、「【悟性檢定 (D20=18，總分=18 ➔ 成功)】」的字眼或分數標籤！成敗與難度必須完全透過文學敘事、肉體反饋與環境變化隱性呈現。
 3. 前端JS掌握生殺大權。你【無權】直接給予完整背包、任務或總經驗。
-4. 你只能在 JSON 提出「增量/減量建議」: expReward, hpChange, stoneChange, statChanges (單項限-2到+2，且總和不得超過+2), gainedItems, lostItems 等。
+4. 【環境合理性與情境互斥鐵律（極為重要）】：
+   - 若玩家在【極度危險的動態環境】（例如：懸崖邊墜落、被妖獸追殺、龍煞罡風肆虐的絕地）選擇「閉關療傷」或進行不合時宜的行動，必須判定為「情境極度不合理」。這會導致分心走火入魔、強行運功遭煞氣反噬，必須給予嚴厲懲罰（hpChange 必須為負數，例如 -20 到 -40，甚至直接觸發墜落或重傷瀕死）。
+   - 若玩家在【對話抉擇階段】或【趕路途中】閉關，必須判定為錯失良機、遭環境突襲或被 NPC 趁虛而入。
+   - 絕不允許無條件的「原地滿血復活」。療傷必須有安全的地基（如躲入隱蔽裂隙、獲得防護道具），否則在絕境中療傷等於慢性自殺。
 5. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
 6. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
 7. NPC 物件包含 {name, faction, title, relation, affinity}。
 
-每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。範例格式：
-\`\`\`json
-{
-  "hpChange": 0,
-  "isDead": false,
-  "expReward": 10,
-  "stoneChange": 0,
-  "statChanges": {"wis": 1},
-  "gainedItems": [],
-  "lostItems": [],
-  "gainedSkills": [],
-  "questUpdates": [{"name": "身世問心", progress: "身世已定，開始探索修仙界", status: "進行中"}],
-  "npcs": [],
-  "worldEvents": ["踏入九州修仙界邊陲"],
-  "choices": ["四處查探環境", "閉關調息適應肉身"]
-}
-\`\`\``;
+每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。`;
 
     window.onload = () => { loadApiKey(); loadGameState(); };
 
@@ -270,7 +257,7 @@
         
         let dc = 10, dcName = "普通", maxExpPct = 0.1, days = 1;
         
-        if (/(閉關療傷|專心療傷|調養經脈)/.test(actionText)) { dc = 5; dcName = "療傷"; maxExpPct = 0.15; days = 10; }
+        if (/(閉關療傷|專心療傷|調養經脈)/.test(actionText)) { dc = 8; dcName = "療傷"; maxExpPct = 0.15; days = 10; }
         else if (/(閉關修練|吐納靈氣|打坐冥想)/.test(actionText)) { dc = 8; dcName = "修練"; maxExpPct = 0.15; days = 3; }
         else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { dc = 20; dcName = "極難"; maxExpPct = 0.40; days = 10; }
         else if (/(殺敵|戰鬥|奪寶|搶劫|突破|秘境)/.test(actionText)) { dc = 15; dcName = "困難"; maxExpPct = 0.25; days = 3; }
@@ -288,7 +275,7 @@
         else if (totalScore >= dc) { res = (totalScore >= dc + 5) ? "極佳成功" : "成功"; isSuccess = true; }
         else { res = (totalScore <= dc - 5) ? "慘痛失敗" : "失敗"; isSuccess = false; }
         
-        const msg = `[天道暗骰執行完畢：成敗結果為【${res}】。請以此結果撰寫文學敘事，絕對不可在故事中輸出任何檢定分數或括號判定標籤！若劇情中死亡請回傳 isDead: true]`;
+        const msg = `[天道暗骰執行完畢：成敗結果為【${res}】。請以此結果撰寫文學敘事，絕對不可在故事中輸出任何檢定分數或括號判定標籤！若玩家在危險環境中不合時宜療傷，必須給予走火入魔或重傷反噬懲罰。若死亡請回傳 isDead: true]`;
         
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
     }
@@ -340,7 +327,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.9", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.10", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
