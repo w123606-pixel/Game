@@ -171,8 +171,8 @@
                 <select id="api-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select>
                 <label>API Key (儲存於本機瀏覽器，非加密保管)：</label>
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
-                <label>模型名稱 (留空預設 3.8-flash)：</label>
-                <input type="text" id="api-model" placeholder="gemini-3.8-flash">
+                <label>模型名稱 (留空預設 3.5-flash-lite)：</label>
+                <input type="text" id="api-model" placeholder="gemini-3.5-flash-lite">
                 <div style="display:flex; gap:6px; margin-top:5px;">
                     <button onclick="saveApiKey()" style="flex:1; min-height:36px; padding:6px;">💾 儲存</button>
                     <button onclick="clearApiKey()" style="flex:1; min-height:36px; padding:6px; background:#4a1515;">🗑️ 清除</button>
@@ -232,7 +232,7 @@
     ];
 
     let gameState = {
-        version: "2.17",
+        version: "2.18",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -411,7 +411,6 @@
                     gameState.stats[k] = Math.min(100, gameState.stats[k] + Math.floor(Math.random()*3) + 2);
                 });
             } else {
-                // 修復2: 不再於回呼重複扣血，交由 AI 的 JSON hpChange 扣除，僅附加負面狀態
                 if(!gameState.status.includes("經脈受損")) gameState.status.push("經脈受損");
                 if(!gameState.status.includes("境界虛浮")) gameState.status.push("境界虛浮");
             }
@@ -423,7 +422,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.17", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.18", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -437,7 +436,6 @@
         s.level = Math.max(0, Number(s.level) || 0);
         s.maxHp = Math.max(20, Number(s.maxHp) || 50);
         
-        // 修復1: 確保存檔 0 HP 不會被誤判而復活
         const rawHp = Number(s.hp);
         s.hp = Math.min(s.maxHp, Math.max(0, Number.isFinite(rawHp) ? rawHp : 50));
         
@@ -470,7 +468,6 @@
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
 
-        // 修復5: 死亡狀態立即同步寫入陣列
         if (rawState.isDead === true) {
             s.hp = 0;
             if (!s.status.includes("【已身死道消】")) s.status = ["【已身死道消】"];
@@ -481,7 +478,6 @@
             rawState.gainedItems = [];
             rawState.gainedSkills = [];
             rawState.gainedKungfu = [];
-            // 修復3: 不再清空 rawState.statusChanges，允許失敗時獲得負面狀態
             rawState.expReward = 0;
             if (typeof rawState.stoneChange === 'number' && rawState.stoneChange > 0) rawState.stoneChange = 0;
             
@@ -632,9 +628,7 @@
 
             let oldState = structuredClone(gameState);
             
-            // 修復4: 0天的日常行動不會強制變成1天
             gameState.daysPassed += checkData.daysSpent ?? 1;
-            
             gameState = applyStateDelta(gameState, parsedState, checkData, actionText);
             
             if(gameState.hp > 0 && onSuccessCallback) onSuccessCallback(); 
@@ -687,8 +681,9 @@
     }
 
     async function callGeminiApi(apiKey) {
-        const customModel = document.getElementById("api-model").value.trim() || "gemini-3.8-flash";
-        const candidateModels = [customModel, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]; 
+        // 設定 Gemini 優先使用 Flash-Lite，依序備援 3.7 與 3.8
+        const customModel = document.getElementById("api-model").value.trim();
+        const candidateModels = customModel ? [customModel, "gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-3.8-flash"] : ["gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-3.8-flash"];
         
         const contents = getTrimmedHistory().map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
         const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() }] }, contents: contents, generationConfig: { temperature: 0.7, maxOutputTokens: 2000 } };
@@ -709,10 +704,12 @@
                 if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) return data.candidates[0].content.parts[0].text;
             } catch (err) {
                 lastError = err;
-                if(err.message.includes("無效") || err.message.includes("配額") || err.message.includes("400")) break; 
+                // 若為 429 或 400，跳轉下一個候選模型嘗試
+                if(err.message.includes("429") || err.message.includes("400") || err.message.includes("異常")) continue;
+                break;
             }
         }
-        throw lastError || new Error("Gemini 模型無法使用");
+        throw lastError || new Error("Gemini 模型群全部無法使用，請檢查配額或 API Key");
     }
 
     async function callOpenAiApi(apiKey) {
