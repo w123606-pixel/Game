@@ -167,7 +167,7 @@
 
         <div id="tab-sys" class="tab-content">
             <div class="api-config">
-                <label>AI 提供商：</label>
+                <label>API 提供商：</label>
                 <select id="api-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select>
                 <label>API Key (儲存於本機瀏覽器，非加密保管)：</label>
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
@@ -196,7 +196,7 @@
     }
 
     let gameState = {
-        version: "2.3",
+        version: "2.4",
         level: 1, realm: "練氣初期", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 120,
         hp: 100, maxHp: 100, exp: 0, maxExp: 100,
@@ -221,13 +221,15 @@
 1. 前端JS掌握生殺大權。你【無權】直接給予完整背包、任務或總經驗。
 2. 你只能在 JSON 提出「增量/減量建議」: expReward, hpChange, stoneChange, statChanges (單項限-2到+2，且總和不得超過+2), gainedItems, lostItems 等。
 3. 玩家成敗絕對依照【天道檢定結果】敘事。若判定失敗，【絕對不可】給予道具、靈石或正向經驗獎勵。
-4. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
-5. NPC 物件包含 {name, faction, title, relation, affinity}。
+4. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
+5. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
+6. NPC 物件包含 {name, faction, title, relation, affinity}。
 
 每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。範例格式：
 \`\`\`json
 {
   "hpChange": -10,
+  "isDead": false,
   "expReward": 15,
   "stoneChange": 5,
   "statChanges": {"wis": 1},
@@ -263,13 +265,12 @@
         
         let dc = 10, dcName = "普通", maxExpPct = 0.1, days = 1;
         
-        // 修正：使用精準字彙匹配，避免單字誤判，並依情境決定天數
         if (/(閉關療傷|專心療傷|調養經脈)/.test(actionText)) { dc = 5; dcName = "療傷"; maxExpPct = 0.15; days = 30; }
         else if (/(閉關修練|吐納靈氣|打坐冥想)/.test(actionText)) { dc = 8; dcName = "修練"; maxExpPct = 0.15; days = 7; }
         else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { dc = 20; dcName = "極難"; maxExpPct = 0.40; days = 15; }
         else if (/(殺敵|戰鬥|奪寶|搶劫|突破|秘境)/.test(actionText)) { dc = 15; dcName = "困難"; maxExpPct = 0.25; days = 5; }
         else if (/(買東西|查看|聊天|散步|逛坊市)/.test(actionText)) { dc = 5; dcName = "極易"; maxExpPct = 0.05; days = 0; }
-        else { days = 3; } // 一般野外探索預設 3 天
+        else { days = 3; }
 
         let mod = Math.floor((statVal - 10) / 2);
         if(gameState.status.includes("經脈受損")) { mod -= 2; statName += "(受損-2)"; }
@@ -282,12 +283,12 @@
         else if (totalScore >= dc) { res = (totalScore >= dc + 5) ? "極佳成功" : "成功"; isSuccess = true; }
         else { res = (totalScore <= dc - 5) ? "慘痛失敗" : "失敗"; isSuccess = false; }
         
-        const msg = `[系統強制檢定：難度【${dcName}】(DC ${dc})，對應【${statName}】。骰出 D20=${d20}，總分=${totalScore} ➔ 【${res}】。若判定失敗，絕對不可給予道具或經驗獎勵！]`;
+        const msg = `[系統強制檢定：難度【${dcName}】(DC ${dc})，對應【${statName}】。骰出 D20=${d20}，總分=${totalScore} ➔ 【${res}】。若判定失敗，絕對不可給予道具或經驗獎勵！若劇情中死亡請回傳 isDead: true]`;
         
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
     }
 
-    // === 突破引擎 (前端掌控懲罰與獎勵) ===
+    // === 突破引擎 ===
     function attemptBreakthrough() {
         if(gameState.hp <= 0) return alert("已身死道消...");
         if(gameState.exp < gameState.maxExp) return;
@@ -318,7 +319,6 @@
                 const subRealms = ["初期", "中期", "後期", "圓滿"];
                 gameState.realm = `${bigRealm}${subRealms[Math.min(3, Math.floor(((gameState.level - 1) % 10) / 3))]}`;
                 
-                // 限制：隨機挑選 2 項屬性各 +1~2
                 const statKeys = ['str','con','agi','int','wis','luk'];
                 for(let i=0; i<2; i++) {
                     const k = statKeys[Math.floor(Math.random()*statKeys.length)];
@@ -333,10 +333,10 @@
         sendAction("【運轉功法，嘗試突破大境界！】", { message: msg, shortRes: shortRes, maxExpReward: 0, daysSpent: 10, success: success }, onSuccess);
     }
 
-    // === 架構 1：存檔專用完整還原與邊界防護 (Normalization) ===
+    // === 架構 1：存檔專用完整還原與邊界防護 ===
     function normalizeFullState(raw) {
         const def = {
-            version: "2.3", level: 1, realm: "練氣初期", linggen: "待顯化", physique: "凡體",
+            version: "2.4", level: 1, realm: "練氣初期", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 120, hp: 100, maxHp: 100, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["健康"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -347,7 +347,6 @@
         let s = { ...def, ...raw };
         if(raw.monthsPassed !== undefined && raw.daysPassed === undefined) s.daysPassed = raw.monthsPassed * 30;
         
-        // 數值邊界校正 (Clamping)
         s.level = Math.max(1, Number(s.level) || 1);
         s.maxHp = Math.max(10, Number(s.maxHp) || 100);
         s.hp = Math.min(s.maxHp, Math.max(0, Number(s.hp) || 100));
@@ -369,10 +368,16 @@
         return s;
     }
 
-    // === 架構 2：專用增量變更函數 (Delta Application) ===
+    // === 架構 2：專用增量變更函數 (含生死同步聯動) ===
     function applyStateDelta(currentState, rawState, checkData, actionText) {
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
+
+        // 生死同步聯動：若 AI 在 JSON 回傳 isDead: true，直接強制血量歸零
+        if (rawState.isDead === true) {
+            s.hp = 0;
+            return s; // 死亡直接截斷後續數值變更
+        }
 
         if (checkData && !checkData.success) {
             rawState.gainedItems = [];
@@ -382,17 +387,15 @@
             if (typeof rawState.stoneChange === 'number' && rawState.stoneChange > 0) rawState.stoneChange = 0;
             delete rawState.linggen;
             delete rawState.physique;
-            delete rawState.questUpdates; // 失敗時不允許推進任務
+            delete rawState.questUpdates;
         }
 
-        // 嚴格自癒規則：必須為專屬療傷動作，且天數 >= 30 且檢定成功
         const isHealingAction = /(閉關療傷|專心療傷|調養經脈)/.test(actionText);
         if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 30) {
             s.status = s.status.filter(st => st !== "經脈受損");
             if (s.status.length === 0) s.status = ["健康"];
         }
 
-        // 屬性增量限制 (-2 至 +2，且總和正向增長不得超過 +2)
         if (rawState.statChanges && typeof rawState.statChanges === 'object') {
             let totalPositiveGain = 0;
             ['str', 'con', 'agi', 'int', 'wis', 'luk'].forEach(k => {
@@ -401,7 +404,6 @@
                     if(val > 0) totalPositiveGain += val;
                 }
             });
-            // 若總正向增長超標，等比例壓縮或直接歸零
             let multiplier = totalPositiveGain > 2 ? (2 / totalPositiveGain) : 1;
 
             ['str', 'con', 'agi', 'int', 'wis', 'luk'].forEach(k => {
@@ -430,7 +432,6 @@
         s.skills = applyArrayChanges(s.skills, rawState.gainedSkills, rawState.lostSkills);
         s.kungfu = applyArrayChanges(s.kungfu, rawState.gainedKungfu, rawState.lostKungfu);
 
-        // 任務防呆驗證
         if (rawState.questUpdates && Array.isArray(rawState.questUpdates) && checkData.success) {
             rawState.questUpdates.forEach(newQ => {
                 if (!newQ || typeof newQ !== "object" || typeof newQ.name !== "string") return;
@@ -440,7 +441,6 @@
             });
         }
 
-        // NPC 防呆驗證
         if (rawState.npcs && Array.isArray(rawState.npcs)) {
             rawState.npcs.forEach(newNpc => {
                 if (!newNpc || (typeof newNpc !== "object" && typeof newNpc !== "string")) return;
@@ -593,7 +593,6 @@
         return data.choices[0].message.content;
     }
 
-    // === 統一的按鈕狀態同步函數 (Sync Controls State) ===
     function syncControlsState() {
         const busy = isTyping || loadingInterval !== null;
         const dead = gameState.hp <= 0;
@@ -607,7 +606,6 @@
         document.getElementById("action-input").disabled = busy || dead;
     }
 
-    // === UI 渲染 ===
     function renderUI(oldState = null) {
         const s = gameState;
         const years = Math.floor(s.daysPassed / 365);
@@ -664,10 +662,9 @@
             s.choices.forEach(c => { let btn = document.createElement("button"); btn.className = "choice-btn"; btn.textContent = c; btn.addEventListener("click", () => sendAction(c)); choiceContainer.appendChild(btn); });
         }
 
-        syncControlsState(); // 統一控管按鈕解鎖狀態
+        syncControlsState();
     }
 
-    // === 日誌與打字機 ===
     function appendLogData(role, text, type, isSafeHtml = false, immediateRender = false) {
         storyLogData.push({ role, content: text, type, isSafeHtml });
         if (storyLogData.length > MAX_DOM_LOGS) storyLogData.shift();
@@ -754,7 +751,6 @@
         resolve();
     }
 
-    // === 動畫與載入狀態控管 ===
     function startLoadingAnim() {
         if(loadingInterval) clearInterval(loadingInterval);
         let phases = ["🎲 天道判定中...", "🌌 命運推演中...", "🔍 解析天機中..."], phaseIdx = 0;
@@ -793,7 +789,6 @@
         for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, tx=cx+(r+15)*Math.cos(a), ty=cy+(r+12)*Math.sin(a); ctx.fillText(labels[i], tx, ty); }
     }
 
-    // === 設定與存檔管理 ===
     function saveApiKey() { localStorage.setItem("blade_api_key", document.getElementById("api-key").value.trim()); localStorage.setItem("blade_api_provider", document.getElementById("api-provider").value); localStorage.setItem("blade_api_model", document.getElementById("api-model").value.trim()); alert("⚙️ 設定已儲存！"); }
     function clearApiKey() { localStorage.removeItem("blade_api_key"); document.getElementById("api-key").value = ""; alert("🗑️ 已清除 Key！"); }
     function loadApiKey() { if(localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key"); if(localStorage.getItem("blade_api_provider")) document.getElementById("api-provider").value = localStorage.getItem("blade_api_provider"); if(localStorage.getItem("blade_api_model")) document.getElementById("api-model").value = localStorage.getItem("blade_api_model"); }
