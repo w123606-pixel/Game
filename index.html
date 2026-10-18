@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 異世旅者傳奇</title>
+    <title>九州裂天錄 - 凡人崛起傳奇</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -106,7 +106,7 @@
             </div>
             <div class="quick-actions">
                 <button class="quick-btn" onclick="quickAction('閉關療傷，調養經脈')">🧘 閉關療傷 (30天)</button>
-                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple);" onclick="attemptBreakthrough()" disabled>✨ 突破境界</button>
+                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple);" onclick="attemptBreakthrough()" disabled>✨ 引氣入體</button>
             </div>
         </div>
     </div>
@@ -120,15 +120,15 @@
         </div>
 
         <div id="tab-basic" class="tab-content active">
-            <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">練氣初期 (Lv.1)</span></div>
+            <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">凡人 (Lv.0)</span></div>
             <div class="stat-item" style="flex-direction:column; align-items:flex-start;">
                 <div style="display:flex; justify-content:space-between; width:100%;">
-                    <span class="stat-label">修為進度</span><span class="stat-value" style="font-size:0.75rem;" id="ui-exp-text">0/100</span>
+                    <span class="stat-label">感悟 / 淬體進度</span><span class="stat-value" style="font-size:0.75rem;" id="ui-exp-text">0/100</span>
                 </div>
                 <div class="exp-container"><div class="exp-fill" id="ui-exp-fill" style="width: 0%;"></div></div>
             </div>
-            <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18歲0月 / 120歲</span></div>
-            <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">100 / 100</span></div>
+            <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18歲0月 / 100歲</span></div>
+            <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">50 / 50</span></div>
             <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value" style="color:#00e676" id="ui-linggen">待顯化</span></div>
             <div class="stat-item"><span class="stat-label">體質天賦</span><span class="stat-value" style="color:#e040fb" id="ui-physique">凡體</span></div>
             <div class="stat-item"><span class="stat-label">靈石貨幣</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0</span></div>
@@ -147,18 +147,18 @@
 
         <div id="tab-skills" class="tab-content">
             <h2>💫 狀態異常</h2>
-            <div id="ui-status" class="scroll-list" style="color: var(--accent-green);">• 健康</div>
+            <div id="ui-status" class="scroll-list" style="color: var(--accent-green);">• 凡體肉身</div>
             <h2>📖 主修心法</h2>
             <div id="ui-kungfu" class="scroll-list" style="color: var(--hl-cyan);">• 無</div>
             <h2>⚔️ 術法技能</h2>
             <div id="ui-skills" class="scroll-list" style="color: #81c784;">• 無</div>
             <h2>🎒 裝備道具</h2>
-            <div id="ui-equipItem" class="scroll-list" style="color: #fff;">• 粗鐵劍</div>
+            <div id="ui-equipItem" class="scroll-list" style="color: #fff;">• 粗布衣</div>
         </div>
 
         <div id="tab-social" class="tab-content">
             <h2>📜 當前任務</h2>
-            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);">• 主線：身世問心，踏入修仙界</div>
+            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);">• 主線：身世問心，尋求仙緣與靈根顯化</div>
             <h2>👥 結識人物 (NPC)</h2>
             <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 暫無結識</div>
             <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (長期記憶)</h2>
@@ -167,7 +167,7 @@
 
         <div id="tab-sys" class="tab-content">
             <div class="api-config">
-                <label>API 提供商：</label>
+                <label>AI 提供商：</label>
                 <select id="api-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select>
                 <label>API Key (儲存於本機瀏覽器，非加密保管)：</label>
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
@@ -196,15 +196,15 @@
     }
 
     let gameState = {
-        version: "2.4",
-        level: 1, realm: "練氣初期", linggen: "待顯化", physique: "凡體",
-        daysPassed: 0, ageBase: 18, maxAge: 120,
-        hp: 100, maxHp: 100, exp: 0, maxExp: 100,
+        version: "2.5",
+        level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+        daysPassed: 0, ageBase: 18, maxAge: 100,
+        hp: 50, maxHp: 50, exp: 0, maxExp: 100,
         spiritStone: 0,
         stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
-        status: ["健康"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
+        status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
         npcs: [], worldEvents: [],
-        quests: [{ name: "身世問心", progress: "選擇身世", status: "進行中" }],
+        quests: [{ name: "身世問心", progress: "尋求仙緣與靈根顯化", status: "進行中" }],
         choices: ["1. 破落修仙家族子弟", "2. 深山採藥童子", "3. 大難不死之孤兒", "4. 天生異象之奇人"]
     };
 
@@ -218,28 +218,29 @@
 
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【鐵血規則 (違反將導致推演崩潰)】
-1. 前端JS掌握生殺大權。你【無權】直接給予完整背包、任務或總經驗。
-2. 你只能在 JSON 提出「增量/減量建議」: expReward, hpChange, stoneChange, statChanges (單項限-2到+2，且總和不得超過+2), gainedItems, lostItems 等。
-3. 玩家成敗絕對依照【天道檢定結果】敘事。若判定失敗，【絕對不可】給予道具、靈石或正向經驗獎勵。
-4. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
-5. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
-6. NPC 物件包含 {name, faction, title, relation, affinity}。
+1. 玩家當前為【凡人 (Lv.0)】開局，尚未踏入修仙門檻，體質孱弱。靈根目前為「待顯化」。
+2. 前端JS掌握生殺大權。你【無權】直接給予完整背包、任務或總經驗。
+3. 你只能在 JSON 提出「增量/減量建議」: expReward, hpChange, stoneChange, statChanges (單項限-2到+2，且總和不得超過+2), gainedItems, lostItems 等。
+4. 玩家成敗絕對依照【天道檢定結果】敘事。若判定失敗，【絕對不可】給予道具、靈石或正向經驗獎勵。
+5. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
+6. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
+7. NPC 物件包含 {name, faction, title, relation, affinity}。
 
 每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。範例格式：
 \`\`\`json
 {
-  "hpChange": -10,
+  "hpChange": -5,
   "isDead": false,
-  "expReward": 15,
-  "stoneChange": 5,
+  "expReward": 10,
+  "stoneChange": 0,
   "statChanges": {"wis": 1},
-  "gainedItems": ["凝氣丹"],
-  "lostItems": ["粗鐵劍"],
-  "gainedSkills": ["火球術"],
-  "questUpdates": [{"name": "主線", "progress": "抵達坊市", "status": "進行中"}],
-  "npcs": [{"name": "王掌櫃", "faction": "四海商會", "title": "分管事", "relation": "點頭之交", "affinity": 10}],
-  "worldEvents": ["抵達青雲宗坊市"],
-  "choices": ["前往丹藥閣", "去地攤尋寶"]
+  "gainedItems": ["殘破獸皮"],
+  "lostItems": [],
+  "gainedSkills": [],
+  "questUpdates": [{"name": "身世問心", progress: "獲得神祕獸皮與青銅戒", status: "進行中"}],
+  "npcs": [],
+  "worldEvents": ["流落九州邊陲破舊柴房"],
+  "choices": ["檢視破舊獸皮", "盤膝調息穩固氣血"]
 }
 \`\`\``;
 
@@ -252,7 +253,6 @@
         btnEl.classList.add('active');
     }
 
-    // === 精準難度與字彙匹配判定 ===
     function performSkillCheck(actionText) {
         const d20 = Math.floor(Math.random() * 20) + 1;
         
@@ -265,12 +265,12 @@
         
         let dc = 10, dcName = "普通", maxExpPct = 0.1, days = 1;
         
-        if (/(閉關療傷|專心療傷|調養經脈)/.test(actionText)) { dc = 5; dcName = "療傷"; maxExpPct = 0.15; days = 30; }
-        else if (/(閉關修練|吐納靈氣|打坐冥想)/.test(actionText)) { dc = 8; dcName = "修練"; maxExpPct = 0.15; days = 7; }
-        else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { dc = 20; dcName = "極難"; maxExpPct = 0.40; days = 15; }
-        else if (/(殺敵|戰鬥|奪寶|搶劫|突破|秘境)/.test(actionText)) { dc = 15; dcName = "困難"; maxExpPct = 0.25; days = 5; }
+        if (/(閉關療傷|專心療傷|調養經脈)/.test(actionText)) { dc = 5; dcName = "療傷"; maxExpPct = 0.15; days = 10; }
+        else if (/(閉關修練|吐納靈氣|打坐冥想)/.test(actionText)) { dc = 8; dcName = "修練"; maxExpPct = 0.15; days = 3; }
+        else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { dc = 20; dcName = "極難"; maxExpPct = 0.40; days = 10; }
+        else if (/(殺敵|戰鬥|奪寶|搶劫|突破|秘境)/.test(actionText)) { dc = 15; dcName = "困難"; maxExpPct = 0.25; days = 3; }
         else if (/(買東西|查看|聊天|散步|逛坊市)/.test(actionText)) { dc = 5; dcName = "極易"; maxExpPct = 0.05; days = 0; }
-        else { days = 3; }
+        else { days = 1; }
 
         let mod = Math.floor((statVal - 10) / 2);
         if(gameState.status.includes("經脈受損")) { mod -= 2; statName += "(受損-2)"; }
@@ -288,12 +288,12 @@
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
     }
 
-    // === 突破引擎 ===
+    // === 引氣入體與靈根顯化突破引擎 (Lv.0 ➔ Lv.1) ===
     function attemptBreakthrough() {
         if(gameState.hp <= 0) return alert("已身死道消...");
         if(gameState.exp < gameState.maxExp) return;
         
-        const dc = 15 + Math.floor(gameState.level / 10) * 2;
+        const dc = 14; // 凡人引氣入體的生死門檻
         const d20 = Math.floor(Math.random() * 20) + 1;
         const mod = Math.floor((gameState.stats.wis - 10) / 2) + Math.floor((gameState.stats.con - 10) / 2);
         const total = d20 + mod;
@@ -301,45 +301,48 @@
         
         let msg, shortRes;
         if(success) {
-            msg = `[系統強制指令：突破(DC=${dc})，結果：大成功！前端已確認升級。請生動描述異象與洗禮。]`;
+            msg = `[系統強制指令：引氣入體(DC=${dc})，結果：大成功！凡人成功開拓氣海，正式跨入「練氣初期 (Lv.1)」，並顯化靈根！請生動描述天地靈氣灌體與靈根覺醒的震撼異象。]`;
             shortRes = "大成功";
         } else {
-            msg = `[系統強制指令：突破(DC=${dc})，結果：失敗！前端將扣除其 30 HP 並附加「經脈受損」。請生動描述走火入魔的痛苦。]`;
+            msg = `[系統強制指令：引氣入體(DC=${dc})，結果：失敗！引氣失敗遭靈氣反噬，前端將扣除其 25 HP 並附加「經脈受損」。請生動描述衝關失敗的痛苦。]`;
             shortRes = "大失敗";
         }
         
         const onSuccess = () => {
             if(success) {
-                gameState.level += 1; gameState.exp = 0;
-                gameState.maxExp = Math.floor(gameState.maxExp * 1.5);
-                gameState.maxHp += 20; gameState.hp = gameState.maxHp; gameState.maxAge += 10;
+                gameState.level = 1; gameState.exp = 0;
+                gameState.maxExp = 150; // 練氣期升級門檻
+                gameState.maxHp = 100; gameState.hp = 100; gameState.maxAge = 120;
+                gameState.realm = "練氣初期";
                 
-                const realms = ["練氣", "築基", "金丹", "元嬰", "化神", "煉虛", "合體", "大乘", "渡劫"];
-                const bigRealm = realms[Math.min(realms.length - 1, Math.floor((gameState.level - 1) / 10))];
-                const subRealms = ["初期", "中期", "後期", "圓滿"];
-                gameState.realm = `${bigRealm}${subRealms[Math.min(3, Math.floor(((gameState.level - 1) % 10) / 3))]}`;
+                // 隨機顯化靈根資質
+                const linggenPool = ["五行偽靈根", "真火靈根", "水木雙靈根", "金土雙靈根", "雷屬性變異靈根"];
+                gameState.linggen = linggenPool[Math.floor(Math.random() * linggenPool.length)];
+                gameState.physique = "引氣淬體之軀";
                 
-                const statKeys = ['str','con','agi','int','wis','luk'];
-                for(let i=0; i<2; i++) {
-                    const k = statKeys[Math.floor(Math.random()*statKeys.length)];
-                    gameState.stats[k] = Math.min(100, gameState.stats[k] + Math.floor(Math.random()*2)+1);
-                }
+                // 移除凡體狀態
+                gameState.status = gameState.status.filter(st => st !== "凡體肉身");
+                if(gameState.status.length === 0) gameState.status = ["健康"];
+
+                // 屬性全面躍升
+                ['str','con','agi','int','wis','luk'].forEach(k => {
+                    gameState.stats[k] = Math.min(100, gameState.stats[k] + Math.floor(Math.random()*3) + 2);
+                });
             } else {
-                gameState.hp = Math.max(0, gameState.hp - 30);
+                gameState.hp = Math.max(0, gameState.hp - 25);
                 if(!gameState.status.includes("經脈受損")) gameState.status.push("經脈受損");
             }
         };
 
-        sendAction("【運轉功法，嘗試突破大境界！】", { message: msg, shortRes: shortRes, maxExpReward: 0, daysSpent: 10, success: success }, onSuccess);
+        sendAction("【凝神聚氣，嘗試強行引氣入體、突破至練氣期！】", { message: msg, shortRes: shortRes, maxExpReward: 0, daysSpent: 5, success: success }, onSuccess);
     }
 
-    // === 架構 1：存檔專用完整還原與邊界防護 ===
     function normalizeFullState(raw) {
         const def = {
-            version: "2.4", level: 1, realm: "練氣初期", linggen: "待顯化", physique: "凡體",
-            daysPassed: 0, ageBase: 18, maxAge: 120, hp: 100, maxHp: 100, exp: 0, maxExp: 100, spiritStone: 0,
+            version: "2.5", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
-            status: ["健康"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
+            status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
             npcs: [], worldEvents: [], quests: [], choices: ["前往探索"]
         };
         if(!raw || typeof raw !== 'object') return def;
@@ -347,14 +350,14 @@
         let s = { ...def, ...raw };
         if(raw.monthsPassed !== undefined && raw.daysPassed === undefined) s.daysPassed = raw.monthsPassed * 30;
         
-        s.level = Math.max(1, Number(s.level) || 1);
-        s.maxHp = Math.max(10, Number(s.maxHp) || 100);
-        s.hp = Math.min(s.maxHp, Math.max(0, Number(s.hp) || 100));
+        s.level = Math.max(0, Number(s.level) || 0);
+        s.maxHp = Math.max(20, Number(s.maxHp) || 50);
+        s.hp = Math.min(s.maxHp, Math.max(0, Number(s.hp) || 50));
         s.exp = Math.max(0, Number(s.exp) || 0);
-        s.maxExp = Math.max(10, Number(s.maxExp) || 100);
+        s.maxExp = Math.max(50, Number(s.maxExp) || 100);
         s.spiritStone = Math.max(0, Number(s.spiritStone) || 0);
         s.daysPassed = Math.max(0, Number(s.daysPassed) || 0);
-        s.maxAge = Math.max(50, Number(s.maxAge) || 120);
+        s.maxAge = Math.max(50, Number(s.maxAge) || 100);
 
         if(raw.stats) {
             s.stats = { ...def.stats };
@@ -368,15 +371,13 @@
         return s;
     }
 
-    // === 架構 2：專用增量變更函數 (含生死同步聯動) ===
     function applyStateDelta(currentState, rawState, checkData, actionText) {
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
 
-        // 生死同步聯動：若 AI 在 JSON 回傳 isDead: true，直接強制血量歸零
         if (rawState.isDead === true) {
             s.hp = 0;
-            return s; // 死亡直接截斷後續數值變更
+            return s;
         }
 
         if (checkData && !checkData.success) {
@@ -391,9 +392,9 @@
         }
 
         const isHealingAction = /(閉關療傷|專心療傷|調養經脈)/.test(actionText);
-        if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 30) {
+        if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 10) {
             s.status = s.status.filter(st => st !== "經脈受損");
-            if (s.status.length === 0) s.status = ["健康"];
+            if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         }
 
         if (rawState.statChanges && typeof rawState.statChanges === 'object') {
@@ -462,7 +463,6 @@
         return s;
     }
 
-    // === 主推演流程 ===
     async function sendAction(choiceText = null, overrideCheck = null, onSuccessCallback = null) {
         if (isTyping) { skipTypewriter(); return; }
         
@@ -601,7 +601,10 @@
         document.querySelectorAll(".quick-btn").forEach(btn => { btn.disabled = busy || dead; });
 
         const canBreakthrough = gameState.exp >= gameState.maxExp && !dead;
-        document.getElementById("btn-deduce").disabled = busy || !canBreakthrough;
+        const breakthroughBtn = document.getElementById("btn-deduce");
+        breakthroughBtn.disabled = busy || !canBreakthrough;
+        breakthroughBtn.textContent = gameState.level === 0 ? "✨ 引氣入體" : "✨ 突破境界";
+        
         document.getElementById("btn-submit").disabled = busy || dead;
         document.getElementById("action-input").disabled = busy || dead;
     }
@@ -625,7 +628,8 @@
             el.innerText = newVal;
         };
 
-        document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
+        const realmText = s.level === 0 ? "凡人 (Lv.0)" : `${s.realm} (Lv.${s.level})`;
+        document.getElementById("ui-realm").innerText = realmText;
         document.getElementById("ui-linggen").innerText = s.linggen;
         document.getElementById("ui-age").innerText = `${currentAgeStr} / ${s.maxAge}歲`;
         updateTextWithAnim("ui-hp", `${s.hp} / ${s.maxHp}`, oldState ? `${oldState.hp} / ${oldState.maxHp}` : null);
@@ -686,7 +690,7 @@
 
     function formatStoryHtml(rawText) {
         return escapeHTML(rawText).replace(/\n/g, "<br>")
-            .replace(/(獲得|突破|頓悟|成功|修為大進|大成功|極佳成功)/g, '<span class="hl-skill">$1</span>')
+            .replace(/(獲得|突破|頓悟|成功|修為大進|大成功|極佳成功|引氣入體)/g, '<span class="hl-skill">$1</span>')
             .replace(/(重傷|死士|毒煞|暗算|反噬|壽元將盡|大失敗|慘痛失敗)/g, '<span class="hl-danger">$1</span>')
             .replace(/(法寶|靈器|丹藥|靈石|陣法)/g, '<span class="hl-item">$1</span>');
     }
@@ -815,11 +819,11 @@
 
     function initNewGame() {
         conversationHistory = []; storyLogData = []; document.getElementById("story-log").innerHTML = "";
-        appendLogData("天道", "歡迎踏入九州世界！你是一名凝聚肉身降臨九州邊陲的異世旅者。請由下方選擇身世，或直接輸入行動以定下先天機緣。", "ai", true, true);
+        appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世，或直接輸入行動以尋求仙緣與引氣入體之機！", "ai", true, true);
         renderUI();
     }
 
-    function exportSave() { const blob = new Blob([JSON.stringify({ state: gameState, history: conversationHistory, logData: storyLogData })], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `九州存檔_Lv${gameState.level}_${new Date().getTime()}.json`; a.click(); }
+    function exportSave() { const blob = new Blob([JSON.stringify({ state: gameState, history: conversationHistory, logData: storyLogData })], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `九州存檔_凡人Lv0_${new Date().getTime()}.json`; a.click(); }
     
     function importSave(event) {
         const file = event.target.files[0]; if (!file) return;
