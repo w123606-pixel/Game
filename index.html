@@ -196,7 +196,7 @@
     }
 
     let gameState = {
-        version: "2.14",
+        version: "2.15",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -269,22 +269,17 @@
         let statVal = gameState.stats.wis, statName = "悟性";
         let actionType = "普通";
         
-        if (/[打砍殺力戰破毀敲]/.test(actionText)) { statVal = gameState.stats.str; statName = "膂力"; actionType = "戰鬥"; }
-        else if (/[跑閃躲逃退追爬避隱藏保守]/.test(actionText)) { statVal = gameState.stats.agi; statName = "身法"; actionType = "退避"; }
-        else if (/[煉陣算推查思悟感]/.test(actionText)) { statVal = gameState.stats.int; statName = "神識"; actionType = "參悟"; }
-        else if (/[找搜賭運機緣聊遇]/.test(actionText)) { statVal = gameState.stats.luk; statName = "氣運"; actionType = "探索"; }
-        else if (/[擋扛體耐防受屏]/.test(actionText)) { statVal = gameState.stats.con; statName = "根骨"; actionType = "防禦"; }
-        else if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; }
-        else if (/(修練|吐納|打坐)/.test(actionText)) { actionType = "修練"; }
-        
-        let dc = 10, dcName = "普通", maxExpPct = 0.1, days = 1;
-        
-        if (actionType === "療傷") { dc = 8; maxExpPct = 0.15; days = 10; }
-        else if (actionType === "修練") { dc = 8; maxExpPct = 0.15; days = 3; }
-        else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { dc = 20; actionType = "作死"; maxExpPct = 0.40; days = 10; }
-        else if (actionType === "戰鬥" || /(奪寶|搶劫|突破|秘境)/.test(actionText)) { dc = 15; maxExpPct = 0.25; days = 3; }
-        else if (actionType === "退避") { dc = 6; maxExpPct = 0.03; days = 1; }
-        else if (/(買東西|查看|聊天|散步|逛坊市)/.test(actionText)) { dc = 5; actionType = "日常"; maxExpPct = 0.05; days = 0; }
+        // 修正後的判斷順序：明確行為優先，通用動詞在後
+        if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; dc = 8; maxExpPct = 0.15; days = 10; }
+        else if (/(修練|吐納|打坐|閉關)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.15; days = 3; }
+        else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { actionType = "作死"; dc = 20; maxExpPct = 0.40; days = 10; }
+        else if (/[砍殺力戰破毀敲擊]/.test(actionText) || /(戰鬥|攻擊|奪寶|搶劫)/.test(actionText)) { statVal = gameState.stats.str; statName = "膂力"; actionType = "戰鬥"; dc = 15; maxExpPct = 0.25; days = 3; }
+        else if (/[跑閃躲逃退追爬避隱藏保守]/.test(actionText)) { statVal = gameState.stats.agi; statName = "身法"; actionType = "退避"; dc = 6; maxExpPct = 0.03; days = 1; }
+        else if (/[煉陣算推查思悟感]/.test(actionText)) { statVal = gameState.stats.int; statName = "神識"; actionType = "參悟"; dc = 10; maxExpPct = 0.1; days = 1; }
+        else if (/[找搜賭運機緣聊遇]/.test(actionText)) { statVal = gameState.stats.luk; statName = "氣運"; actionType = "探索"; dc = 10; maxExpPct = 0.1; days = 1; }
+        else if (/[擋扛體耐防受屏]/.test(actionText)) { statVal = gameState.stats.con; statName = "根骨"; actionType = "防禦"; dc = 10; maxExpPct = 0.1; days = 1; }
+        else if (/(買東西|查看|聊天|散步|逛坊市)/.test(actionText)) { actionType = "日常"; dc = 5; maxExpPct = 0.05; days = 0; }
+        else { dc = 10; maxExpPct = 0.1; days = 1; }
         
         let compatibilityMod = 0;
         let compatibilityMsg = "普通 (行動中規中矩)";
@@ -376,7 +371,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.14", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.15", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -390,8 +385,11 @@
         s.level = Math.max(0, Number(s.level) || 0);
         s.maxHp = Math.max(20, Number(s.maxHp) || 50);
         s.hp = Math.min(s.maxHp, Math.max(0, Number(s.hp) || 50));
-        s.exp = Math.max(0, Number(s.exp) || 0);
+        
+        // 修復：確保 maxExp 決定後，exp 不會超標
         s.maxExp = Math.max(50, Number(s.maxExp) || 100);
+        s.exp = Math.min(s.maxExp, Math.max(0, Number(s.exp) || 0));
+        
         s.spiritStone = Math.max(0, Number(s.spiritStone) || 0);
         s.daysPassed = Math.max(0, Number(s.daysPassed) || 0);
         s.maxAge = Math.max(50, Number(s.maxAge) || 100);
@@ -430,6 +428,10 @@
             rawState.statusChanges = []; 
             rawState.expReward = 0;
             if (typeof rawState.stoneChange === 'number' && rawState.stoneChange > 0) rawState.stoneChange = 0;
+            
+            // 修復：失敗行動絕對不允許回血
+            if (typeof rawState.hpChange === 'number' && rawState.hpChange > 0) rawState.hpChange = 0;
+            
             delete rawState.linggen;
             delete rawState.physique;
             delete rawState.questUpdates;
@@ -444,28 +446,45 @@
             });
         }
 
+        // 修復：AI 回傳了新的靈根或體質，寫入面板
+        if (checkData && checkData.success) {
+            if (typeof rawState.linggen === 'string' && rawState.linggen.trim() !== "") s.linggen = rawState.linggen;
+            if (typeof rawState.physique === 'string' && rawState.physique.trim() !== "") s.physique = rawState.physique;
+        }
+
         const isHealingAction = /(閉關療傷|專心療傷|調養經脈)/.test(actionText);
         if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 10) {
             s.status = s.status.filter(st => st !== "經脈受損" && st !== "重度殘廢" && st !== "重傷" && st !== "劇毒入體" && st !== "劇毒");
             if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         }
 
+        // 修復：屬性成長點數防爆機制 (最多分派 2 點，負面不限)
         if (rawState.statChanges && typeof rawState.statChanges === 'object') {
-            let totalPositiveGain = 0;
-            ['str', 'con', 'agi', 'int', 'wis', 'luk'].forEach(k => {
-                if (typeof rawState.statChanges[k] === 'number') {
-                    let val = Math.max(-2, Math.min(2, rawState.statChanges[k]));
-                    if(val > 0) totalPositiveGain += val;
+            if (checkData && checkData.success) {
+                let pointsToGive = 2;
+                ['str', 'con', 'agi', 'int', 'wis', 'luk'].forEach(k => {
+                    if (typeof rawState.statChanges[k] === 'number' && rawState.statChanges[k] < 0) {
+                        s.stats[k] = Math.max(1, s.stats[k] + rawState.statChanges[k]);
+                    }
+                });
+                
+                let positiveChanges = Object.entries(rawState.statChanges)
+                    .filter(([k, v]) => ['str', 'con', 'agi', 'int', 'wis', 'luk'].includes(k) && typeof v === 'number' && v > 0)
+                    .sort((a, b) => b[1] - a[1]);
+                
+                for (let [k, val] of positiveChanges) {
+                    if (pointsToGive <= 0) break;
+                    let add = Math.min(val, pointsToGive);
+                    s.stats[k] = Math.min(100, s.stats[k] + add);
+                    pointsToGive -= add;
                 }
-            });
-            let multiplier = totalPositiveGain > 2 ? (2 / totalPositiveGain) : 1;
-
-            ['str', 'con', 'agi', 'int', 'wis', 'luk'].forEach(k => {
-                if (typeof rawState.statChanges[k] === 'number') {
-                    let val = rawState.statChanges[k] > 0 ? (rawState.statChanges[k] * multiplier) : rawState.statChanges[k];
-                    s.stats[k] = Math.min(100, Math.max(1, s.stats[k] + Math.round(val)));
-                }
-            });
+            } else {
+                ['str', 'con', 'agi', 'int', 'wis', 'luk'].forEach(k => {
+                    if (typeof rawState.statChanges[k] === 'number' && rawState.statChanges[k] < 0) {
+                        s.stats[k] = Math.max(1, s.stats[k] + rawState.statChanges[k]);
+                    }
+                });
+            }
         }
 
         if (typeof rawState.expReward === 'number' && rawState.expReward > 0 && checkData.success) {
@@ -562,7 +581,8 @@
             gameState.daysPassed += checkData.daysSpent || 1;
             gameState = applyStateDelta(gameState, parsedState, checkData, actionText);
             
-            if(onSuccessCallback) onSuccessCallback(); 
+            // 修復：死亡絕對優先，死亡不允許執行回呼（如突破復活）
+            if(gameState.hp > 0 && onSuccessCallback) onSuccessCallback(); 
             
             renderUI(oldState); 
             
