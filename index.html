@@ -196,7 +196,7 @@
     }
 
     let gameState = {
-        version: "2.13",
+        version: "2.14",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -228,9 +228,8 @@
 3. 【境界與升級鎖定（極度重要）】：你【絕對不可以】在故事中自行宣告玩家「突破境界」、「引氣入體成功」或「踏入練氣期」。境界突破只能由系統觸發的 [系統強制指令] 才能描寫！若玩家獲得奇遇，只能描述為「底蘊增加、氣血翻湧」，嚴禁越權升級。
 4. 【狀態與物品同步】：若你在故事中描述玩家獲得功法、法寶，必須同步於 JSON 的 \`gainedItems\`, \`gainedKungfu\`, \`gainedSkills\` 中。若玩家中毒、重傷或致殘，必須在 JSON 中輸出 \`"statusChanges": ["劇毒入體", "重傷"]\`。
 5. 【環境合理性與情境互斥鐵律（極為重要）】：
-   - 若玩家在【極度危險的動態環境】（例如：懸崖邊墜落、被妖獸追殺、龍煞罡風肆虐的絕地）選擇「閉關療傷」或進行不合時宜的行動，必須判定為「情境極度不合理」。這會導致分心走火入魔、強行運功遭煞氣反噬，必須給予嚴厲懲罰（hpChange 必須為負數，例如 -20 到 -40，甚至直接觸發墜落或重傷瀕死）。
-   - 若玩家在【對話抉擇階段】或【趕路途中】閉關，必須判定為錯失良機、遭環境突襲或被 NPC 趁虛而入。
-   - 絕不允許無條件的「原地滿血復活」。療傷必須有安全的地基（如躲入隱蔽裂隙、獲得防護道具），否則在絕境中療傷等於慢性自殺。
+   - 若玩家在【極度危險的動態環境】（例如：敵方攻擊中、被妖獸追殺、懸崖邊墜落、龍煞罡風肆虐）選擇「閉關療傷」或進行不合時宜的行動，【你必須直接無視系統傳來的「成功」判定】！強制判定為「情境極度不合理」並給予嚴厲的反噬懲罰（hpChange 必須為顯著負數，如 -20 到 -40，甚至直接重傷瀕死）。
+   - 絕不允許在敵人面前「原地滿血復活」或「安穩打坐」。療傷必須有安全的地基（如躲入隱蔽裂隙、獲得防護道具），否則在絕境中療傷等於慢性自殺。
 6. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
 7. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
 8. NPC 物件包含 {name, faction, title, relation, affinity}。
@@ -377,7 +376,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.13", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.14", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -602,19 +601,16 @@
         }
     }
 
-    // 退回原本的 getSystemPrompt (發送完整狀態)
     function getSystemPrompt() {
         return SYSTEM_INSTRUCTION + "\n\n【當前玩家快照】\n" + JSON.stringify(gameState, null, 2);
     }
 
-    // 退回原本的 getTrimmedHistory (保留 6 輪記憶)
     function getTrimmedHistory(maxTurns = 6) {
         let trimmed = conversationHistory.slice(-(maxTurns * 2));
         if (trimmed.length > 0 && trimmed[0].role === "assistant") trimmed.shift();
         return trimmed;
     }
 
-    // 退回原本的模型設定與重試機制
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.8-flash";
         const candidateModels = [customModel, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]; 
