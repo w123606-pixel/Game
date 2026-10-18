@@ -196,7 +196,7 @@
     }
 
     let gameState = {
-        version: "2.6",
+        version: "2.7",
         level: 0, realm: "廢脈凡人", linggen: "混沌待覺醒", physique: "真龍泣血之體",
         daysPassed: 0, ageBase: 20, maxAge: 100,
         hp: 35, maxHp: 50, exp: 0, maxExp: 100,
@@ -221,7 +221,7 @@
 1. 玩家目前為【廢脈凡人 (Lv.0)】開局，身處葬龍谷血棺，身受重傷，胸膛有至尊骨被挖的血洞，身負鎖魂釘。
 2. 【絕對禁止】在故事中出現任何類似「(判定: 成功)」、「【悟性檢定 (D20=18，總分=18 ➔ 成功)】」的字眼或分數標籤！成敗與難度必須完全透過文學敘事、肉體反饋與環境變化隱性呈現。
 3. 前端JS掌握生殺大權。你【無權】直接給予完整背包、任務或總經驗。
-4. 你只能在 JSON 提出「增量/減量建議」: expReward, hpChange, stoneChange, statChanges (單項限-2到+2，且總和不得超過+2), gainedItems, lostItems 等。
+4. 你只能 in JSON 提出「增量/減量建議」: expReward, hpChange, stoneChange, statChanges (單項限-2到+2，且總和不得超過+2), gainedItems, lostItems 等。
 5. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
 6. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
 7. NPC 物件包含 {name, faction, title, relation, affinity}。
@@ -283,7 +283,6 @@
         else if (totalScore >= dc) { res = (totalScore >= dc + 5) ? "極佳成功" : "成功"; isSuccess = true; }
         else { res = (totalScore <= dc - 5) ? "慘痛失敗" : "失敗"; isSuccess = false; }
         
-        // 隱藏判定訊息，不外顯給玩家，純粹作為內部暗骰給 AI 參考成敗趨勢
         const msg = `[天道暗骰執行完畢：成敗結果為【${res}】。請以此結果撰寫文學敘事，絕對不可在故事中輸出任何檢定分數或括號判定標籤！若劇情中死亡請回傳 isDead: true]`;
         
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
@@ -336,7 +335,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.6", level: 0, realm: "廢脈凡人", linggen: "混沌待覺醒", physique: "真龍泣血之體",
+            version: "2.7", level: 0, realm: "廢脈凡人", linggen: "混沌待覺醒", physique: "真龍泣血之體",
             daysPassed: 0, ageBase: 20, maxAge: 100, hp: 35, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 8, con: 8, agi: 10, int: 12, wis: 15, luk: 6 },
             status: ["重度殘廢", "鎖魂釘封印"], kungfu: [], skills: [], equipItem: ["血染破爛囚衣"], 
@@ -481,10 +480,8 @@
 
         const checkData = overrideCheck || performSkillCheck(actionText);
         
-        // 僅紀錄玩家的純動作，不把明面上的檢定數值暴露出現在對話紀錄中
         appendLogData("異世旅者", actionText, "player", false, true);
         
-        // 將暗骰的成敗結果悄悄塞給 AI 作為上下文隱性參考，前端對話框完全不顯示
         const actionWithSecretMeta = `${actionText}\n\n${checkData.message}`;
         conversationHistory.push({ role: "user", content: actionWithSecretMeta });
         
@@ -594,12 +591,22 @@
         return data.choices[0].message.content;
     }
 
+    // === 修復：確保死亡時重啟按鈕可以點擊 ===
     function syncControlsState() {
         const busy = isTyping || loadingInterval !== null;
         const dead = gameState.hp <= 0;
 
-        document.querySelectorAll(".choice-btn").forEach(btn => { btn.disabled = busy || dead; });
+        // 一般行動與快捷按鈕在死亡或忙碌時禁用
         document.querySelectorAll(".quick-btn").forEach(btn => { btn.disabled = busy || dead; });
+        
+        // 唯獨死亡重啟按鈕（choice-btn 且文字包含輪迴/身亡）在 dead 時必須確保可以點擊！
+        document.querySelectorAll(".choice-btn").forEach(btn => { 
+            if (dead && (btn.textContent.includes("輪迴") || btn.textContent.includes("身亡"))) {
+                btn.disabled = false; // 強制解鎖重啟按鈕
+            } else {
+                btn.disabled = busy || dead; 
+            }
+        });
 
         const canBreakthrough = gameState.exp >= gameState.maxExp && !dead;
         const breakthroughBtn = document.getElementById("btn-deduce");
