@@ -147,7 +147,7 @@
 
         <div id="tab-skills" class="tab-content">
             <h2>💫 狀態異常</h2>
-            <div id="ui-status" class="scroll-list" style="color: var(--accent-green);">• 凡體肉身</div>
+            <div id="ui-status" class="scroll-list" style="color: var(--accent-red);">• 凡體肉身</div>
             <h2>📖 主修心法</h2>
             <div id="ui-kungfu" class="scroll-list" style="color: var(--hl-cyan);">• 無</div>
             <h2>⚔️ 術法技能</h2>
@@ -196,7 +196,7 @@
     }
 
     let gameState = {
-        version: "2.11",
+        version: "2.13",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -224,17 +224,36 @@
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【鐵血規則 (絕對禁止輸出明面判定標籤)】
 1. 玩家目前為【凡人 (Lv.0)】開局。靈根尚未顯化。
-2. 【絕對禁止】在故事中出現任何類似「(判定: 成功)」、「【悟性檢定 (D20=18，總分=18 ➔ 成功)】」的字眼或分數標籤！成敗與難度必須完全透過文學敘事、肉體反饋與環境變化隱性呈現。
-3. 前端JS掌握生殺大權。你【無權】直接給予完整背包、任務或總經驗。
-4. 【環境合理性與情境互斥鐵律（極為重要）】：
+2. 【絕對禁止】在故事中出現任何類似「(判定: 成功)」的分數標籤！成敗與難度必須完全透過文學敘事、肉體反饋與環境變化隱性呈現。
+3. 【境界與升級鎖定（極度重要）】：你【絕對不可以】在故事中自行宣告玩家「突破境界」、「引氣入體成功」或「踏入練氣期」。境界突破只能由系統觸發的 [系統強制指令] 才能描寫！若玩家獲得奇遇，只能描述為「底蘊增加、氣血翻湧」，嚴禁越權升級。
+4. 【狀態與物品同步】：若你在故事中描述玩家獲得功法、法寶，必須同步於 JSON 的 \`gainedItems\`, \`gainedKungfu\`, \`gainedSkills\` 中。若玩家中毒、重傷或致殘，必須在 JSON 中輸出 \`"statusChanges": ["劇毒入體", "重傷"]\`。
+5. 【環境合理性與情境互斥鐵律（極為重要）】：
    - 若玩家在【極度危險的動態環境】（例如：懸崖邊墜落、被妖獸追殺、龍煞罡風肆虐的絕地）選擇「閉關療傷」或進行不合時宜的行動，必須判定為「情境極度不合理」。這會導致分心走火入魔、強行運功遭煞氣反噬，必須給予嚴厲懲罰（hpChange 必須為負數，例如 -20 到 -40，甚至直接觸發墜落或重傷瀕死）。
    - 若玩家在【對話抉擇階段】或【趕路途中】閉關，必須判定為錯失良機、遭環境突襲或被 NPC 趁虛而入。
    - 絕不允許無條件的「原地滿血復活」。療傷必須有安全的地基（如躲入隱蔽裂隙、獲得防護道具），否則在絕境中療傷等於慢性自殺。
-5. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
-6. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
-7. NPC 物件包含 {name, faction, title, relation, affinity}。
+6. 【生死聯動判定】若玩家在該回合因重傷、反噬或絕境而身死道消，必須在 JSON 內明確回傳 \`"isDead": true\` 且將 \`hpChange\` 設為足以歸零的負數。
+7. 【世界紀事】只記錄境界大突破、生死大仇、宗門興滅、獲傳說神兵。
+8. NPC 物件包含 {name, faction, title, relation, affinity}。
 
-每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。`;
+每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。範例格式：
+\`\`\`json
+{
+  "hpChange": -15,
+  "isDead": false,
+  "expReward": 25,
+  "stoneChange": 8,
+  "statChanges": {"wis": 1},
+  "gainedItems": [],
+  "lostItems": [],
+  "gainedKungfu": ["玄雷化煞經殘篇"],
+  "gainedSkills": [],
+  "statusChanges": ["劇毒入體", "重傷"],
+  "questUpdates": [{"name": "身世問心", "progress": "身世已定，開始探索修仙界", "status": "進行中"}],
+  "npcs": [],
+  "worldEvents": ["踏入九州修仙界邊陲"],
+  "choices": ["強行運功逼毒", "拼死撲向靈液保命"]
+}
+\`\`\``;
 
     window.onload = () => { loadApiKey(); loadGameState(); };
 
@@ -248,7 +267,6 @@
     function performSkillCheck(actionText) {
         const d20 = Math.floor(Math.random() * 20) + 1;
         
-        // 1. 判斷行動類型與對應屬性
         let statVal = gameState.stats.wis, statName = "悟性";
         let actionType = "普通";
         
@@ -260,7 +278,6 @@
         else if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; }
         else if (/(修練|吐納|打坐)/.test(actionText)) { actionType = "修練"; }
         
-        // 2. 決定基礎難度 DC 與經驗值
         let dc = 10, dcName = "普通", maxExpPct = 0.1, days = 1;
         
         if (actionType === "療傷") { dc = 8; maxExpPct = 0.15; days = 10; }
@@ -270,31 +287,26 @@
         else if (actionType === "退避") { dc = 6; maxExpPct = 0.03; days = 1; }
         else if (/(買東西|查看|聊天|散步|逛坊市)/.test(actionText)) { dc = 5; actionType = "日常"; maxExpPct = 0.05; days = 0; }
         
-        // 3. 【核心新增】分析玩家狀態與決策的「契合度」
         let compatibilityMod = 0;
         let compatibilityMsg = "普通 (行動中規中矩)";
         
         const hpPct = gameState.hp / gameState.maxHp;
-        // 判斷是否帶有真實的傷病殘缺狀態
-        const isCrippled = gameState.status.some(s => ["重度殘廢", "經脈受損", "重傷"].some(k => s.includes(k)));
+        const isCrippled = gameState.status.some(s => ["重度殘廢", "經脈受損", "重傷", "劇毒"].some(k => s.includes(k)));
 
-        // 情境 A：重傷或瀕死 (HP < 30% 或 有殘廢狀態)
         if (isCrippled || hpPct < 0.3) {
             if (actionType === "戰鬥" || actionType === "作死") {
-                compatibilityMod = -5; // 找死行為，大扣分
+                compatibilityMod = -5;
                 compatibilityMsg = "極差！重傷之軀強行逞勇，引發傷勢反噬！";
             } else if (actionType === "退避") {
-                compatibilityMod = +4; // 明哲保身，大加分
+                compatibilityMod = +4;
                 compatibilityMsg = "極佳！審時度勢，強忍屈辱明哲保身。";
             } else if (actionType === "探索" || actionType === "日常") {
                 compatibilityMod = -2;
                 compatibilityMsg = "不佳，傷重未癒卻四處走動，牽動舊傷。";
             }
-        } 
-        // 情境 B：健康滿血狀態 (HP > 90%)
-        else if (hpPct > 0.9) {
+        } else if (hpPct > 0.9) {
             if (actionType === "療傷") {
-                compatibilityMod = -3; // 防呆防刷機制
+                compatibilityMod = -3; 
                 compatibilityMsg = "無謂。氣血充盈卻強行閉關療傷，不僅毫無收效反而氣血浮躁。";
             } else if (actionType === "戰鬥") {
                 compatibilityMod = +2;
@@ -302,11 +314,9 @@
             }
         }
 
-        // 4. 計算總分與成敗
         let mod = Math.floor((statVal - 10) / 2);
-        if (isCrippled) { mod -= 3; } // 殘廢的基礎肉體懲罰
+        if (isCrippled) { mod -= 3; } 
         
-        // 總骰數 = D20 + 屬性加成 + 契合度加成
         const totalScore = d20 + mod + compatibilityMod;
         
         let res = "失敗", isSuccess = false;
@@ -315,8 +325,7 @@
         else if (totalScore >= dc) { res = (totalScore >= dc + 5) ? "極佳成功" : "成功"; isSuccess = true; }
         else { res = (totalScore <= dc - 5) ? "慘痛失敗" : "失敗"; isSuccess = false; }
         
-        // 將契合度結果寫入給 AI 的秘密提示中
-        const msg = `[天道暗骰執行完畢：${statName}檢定。行動與當前狀態契合度：【${compatibilityMsg}】。最終成敗：【${res}】。請根據此契合度與結果撰寫敘事！若契合度為極差，請嚴格描寫反噬懲罰。若玩家在危險環境中不合時宜療傷，必須給予走火入魔懲罰。若死亡請回傳 isDead: true]`;
+        const msg = `[天道暗骰執行完畢：${statName}檢定。行動與當前狀態契合度：【${compatibilityMsg}】。最終成敗：【${res}】。請根據此契合度撰寫敘事！注意：絕對不可以自行在故事中宣佈玩家突破境界！若死亡請回傳 isDead: true]`;
         
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
     }
@@ -368,7 +377,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.11", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.13", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -419,6 +428,7 @@
             rawState.gainedItems = [];
             rawState.gainedSkills = [];
             rawState.gainedKungfu = [];
+            rawState.statusChanges = []; 
             rawState.expReward = 0;
             if (typeof rawState.stoneChange === 'number' && rawState.stoneChange > 0) rawState.stoneChange = 0;
             delete rawState.linggen;
@@ -426,9 +436,18 @@
             delete rawState.questUpdates;
         }
 
+        if (rawState.statusChanges && Array.isArray(rawState.statusChanges)) {
+            rawState.statusChanges.forEach(st => {
+                if (typeof st === 'string' && !s.status.includes(st)) {
+                    s.status = s.status.filter(oldSt => oldSt !== "凡體肉身" && oldSt !== "健康");
+                    s.status.push(st);
+                }
+            });
+        }
+
         const isHealingAction = /(閉關療傷|專心療傷|調養經脈)/.test(actionText);
         if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 10) {
-            s.status = s.status.filter(st => st !== "經脈受損" && st !== "重度殘廢");
+            s.status = s.status.filter(st => st !== "經脈受損" && st !== "重度殘廢" && st !== "重傷" && st !== "劇毒入體" && st !== "劇毒");
             if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         }
 
@@ -459,7 +478,7 @@
         if(rawState.choices && Array.isArray(rawState.choices)) s.choices = rawState.choices;
 
         const applyArrayChanges = (baseArr, gainedArr, lostArr) => {
-            let res = [...baseArr];
+            let res = [...baseArr].filter(i => i !== "無");
             if(lostArr && Array.isArray(lostArr)) res = res.filter(i => !lostArr.includes(i));
             if(gainedArr && Array.isArray(gainedArr)) { gainedArr.forEach(i => { if(typeof i === 'string' && !res.includes(i)) res.push(i); }); }
             return res.length > 0 ? res : ["無"];
@@ -583,19 +602,22 @@
         }
     }
 
+    // 退回原本的 getSystemPrompt (發送完整狀態)
     function getSystemPrompt() {
         return SYSTEM_INSTRUCTION + "\n\n【當前玩家快照】\n" + JSON.stringify(gameState, null, 2);
     }
 
+    // 退回原本的 getTrimmedHistory (保留 6 輪記憶)
     function getTrimmedHistory(maxTurns = 6) {
         let trimmed = conversationHistory.slice(-(maxTurns * 2));
         if (trimmed.length > 0 && trimmed[0].role === "assistant") trimmed.shift();
         return trimmed;
     }
 
+    // 退回原本的模型設定與重試機制
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.8-flash";
-        const candidateModels = [customModel, "gemini-3.5-flash-lite"]; 
+        const candidateModels = [customModel, "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]; 
         
         const contents = getTrimmedHistory().map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
         const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() }] }, contents: contents, generationConfig: { temperature: 0.7, maxOutputTokens: 2000 } };
