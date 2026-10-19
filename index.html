@@ -123,7 +123,7 @@
             <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">凡人 (Lv.0)</span></div>
             <div class="stat-item" style="flex-direction:column; align-items:flex-start;">
                 <div style="display:flex; justify-content:space-between; width:100%;">
-                    <span class="stat-label">感悟 / 淬體進度</span><span class="stat-value" style="font-size:0.75rem;" id="ui-exp-text">0/100</span>
+                    <span class="stat-label">感悟 / 修為進度</span><span class="stat-value" style="font-size:0.75rem;" id="ui-exp-text">0/100</span>
                 </div>
                 <div class="exp-container"><div class="exp-fill" id="ui-exp-fill" style="width: 0%;"></div></div>
             </div>
@@ -197,42 +197,46 @@
 
     const REALMS = [
         { level: 0, name: "凡人", maxAge: 100, maxHp: 50, maxExp: 100 },
-        { level: 1, name: "練氣初期", maxAge: 120, maxHp: 100, maxExp: 200 },
-        { level: 2, name: "練氣中期", maxAge: 130, maxHp: 150, maxExp: 400 },
-        { level: 3, name: "練氣後期", maxAge: 150, maxHp: 200, maxExp: 800 },
-        { level: 4, name: "築基初期", maxAge: 250, maxHp: 500, maxExp: 1500 },
-        { level: 5, name: "築基中期", maxAge: 300, maxHp: 800, maxExp: 3000 },
-        { level: 6, name: "築基後期", maxAge: 350, maxHp: 1200, maxExp: 6000 },
-        { level: 7, name: "金丹初期", maxAge: 500, maxHp: 3000, maxExp: 12000 },
-        { level: 8, name: "金丹中期", maxAge: 600, maxHp: 5000, maxExp: 25000 },
-        { level: 9, name: "金丹後期", maxAge: 800, maxHp: 8000, maxExp: 50000 },
-        { level: 10, name: "元嬰初期", maxAge: 1200, maxHp: 15000, maxExp: 100000 },
-        { level: 11, name: "元嬰中期", maxAge: 1500, maxHp: 25000, maxExp: 200000 },
-        { level: 12, name: "元嬰後期", maxAge: 1800, maxHp: 40000, maxExp: 400000 },
-        { level: 13, name: "化神初期", maxAge: 3000, maxHp: 80000, maxExp: 800000 },
-        { level: 14, name: "化神中期", maxAge: 3500, maxHp: 150000, maxExp: 1500000 },
-        { level: 15, name: "化神後期", maxAge: 4000, maxHp: 250000, maxExp: 3000000 },
-        { level: 16, name: "煉虛初期", maxAge: 6000, maxHp: 500000, maxExp: 6000000 },
-        { level: 17, name: "煉虛中期", maxAge: 7000, maxHp: 800000, maxExp: 12000000 },
-        { level: 18, name: "煉虛後期", maxAge: 8000, maxHp: 1200000, maxExp: 25000000 },
-        { level: 19, name: "合體初期", maxAge: 12000, maxHp: 2500000, maxExp: 50000000 },
-        { level: 20, name: "合體中期", maxAge: 15000, maxHp: 4000000, maxExp: 100000000 },
-        { level: 21, name: "合體後期", maxAge: 18000, maxHp: 7000000, maxExp: 250000000 },
-        { level: 22, name: "大乘初期", maxAge: 25000, maxHp: 15000000, maxExp: 600000000 },
-        { level: 23, name: "大乘中期", maxAge: 30000, maxHp: 30000000, maxExp: 1500000000 },
-        { level: 24, name: "大乘後期", maxAge: 40000, maxHp: 60000000, maxExp: 3000000000 },
-        { level: 25, name: "渡劫期", maxAge: 50000, maxHp: 120000000, maxExp: 8000000000 },
-        { level: 26, name: "真仙初期", maxAge: 999999, maxHp: 300000000, maxExp: 20000000000 },
-        { level: 27, name: "真仙中期", maxAge: 999999, maxHp: 600000000, maxExp: 50000000000 },
-        { level: 28, name: "真仙後期", maxAge: 999999, maxHp: 1000000000, maxExp: 100000000000 },
-        { level: 29, name: "金仙期", maxAge: 999999, maxHp: 5000000000, maxExp: 500000000000 },
-        { level: 30, name: "太乙玉仙", maxAge: 999999, maxHp: 20000000000, maxExp: 2000000000000 },
-        { level: 31, name: "大羅金仙", maxAge: 999999, maxHp: 99999999999, maxExp: 9999999999999 },
-        { level: 32, name: "仙帝 / 道祖", maxAge: 999999, maxHp: 999999999999, maxExp: 99999999999999 }
+        { level: 1, name: "練氣前期", maxAge: 110, maxHp: 90, maxExp: 150 },
+        { level: 2, name: "練氣中期", maxAge: 120, maxHp: 130, maxExp: 300 },
+        { level: 3, name: "練氣後期", maxAge: 140, maxHp: 180, maxExp: 600 },
+        { level: 4, name: "練氣圓滿", maxAge: 160, maxHp: 250, maxExp: 1200 },
+        { level: 5, name: "築基初期", maxAge: 220, maxHp: 500, maxExp: 2500 },
+        { level: 6, name: "築基中期", maxAge: 260, maxHp: 750, maxExp: 5000 },
+        { level: 7, name: "築基後期", maxAge: 300, maxHp: 1100, maxExp: 10000 },
+        { level: 8, name: "築基圓滿", maxAge: 350, maxHp: 1600, maxExp: 20000 },
+        { level: 9, name: "金丹初期", maxAge: 500, maxHp: 3000, maxExp: 40000 },
+        { level: 10, name: "金丹中期", maxAge: 600, maxHp: 4500, maxExp: 80000 },
+        { level: 11, name: "金丹後期", maxAge: 750, maxHp: 7000, maxExp: 160000 },
+        { level: 12, name: "金丹圓滿", maxAge: 900, maxHp: 10000, maxExp: 320000 },
+        { level: 13, name: "元嬰初期", maxAge: 1200, maxHp: 18000, maxExp: 640000 },
+        { level: 14, name: "元嬰中期", maxAge: 1400, maxHp: 26000, maxExp: 1280000 },
+        { level: 15, name: "元嬰後期", maxAge: 1700, maxHp: 38000, maxExp: 2500000 },
+        { level: 16, name: "元嬰圓滿", maxAge: 2000, maxHp: 55000, maxExp: 5000000 },
+        { level: 17, name: "化神初期", maxAge: 3000, maxHp: 90000, maxExp: 10000000 },
+        { level: 18, name: "化神中期", maxAge: 3500, maxHp: 130000, maxExp: 20000000 },
+        { level: 19, name: "化神後期", maxAge: 4000, maxHp: 190000, maxExp: 40000000 },
+        { level: 20, name: "化神圓滿", maxAge: 5000, maxHp: 280000, maxExp: 80000000 },
+        { level: 21, name: "煉虛初期", maxAge: 6500, maxHp: 400000, maxExp: 150000000 },
+        { level: 22, name: "煉虛中期", maxAge: 7500, maxHp: 600000, maxExp: 300000000 },
+        { level: 23, name: "煉虛後期", maxAge: 8500, maxHp: 900000, maxExp: 600000000 },
+        { level: 24, name: "煉虛圓滿", maxAge: 10000, maxHp: 1300000, maxExp: 1200000000 },
+        { level: 25, name: "合體初期", maxAge: 13000, maxHp: 2000000, maxExp: 2500000000 },
+        { level: 26, name: "合體中期", maxAge: 15000, maxHp: 3000000, maxExp: 5000000000 },
+        { level: 27, name: "合體後期", maxAge: 18000, maxHp: 4500000, maxExp: 10000000000 },
+        { level: 28, name: "合體圓滿", maxAge: 22000, maxHp: 7000000, maxExp: 20000000000 },
+        { level: 29, name: "大乘初期", maxAge: 28000, maxHp: 12000000, maxExp: 40000000000 },
+        { level: 30, name: "大乘中期", maxAge: 35000, maxHp: 20000000, maxExp: 80000000000 },
+        { level: 31, name: "大乘後期", maxAge: 45000, maxHp: 35000000, maxExp: 150000000000 },
+        { level: 32, name: "渡劫期 (巔峰)", maxAge: 60000, maxHp: 60000000, maxExp: 300000000000 },
+        { level: 33, name: "真仙境", maxAge: 999999, maxHp: 150000000, maxExp: 800000000000 },
+        { level: 34, name: "金仙境", maxAge: 999999, maxHp: 400000000, maxExp: 2000000000000 },
+        { level: 35, name: "太乙玉仙", maxAge: 999999, maxHp: 1000000000, maxExp: 5000000000000 },
+        { level: 36, name: "大羅道祖", maxAge: 999999, maxHp: 99999999999, maxExp: 99999999999999 }
     ];
 
     let gameState = {
-        version: "2.18",
+        version: "2.20",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -261,8 +265,8 @@
 【鐵血規則 (絕對禁止輸出明面判定標籤)】
 1. 玩家目前為【凡人 (Lv.0)】開局。靈根尚未顯化。
 2. 【絕對禁止】在故事中出現任何類似「(判定: 成功)」的分數標籤！成敗與難度必須完全透過文學敘事、肉體反饋與環境變化隱性呈現。
-3. 【境界與升級鎖定（極度重要）】：你【絕對不可以】在故事中自行宣告玩家「突破境界」、「引氣入體成功」或「踏入練氣期」。境界突破只能由系統觸發的 [系統強制指令] 才能描寫！若玩家獲得奇遇，只能描述為「底蘊增加、氣血翻湧」，嚴禁越權升級。
-4. 【狀態與物品同步】：若你在故事中描述玩家獲得功法、法寶，必須同步於 JSON 的 \`gainedItems\`, \`gainedKungfu\`, \`gainedSkills\` 中。若玩家中毒、重傷或致殘，必須在 JSON 中輸出 \`"statusChanges": ["劇毒入體", "重傷"]\`。
+3. 【境界與升級鎖定（極度重要）】：你【絕對不可以】在故事中自行宣告玩家「突破境界」、「引氣入體成功」或跨越境界。境界突破只能由系統觸發的 [系統強制指令] 才能描寫！若玩家獲得奇遇，只能描述為「底蘊增加、氣血翻湧」，嚴禁越權升級。
+4. 【狀態與物品同步】：若你在故事中描述玩家獲得功法、法寶，必須同步於 JSON 的 \`gainedItems\`, \`gainedKungfu\`, \`gainedSkills\` 中。若玩家中毒、重傷或致殘，必須在 JSON 中輸出 \`"statusChanges": ["劇毒入體", "重傷"]\`。注意：正面狀態（如氣海初開、劍意洗禮、經脈重塑完成）請寫在敘事或紀事中，【絕對不可】塞進 statusChanges 負面異常欄！
 5. 【環境合理性與情境互斥鐵律（極為重要）】：
    - 若玩家在【極度危險的動態環境】（例如：敵方攻擊中、被妖獸追殺、懸崖邊墜落、龍煞罡風肆虐）選擇「閉關療傷」或進行不合時宜的行動，【你必須直接無視系統傳來的「成功」判定】！強制判定為「情境極度不合理」並給予嚴厲的反噬懲罰（hpChange 必須為顯著負數，如 -20 到 -40，甚至直接重傷瀕死）。
    - 絕不允許在敵人面前「原地滿血復活」或「安穩打坐」。療傷必須有安全的地基（如躲入隱蔽裂隙、獲得防護道具），否則在絕境中療傷等於慢性自殺。
@@ -282,7 +286,7 @@
   "lostItems": [],
   "gainedKungfu": ["玄雷化煞經殘篇"],
   "gainedSkills": [],
-  "statusChanges": ["劇毒入體", "重傷"],
+  "statusChanges": ["重傷"],
   "questUpdates": [{"name": "身世問心", "progress": "身世已定，開始探索修仙界", "status": "進行中"}],
   "npcs": [],
   "worldEvents": ["踏入九州修仙界邊陲"],
@@ -320,7 +324,7 @@
         let compatibilityMsg = "普通 (行動中規中矩)";
         
         const hpPct = gameState.hp / gameState.maxHp;
-        const isCrippled = gameState.status.some(s => ["重度殘廢", "經脈受損", "重傷", "劇毒"].some(k => s.includes(k)));
+        const isCrippled = gameState.status.some(s => ["重度殘廢", "經脈受損", "重傷", "劇毒", "殘破"].some(k => s.includes(k)));
 
         if (isCrippled || hpPct < 0.3) {
             if (actionType === "戰鬥" || actionType === "作死") {
@@ -365,26 +369,30 @@
         
         const nextLevel = gameState.level + 1;
         const nextRealm = (typeof REALMS !== 'undefined' && REALMS[nextLevel]) ? REALMS[nextLevel] : { 
-            name: "渡劫期", maxAge: 10000 + (nextLevel*1000), maxHp: 1000000 * (nextLevel-14), maxExp: 10000000 * (nextLevel-14) 
+            name: "仙界大能", maxAge: 999999, maxHp: 99999999999, maxExp: 999999999999 
         };
         
-        const dc = Math.min(25, 13 + nextLevel); 
+        const isMortal = gameState.level === 0;
+        const isBottleNeck = (gameState.level % 4 === 0);
+        
+        const dc = Math.min(25, 12 + nextLevel); 
         const d20 = Math.floor(Math.random() * 20) + 1;
         const mod = Math.floor((gameState.stats.wis - 10) / 2) + Math.floor((gameState.stats.con - 10) / 2);
         const total = d20 + mod;
         const success = d20 !== 1 && (total >= dc || d20 === 20);
         
-        const isMortal = gameState.level === 0;
         let msg, shortRes;
         
         if(success) {
             msg = isMortal 
                 ? `[系統強制指令：引氣入體，結果：大成功！凡人成功開拓氣海，正式跨入「${nextRealm.name} (Lv.${nextLevel})」，覺醒靈根！壽命上限暴增至 ${nextRealm.maxAge} 歲！請以震撼敘事描寫靈氣灌體，絕對不可出現檢定標籤。]`
-                : `[系統強制指令：突破境界，結果：大成功！衝破瓶頸跨入「${nextRealm.name} (Lv.${nextLevel})」！壽命上限拔高至 ${nextRealm.maxAge} 歲！請以震撼敘事描寫突破過程，絕對不可出現檢定標籤。]`;
+                : isBottleNeck
+                    ? `[系統強制指令：大境界瓶頸突破，結果：大成功！成功衝破桎梏，跨入全新大境界「${nextRealm.name} (Lv.${nextLevel})」！壽命上限拔高至 ${nextRealm.maxAge} 歲！請以震撼敘事描寫破境過程，絕對不可出現檢定標籤。]`
+                    : `[系統強制指令：小境界晉升，結果：大成功！修為更上一層樓，順利踏入「${nextRealm.name} (Lv.${nextLevel})」！壽命上限提升至 ${nextRealm.maxAge} 歲！請生動描寫修為精進，絕對不可出現檢定標籤。]`;
             shortRes = "大成功";
         } else {
-            const failDmg = isMortal ? 25 : 50 * nextLevel;
-            msg = `[系統強制指令：突破境界，結果：失敗！遭天地靈氣反噬，扣除 ${failDmg} HP 並加重傷勢。請生動描述失敗的反噬痛苦，絕對不可出現檢定標籤。]`;
+            const failDmg = isMortal ? 25 : 40 * nextLevel;
+            msg = `[系統強制指令：境界突破，結果：失敗！遭遇天地靈氣反噬，氣血逆流，扣除 ${failDmg} HP 並導致經脈受損！請生動描述失敗的反噬痛苦，絕對不可出現檢定標籤。]`;
             shortRes = "大失敗";
         }
         
@@ -404,8 +412,8 @@
                     gameState.physique = "引氣淬體之軀";
                 }
                 
-                gameState.status = gameState.status.filter(st => st !== "凡體肉身" && st !== "重度殘廢" && st !== "經脈受損" && st !== "重傷" && st !== "境界虛浮");
-                if(gameState.status.length === 0) gameState.status = ["健康"];
+                // 突破成功自動淨化所有負面異常，重回健康
+                gameState.status = ["健康"];
 
                 ['str','con','agi','int','wis','luk'].forEach(k => {
                     gameState.stats[k] = Math.min(100, gameState.stats[k] + Math.floor(Math.random()*3) + 2);
@@ -416,13 +424,13 @@
             }
         };
 
-        const actionPrompt = isMortal ? "【凝神聚氣，嘗試強行引氣入體！】" : `【運轉周天衝擊瓶頸，嘗試突破至 ${nextRealm.name}！】`;
-        sendAction(actionPrompt, { message: msg, shortRes: shortRes, maxExpReward: 0, daysSpent: isMortal ? 5 : 30 * nextLevel, success: success }, onSuccess);
+        const actionPrompt = isMortal ? "【凝神聚氣，嘗試強行引氣入體！】" : isBottleNeck ? `【服用地靈丹，全力衝擊大境界瓶頸突破至 ${nextRealm.name}！】` : `【閉關打坐，嘗試突破至 ${nextRealm.name}！】`;
+        sendAction(actionPrompt, { message: msg, shortRes: shortRes, maxExpReward: 0, daysSpent: isMortal ? 5 : 15 * nextLevel, success: success }, onSuccess);
     }
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.18", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.20", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -480,19 +488,24 @@
             rawState.gainedKungfu = [];
             rawState.expReward = 0;
             if (typeof rawState.stoneChange === 'number' && rawState.stoneChange > 0) rawState.stoneChange = 0;
-            
             if (typeof rawState.hpChange === 'number' && rawState.hpChange > 0) rawState.hpChange = 0;
-            
             delete rawState.linggen;
             delete rawState.physique;
             delete rawState.questUpdates;
         }
 
+        // 過濾掉正面關鍵字，防止被誤認為負面狀態異常塞進去
+        const positiveKeywords = ["完成", "初開", "顯化", "洗禮", "淬體", "生", "突破", "重塑", "健康"];
         if (rawState.statusChanges && Array.isArray(rawState.statusChanges)) {
             rawState.statusChanges.forEach(st => {
-                if (typeof st === 'string' && !s.status.includes(st)) {
-                    s.status = s.status.filter(oldSt => oldSt !== "凡體肉身" && oldSt !== "健康");
-                    s.status.push(st);
+                if (typeof st === 'string' && st.trim() !== "") {
+                    const isPositive = positiveKeywords.some(kw => st.includes(kw));
+                    if (!isPositive) {
+                        if (!s.status.includes(st)) {
+                            s.status = s.status.filter(oldSt => oldSt !== "凡體肉身" && oldSt !== "健康");
+                            s.status.push(st);
+                        }
+                    }
                 }
             });
         }
@@ -504,7 +517,8 @@
 
         const isHealingAction = /(閉關療傷|專心療傷|調養經脈)/.test(actionText);
         if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 10) {
-            s.status = s.status.filter(st => st !== "經脈受損" && st !== "重度殘廢" && st !== "重傷" && st !== "劇毒入體" && st !== "劇毒");
+            // 療傷成功時，清除主要負面 Debuff
+            s.status = s.status.filter(st => !["經脈殘破", "經脈受損", "重度殘廢", "重傷", "劇毒", "反噬", "失血過多", "昏迷"].some(k => st.includes(k)));
             if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         }
 
@@ -580,6 +594,9 @@
             rawState.worldEvents.forEach(evt => { if(typeof evt === 'string' && !s.worldEvents.includes(evt)) s.worldEvents.push(evt); });
             if(s.worldEvents.length > 15) s.worldEvents = s.worldEvents.slice(-15);
         }
+
+        // 確保狀態異常欄若為空時回歸健康
+        if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
 
         if (s.hp <= 0) {
             s.hp = 0;
@@ -681,7 +698,6 @@
     }
 
     async function callGeminiApi(apiKey) {
-        // 設定 Gemini 優先使用 Flash-Lite，依序備援 3.7 與 3.8
         const customModel = document.getElementById("api-model").value.trim();
         const candidateModels = customModel ? [customModel, "gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-3.8-flash"] : ["gemini-3.5-flash-lite", "gemini-3.7-flash", "gemini-3.8-flash"];
         
@@ -704,7 +720,6 @@
                 if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) return data.candidates[0].content.parts[0].text;
             } catch (err) {
                 lastError = err;
-                // 若為 429 或 400，跳轉下一個候選模型嘗試
                 if(err.message.includes("429") || err.message.includes("400") || err.message.includes("異常")) continue;
                 break;
             }
@@ -742,7 +757,9 @@
         const canBreakthrough = gameState.exp >= gameState.maxExp && !dead;
         const breakthroughBtn = document.getElementById("btn-deduce");
         breakthroughBtn.disabled = busy || !canBreakthrough;
-        breakthroughBtn.textContent = gameState.level === 0 ? "✨ 引氣入體" : "✨ 突破境界";
+        
+        const isBottleNeck = (gameState.level % 4 === 0);
+        breakthroughBtn.textContent = gameState.level === 0 ? "✨ 引氣入體" : isBottleNeck ? "⚡ 突破大境界瓶頸" : "✨ 晉升小境界";
         
         document.getElementById("btn-submit").disabled = busy || dead;
         document.getElementById("action-input").disabled = busy || dead;
