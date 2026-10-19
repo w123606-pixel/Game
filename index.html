@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.03 Fix)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.04)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -60,10 +60,6 @@
         .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
         .story-block.system { border-left: 3px solid var(--accent-red); padding-left: 8px; background: rgba(255, 82, 82, 0.05); color: #ccc; font-size: 0.85rem; }
         
-        .hl-skill { color: var(--hl-gold); font-weight: bold; }
-        .hl-danger { color: var(--accent-red); font-weight: bold; text-decoration: underline; }
-        .hl-item { color: var(--hl-cyan); font-weight: bold; }
-
         .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); }
         .dynamic-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-bottom: 8px; }
         
@@ -95,8 +91,10 @@
         
         .item-row { background: #1a1d2a; border: 1px solid #2a2d3d; border-radius: 4px; padding: 6px 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
         .item-actions { display: flex; gap: 4px; }
-        .item-actions button { background: #2a2d3d; border: 1px solid #444; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; cursor: pointer; }
-        .item-actions button:hover { background: var(--border-gold); color: #000; }
+        .item-actions button { background: #2a2d3d; border: 1px solid #444; color: #fff; padding: 3px 8px; border-radius: 3px; font-size: 0.75rem; cursor: pointer; }
+        .item-actions button.btn-use { background: #1b5e20; border-color: #43a047; }
+        .item-actions button.btn-equip { background: #0d47a1; border-color: #1e88e5; }
+        .item-actions button:hover { filter: brightness(1.2); }
 
         .clickable-tag { text-decoration: underline; cursor: pointer; }
         .clickable-tag:hover { filter: brightness(1.2); }
@@ -122,8 +120,8 @@
                 <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)">🧘 閉關(10天)</button>
                 <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)">⛰️ 死關(30天)</button>
                 <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;">🏥 求醫(50石)</button>
-                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059; display:none;">📜 宗門任務</button>
-                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059; display:none;">📚 藏經閣</button>
+                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059;">📜 宗門任務</button>
+                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059;">📚 藏經閣</button>
                 <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple); grid-column: span 2;" onclick="attemptBreakthrough()" disabled>✨ 需先點選上方身世開局</button>
             </div>
         </div>
@@ -238,7 +236,7 @@
     ];
 
     let gameState = {
-        version: "4.03",
+        version: "4.04",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -261,17 +259,39 @@
     let storyLogData = [];
     let isTyping = false;
 
+    // 道具屬性與分類檢索庫
+    function getItemMeta(itemName) {
+        if (/(衣|甲|冠|鞋|靴|袍|服)/.test(itemName)) {
+            return { type: 'equip', slot: 'armor', name: itemName, desc: '防具 [HP+20, 根骨+1]', hpBonus: 20, stats: { con: 1 } };
+        }
+        if (/(劍|刀|槍|杖|刃|弓)/.test(itemName)) {
+            return { type: 'equip', slot: 'weapon', name: itemName, desc: '武器 [膂力+2]', hpBonus: 10, stats: { str: 2 } };
+        }
+        if (/(戒|佩|墜|鐲|環)/.test(itemName)) {
+            return { type: 'equip', slot: 'accessory', name: itemName, desc: '飾品 [悟性+2, 神識+1]', hpBonus: 15, stats: { wis: 2, int: 1 } };
+        }
+        if (/(令|珠|鏡|印|鼎|塔)/.test(itemName)) {
+            return { type: 'equip', slot: 'treasure', name: itemName, desc: '法寶 [氣運+2]', hpBonus: 25, stats: { luk: 2 } };
+        }
+        if (/(丹|散|膏|丸|水)/.test(itemName)) {
+            return { type: 'consumable', name: itemName, desc: '丹藥 [增益/恢復氣血]' };
+        }
+        if (/(玉簡|秘籍|心法|殘篇|圖錄|訣)/.test(itemName)) {
+            return { type: 'studyable', name: itemName, desc: '功法/術法玉簡 [點擊參悟]' };
+        }
+        return { type: 'misc', name: itemName, desc: '普通物品' };
+    }
+
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【嚴格規則限制】
-1. 【嚴禁越權越級敘事】：點擊「突破」之前禁止寫突破！只能寫氣海翻湧。
-2. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
-3. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
-4. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」選項！
-5. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
+1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location（若在宗門建築如傳功殿、藏經閣、執事堂，必須精準傳回！）。
+2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
+3. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
+4. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
 {
   "success": true,
-  "location": "青雲宗山門",
+  "location": "青雲宗傳功殿",
   "scenarioState": "safe", 
   "hpChange": 0,
   "expReward": 20,
@@ -282,7 +302,7 @@
   "statusChanges": [], 
   "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10},
   "npcs": [],
-  "choices": ["前往傳功殿領取功法", "前往後山執行任務", "返回洞府閉關修練"]
+  "choices": ["留在傳功殿請教長老", "前往宗門集市採購", "返回洞府閉關修練"]
 }
 \`\`\``;
 
@@ -338,21 +358,34 @@
 
     function sectAction(type) {
         if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
-        if (!gameState.location.includes("青雲宗") && !gameState.location.includes("宗門")) return alert("你目前不在宗門內，請先返回山門！");
-        if (type === 'quest') sendAction("【前往宗門執事堂接取任務，賺取貢獻度與資源！】");
+        if (type === 'quest') sendAction("【前往宗門執事堂查看並接取歷練任務！】");
         else if (type === 'library') sendAction("【前往藏經閣參悟高階心法與法訣！】");
     }
 
-    function equipItemFromInv(itemName) {
-        let slot = "weapon";
-        let itemObj = { name: itemName, hpBonus: 30, stats: { str: 2, con: 2 } };
-        if (itemName.includes("衣") || itemName.includes("甲")) slot = "armor";
-        else if (itemName.includes("戒") || itemName.includes("佩")) slot = "accessory";
-        else if (itemName.includes("令") || itemName.includes("珠")) slot = "treasure";
-
-        if (gameState.equipment[slot]) unequipItem(slot);
-        gameState.equipment[slot] = itemObj;
-        gameState.inventory = gameState.inventory.filter(i => i !== itemName);
+    // 道具使用/穿戴/參悟分流邏輯
+    function handleItemAction(itemName) {
+        const meta = getItemMeta(itemName);
+        
+        if (meta.type === 'equip') {
+            // 穿戴裝備
+            if (gameState.equipment[meta.slot]) unequipItem(meta.slot);
+            gameState.equipment[meta.slot] = meta;
+            gameState.inventory = gameState.inventory.filter(i => i !== itemName);
+            appendLogData("系統", `你裝備了【${itemName}】，屬性得到提升！`, "system", false, true);
+        } else if (meta.type === 'consumable') {
+            // 服用丹藥
+            gameState.inventory = gameState.inventory.filter(i => i !== itemName);
+            gameState.hp = Math.min(getMaxHp(), gameState.hp + 30);
+            gameState.exp = Math.min(gameState.maxExp, gameState.exp + 20);
+            appendLogData("系統", `你服用了【${itemName}】，氣血獲得恢復，感悟有所提升！`, "system", false, true);
+        } else if (meta.type === 'studyable') {
+            // 參悟玉簡
+            gameState.inventory = gameState.inventory.filter(i => i !== itemName);
+            if (!gameState.skills.some(s => s.name === itemName)) {
+                gameState.skills.push({ name: itemName.replace("玉簡", ""), realm: "入門", exp: 0, maxExp: 100 });
+            }
+            appendLogData("系統", `你成功參悟了【${itemName}】，掌控了新的法訣！`, "system", false, true);
+        }
         renderUI();
     }
 
@@ -426,11 +459,19 @@
 
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
+        
+        // 選擇身世觸發邏輯與獎勵自動補充
+        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
+            s.hasChosenOrigin = true;
+            if (actionText.includes("落魄少主")) {
+                if (!s.inventory.includes("神秘古戒")) s.inventory.push("神秘古戒");
+                if (!s.inventory.includes("青雲宗外門弟子令")) s.inventory.push("青雲宗外門弟子令");
+            }
+        }
+
         if (!rawState) return s;
 
         if (rawState.location) s.location = rawState.location;
-        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) s.hasChosenOrigin = true;
-
         if (rawState.sect && rawState.sect.name) s.sect = { ...s.sect, ...rawState.sect };
 
         const npcMatch = storyText.match(/「([\u4e00-\u9fa5]{2,4})」/);
@@ -455,7 +496,7 @@
         if (s.hasChosenOrigin) {
             rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
             if (rawChoices.length === 0) {
-                rawChoices = ["前往傳功殿領取功法", "前往後山執行任務", "返回洞府閉關修練"];
+                rawChoices = ["留在傳功殿請教長老", "前往宗門集市採購資源", "返回洞府閉關修練"];
             }
         }
         s.choices = rawChoices;
@@ -561,15 +602,16 @@
         const dead = s.hp <= 0;
         const hasChosen = s.hasChosenOrigin;
         const isSafe = (s.scenarioState === "safe" || !s.scenarioState) && hasChosen;
-        const inSectLoc = (s.location.includes("青雲宗") || s.location.includes("宗門")) && isSafe;
+
+        // 全面擴充宗門建築地點關鍵字檢測
+        const sectKeywords = ["青雲宗", "宗門", "傳功殿", "藏經閣", "執事堂", "後山", "洞府", "長老殿", "執法堂", "演武場", "百草園"];
+        const inSectLoc = (sectKeywords.some(kw => s.location.includes(kw)) || (s.sect && s.sect.name !== "無" && s.location.includes(s.sect.name))) && isSafe;
         const hasSect = s.sect && s.sect.name !== "無" && !s.sect.name.includes("散修");
 
-        // 身世未選前，快捷動作全面鎖定
         document.getElementById("btn-heal").disabled = busy || dead || !isSafe;
         document.getElementById("btn-long-heal").disabled = busy || dead || !isSafe;
         document.getElementById("btn-hospital").disabled = busy || dead || !isSafe;
 
-        // 宗門按鈕：未選身世或不在宗門時隱藏/禁用
         const btnSectQuest = document.getElementById("btn-sect-quest");
         const btnSectLib = document.getElementById("btn-sect-lib");
         
@@ -579,7 +621,6 @@
         btnSectLib.style.display = hasSect ? "block" : "none";
         btnSectLib.disabled = busy || dead || !inSectLoc;
 
-        // 引氣入體 / 突破按鈕
         const deduceBtn = document.getElementById("btn-deduce");
         const canBreak = s.exp >= s.maxExp;
         deduceBtn.disabled = busy || dead || !hasChosen || !canBreak;
@@ -592,7 +633,6 @@
             deduceBtn.textContent = s.level === 0 ? "✨ 點此引氣入體破境！" : "⚡ 突破境界瓶頸";
         }
 
-        // 輸入框與送出按鈕
         document.getElementById("action-input").disabled = busy || dead || !hasChosen;
         document.getElementById("btn-submit").disabled = busy || dead || !hasChosen;
         if (!hasChosen) {
@@ -628,10 +668,26 @@
             kfActive.innerHTML = `<strong>運轉中：${s.activeKungfu.name}</strong>`;
         } else kfActive.innerText = "• 尚未運轉任何心法";
 
+        // 裝備欄位呈現（附帶屬性提示）
+        ['weapon', 'armor', 'accessory', 'treasure'].forEach(slot => {
+            const eq = s.equipment[slot];
+            document.getElementById(`eq-${slot}`).innerText = eq ? `${eq.name} (${eq.desc || ''})` : '無';
+        });
+
+        // 背包道具呈現（根據類型顯示不同操作按鈕）
         const invList = document.getElementById("ui-inventory-list"); invList.innerHTML = "";
         s.inventory.forEach(inv => {
+            const meta = getItemMeta(inv);
+            let btnText = "使用";
+            let btnClass = "";
+            
+            if (meta.type === 'equip') { btnText = "裝備"; btnClass = "btn-equip"; }
+            else if (meta.type === 'consumable') { btnText = "服用"; btnClass = "btn-use"; }
+            else if (meta.type === 'studyable') { btnText = "參悟"; btnClass = "btn-use"; }
+
             let div = document.createElement("div"); div.className = "item-row";
-            div.innerHTML = `<span>🎒 ${inv}</span><div class="item-actions"><button onclick="equipItemFromInv('${inv}')">裝備</button></div>`;
+            div.innerHTML = `<span>🎒 ${inv} <small style="color:#888;">${meta.desc || ''}</small></span>
+                <div class="item-actions"><button class="${btnClass}" onclick="handleItemAction('${inv}')">${btnText}</button></div>`;
             invList.appendChild(div);
         });
 
