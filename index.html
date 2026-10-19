@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.08)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.09)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -149,7 +149,7 @@
             <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">50 / 50</span></div>
             <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value clickable-tag" style="color:#00e676" id="ui-linggen" onclick="showLinggenInfo()">待顯化</span></div>
             <div class="stat-item"><span class="stat-label">體質天賦</span><span class="stat-value clickable-tag" style="color:#e040fb" id="ui-physique" onclick="showPhysiqueInfo()">凡體</span></div>
-            <div class="stat-item"><span class="stat-label">靈石貨幣 (下品折算)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0</span></div>
+            <div class="stat-item"><span class="stat-label">靈石貨幣 (下品折算)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0 顆</span></div>
             
             <h2 style="margin-top: 10px;">📊 六維屬性 (含裝備與功法加成)</h2>
             <div class="radar-container"><canvas id="radarCanvas" width="160" height="160"></canvas></div>
@@ -236,7 +236,7 @@
     ];
 
     let gameState = {
-        version: "4.08",
+        version: "4.09",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -296,7 +296,9 @@
 2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
 3. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
 4. 【參悟與修練真實反饋】：玩家發起【參悟】時，需根據其暗骰與悟性進行推演。若失敗需寫出氣血紊亂、走火入魔或毫無收穫，並扣減 HP 或給予負面狀態，嚴禁成功與故事矛盾！
-5. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
+5. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，必須是玩家當前【精準且不衝突】的所有狀態！當傷勢康復或氣血平穩時，嚴禁保留『氣血紊亂/經脈受損/心神不寧』等舊負面狀態！
+6. 【靈石餘額硬性約束】：務必比對玩家 current spiritStone。若玩家靈石不夠，選項嚴禁出現『掏靈石購買成功』！若玩家強行掏靈石購買，AI 必須推演為『店家嫌靈石不足拒絕交易』且 stoneChange 設為 0，絕對禁止讄買成功！
+7. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
 {
   "success": true,
@@ -308,7 +310,7 @@
   "gainedItems": [],
   "gainedKungfu": [],
   "gainedSkills": [],
-  "statusChanges": ["氣血紊亂"], 
+  "currentStatus": ["凡體肉身", "氣血紊亂"], 
   "linggen": "普通靈根",
   "physique": "凡體",
   "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10},
@@ -329,7 +331,6 @@
         return realmDef.maxHp + kfHp + eqHp;
     }
 
-    // 計算外力帶來的屬性加成
     function getStatBonus(statKey) {
         let eqBonus = 0;
         Object.values(gameState.equipment).forEach(eq => {
@@ -453,6 +454,7 @@
         s.level = Number.isFinite(Number(raw.level)) ? Number(raw.level) : 0;
         s.realm = (REALMS[s.level] || REALMS[0]).name;
         s.maxExp = (REALMS[s.level] || REALMS[0]).maxExp;
+        s.spiritStone = Number.isFinite(Number(raw.spiritStone)) ? Number(raw.spiritStone) : 0;
         s.hasChosenOrigin = Boolean(raw.hasChosenOrigin);
         s.equipment = raw.equipment || { weapon: null, armor: null, accessory: null, treasure: null };
         s.inventory = Array.isArray(raw.inventory) ? raw.inventory.map(normalizeItemName) : ["粗布衣", "聚氣丹"];
@@ -463,6 +465,25 @@
         s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents : [];
         s.status = Array.isArray(raw.status) ? raw.status : ["凡體肉身"];
         return s;
+    }
+
+    // 清理與抵銷矛盾狀態的函式
+    function sanitizeStatusList(list) {
+        if (!Array.isArray(list) || list.length === 0) return ["凡體肉身"];
+        let clean = [...new Set(list)];
+        
+        const removeIfHas = (positives, negatives) => {
+            if (clean.some(s => positives.some(p => s.includes(p)))) {
+                clean = clean.filter(s => !negatives.some(n => s.includes(n)));
+            }
+        };
+
+        // 抵銷邏輯
+        removeIfHas(["平穩", "充沛", "復原", "健全", "好轉"], ["氣血紊亂", "氣血微虛"]);
+        removeIfHas(["經脈復原", "經脈通暢", "經脈完好"], ["經脈輕微受損", "經脈受損", "經脈斷裂"]);
+        removeIfHas(["心神安定", "寧靜"], ["心神不寧", "心魔困擾"]);
+
+        return clean.length > 0 ? clean : ["凡體肉身"];
     }
 
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
@@ -486,14 +507,23 @@
         if (rawState.physique) s.physique = rawState.physique;
         if (rawState.sect && rawState.sect.name) s.sect = { ...s.sect, ...rawState.sect };
 
+        // 靈石扣減與防刷
+        if (Number.isFinite(rawState.stoneChange)) {
+            s.spiritStone = Math.max(0, s.spiritStone + rawState.stoneChange);
+        }
+
         if (Number.isFinite(rawState.hpChange)) {
             s.hp = Math.max(0, Math.min(getMaxHp(), s.hp + rawState.hpChange));
         }
 
-        if (Array.isArray(rawState.statusChanges)) {
+        // 狀態全量覆蓋與矛盾抵銷清理
+        if (Array.isArray(rawState.currentStatus)) {
+            s.status = sanitizeStatusList(rawState.currentStatus);
+        } else if (Array.isArray(rawState.statusChanges)) {
             rawState.statusChanges.forEach(st => {
                 if (typeof st === 'string' && !s.status.includes(st)) s.status.push(st);
             });
+            s.status = sanitizeStatusList(s.status);
         }
 
         if (Array.isArray(rawState.quests)) s.quests = rawState.quests;
@@ -693,7 +723,6 @@
         }
     }
 
-    // 重新繪製六維雷達圖（蛛網多邊形與充填圖）
     function drawRadarChart(s) {
         const cvs = document.getElementById('radarCanvas'); if (!cvs) return;
         const ctx = cvs.getContext('2d');
@@ -704,7 +733,6 @@
         const keys = ['str', 'con', 'agi', 'int', 'wis', 'luk'];
         const angles = keys.map((_, i) => (Math.PI / 3) * i - Math.PI / 2);
 
-        // 1. 繪製背景六角網格 (3層)
         for (let level = 1; level <= 3; level++) {
             const r = (maxR / 3) * level;
             ctx.beginPath();
@@ -719,7 +747,6 @@
             ctx.stroke();
         }
 
-        // 2. 繪製6條軸線
         for (let i = 0; i < 6; i++) {
             ctx.beginPath();
             ctx.moveTo(cx, cy);
@@ -728,8 +755,7 @@
             ctx.stroke();
         }
 
-        // 3. 繪製屬性填滿區域
-        const maxVal = 25; // 參考極限基準值
+        const maxVal = 25;
         ctx.beginPath();
         keys.forEach((key, i) => {
             const val = getTotalStat(key);
@@ -747,7 +773,6 @@
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // 4. 標記頂點資料點
         keys.forEach((key, i) => {
             const val = getTotalStat(key);
             const ratio = Math.min(1.0, val / maxVal);
@@ -777,7 +802,6 @@
             sectTop.innerText = `${s.sect.name} (${s.sect.rank || '弟子'}) 貢獻:${s.sect.contribution || 0}`;
         } else sectTop.innerText = "無宗門 (散修)";
 
-        // 六維屬性呈現：基礎值 (+加成值) 格式
         ['str','con','agi','int','wis','luk'].forEach(st => {
             const base = s.stats[st] || 10;
             const bonus = getStatBonus(st);
