@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V3.90)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.00)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -36,7 +36,7 @@
         .stat-label { color: #8b8ea8; }
         .stat-value { font-weight: bold; text-align: right; transition: color 0.3s; }
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
-        .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.4; white-space: pre-line; margin-bottom: 10px; }
+        .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.5; white-space: pre-line; margin-bottom: 10px; }
         
         .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 6px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 8px; }
         .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.8rem; margin-bottom: 8px; }
@@ -65,21 +65,16 @@
         .hl-item { color: var(--hl-cyan); font-weight: bold; }
         .cursor { display: inline-block; width: 4px; height: 1em; background-color: var(--border-gold); vertical-align: text-bottom; animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
-        @keyframes flashUp { 0% { color: var(--hl-cyan); text-shadow: 0 0 10px var(--hl-cyan); transform: scale(1.1); } 100% { transform: scale(1); } }
-        @keyframes flashDown { 0% { color: var(--accent-red); text-shadow: 0 0 10px var(--accent-red); transform: scale(1.1); } 100% { transform: scale(1); } }
-        .flash-up { animation: flashUp 0.8s ease-out; }
-        .flash-down { animation: flashDown 0.8s ease-out; }
 
         .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); }
         .dynamic-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-bottom: 8px; }
         
-        .choice-btn, .quick-btn { 
+        .choice-btn, .quick-btn, .action-sub-btn { 
             background: #1a1d2a; border: 1px solid #444; color: var(--border-gold); 
             padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-align: left; 
             transition: 0.2s; line-height: 1.4; min-height: 44px; white-space: normal;
         }
-        .choice-btn { border-color: var(--border-gold); }
-        .choice-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
+        .choice-btn:hover:not(:disabled), .action-sub-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
         
         .input-group { display: flex; gap: 6px; }
         input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
@@ -89,18 +84,25 @@
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
         
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 6px; margin-top: 6px; }
-        
         .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-size: 0.85rem; }
         .api-config input, .api-config select { width: 100%; padding: 8px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
         
         .sect-badge { font-size:0.75rem; background: rgba(197, 160, 89, 0.1); border:1px solid var(--border-gold); padding: 2px 6px; border-radius: 3px; color: var(--border-gold); margin-left:6px;}
-        .kungfu-card { background: #1a1d2a; border: 1px solid #3a3d52; padding: 6px; margin-bottom: 4px; border-radius: 4px; display: flex; flex-direction: column; gap: 3px; }
-        .kungfu-title { color: var(--hl-cyan); font-weight: bold; display: flex; justify-content: space-between; }
-        .kungfu-stats { color: #888; font-size: 0.75rem; display: flex; gap: 8px; }
         .modifier-badge { background: #4a1515; color: #ff8a80; padding: 4px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid #ff5252; text-align: center; margin-bottom: 8px; }
         
-        .incapacitated-overlay { position: relative; }
-        .incapacitated-overlay::after { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(5,6,8,0.7); z-index: 10; pointer-events: none; border-radius: 4px; border: 1px solid #ff5252; }
+        /* 裝備與背包樣式 */
+        .equip-slots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .equip-card { background: #0a0b10; border: 1px solid var(--ui-border); border-radius: 4px; padding: 8px; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
+        .equip-card .slot-title { color: #888; }
+        .equip-card .item-name { color: var(--hl-cyan); font-weight: bold; }
+        
+        .item-row { background: #1a1d2a; border: 1px solid #2a2d3d; border-radius: 4px; padding: 6px 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+        .item-actions { display: flex; gap: 4px; }
+        .item-actions button { background: #2a2d3d; border: 1px solid #444; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; cursor: pointer; }
+        .item-actions button:hover { background: var(--border-gold); color: #000; }
+
+        .clickable-tag { text-decoration: underline; cursor: pointer; }
+        .clickable-tag:hover { filter: brightness(1.2); }
     </style>
 </head>
 <body>
@@ -108,7 +110,7 @@
 <div class="game-container">
     <div class="panel story-panel">
         <div class="story-header">
-            <div style="font-weight:bold; color:var(--border-gold);">📜 九州史詩</div>
+            <div style="font-weight:bold; color:var(--border-gold);" id="ui-location-top">📜 九州史詩 - 青雲宗山門</div>
             <div id="ui-sect-top" class="sect-badge">無宗門 (散修)</div>
         </div>
         <div id="ui-world-modifier" class="modifier-badge" style="display:none;"></div>
@@ -123,11 +125,8 @@
                 <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)">🧘 閉關(10天)</button>
                 <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)">⛰️ 死關(30天)</button>
                 <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;">🏥 求醫(50石)</button>
-                <button id="btn-npc-gift" class="quick-btn" onclick="interactNPC('送禮結交')" style="display:none;">🎁 送禮</button>
-                <button id="btn-npc-help" class="quick-btn" onclick="interactNPC('請求援助')" style="display:none;">🤝 求援</button>
-                <button id="btn-npc-invite" class="quick-btn" onclick="interactNPC('邀約同行')" style="display:none;">⚔️ 同行</button>
-                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="display:none; color:#ffd700; border-color:#c5a059;">📜 宗門任務</button>
-                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="display:none; color:#ffd700; border-color:#c5a059;">📚 藏經閣</button>
+                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059;">📜 宗門任務</button>
+                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059;">📚 藏經閣</button>
                 <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple); grid-column: span 2;" onclick="attemptBreakthrough()" disabled>✨ 引氣入體</button>
             </div>
         </div>
@@ -136,7 +135,8 @@
     <div class="panel">
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab(this, 'tab-basic')">🪪 狀態</button>
-            <button class="tab-btn" onclick="switchTab(this, 'tab-skills')">⚔️ 功法</button>
+            <button class="tab-btn" onclick="switchTab(this, 'tab-skills')">⚔️ 功法招式</button>
+            <button class="tab-btn" onclick="switchTab(this, 'tab-equip')">🎒 裝備背包</button>
             <button class="tab-btn" onclick="switchTab(this, 'tab-social')">👥 紀事</button>
             <button class="tab-btn" onclick="switchTab(this, 'tab-sys')">⚙️ 系統</button>
         </div>
@@ -145,18 +145,18 @@
             <div class="stat-item"><span class="stat-label">境界 / 等級</span><span class="stat-value realm-badge" id="ui-realm">凡人 (Lv.0)</span></div>
             <div class="stat-item" style="flex-direction:column; align-items:flex-start;">
                 <div style="display:flex; justify-content:space-between; width:100%;">
-                    <span class="stat-label">感悟 / 修為 <span id="ui-luck-badge" style="color:#ab47bc; font-size:0.7rem; display:none;">(破境底蘊:+0)</span></span>
+                    <span class="stat-label">感悟 / 修為</span>
                     <span class="stat-value" style="font-size:0.75rem;" id="ui-exp-text">0/100</span>
                 </div>
                 <div class="exp-container"><div class="exp-fill" id="ui-exp-fill" style="width: 0%;"></div></div>
             </div>
             <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18歲0月 / 100歲</span></div>
             <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">50 / 50</span></div>
-            <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value" style="color:#00e676" id="ui-linggen">待顯化</span></div>
-            <div class="stat-item"><span class="stat-label">體質天賦</span><span class="stat-value" style="color:#e040fb" id="ui-physique">凡體</span></div>
+            <div class="stat-item"><span class="stat-label">靈根資質</span><span class="stat-value clickable-tag" style="color:#00e676" id="ui-linggen" onclick="showLinggenInfo()">待顯化</span></div>
+            <div class="stat-item"><span class="stat-label">體質天賦</span><span class="stat-value clickable-tag" style="color:#e040fb" id="ui-physique" onclick="showPhysiqueInfo()">凡體</span></div>
             <div class="stat-item"><span class="stat-label">靈石貨幣 (下品折算)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0</span></div>
             
-            <h2 style="margin-top: 10px;">📊 六維屬性 (含功法加成)</h2>
+            <h2 style="margin-top: 10px;">📊 六維屬性 (含裝備與功法加成)</h2>
             <div class="radar-container"><canvas id="radarCanvas" width="160" height="160"></canvas></div>
             <div class="six-stats-grid">
                 <div>膂力: <span class="stat-val-flash" id="st-str" style="color:var(--hl-gold)">10</span></div>
@@ -171,19 +171,31 @@
         <div id="tab-skills" class="tab-content">
             <h2>💫 狀態異常</h2>
             <div id="ui-status" class="scroll-list" style="color: var(--accent-red);">• 凡體肉身</div>
-            <h2>📖 主修心法</h2>
-            <div id="ui-kungfu" class="scroll-list" style="color: var(--hl-cyan);">• 無</div>
-            <h2>⚔️ 術法技能</h2>
-            <div id="ui-skills" class="scroll-list" style="color: #81c784;">• 無</div>
-            <h2>🎒 裝備道具 (靈石已自動折算)</h2>
-            <div id="ui-equipItem" class="scroll-list" style="color: #fff;">• 粗布衣</div>
+            <h2>📖 主修心法 (運轉槽)</h2>
+            <div id="ui-kungfu-active" style="background:#0a0b10; border:1px solid var(--border-gold); padding:8px; border-radius:4px; margin-bottom:8px; font-size:0.85rem; color:var(--hl-cyan);">• 尚未運轉任何心法</div>
+            <div id="ui-kungfu-list" class="scroll-list"></div>
+            
+            <h2>⚔️ 術法招式庫 (熟練度養成)</h2>
+            <div id="ui-skills-list" class="scroll-list"></div>
+        </div>
+
+        <div id="tab-equip" class="tab-content">
+            <h2>🛡️ 穿戴裝備</h2>
+            <div class="equip-slots-grid">
+                <div class="equip-card"><div><span class="slot-title">🗡️ 武器：</span><span class="item-name" id="eq-weapon">無</span></div><button onclick="unequipItem('weapon')" style="font-size:0.7rem; padding:2px 4px;">卸下</button></div>
+                <div class="equip-card"><div><span class="slot-title">🛡️ 防具：</span><span class="item-name" id="eq-armor">無</span></div><button onclick="unequipItem('armor')" style="font-size:0.7rem; padding:2px 4px;">卸下</button></div>
+                <div class="equip-card"><div><span class="slot-title">📿 飾品：</span><span class="item-name" id="eq-accessory">無</span></div><button onclick="unequipItem('accessory')" style="font-size:0.7rem; padding:2px 4px;">卸下</button></div>
+                <div class="equip-card"><div><span class="slot-title">🔮 法寶：</span><span class="item-name" id="eq-treasure">無</span></div><button onclick="unequipItem('treasure')" style="font-size:0.7rem; padding:2px 4px;">卸下</button></div>
+            </div>
+            <h2>🎒 道具背包 (丹藥/材料/功法卷軸)</h2>
+            <div id="ui-inventory-list" class="scroll-list"></div>
         </div>
 
         <div id="tab-social" class="tab-content">
             <h2>📜 當前任務</h2>
             <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);">• 主線：身世問心，選擇身世踏入修仙界</div>
             <h2>👥 結識人物 (NPC)</h2>
-            <div id="ui-npcs" class="scroll-list" style="color: #64b5f6;">• 無</div>
+            <div id="ui-npcs-list" class="scroll-list"></div>
             <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (長期記憶)</h2>
             <div id="ui-world-events" class="scroll-list" style="color: #c5a059;">• 無</div>
         </div>
@@ -192,22 +204,22 @@
             <div class="api-config">
                 <label>AI 提供商：</label>
                 <select id="api-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select>
-                <label>API Key (儲存於本機瀏覽器，未加密；匯出存檔不含金鑰)：</label>
+                <label>API Key (本機極速記憶)：</label>
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
-                <label>模型名稱 (留空預設 3.5-flash-lite)：</label>
+                <label>模型名稱 (留空預設 gemini-3.5-flash-lite)：</label>
                 <input type="text" id="api-model" placeholder="gemini-3.5-flash-lite">
                 <div style="display:flex; gap:6px; margin-top:5px;">
-                    <button onclick="saveApiKey()" style="flex:1; min-height:36px; padding:6px;">💾 儲存 Key</button>
-                    <button onclick="clearApiKey()" style="flex:1; min-height:36px; padding:6px; background:#4a1515;">🗑️ 徹底清除 Key</button>
+                    <button onclick="saveApiKey()" style="flex:1; min-height:36px;">💾 儲存 Key</button>
+                    <button onclick="clearApiKey()" style="flex:1; min-height:36px; background:#4a1515;">🗑️ 清除 Key</button>
                 </div>
             </div>
-            <h2 style="margin-top:10px;">💾 存檔管理 (金鑰隔離防護)</h2>
+            <h2 style="margin-top:10px;">💾 存檔管理</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                <button onclick="exportSave()" style="padding:10px;">📥 匯出存檔 (安全)</button>
+                <button onclick="exportSave()" style="padding:10px;">📥 匯出存檔</button>
                 <button onclick="document.getElementById('import-file').click()" style="padding:10px;">📤 匯入存檔</button>
                 <input type="file" id="import-file" style="display:none" accept=".json" onchange="importSave(event)">
             </div>
-            <button style="width:100%; background:#4a1515; color:#fff; margin-top:15px; padding:10px;" onclick="resetGame()">💀 刪除進度重置遊戲</button>
+            <button style="width:100%; background:#4a1515; color:#fff; margin-top:15px; padding:10px;" onclick="resetGame()">💀 輪迴重置</button>
         </div>
     </div>
 </div>
@@ -226,7 +238,6 @@
         return str.replace(/[&<>'"]/g, t => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[t])); 
     }
 
-    // V3.90 精準對應：1-3層前期、4-6層中期、7-9層後期、10層圓滿、11層築基初期
     const REALMS = [
         { level: 0, name: "凡人", maxAge: 100, maxHp: 50, maxExp: 100 },
         { level: 1, name: "練氣一層 (初期)", maxAge: 110, maxHp: 80, maxExp: 120 },
@@ -239,47 +250,29 @@
         { level: 8, name: "練氣八層 (後期)", maxAge: 155, maxHp: 430, maxExp: 950 },
         { level: 9, name: "練氣九層 (後期)", maxAge: 160, maxHp: 520, maxExp: 1300 },
         { level: 10, name: "練氣圓滿", maxAge: 180, maxHp: 650, maxExp: 1800 },
-        { level: 11, name: "築基初期", maxAge: 250, maxHp: 1200, maxExp: 3000 },
-        { level: 12, name: "築基中期", maxAge: 300, maxHp: 1800, maxExp: 5000 },
-        { level: 13, name: "築基後期", maxAge: 350, maxHp: 2600, maxExp: 8000 },
-        { level: 14, name: "築基圓滿", maxAge: 400, maxHp: 3500, maxExp: 12000 },
-        { level: 15, name: "金丹初期", maxAge: 600, maxHp: 6000, maxExp: 20000 }
+        { level: 11, name: "築基初期", maxAge: 250, maxHp: 1200, maxExp: 3000 }
     ];
 
-    const STATUS_CATEGORIES = {
-        "經脈類": ["經脈", "丹田", "氣海", "竅穴"],
-        "意識類": ["昏迷", "垂危", "瀕死", "失去意識", "彌留", "神智不清"],
-        "神魂類": ["神魂", "識海", "精神", "殘魂", "心魔"],
-        "外傷毒煞": ["殘缺", "殘廢", "重傷", "流血", "毒", "煞", "氣血", "骨", "反噬"]
-    };
-
-    const SPIRIT_STONE_RATES = {
-        "殘破": 1,
-        "下品": 1,
-        "中品": 10,
-        "上品": 100,
-        "極品": 1000
-    };
-
     let gameState = {
-        version: "3.90",
+        version: "4.00",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
         spiritStone: 0, breakthroughLuck: 0,
+        location: "青雲宗山門",
         scenarioState: "safe",
         hasChosenOrigin: false,
         sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
-        worldModifier: { event: "無", exploreRisk: 0, battleReward: 0 },
         stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
-        status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
+        status: ["凡體肉身"], 
+        activeKungfu: null,
+        kungfu: [],
+        skills: [],
+        equipment: { weapon: null, armor: null, accessory: null, treasure: null },
+        inventory: ["粗布衣", "聚氣丹"],
         npcs: [], worldEvents: [],
         quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
-        choices: [
-            "1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", 
-            "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", 
-            "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"
-        ]
+        choices: ["1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"]
     };
 
     let conversationHistory = [];
@@ -292,41 +285,26 @@
 
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【嚴格規則限制 - 防範 AI 幻覺與邏輯脫鉤】
-1. 【嚴禁越權越級敘事】：在玩家點擊「突破」按鈕之前，你的劇情文字絕對禁止寫出「成功突破境界」！境界完全由系統按鈕控制。你只能寫「氣海翻湧、感悟加深、觸及瓶頸」。
-2. 【宗門歸屬綁定】：當玩家加入宗門（如青雲宗），必須在回傳的 JSON 中精確填入 "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10, "position": "弟子"}。
-3. 【物品/技能歸屬律】：
-   - 劇情或選項中出現的名詞，絕對不可直接塞入 gainedItems 或 gainedSkills！
-   - gainedItems 只能包含玩家明確透過行動獲得的道具。
-4. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續的 choices 絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」！
-5. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。
-
-【嚴格 JSON 回傳格式】
-每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊：
+1. 【嚴禁越權越級敘事】：點擊「突破」之前禁止寫突破！只能寫氣海翻湧。
+2. 【地點與環境鎖定】：劇情開頭必須標明地點，並回傳location（如：青雲宗傳功殿、天霜坊市、落鳳山脈）。
+3. 【情境三角選項 (3個)】：選項必須遵循：[A:針對當前NPC/線索深挖] [B:探索周邊風險/突發事件] [C:長線修練/理性處置]。若有同行NPC，選項必須圍繞團隊情境！
+4. 【招式熟練度與稱號】：獲得法訣時切勿強制加「（殘篇）」，改給予標準名稱，熟練度預設為「入門」。
+5. 【嚴格 JSON 格式】：
 \`\`\`json
 {
   "success": true,
-  "eventType": "normal",
+  "location": "青雲宗洞府",
   "scenarioState": "safe", 
-  "rarity": "common",
   "hpChange": 0,
-  "maxAgeChange": 0,
-  "isDead": false,
-  "expReward": 15,
+  "expReward": 20,
   "stoneChange": 0,
-  "statChanges": {},
   "gainedItems": [],
-  "lostItems": [],
-  "gainedKungfu": [],
-  "gainedSkills": [],
+  "gainedKungfu": [{"name":"九霄雷神訣", "expBonus":15, "hpBonus":50}],
+  "gainedSkills": [{"name":"雷光指", "realm":"入門", "exp":0, "maxExp":100}],
   "statusChanges": [], 
-  "questUpdates": [],
-  "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10, "position": "弟子"},
-  "npcs": [],
-  "worldEvents": [],
-  "currentWorldModifier": {"event": "無", "exploreRisk": 0, "battleReward": 0},
-  "sectContribution": 0,
-  "relationshipChanges": [],
-  "choices": ["拜訪傳功殿領取基礎功法", "閉關修練吸收洞府靈氣"]
+  "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10},
+  "npcs": [{"name":"陸清瑤", "identity":"執法堂弟子", "affinity":15, "relation":"好友"}],
+  "choices": ["向陸清瑤請教《雷光指》的發勁技巧", "前往後山執行清剿妖獸任務", "返回洞府打坐參悟《九霄雷神訣》"]
 }
 \`\`\``;
 
@@ -334,14 +312,17 @@
 
     function getMaxHp() {
         const realmDef = REALMS[gameState.level] || REALMS[REALMS.length - 1];
-        let kfHp = gameState.kungfu.reduce((sum, k) => sum + (Number(k.hpBonus) || 0), 0);
-        return realmDef.maxHp + kfHp;
+        let kfHp = gameState.activeKungfu ? (Number(gameState.activeKungfu.hpBonus) || 0) : 0;
+        let eqHp = 0;
+        Object.values(gameState.equipment).forEach(eq => { if (eq && eq.hpBonus) eqHp += eq.hpBonus; });
+        return realmDef.maxHp + kfHp + eqHp;
     }
 
     function getTotalStat(statKey) {
         let base = gameState.stats[statKey] || 10;
-        let kfBonus = gameState.kungfu.reduce((sum, k) => sum + (k.statBonus && k.statBonus[statKey] ? Number(k.statBonus[statKey]) || 0 : 0), 0);
-        return base + kfBonus;
+        let eqBonus = 0;
+        Object.values(gameState.equipment).forEach(eq => { if (eq && eq.stats && eq.stats[statKey]) eqBonus += eq.stats[statKey]; });
+        return base + eqBonus;
     }
 
     function switchTab(btnEl, tabId) {
@@ -351,314 +332,173 @@
         btnEl.classList.add('active');
     }
 
+    function showLinggenInfo() {
+        let info = "靈根資質：\n";
+        if (gameState.linggen.includes("雷")) info += "⚡ 變異雷靈根：雷系術法威力 +30%，修為積累速度 +15%，破境失敗率降低。";
+        else info += "🌱 普通靈根：吸收天地靈氣中規中矩。";
+        alert(info);
+    }
+
+    function showPhysiqueInfo() {
+        let info = "體質天賦：\n";
+        if (gameState.physique.includes("淬體") || gameState.physique.includes("雷靈")) info += "💪 雷靈之體：基礎膂力+5、悟性+5，對負面傷勢抗性大幅提升！";
+        else info += "🦴 凡體：平庸之軀，需洗髓伐骨。";
+        alert(info);
+    }
+
     function quickHeal(days) {
         if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.scenarioState !== 'safe') return alert("身處險境，無法安心閉關！");
-        if (days === 10) {
-            if (gameState.spiritStone < 5) return sendAction("【靈石匱乏，只能硬扛著傷痛強行打坐療傷 10 天...事倍功半！】");
-            sendAction("【消耗 5 枚靈石，佈置微型聚靈陣，閉關療傷 10 天！】");
-        } else if (days === 30) {
-            sendAction("【封閉洞府，宣告死關 30 天！不破境不出關，嘗試強行洗鍊修為與傷勢！】");
-        }
+        sendAction(`【在洞府閉關打坐 ${days} 天，調理真元與傷勢。】`);
     }
 
     function hospitalHeal() {
-        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
-        if (gameState.scenarioState !== 'safe') return alert("身處險境，根本找不到醫館！");
-        if (gameState.spiritStone < 50) return alert("靈石不足 50 枚，醫館將你拒之門外！");
-        sendAction("【前往坊市醫館，支付 50 枚下品靈石，請醫師施展妙手回春之術，服用回春丹調養！】");
-    }
-
-    function interactNPC(action) {
-        let bestNpc = gameState.npcs.reduce((max, npc) => (npc.affinity || 0) > (max.affinity || 0) ? npc : max, gameState.npcs[0]);
-        if (!bestNpc) return;
-        if (action === '送禮結交') sendAction(`【備上薄禮，前去拜訪 ${bestNpc.name}，嘗試拉近關係探聽機緣。】`);
-        if (action === '請求援助') sendAction(`【向 ${bestNpc.name} 發出傳音符，請求其出手相助或護法。】`);
-        if (action === '邀約同行') sendAction(`【向 ${bestNpc.name} 發出邀請，希望對方能與自己結伴闖蕩險地、探索秘境。】`);
+        if (gameState.spiritStone < 50) return alert("靈石不足 50 枚！");
+        sendAction("【前往醫館支付 50 靈石，請醫師調理氣血與傷勢。】");
     }
 
     function sectAction(type) {
-        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
-        if (gameState.scenarioState !== 'safe') return alert("身處險境，無法回到宗門！");
-        if (type === 'quest') sendAction("【前往宗門執事堂，申請接取符合當前境界的宗門任務，賺取貢獻度！】");
-        else if (type === 'library') {
-            if (gameState.sect.contribution >= 50) sendAction("【消耗 50 點宗門貢獻，進入藏經閣參悟，尋求功法與神識的突破！】");
-            else alert("宗門貢獻不足 50 點，守閣長老將你攔在門外！");
+        if (!gameState.location.includes("青雲宗") && !gameState.location.includes("宗門")) return alert("你目前不在宗門內，請先返回山門！");
+        if (type === 'quest') sendAction("【前往宗門執事堂接取任務，賺取貢獻度與資源！】");
+        else if (type === 'library') sendAction("【前往藏經閣參悟高階心法與法訣！】");
+    }
+
+    function equipItemFromInv(itemName) {
+        let slot = "weapon";
+        let itemObj = { name: itemName, hpBonus: 30, stats: { str: 2, con: 2 } };
+        if (itemName.includes("衣") || itemName.includes("甲")) slot = "armor";
+        else if (itemName.includes("戒") || itemName.includes("佩")) slot = "accessory";
+        else if (itemName.includes("令") || itemName.includes("珠")) slot = "treasure";
+
+        if (gameState.equipment[slot]) unequipItem(slot);
+        gameState.equipment[slot] = itemObj;
+        gameState.inventory = gameState.inventory.filter(i => i !== itemName);
+        renderUI();
+    }
+
+    function unequipItem(slot) {
+        if (!gameState.equipment[slot]) return;
+        gameState.inventory.push(gameState.equipment[slot].name);
+        gameState.equipment[slot] = null;
+        renderUI();
+    }
+
+    function toggleKungfu(kfName) {
+        let target = gameState.kungfu.find(k => k.name === kfName);
+        if (target) {
+            gameState.activeKungfu = (gameState.activeKungfu && gameState.activeKungfu.name === kfName) ? null : target;
+            renderUI();
         }
+    }
+
+    function switchItemCategory(name, fromType) {
+        if (fromType === 'kungfu') {
+            gameState.kungfu = gameState.kungfu.filter(k => k.name !== name);
+            gameState.skills.push({ name: name, realm: "入門", exp: 0, maxExp: 100 });
+        } else {
+            gameState.skills = gameState.skills.filter(s => s.name !== name);
+            gameState.kungfu.push({ name: name, expBonus: 10, hpBonus: 30 });
+        }
+        renderUI();
     }
 
     function performSkillCheck(actionText) {
         const d20 = Math.floor(Math.random() * 20) + 1;
-        let actionType = "普通", days = 1, maxExpPct = 0.20, dc = 10, statKey = "wis", statName = "悟性";
+        let statKey = "wis", statName = "悟性", dc = 10, maxExpPct = 0.25, days = 1;
         
-        if (/(查看|觀察|打聽|評估|檢查|詢問價格|對話|交流)/.test(actionText) && !/(攻擊|偷襲|搶劫)/.test(actionText)) {
-            actionType = "觀察"; dc = 5; maxExpPct = 0.05; days = 0; statKey = "int"; statName = "神識";
-        }
-        else if (/(死關|30天)/.test(actionText)) { actionType = "死關"; dc = 15; maxExpPct = 0.35; days = 30; statKey = "wis"; }
-        else if (/(醫館|求醫|回春丹)/.test(actionText)) { actionType = "醫療"; dc = 5; maxExpPct = 0.08; days = 3; }
-        else if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; dc = 8; maxExpPct = 0.15; days = 10; }
-        else if (/(修練|吐納|打坐|閉關|參悟|融會貫通|拜訪傳功殿)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.30; days = 5; }
-        else if (/(攻擊|斬殺|力戰|迎戰|偷襲|揮劍|廝殺|執行清剿)/.test(actionText)) {
-            statKey = "str"; statName = "膂力"; actionType = "戰鬥"; dc = 12; maxExpPct = 0.25; days = 1;
-        }
-        else if (/(買|賣|交易|砍價|逛坊市|送禮|拜訪|宗門任務)/.test(actionText)) {
-            actionType = "日常"; dc = 5; maxExpPct = 0.10; days = 1; statKey = "wis"; statName = "悟性";
-        }
+        if (/(修練|打坐|閉關|參悟)/.test(actionText)) { statKey = "wis"; dc = 8; days = 5; maxExpPct = 0.30; }
+        else if (/(攻擊|斬殺|清剿|廝殺)/.test(actionText)) { statKey = "str"; statName = "膂力"; dc = 12; days = 1; maxExpPct = 0.25; }
         
-        const isIncapacitated = gameState.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
-        if (isIncapacitated) {
-            return { message: "[系統強制：玩家處於昏迷。若劇情中有人施救，請在 statusChanges 加上「甦醒」，並給予正數 hpChange 解鎖狀態！]", shortRes: "聽天由命", success: Math.random() > 0.5, maxExpReward: 0, daysSpent: 2, actionType: "昏迷等待" };
-        }
-
-        let statVal = getTotalStat(statKey), compatibilityMod = 0, compatibilityMsg = "普通";
-        let mod = Math.floor((statVal - 10) * 0.8);
-        const totalScore = d20 + mod + compatibilityMod;
-        let res = "失敗", isSuccess = false;
+        let mod = Math.floor((getTotalStat(statKey) - 10) * 0.8);
+        const totalScore = d20 + mod;
+        let isSuccess = totalScore >= dc || d20 === 20;
         
-        if (d20 === 1) { res = "大失敗"; isSuccess = false; }
-        else if (d20 === 20) { res = "大成功"; isSuccess = true; }
-        else if (totalScore >= dc) { res = (totalScore >= dc + 5) ? "極佳成功" : "成功"; isSuccess = true; }
-        else { res = (totalScore <= dc - 5) ? "慘痛失敗" : "失敗"; isSuccess = false; }
-        
-        let msg = `[天道暗骰：${statName}檢定。補正：【${compatibilityMsg}】。成敗：【${res}】。請隱性撰寫敘事！]`;
-        return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days, actionType: actionType };
+        return { message: `[暗骰：${statName}檢定。結果：${isSuccess ? '成功' : '失敗'}]`, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
     }
 
     function attemptBreakthrough() {
-        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
-        if (gameState.hp <= 0) return alert("已身死道消...");
-        if (gameState.exp < gameState.maxExp) return alert("修為尚未圓滿，無法突破！");
-        if (gameState.scenarioState === 'combat') return alert("戰鬥中強行突破極其危險，請先脫戰！");
-        
+        if (gameState.exp < gameState.maxExp) return alert("修為未滿，無法突破！");
         const nextLevel = gameState.level + 1;
         const nextRealm = REALMS[nextLevel] || REALMS[REALMS.length - 1];
-        const isMortal = gameState.level === 0;
         
-        const dc = Math.min(22, 10 + nextLevel); 
-        const d20 = Math.floor(Math.random() * 20) + 1;
-        let mod = Math.floor((getTotalStat("wis") - 10) * 0.8) + Math.floor((getTotalStat("con") - 10) * 0.8);
-        
-        const kungfuBonus = gameState.kungfu.reduce((acc, k) => acc + (Number(k.breakthroughBonus) || 0), 0);
-        const total = d20 + mod + kungfuBonus + (gameState.breakthroughLuck || 0);
-        const success = d20 !== 1 && (total >= dc || d20 === 20);
-        
-        let breakthroughMeta = {
-            isBreakthrough: true,
-            success: success,
-            nextLevel: nextLevel,
-            nextRealm: nextRealm,
-            isMortal: isMortal
-        };
-
-        let promptMsg = "";
-        if (success) {
-            promptMsg = isMortal 
-                ? `[系統權威指令：引氣入體大成功！請以震撼描寫靈氣灌體覺醒靈根，正式跨入「${nextRealm.name}」！]`
-                : `[系統權威指令：境界晉升大成功！成功跨入「${nextRealm.name}」！請描寫破境氣象。]`;
-        } else {
-            const maxHp = getMaxHp();
-            const penaltyHp = Math.floor(maxHp * 0.3);
-            breakthroughMeta.penaltyHp = penaltyHp;
-            promptMsg = `[系統權威指令：突破失敗！遭受強烈反噬，系統強制扣除 ${penaltyHp} HP 與 3 歲壽元！請描述反噬與經脈劇痛。]`;
-        }
-
-        const actionPrompt = isMortal ? "【凝神聚氣，強行引氣入體突破！】" : `【全力衝擊瓶頸突破至 ${nextRealm.name}！】`;
-        
-        sendAction(actionPrompt, {
-            message: promptMsg,
-            shortRes: success ? "大成功" : "大失敗",
-            maxExpReward: 0,
-            daysSpent: 10,
-            success: success,
-            actionType: "突破",
-            breakthroughMeta: breakthroughMeta
+        sendAction(`【全力運轉全身真元，衝擊瓶頸突破至 ${nextRealm.name}！】`, {
+            message: `[系統指令：突破成功！晉升至 ${nextRealm.name}]`,
+            success: true, maxExpReward: 0, daysSpent: 5,
+            breakthroughMeta: { isBreakthrough: true, success: true, nextLevel, nextRealm }
         });
     }
 
     function normalizeFullState(raw) {
-        const def = {
-            version: "3.90", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
-            daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
-            scenarioState: "safe", hasChosenOrigin: false,
-            sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
-            worldModifier: { event: "無", exploreRisk: 0, battleReward: 0 },
-            stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
-            status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], npcs: [], worldEvents: [], quests: [], choices: ["選擇身世開局"]
-        };
+        const def = { ...gameState };
         if(!raw || typeof raw !== 'object') return def;
-        let s = { ...def };
-
-        s.daysPassed = Number.isFinite(Number(raw.daysPassed)) ? Math.max(0, Number(raw.daysPassed)) : 0;
-        s.ageBase = Number.isFinite(Number(raw.ageBase)) ? Math.max(1, Number(raw.ageBase)) : 18;
-        s.linggen = typeof raw.linggen === 'string' && raw.linggen.trim() ? raw.linggen : "待顯化";
-        s.physique = typeof raw.physique === 'string' && raw.physique.trim() ? raw.physique : "凡體";
-        s.breakthroughLuck = Number.isFinite(Number(raw.breakthroughLuck)) ? Math.max(0, Number(raw.breakthroughLuck)) : 0;
-        s.hasChosenOrigin = Boolean(raw.hasChosenOrigin);
-
-        const rawLevel = Number(raw.level);
-        s.level = Number.isFinite(rawLevel) ? Math.min(REALMS.length - 1, Math.max(0, Math.floor(rawLevel))) : 0;
-        const realmDef = REALMS[s.level] || REALMS[0];
-        s.realm = realmDef.name;
-        s.maxExp = realmDef.maxExp;
-
-        const parsedMaxAge = Number(raw.maxAge);
-        s.maxAge = Number.isFinite(parsedMaxAge) ? Math.max(20, parsedMaxAge) : realmDef.maxAge;
-        s.scenarioState = ["safe", "combat", "trapped"].includes(raw.scenarioState) ? raw.scenarioState : "safe";
-
-        const cap = 20 + (s.level * 10);
-        s.stats = { ...def.stats };
-        ['str','con','agi','int','wis','luk'].forEach(k => {
-            const val = Number(raw.stats?.[k]);
-            s.stats[k] = Number.isFinite(val) ? Math.min(cap, Math.max(1, val)) : def.stats[k];
-        });
-
-        s.sect = { ...def.sect, ...(typeof raw.sect === 'object' ? raw.sect : {}) };
-        s.sect.contribution = Number.isFinite(Number(s.sect.contribution)) ? Math.max(0, Number(s.sect.contribution)) : 0;
-        s.worldModifier = { ...def.worldModifier, ...(typeof raw.worldModifier === 'object' ? raw.worldModifier : {}) };
-
-        if (Array.isArray(raw.kungfu)) {
-            s.kungfu = raw.kungfu.map(k => {
-                if (typeof k === 'string' && k !== '無') return { name: k, grade: "黃階", expBonus: 5, hpBonus: 10, breakthroughBonus: 1, statBonus: {} };
-                return k;
-            }).filter(k => k && typeof k === 'object' && k.name && k.name !== "無");
-        } else { s.kungfu = []; }
-
-        let realMaxHp = realmDef.maxHp + s.kungfu.reduce((sum, k) => sum + (Number(k.hpBonus) || 0), 0);
-        s.hp = Math.min(realMaxHp, Math.max(0, Number.isFinite(Number(raw.hp)) ? Number(raw.hp) : 50));
-        s.exp = Math.min(s.maxExp, Math.max(0, Number.isFinite(Number(raw.exp)) ? Number(raw.exp) : 0));
-        s.spiritStone = Number.isFinite(Number(raw.spiritStone)) ? Math.max(0, Number(raw.spiritStone)) : 0;
-
-        ['skills','equipItem','npcs','worldEvents','quests','choices'].forEach(k => {
-            s[k] = Array.isArray(raw[k]) ? raw[k] : def[k];
-        });
-
-        s.status = Array.isArray(raw.status) && raw.status.length > 0 ? raw.status : (s.level === 0 ? ["凡體肉身"] : ["健康"]);
-        if (s.hp <= 0 || s.status.includes("【已身死道消】")) {
-            s.hp = 0;
-            if (!s.status.includes("【已身死道消】")) s.status = ["【已身死道消】"];
-        }
+        let s = { ...def, ...raw };
+        s.level = Number.isFinite(Number(raw.level)) ? Number(raw.level) : 0;
+        s.realm = (REALMS[s.level] || REALMS[0]).name;
+        s.maxExp = (REALMS[s.level] || REALMS[0]).maxExp;
+        s.equipment = raw.equipment || { weapon: null, armor: null, accessory: null, treasure: null };
+        s.inventory = Array.isArray(raw.inventory) ? raw.inventory : ["粗布衣", "聚氣丹"];
+        s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu : [];
+        s.skills = Array.isArray(raw.skills) ? raw.skills : [];
+        s.npcs = Array.isArray(raw.npcs) ? raw.npcs : [];
         return s;
     }
 
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
-        if (!rawState || typeof rawState !== 'object') return s;
+        if (!rawState) return s;
 
-        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
-            s.hasChosenOrigin = true;
+        if (rawState.location) s.location = rawState.location;
+        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) s.hasChosenOrigin = true;
+
+        if (rawState.sect && rawState.sect.name) s.sect = { ...s.sect, ...rawState.sect };
+        else if (storyText.includes("青雲宗")) s.sect.name = "青雲宗";
+
+        // 自動從故事捕捉 NPC 姓名與互動
+        const npcMatch = storyText.match(/「([\u4e00-\u9fa5]{2,4})」/);
+        if (npcMatch && !s.npcs.some(n => n.name === npcMatch[1])) {
+            s.npcs.push({ name: npcMatch[1], identity: "宗門同門", affinity: 10, relation: "結識" });
         }
 
-        if (rawState.sect && rawState.sect.name && rawState.sect.name !== "無") {
-            s.sect = { ...s.sect, ...rawState.sect };
-        } else if (storyText.includes("青雲宗") || storyText.includes("收入門牆") || storyText.includes("宗門長老") || s.equipItem.some(i => i.includes("弟子令"))) {
-            if (s.sect.name === "無" || s.sect.name === "散修") {
-                s.sect = { name: "青雲宗", rank: "外門弟子", contribution: 10, position: "弟子" };
-            }
+        if (checkData.breakthroughMeta && checkData.breakthroughMeta.success) {
+            s.level = checkData.breakthroughMeta.nextLevel;
+            s.realm = checkData.breakthroughMeta.nextRealm.name;
+            s.maxExp = checkData.breakthroughMeta.nextRealm.maxExp;
+            s.exp = 0;
+        } else if (rawState.expReward && checkData.success) {
+            s.exp = Math.min(s.maxExp, s.exp + rawState.expReward);
         }
 
-        if (checkData.actionType === "突破" && checkData.breakthroughMeta) {
-            const meta = checkData.breakthroughMeta;
-            rawState.hpChange = 0;
-
-            if (meta.success) {
-                s.level = meta.nextLevel;
-                s.exp = 0;
-                s.maxExp = meta.nextRealm.maxExp;
-                s.maxAge = meta.nextRealm.maxAge;
-                s.realm = meta.nextRealm.name;
-                s.breakthroughLuck = 0;
-                
-                if (meta.isMortal && s.linggen === "待顯化") {
-                    s.linggen = ["混沌真靈根", "真火靈根", "水木雙靈根", "金土雙靈根", "變異雷靈根"][Math.floor(Math.random() * 5)];
-                    s.physique = "引氣淬體之軀";
-                }
-                s.status = ["健康"];
-                ['str','con','agi','int','wis','luk'].forEach(k => {
-                    const cap = 20 + (s.level * 10);
-                    s.stats[k] = Math.min(cap, s.stats[k] + Math.floor(Math.random()*3) + 2);
-                });
-                s.hp = (REALMS[s.level] || REALMS[REALMS.length - 1]).maxHp + s.kungfu.reduce((sum, k) => sum + (Number(k.hpBonus) || 0), 0);
-            } else {
-                s.hp = Math.max(0, s.hp - (meta.penaltyHp || 0));
-                s.maxAge = Math.max(1, s.maxAge - 3);
-                s.breakthroughLuck = (s.breakthroughLuck || 0) + 2;
-                if (!s.status.includes("經脈受損")) s.status.push("經脈受損");
-            }
+        if (Array.isArray(rawState.gainedItems)) {
+            rawState.gainedItems.forEach(i => { if (typeof i === 'string' && !s.inventory.includes(i)) s.inventory.push(i); });
+        }
+        if (Array.isArray(rawState.gainedKungfu)) {
+            rawState.gainedKungfu.forEach(k => {
+                let name = typeof k === 'string' ? k : k.name;
+                if (!s.kungfu.some(ex => ex.name === name)) s.kungfu.push({ name: name, expBonus: 10, hpBonus: 40 });
+            });
+        }
+        if (Array.isArray(rawState.gainedSkills)) {
+            rawState.gainedSkills.forEach(sk => {
+                let name = typeof sk === 'string' ? sk : sk.name;
+                if (!s.skills.some(ex => ex.name === name)) s.skills.push({ name: name, realm: "入門", exp: 0, maxExp: 100 });
+            });
         }
 
-        if (rawState.scenarioState && ["safe", "combat", "trapped"].includes(rawState.scenarioState)) {
-            if (s.scenarioState !== "safe" && rawState.scenarioState === "safe") {
-                if (checkData.success || /(逃跑|脫困|擊敗|回到|離開)/.test(actionText)) {
-                    s.scenarioState = "safe";
-                }
-            } else {
-                s.scenarioState = rawState.scenarioState;
-            }
-        }
-
-        if (typeof rawState.stoneChange === 'number') {
-            s.spiritStone = Math.max(0, s.spiritStone + rawState.stoneChange);
-        }
-
-        let kungfuExpBonus = s.kungfu.reduce((acc, k) => acc + (Number(k.expBonus) || 0), 0);
-        if (typeof rawState.expReward === 'number' && rawState.expReward > 0 && checkData.success) {
-            let finalExp = Math.floor(Math.min(rawState.expReward, checkData.maxExpReward) * (1 + kungfuExpBonus/100));
-            s.exp = Math.min(s.maxExp, s.exp + finalExp);
-        }
-
-        let realMaxHp = (REALMS[s.level] || REALMS[REALMS.length - 1]).maxHp + s.kungfu.reduce((sum, k) => sum + (Number(k.hpBonus) || 0), 0);
-        if (typeof rawState.hpChange === 'number') {
-            s.hp = Math.min(realMaxHp, Math.max(0, s.hp + rawState.hpChange)); 
-        }
-
-        const applyArrayChanges = (baseArr, gainedArr, lostArr) => {
-            let res = [...baseArr].filter(i => i !== "無");
-            if (lostArr && Array.isArray(lostArr)) res = res.filter(i => !lostArr.includes(i));
-            if (gainedArr && Array.isArray(gainedArr)) { 
-                gainedArr.forEach(i => { 
-                    if (typeof i === 'string' && i.trim() && !res.includes(i)) {
-                        if (!/(古戒|玉簡|丹藥|嘗試|尋找|請求)/.test(i)) { res.push(i); }
-                    }
-                }); 
-            }
-            return res.length > 0 ? res : ["無"];
-        };
-
-        s.equipItem = applyArrayChanges(s.equipItem, rawState.gainedItems, rawState.lostItems);
-        s.skills = applyArrayChanges(s.skills, rawState.gainedSkills, rawState.lostSkills);
-
-        let rawChoices = rawState.choices || [];
-        if (s.hasChosenOrigin) {
-            rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
-            if (rawChoices.length === 0) {
-                rawChoices = ["前往傳功殿進一步參悟更高階法門", "前往後山執行清剿妖獸任務"];
-            }
-        }
-        s.choices = rawChoices;
-
-        if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
-        if (s.hp <= 0) { s.hp = 0; if (!s.status.includes("【已身死道消】")) s.status = ["【已身死道消】"]; }
+        s.choices = rawState.choices || ["繼續向前探索", "返回洞府閉關修練"];
         return s;
     }
 
-    async function sendAction(choiceText = null, overrideCheck = null, onSuccessCallback = null) {
+    async function sendAction(choiceText = null, overrideCheck = null) {
         if (isTyping) { skipTypewriter(); return; }
-        if (gameState.hp <= 0) return alert("你已身死道消，請重置遊戲。");
-
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
-        if (!apiKey) return alert("⚠️ 請先至『系統』輸入 API Key！");
+        if (!apiKey) return alert("請先至『系統』輸入 API Key！");
 
         const inputEl = document.getElementById("action-input");
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
         inputEl.value = "";
-        
-        const backupHistory = structuredClone(conversationHistory); 
-        const backupState = structuredClone(gameState); 
-        const backupLogs = structuredClone(storyLogData);
 
         const checkData = overrideCheck || performSkillCheck(actionText);
-        
         appendLogData("異世旅者", actionText, "player", false, true);
         conversationHistory.push({ role: "user", content: `${actionText}\n\n${checkData.message}` });
         startLoadingAnim();
@@ -667,31 +507,17 @@
             const provider = document.getElementById("api-provider").value;
             let aiResponseText = provider === "gemini" ? await callGeminiApi(apiKey) : await callOpenAiApi(apiKey);
             conversationHistory.push({ role: "assistant", content: aiResponseText });
-            
-            const { storyText, parsedState } = parseApiResponse(aiResponseText);
-            if (!parsedState) throw new Error("AI 未回傳合法的 JSON 狀態");
 
-            let oldState = structuredClone(gameState);
-            
+            const { storyText, parsedState } = parseApiResponse(aiResponseText);
             gameState.daysPassed += checkData.daysSpent ?? 1;
-            lastRawStoryText = storyText;
             gameState = applyStateDelta(gameState, parsedState, checkData, actionText, storyText);
-            
-            if(gameState.hp > 0 && onSuccessCallback) onSuccessCallback(); 
-            
-            renderUI(oldState); 
-            setWritingAnim(); 
+
+            renderUI();
+            setWritingAnim();
             await typeWriterLog("天道", storyText, "ai");
             stopLoadingAnim(); saveGameState();
         } catch (error) {
-            console.error(error); stopLoadingAnim();
-            conversationHistory = backupHistory; 
-            gameState = backupState; 
-            storyLogData = backupLogs; 
-            renderStoryLogs();
-            renderUI();
-            inputEl.value = actionText; 
-            appendLogData("系統", `推演中斷 (${error.message})。已完整回滾狀態與資源。`, "system", false, true);
+            stopLoadingAnim(); alert("推演失敗: " + error.message);
         }
     }
 
@@ -699,177 +525,111 @@
         const match = text.match(/```json\s*([\s\S]*?)\s*```/i);
         if (!match) return { storyText: text.trim(), parsedState: null };
         try {
-            const parsedState = JSON.parse(match[1].trim());
-            if (!parsedState || typeof parsedState !== "object" || Array.isArray(parsedState)) throw new Error("JSON 格式不正確");
-            const storyText = (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim();
-            return { storyText, parsedState };
+            return { storyText: (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim(), parsedState: JSON.parse(match[1].trim()) };
         } catch (e) { return { storyText: text.trim(), parsedState: null }; }
     }
 
-    function getSystemPrompt() { return SYSTEM_INSTRUCTION + "\n\n【當前玩家快照】\n" + JSON.stringify(gameState, null, 2); }
-    function getTrimmedHistory(maxTurns = 6) { let t = conversationHistory.slice(-(maxTurns * 2)); if (t.length > 0 && t[0].role === "assistant") t.shift(); return t; }
+    function getSystemPrompt() { return SYSTEM_INSTRUCTION + "\n\n【玩家快照】\n" + JSON.stringify(gameState, null, 2); }
 
     async function callGeminiApi(apiKey) {
-        const customModel = document.getElementById("api-model").value.trim();
-        const candidateModels = customModel ? [customModel, "gemini-3.5-flash-lite", "gemini-3.7-flash"] : ["gemini-3.5-flash-lite", "gemini-3.7-flash"];
-        const contents = getTrimmedHistory().map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
-        const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() }] }, contents: contents, generationConfig: { temperature: 0.7 } };
-
-        let lastError = null;
-        for (const modelName of candidateModels) {
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, { 
-                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData) 
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    lastError = new Error(`[${modelName}] 失敗: ${data.error?.message || res.status}`);
-                    continue;
-                }
-                const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (replyText) return replyText;
-            } catch (err) { lastError = err; }
-        }
-        throw lastError || new Error("API 呼叫失敗");
+        const model = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
+        const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ system_instruction: { parts: [{ text: getSystemPrompt() }] }, contents: contents })
+        });
+        const data = await res.json();
+        return data.candidates[0].content.parts[0].text;
     }
 
     async function callOpenAiApi(apiKey) {
         const model = document.getElementById("api-model").value.trim() || "gpt-4o-mini";
-        const messages = [{ role: "system", content: getSystemPrompt() }, ...getTrimmedHistory().map(m => ({ role: m.role, content: m.content }))];
-        const res = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` }, body: JSON.stringify({ model: model, messages: messages, temperature: 0.7 }) });
+        const messages = [{ role: "system", content: getSystemPrompt() }, ...conversationHistory.slice(-10)];
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            body: JSON.stringify({ model: model, messages: messages })
+        });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || `OpenAI 錯誤 (${res.status})`);
         return data.choices[0].message.content;
     }
 
-    function syncControlsState() {
-        const busy = isTyping || loadingInterval !== null;
-        const dead = gameState.hp <= 0;
-        const hasChosen = gameState.hasChosenOrigin;
-        
-        const controlsArea = document.getElementById("controls-area");
-        const actionInput = document.getElementById("action-input");
-        const btnSubmit = document.getElementById("btn-submit");
-        const quickActions = document.getElementById("quick-actions-container");
-
-        controlsArea.classList.remove("incapacitated-overlay");
-        actionInput.placeholder = hasChosen ? "輸入行動或選擇上方選項..." : "請先點擊上方身世選項開局...";
-        quickActions.style.display = "grid";
-
-        const isSafe = (gameState.scenarioState === "safe" || !gameState.scenarioState) && hasChosen;
-        
-        document.getElementById("btn-heal").disabled = busy || dead || !isSafe;
-        document.getElementById("btn-long-heal").disabled = busy || dead || !isSafe;
-        document.getElementById("btn-hospital").disabled = busy || dead || !isSafe;
-
-        const deduceBtn = document.getElementById("btn-deduce");
-        const canBreak = gameState.exp >= gameState.maxExp;
-        deduceBtn.disabled = busy || dead || !hasChosen || !canBreak;
-        
-        if (!hasChosen) {
-            deduceBtn.textContent = "✨ 需先選擇身世開局";
-        } else if (!canBreak) {
-            deduceBtn.textContent = `✨ 修為未滿 (${gameState.exp}/${gameState.maxExp})`;
-        } else {
-            deduceBtn.textContent = gameState.level === 0 ? "✨ 點此引氣入體破境！" : "⚡ 突破境界瓶頸";
-        }
-        
-        actionInput.disabled = busy || dead;
-        btnSubmit.disabled = busy || dead;
-    }
-
-    function renderUI(oldState = null) {
+    function renderUI() {
         const s = gameState;
-        const years = Math.floor(s.daysPassed / 365), months = Math.floor((s.daysPassed % 365) / 30);
-        
-        if (s.hp <= 0 || (s.ageBase + years) >= s.maxAge) { s.hp = 0; if(!s.status.includes("【已身死道消】")) s.status = ["【已身死道消】"]; }
-
-        const updateAnim = (id, newVal, oldVal) => {
-            const el = document.getElementById(id);
-            if(oldVal !== null && el.innerText !== String(newVal)) { el.classList.remove("flash-up", "flash-down"); void el.offsetWidth; el.classList.add(newVal > oldVal ? "flash-up" : "flash-down"); }
-            el.innerText = newVal;
-        };
-
-        document.getElementById("ui-realm").innerText = s.level === 0 ? "凡人 (Lv.0)" : `${s.realm} (Lv.${s.level})`;
+        document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${s.location}`;
+        document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
         document.getElementById("ui-linggen").innerText = s.linggen;
-        document.getElementById("ui-age").innerText = `${s.ageBase + years}歲${months}月 / ${formatNum(s.maxAge)}歲`;
-        
-        const currentMaxHp = getMaxHp();
-        updateAnim("ui-hp", `${formatNum(s.hp)} / ${formatNum(currentMaxHp)}`, oldState ? `${formatNum(oldState.hp)} / ${formatNum(oldState.maxHp)}` : null);
         document.getElementById("ui-physique").innerText = s.physique;
-        updateAnim("ui-spiritStone", `${formatNum(s.spiritStone)} 顆`);
+        document.getElementById("ui-hp").innerText = `${s.hp} / ${getMaxHp()}`;
+        document.getElementById("ui-exp-text").innerText = `${s.exp} / ${s.maxExp}`;
+        document.getElementById("ui-exp-fill").style.width = `${Math.min(100, (s.exp / s.maxExp) * 100)}%`;
+        document.getElementById("ui-spiritStone").innerText = `${s.spiritStone} 顆`;
 
-        const expPct = Math.min(100, (s.exp / s.maxExp) * 100) || 0;
-        document.getElementById("ui-exp-text").innerText = `${formatNum(s.exp)} / ${formatNum(s.maxExp)}`;
-        document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
-        
         const sectTop = document.getElementById("ui-sect-top");
-        if (s.sect && s.sect.name && s.sect.name !== "無" && !s.sect.name.includes("散修")) {
+        if (s.sect && s.sect.name !== "無") {
             sectTop.innerText = `${s.sect.name} (${s.sect.rank || '弟子'}) 貢獻:${s.sect.contribution || 0}`;
-            sectTop.style.display = "inline-block";
-        } else {
-            sectTop.innerText = "無宗門 (散修)";
-        }
-
-        const hasSect = s.sect && s.sect.name && s.sect.name !== "無" && !s.sect.name.includes("散修");
-        const btnSectQuest = document.getElementById("btn-sect-quest");
-        const btnSectLib = document.getElementById("btn-sect-lib");
-        btnSectQuest.style.display = hasSect ? "block" : "none";
-        btnSectLib.style.display = hasSect ? "block" : "none";
-
-        const modBadge = document.getElementById("ui-world-modifier");
-        if (!s.hasChosenOrigin) {
-            modBadge.style.display = "block";
-            modBadge.innerText = "📜 請先點擊下方身世按鈕選擇開局！";
-        } else if (s.scenarioState !== "safe") {
-            modBadge.style.display = "block";
-            modBadge.innerText = s.scenarioState === "combat" ? "⚔️ 戰鬥狀態：無法進行安逸行動！" : "⚠️ 身處險境：無法返回城鎮！";
-        } else { 
-            modBadge.style.display = "none"; 
-        }
+        } else sectTop.innerText = "無宗門 (散修)";
 
         ['str','con','agi','int','wis','luk'].forEach(st => {
-            let base = s.stats[st];
-            let total = getTotalStat(st);
-            let displayStr = total > base ? `${total} (+${total - base})` : `${base}`;
-            updateAnim(`st-${st}`, displayStr, oldState ? oldState.stats[st] : null);
+            document.getElementById(`st-${st}`).innerText = getTotalStat(st);
         });
-        
-        let totalStats = { str: getTotalStat('str'), con: getTotalStat('con'), agi: getTotalStat('agi'), int: getTotalStat('int'), wis: getTotalStat('wis'), luk: getTotalStat('luk') };
-        drawRadarChart(totalStats);
+        drawRadarChart(s.stats);
 
-        const renderList = (id, arr, fmt = (x)=>x) => {
-            const c = document.getElementById(id); c.innerHTML = "";
-            if (!arr || arr.length === 0 || (arr.length === 1 && arr[0] === "無")) { c.textContent = "• 無"; return; }
-            arr.forEach(i => { if(i!=="無") { const d = document.createElement("div"); d.textContent = `• ${fmt(i)}`; c.appendChild(d); }});
-        };
+        // 主修心法 UI
+        const kfActive = document.getElementById("ui-kungfu-active");
+        if (s.activeKungfu) {
+            kfActive.innerHTML = `<strong>運轉中：${s.activeKungfu.name}</strong><br><span style="font-size:0.75rem; color:#aaa;">+${s.activeKungfu.expBonus}% 修為速度 / +${s.activeKungfu.hpBonus} HP</span>`;
+        } else kfActive.innerText = "• 尚未運轉任何心法";
 
-        renderList("ui-status", s.status); renderList("ui-skills", s.skills); renderList("ui-equipItem", s.equipItem);
-        renderList("ui-world-events", s.worldEvents); renderList("ui-quests", s.quests, q => `[${q.status}] ${q.name} - ${q.progress}`);
-        renderList("ui-npcs", s.npcs, n => `${escapeHTML(n.name)} - 好感:${n.affinity||0}`);
+        const kfList = document.getElementById("ui-kungfu-list"); kfList.innerHTML = "";
+        s.kungfu.forEach(k => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>📖 ${k.name}</span><div class="item-actions">
+                <button onclick="toggleKungfu('${k.name}')">${s.activeKungfu && s.activeKungfu.name === k.name ? '停止' : '運轉'}</button>
+                <button onclick="switchItemCategory('${k.name}', 'kungfu')">轉為招式</button></div>`;
+            kfList.appendChild(div);
+        });
 
-        const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = ""; 
-        if (s.hp <= 0) { 
-            choiceCont.innerHTML = `<button class="choice-btn" style="background:#4a1515;color:#fff;grid-column:1/-1;" onclick="resetGame()">💀 壽盡身亡 / 輪迴重啟</button>`; 
-        } 
-        else if (s.choices) { 
-            let validChoices = s.choices;
-            if (s.hasChosenOrigin) {
-                validChoices = validChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
-                if (validChoices.length === 0) {
-                    validChoices = ["前往傳功殿進一步參悟更高階法門", "前往後山執行清剿妖獸任務"];
-                }
-            }
-            validChoices.forEach(c => { 
-                let b = document.createElement("button"); b.className = "choice-btn"; b.textContent = c; b.onclick = () => sendAction(c); choiceCont.appendChild(b); 
-            });
-        }
-        syncControlsState();
+        // 術法招式 UI
+        const skList = document.getElementById("ui-skills-list"); skList.innerHTML = "";
+        s.skills.forEach(sk => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>⚔️ ${sk.name} <small style="color:var(--hl-gold)">(${sk.realm || '入門'})</small></span>
+                <div class="item-actions"><button onclick="switchItemCategory('${sk.name}', 'skill')">轉為心法</button></div>`;
+            skList.appendChild(div);
+        });
+
+        // 裝備與背包
+        ['weapon', 'armor', 'accessory', 'treasure'].forEach(slot => {
+            document.getElementById(`eq-${slot}`).innerText = s.equipment[slot] ? s.equipment[slot].name : '無';
+        });
+
+        const invList = document.getElementById("ui-inventory-list"); invList.innerHTML = "";
+        s.inventory.forEach(inv => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>🎒 ${inv}</span><div class="item-actions"><button onclick="equipItemFromInv('${inv}')">裝備</button></div>`;
+            invList.appendChild(div);
+        });
+
+        // NPC 列表
+        const npcList = document.getElementById("ui-npcs-list"); npcList.innerHTML = "";
+        s.npcs.forEach(n => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>👥 ${n.name} (${n.identity}) - 好感: ${n.affinity}</span><div class="item-actions"><button onclick="sendAction('【前去拜訪${n.name}】')">互動</button></div>`;
+            npcList.appendChild(div);
+        });
+
+        // 動態選項
+        const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = "";
+        s.choices.forEach(c => {
+            let b = document.createElement("button"); b.className = "choice-btn"; b.textContent = c;
+            b.onclick = () => sendAction(c); choiceCont.appendChild(b);
+        });
+
+        document.getElementById("btn-deduce").disabled = s.exp < s.maxExp;
     }
 
     function appendLogData(role, text, type, isSafeHtml = false, immediateRender = false) {
         storyLogData.push({ role, content: text, type, isSafeHtml });
-        if (storyLogData.length > MAX_DOM_LOGS) storyLogData.shift();
         if (immediateRender) renderStoryLogs();
     }
 
@@ -877,94 +637,40 @@
         const logBox = document.getElementById("story-log"); logBox.innerHTML = "";
         storyLogData.forEach(log => {
             const block = document.createElement('div'); block.className = `story-block ${log.type}`;
-            const header = document.createElement('strong'); header.textContent = `${log.role}：`;
-            block.appendChild(header); block.appendChild(document.createElement('br'));
-            if(log.isSafeHtml) { const span = document.createElement('span'); span.innerHTML = log.content; block.appendChild(span); } else block.appendChild(document.createTextNode(log.content));
+            block.innerHTML = `<strong>${log.role}：</strong><br>${log.content}`;
             logBox.appendChild(block);
         });
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function formatStoryHtml(rawText) {
-        return escapeHTML(rawText).replace(/\n/g, "<br>")
-            .replace(/(獲得|突破|頓悟|大成功|引氣入體|妙手回春|機緣|收入門牆)/g, '<span class="hl-skill">$1</span>')
-            .replace(/(重傷|毒煞|反噬|走火入魔|心魔|壽元將盡|慘痛失敗|大失敗)/g, '<span class="hl-danger">$1</span>')
-            .replace(/(法寶|靈器|丹藥|靈石|玉簡|弟子令)/g, '<span class="hl-item">$1</span>');
-    }
-
     async function typeWriterLog(role, rawText, type) {
-        isTyping = true; let safeHtml = formatStoryHtml(rawText);
-        storyLogData.push({ role, content: safeHtml, type, isSafeHtml: true });
-        if (storyLogData.length > MAX_DOM_LOGS) storyLogData.shift();
-        renderStoryLogs();
-        
-        const logBox = document.getElementById("story-log"); const currentBlock = logBox.lastElementChild;
-        currentBlock.innerHTML = `<strong>${role}：</strong><br><span class="type-content"></span><span class="cursor"></span>`;
-        const contentSpan = currentBlock.querySelector('.type-content');
-        
-        let i = 0; let isTag = false; let currentHTML = ''; lastRawStoryText = safeHtml;
-        return new Promise(resolve => {
-            currentTypingResolve = resolve;
-            function typeChar() {
-                if (!isTyping) return;
-                if (i < safeHtml.length) {
-                    let char = safeHtml.charAt(i); currentHTML += char;
-                    if (char === '<') isTag = true; if (char === '>') isTag = false;
-                    if (!isTag && i % 2 === 0) { contentSpan.innerHTML = currentHTML; logBox.scrollTop = logBox.scrollHeight; }
-                    i++; if(isTag) typeChar(); else requestAnimationFrame(() => setTimeout(typeChar, 10)); 
-                } else finishTypeWriter(resolve);
-            } typeChar();
-        });
+        isTyping = true;
+        storyLogData.push({ role, content: rawText, type, isSafeHtml: false });
+        renderStoryLogs(); isTyping = false;
     }
 
-    function skipTypewriter() {
-        if (!isTyping || !currentTypingResolve) return;
-        isTyping = false; const logBox = document.getElementById("story-log"); const currentBlock = logBox.lastElementChild;
-        if(currentBlock) { const cs = currentBlock.querySelector('.type-content'); const c = currentBlock.querySelector('.cursor'); if(cs) cs.innerHTML = lastRawStoryText; if(c) c.remove(); }
-        storyLogData[storyLogData.length - 1].content = lastRawStoryText;
-        const resolveFn = currentTypingResolve; currentTypingResolve = null; resolveFn();
-    }
-
-    function finishTypeWriter(resolve) {
-        isTyping = false; const logBox = document.getElementById("story-log"); const currentBlock = logBox.lastElementChild;
-        if(currentBlock) { const c = currentBlock.querySelector('.cursor'); if(c) c.remove(); }
-        currentTypingResolve = null; resolve();
-    }
-
-    function startLoadingAnim() {
-        if(loadingInterval) clearInterval(loadingInterval);
-        let phases = ["🎲 天道判定中...", "🌌 命運推演中...", "🔍 解析天機中..."], phaseIdx = 0;
-        const btn = document.getElementById("btn-submit"); btn.textContent = phases[phaseIdx];
-        loadingInterval = setInterval(() => { phaseIdx = Math.min(phaseIdx + 1, phases.length - 1); btn.textContent = phases[phaseIdx]; }, 1500);
-        syncControlsState();
-    }
-
-    function setWritingAnim() { if(loadingInterval) { clearInterval(loadingInterval); loadingInterval = null; } document.getElementById("btn-submit").textContent = "✍️ 撰寫天機中..."; syncControlsState(); }
-    function stopLoadingAnim() { if(loadingInterval) { clearInterval(loadingInterval); loadingInterval = null; } document.getElementById("btn-submit").textContent = "抉擇"; syncControlsState(); }
+    function skipTypewriter() { isTyping = false; }
+    function startLoadingAnim() { document.getElementById("btn-submit").textContent = "🎲 推演中..."; }
+    function setWritingAnim() { document.getElementById("btn-submit").textContent = "✍️ 顯化中..."; }
+    function stopLoadingAnim() { document.getElementById("btn-submit").textContent = "抉擇"; }
 
     function drawRadarChart(s) {
         const cvs = document.getElementById('radarCanvas'); if(!cvs) return;
-        const ctx = cvs.getContext('2d'), dpr = window.devicePixelRatio || 1;
-        cvs.width = 160*dpr; cvs.height = 160*dpr; cvs.style.width='160px'; cvs.style.height='160px'; ctx.scale(dpr,dpr);
-        ctx.clearRect(0,0,160,160); 
-        const maxAbs = 100, keys = ['str','con','agi','int','wis','luk'], labels = ['膂力','根骨','身法','神識','悟性','氣運'];
-        const vals = keys.map(k => Math.min(s[k]||10, maxAbs)), cx=80, cy=80, r=50;
-        for(let l=1;l<=3;l++){ ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, x=cx+(r/3)*l*Math.cos(a), y=cy+(r/3)*l*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.strokeStyle="rgba(197,160,89,0.25)"; ctx.stroke(); }
-        ctx.beginPath(); for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, rr=r*(vals[i]/maxAbs), x=cx+rr*Math.cos(a), y=cy+rr*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); } ctx.closePath(); ctx.fillStyle="rgba(0,255,255,0.3)"; ctx.fill(); ctx.strokeStyle="#00ffff"; ctx.stroke();
-        ctx.fillStyle = "#8b8ea8"; ctx.font = "10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        for(let i=0;i<6;i++){ const a=(Math.PI/3)*i-Math.PI/2, tx=cx+(r+15)*Math.cos(a), ty=cy+(r+12)*Math.sin(a); ctx.fillText(labels[i], tx, ty); }
+        const ctx = cvs.getContext('2d'); cvs.width = 160; cvs.height = 160;
+        ctx.clearRect(0,0,160,160);
+        ctx.beginPath(); ctx.arc(80,80,50,0,Math.PI*2); ctx.strokeStyle="rgba(197,160,89,0.3)"; ctx.stroke();
     }
 
-    function saveApiKey() { localStorage.setItem("blade_api_key", document.getElementById("api-key").value.trim()); localStorage.setItem("blade_api_provider", document.getElementById("api-provider").value); localStorage.setItem("blade_api_model", document.getElementById("api-model").value.trim()); alert("⚙️ API 設定已儲存！"); }
-    function clearApiKey() { localStorage.removeItem("blade_api_key"); localStorage.removeItem("blade_api_provider"); localStorage.removeItem("blade_api_model"); document.getElementById("api-key").value = ""; document.getElementById("api-model").value = ""; document.getElementById("api-provider").value = "gemini"; alert("🗑️ 已清除 API Key！"); }
-    function loadApiKey() { if(localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key"); if(localStorage.getItem("blade_api_provider")) document.getElementById("api-provider").value = localStorage.getItem("blade_api_provider"); if(localStorage.getItem("blade_api_model")) document.getElementById("api-model").value = localStorage.getItem("blade_api_model"); }
-    function saveGameState() { localStorage.setItem("blade_state", JSON.stringify(gameState)); if(conversationHistory.length > 30) conversationHistory = conversationHistory.slice(-30); localStorage.setItem("blade_history", JSON.stringify(conversationHistory)); localStorage.setItem("blade_log_data", JSON.stringify(storyLogData)); }
-    function loadGameState() { try { const s = localStorage.getItem("blade_state"); if (s && localStorage.getItem("blade_history")) { gameState = normalizeFullState(JSON.parse(s)); conversationHistory = JSON.parse(localStorage.getItem("blade_history")); storyLogData = JSON.parse(localStorage.getItem("blade_log_data") || "[]"); renderStoryLogs(); renderUI(); } else initNewGame(); } catch(e) { initNewGame(); } }
-    function initNewGame() { gameState.scenarioState = "safe"; gameState.hasChosenOrigin = false; conversationHistory = []; storyLogData = []; document.getElementById("story-log").innerHTML = ""; appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世開局，定下你的先天機緣與命運！", "ai", true, true); renderUI(); }
-    function exportSave() { const d = { version: gameState.version, state: structuredClone(gameState), history: structuredClone(conversationHistory), logData: structuredClone(storyLogData) }; const blob = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `九州存檔_${Date.now()}.json`; a.click(); }
-    function importSave(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = (ev) => { try { let d = JSON.parse(ev.target.result); gameState = normalizeFullState(d.state); conversationHistory = d.history || []; storyLogData = d.logData || []; saveGameState(); renderStoryLogs(); renderUI(); alert("📂 存檔匯入成功！"); } catch (err) { alert(`❌ 存檔讀取失敗`); } }; r.readAsText(f); }
-    function resetGame() { if (confirm("⚠️ 確定重置？")) { localStorage.removeItem("blade_state"); localStorage.removeItem("blade_history"); localStorage.removeItem("blade_log_data"); location.reload(); } }
+    function saveApiKey() { localStorage.setItem("blade_api_key", document.getElementById("api-key").value.trim()); alert("API Key 已儲存！"); }
+    function clearApiKey() { localStorage.removeItem("blade_api_key"); alert("API Key 已清除！"); }
+    function loadApiKey() { if(localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key"); }
+    function saveGameState() { localStorage.setItem("blade_v4_state", JSON.stringify(gameState)); }
+    function loadGameState() {
+        const raw = localStorage.getItem("blade_v4_state");
+        if (raw) gameState = normalizeFullState(JSON.parse(raw));
+        renderUI();
+    }
+    function resetGame() { if(confirm("重置進度？")) { localStorage.clear(); location.reload(); } }
 </script>
-
 </body>
 </html>
