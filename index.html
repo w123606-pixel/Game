@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.17)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.18)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -98,7 +98,6 @@
 
         .clickable-tag { text-decoration: underline; cursor: pointer; }
         .clickable-tag:hover { filter: brightness(1.2); }
-        .rarity-tag { font-size: 0.75rem; padding: 1px 4px; border-radius: 3px; margin-right: 4px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -236,7 +235,6 @@
         { level: 11, name: "築基初期", maxAge: 250, maxHp: 1200, maxExp: 3000 }
     ];
 
-    // 修仙九品階數值與色彩映射
     const ITEM_RARITIES = {
         "凡品":     { tier: 0, color: "#8b8ea8", hpMul: 1,   statMul: 0,  label: "凡品" },
         "下品":     { tier: 1, color: "#e1e1e6", hpMul: 3,   statMul: 1,  label: "下品" },
@@ -250,7 +248,7 @@
     };
 
     let gameState = {
-        version: "4.17",
+        version: "4.18",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -300,7 +298,6 @@
         return clean;
     }
 
-    // 動態偵測名稱中的九品階標籤
     function detectRarity(itemName) {
         if (/先天法寶|先天|太極圖|東皇鐘|盤古/i.test(itemName)) return "先天法寶";
         if (/後天法寶|後天|陰陽鏡|翻天印/i.test(itemName)) return "後天法寶";
@@ -311,17 +308,20 @@
         if (/中品|精鋼|絲綢/i.test(itemName)) return "中品";
         if (/下品|鐵劍|皮甲/i.test(itemName)) return "下品";
         if (/凡品|粗|木|破|舊|布衣|凡物/i.test(itemName)) return "凡品";
-        return "中品"; // 預設為中品
+        return "中品";
     }
 
     function getItemMeta(itemName) {
         const cleanName = normalizeItemName(itemName);
         const baseName = cleanName.replace(/x\d+/i, '').trim();
 
+        if (cleanName.includes("靈石")) {
+            return { type: 'spirit_stone', name: cleanName, rarity: "中品", color: "#00ffff", desc: '靈石貨幣 [點擊提煉為靈石數值]' };
+        }
+
         const rarityKey = detectRarity(baseName);
         const rMeta = ITEM_RARITIES[rarityKey] || ITEM_RARITIES["中品"];
 
-        // 防具 (衣/甲/冠/鞋/靴/袍/服)
         if (/(衣|甲|冠|鞋|靴|袍|服)/.test(baseName)) {
             const hp = rMeta.tier === 0 ? 5 : 15 * rMeta.hpMul;
             const con = rMeta.tier === 0 ? 0 : 1 + rMeta.statMul;
@@ -330,7 +330,6 @@
             return { type: 'equip', slot: 'armor', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { con: con, agi: agi } };
         }
 
-        // 武器 (劍/刀/槍/杖/刃/弓)
         if (/(劍|刀|槍|杖|刃|弓)/.test(baseName)) {
             const str = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
             const agi = rMeta.tier >= 2 ? Math.floor(rMeta.statMul / 2) : 0;
@@ -339,46 +338,24 @@
             return { type: 'equip', slot: 'weapon', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { str: str, agi: agi } };
         }
 
-        // 飾品 (戒/墜/鐲/環)
         if (/(戒|墜|鐲|環)/.test(baseName)) {
             const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
             const intStat = rMeta.tier === 0 ? 0 : 1 + Math.floor(rMeta.statMul / 2);
             const hp = rMeta.hpMul * 5;
-            let desc = `[${rMeta.label}] 飾品 [悟性+${wis}${intStat > 0 ? `, 神識+${intStat}` : ''}]`;
-            return { type: 'equip', slot: 'accessory', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat } };
-        }
-
-        // 法寶 (佩|令|珠|鏡|印|鼎|塔|寶)
-        if (/(佩|令|珠|鏡|印|鼎|塔|寶)/.test(baseName)) {
-            const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
-            const intStat = rMeta.tier === 0 ? 0 : 1 + Math.floor(rMeta.statMul / 2);
-            const luk = rMeta.tier >= 2 ? 1 + Math.floor(rMeta.statMul / 3) : 0;
-            const hp = rMeta.hpMul * 8;
-            let desc = `[${rMeta.label}] 法寶 [悟性+${wis}, 神識+${intStat}${luk > 0 ? `, 氣運+${luk}` : ''}]`;
-            return { type: 'equip', slot: 'treasure', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat, luk: luk } };
-        }
-
-        if (/(丹|散|膏|丸|水|草|藥)/.test(baseName)) {
-            return { type: 'consumable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 丹藥 [增益/恢復氣血]` };
+            let desc = `[${rMeta.label}] 飾品 [悟性+${wis}${intStat > 0 ? `, 神識+${intStat}` : ''}]`; return { type: 'equip', slot: 'accessory', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat } }; }  if (/(佩\vert{}令\vert{}珠\vert{}鏡\vert{}印\vert{}鼎\vert{}塔\vert{}寶)/.test(baseName)) { const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul; const intStat = rMeta.tier === 0 ? 0 : 1 + Math.floor(rMeta.statMul / 2); const luk = rMeta.tier >= 2 ? 1 + Math.floor(rMeta.statMul / 3) : 0; const hp = rMeta.hpMul * 8; let desc = `[${rMeta.label}] 法寶 [悟性+${wis}, 神識+${intStat}${luk > 0 ? `, 氣運+${luk}` : ''}]`; return { type: 'equip', slot: 'treasure', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat, luk: luk } }; }  if (/(丹\vert{}散\vert{}膏\vert{}丸\vert{}水\vert{}草\vert{}藥)/.test(baseName)) { return { type: 'consumable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 丹藥 [增益/恢復氣血]` };
         }
         if (/(玉簡|秘籍|心法|殘篇|圖錄|訣)/.test(baseName)) {
-            return { type: 'studyable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 功法玉簡 [點擊參悟]` };
-        }
-        return { type: 'misc', name: cleanName, rarity: "中品", color: "#aaa", desc: '普通物品' };
+            return { type: 'studyable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 功法玉簡 [點擊參悟]` }; } return { type: 'misc', name: cleanName, rarity: "中品", color: "#aaa", desc: '普通物品' }; }  // 計算並折算靈石數值（下品 1:1, 中品 1:100, 上品 1:10000） function parseSpiritStoneValue(itemStr) { if (typeof itemStr !== 'string') return 0; let match = itemStr.match(/x(\d+)/i) \vert{}\vert{} itemStr.match(/(\d+)/); let count = match ? parseInt(match[1], 10) : 1;  let multiplier = 1; if (itemStr.includes("中品")) multiplier = 100; else if (itemStr.includes("上品")) multiplier = 10000; else if (itemStr.includes("極品")) multiplier = 1000000;  return count * multiplier; }  function absorbSpiritStones(state) { let cleanInv = []; let totalAdded = 0; state.inventory.forEach(item => { if (typeof item === 'string' && item.includes("靈石")) { let val = parseSpiritStoneValue(item); totalAdded += val; } else { cleanInv.push(item); } }); state.spiritStone += totalAdded; state.inventory = cleanInv; }  // 智能清理劇情中被擊殺/幹掉的死者 NPC function cleanDeadNPCs(state, actionText = "", storyText = "") { if (!Array.isArray(state.npcs)) return; const combinedText = (actionText + " " + storyText).toLowerCase(); const killKeywords = ["擊殺", "斬殺", "幹掉", "殺死", "身亡", "殞命", "命喪", "手刃", "誅殺", "化為灰燼", "已被你殺害", "討伐", "取其性命", "廢掉", "被殺"];  state.npcs = state.npcs.filter(npc => { if (!npc \vert{}\vert{} !npc.name) return false; if (npc.isDead \vert{}\vert{} npc.status === "死亡" \vert{}\vert{} npc.status === "已故") return false;  const npcName = npc.name.toLowerCase(); const isKilled = killKeywords.some(kw => combinedText.includes(kw) && combinedText.includes(npcName)); if (isKilled) { appendLogData("系統", `【${npc.name}】已身亡，自結識列表中移除。`, "system", false, true);
+                return false;
+            }
+            return true;
+        });
     }
 
-    function absorbSpiritStones(state) {
-        let cleanInv = [];
-        state.inventory.forEach(item => {
-            if (typeof item === 'string' && item.includes("靈石")) {
-                let match = item.match(/x(\d+)/i) || item.match(/(\d+)/);
-                let count = match ? parseInt(match[1], 10) : 10;
-                state.spiritStone += count;
-            } else {
-                cleanInv.push(item);
-            }
-        });
-        state.inventory = cleanInv;
+    function removeNPC(npcName) {
+        gameState.npcs = gameState.npcs.filter(n => n.name !== npcName);
+        renderUI();
+        saveGameState();
     }
 
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
@@ -386,10 +363,10 @@
 1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
 2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
 3. 【身世開局絕對禁寫青雲宗】：玩家選擇身世開局時（如落魄少主），故事地點必須設定在『九州邊境 · 荒郊破廟』！去不去宗門由玩家自主選擇。
-4. 【裝備品階規範】：若賜予裝備/法寶，可在名字加入品階標籤（如『上品·雲紋法衣』、『【仙器】誅仙劍』、『【先天法寶】太極圖』）。
+4. 【裝備品階規範】：若賜予裝備/法寶，可在名字加入品階標籤（如『上品·雲紋法衣』、『【仙器】誅仙劍』）。
 5. 【功法獲得精準發放】：當玩家在劇情中獲得功法（如《太上青雲訣》），JSON 中的 gainedKungfu 陣列【必須】放入該功法名稱。
 6. 【靈石獎勵原則】：若玩家獲得靈石，請使用 stoneChange 數值增減，嚴禁寫入 gainedItems 陣列！
-7. 【NPC精準判定】：npcs 陣列只填寫【明確登場的人類/妖怪人物】。絕對禁止把『藏經閣』等建築寫入 npcs 陣列！
+7. 【NPC精準判定與陣亡移除】：npcs 陣列只填寫【明確登場的人類/妖怪人物】。絕對禁止把『藏經閣』等建築寫入！若 NPC 在劇情中被擊殺或死亡，JSON 中的 npcs 陣列【絕不能】包含該 NPC。
 8. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，僅包含氣血/經脈/心神等狀態。嚴禁放入體質名稱或境界名稱！
 9. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
@@ -471,7 +448,13 @@
     function handleItemAction(itemName) {
         const meta = getItemMeta(itemName);
         
-        if (meta.type === 'equip') {
+        if (meta.type === 'spirit_stone') {
+            const val = parseSpiritStoneValue(itemName);
+            gameState.spiritStone += val;
+            gameState.inventory = gameState.inventory.filter(i => normalizeItemName(i) !== meta.name);
+            appendLogData("系統", `你提煉折算【${meta.name}】，將 ${val} 顆靈石納入庫存！`, "system", false, true);
+            renderUI();
+        } else if (meta.type === 'equip') {
             if (gameState.equipment[meta.slot]) unequipItem(meta.slot);
             gameState.equipment[meta.slot] = meta;
             gameState.inventory = gameState.inventory.filter(i => normalizeItemName(i) !== meta.name);
@@ -568,6 +551,8 @@
         absorbSpiritStones(s);
 
         s.npcs = (Array.isArray(raw.npcs) ? raw.npcs : []).filter(n => n && n.name && isRealNPC(n.name));
+        cleanDeadNPCs(s);
+
         s.quests = Array.isArray(raw.quests) ? raw.quests : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
         s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents : [];
         s.status = Array.isArray(raw.status) ? raw.status : ["氣血平穩"];
@@ -670,6 +655,7 @@
             });
         }
         s.npcs = s.npcs.filter(n => n && n.name && isRealNPC(n.name));
+        cleanDeadNPCs(s, actionText, storyText);
 
         if (checkData.breakthroughMeta && checkData.breakthroughMeta.success) {
             s.level = checkData.breakthroughMeta.nextLevel;
@@ -1017,7 +1003,8 @@
         s.inventory.forEach(inv => {
             const meta = getItemMeta(inv);
             let btnText = "使用", btnClass = "";
-            if (meta.type === 'equip') { btnText = "裝備"; btnClass = "btn-equip"; }
+            if (meta.type === 'spirit_stone') { btnText = "提煉"; btnClass = "btn-use"; }
+            else if (meta.type === 'equip') { btnText = "裝備"; btnClass = "btn-equip"; }
             else if (meta.type === 'consumable') { btnText = "服用"; btnClass = "btn-use"; }
             else if (meta.type === 'studyable') { btnText = "參悟"; btnClass = "btn-use"; }
 
@@ -1035,7 +1022,11 @@
         const npcList = document.getElementById("ui-npcs-list"); npcList.innerHTML = "";
         s.npcs.forEach(n => {
             let div = document.createElement("div"); div.className = "item-row";
-            div.innerHTML = `<span>👥 ${n.name} (${n.identity}) - 好感: ${n.affinity}</span><div class="item-actions"><button onclick="sendAction('【前去拜訪${n.name}】')">互動</button></div>`;
+            div.innerHTML = `<span>👥 ${n.name} (${n.identity}) - 好感: ${n.affinity}</span>
+                <div class="item-actions">
+                    <button onclick="sendAction('【前去拜訪${n.name}】')">互動</button>
+                    <button onclick="removeNPC('${n.name}')" style="background:#4a1515; border-color:#882222;">除名</button>
+                </div>`;
             npcList.appendChild(div);
         });
 
