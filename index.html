@@ -236,7 +236,7 @@
     ];
 
     let gameState = {
-        version: "2.20",
+        version: "2.21",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, maxHp: 50, exp: 0, maxExp: 100,
@@ -430,7 +430,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.20", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.21", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, maxHp: 50, exp: 0, maxExp: 100, spiritStone: 0,
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], kungfu: [], skills: [], equipItem: ["粗布衣"], 
@@ -442,17 +442,19 @@
         if(raw.monthsPassed !== undefined && raw.daysPassed === undefined) s.daysPassed = raw.monthsPassed * 30;
         
         s.level = Math.max(0, Number(s.level) || 0);
-        s.maxHp = Math.max(20, Number(s.maxHp) || 50);
+
+        // 【強制存檔修復 1】根據當前 level，從新的 REALMS 表強制對齊最大數值
+        const currentRealmDef = REALMS.find(r => r.level === s.level) || REALMS[REALMS.length - 1];
+        s.realm = currentRealmDef.name;
+        s.maxAge = currentRealmDef.maxAge;
+        s.maxHp = currentRealmDef.maxHp;
+        s.maxExp = currentRealmDef.maxExp;
         
         const rawHp = Number(s.hp);
         s.hp = Math.min(s.maxHp, Math.max(0, Number.isFinite(rawHp) ? rawHp : 50));
-        
-        s.maxExp = Math.max(50, Number(s.maxExp) || 100);
-        s.exp = Math.min(s.maxExp, Math.max(0, Number(s.exp) || 0));
-        
+        s.exp = Math.min(s.maxExp, Math.max(0, Number(s.exp) || 0)); // 超過新版上限的經驗會自動被截斷
         s.spiritStone = Math.max(0, Number(s.spiritStone) || 0);
         s.daysPassed = Math.max(0, Number(s.daysPassed) || 0);
-        s.maxAge = Math.max(50, Number(s.maxAge) || 100);
 
         if(raw.stats) {
             s.stats = { ...def.stats };
@@ -460,9 +462,21 @@
                 if(typeof raw.stats[k] === 'number') s.stats[k] = Math.min(100, Math.max(1, raw.stats[k]));
             });
         }
-        ['status','kungfu','skills','equipItem','npcs','worldEvents','quests','choices'].forEach(k => {
+        ['kungfu','skills','equipItem','npcs','worldEvents','quests','choices'].forEach(k => {
             if(!Array.isArray(raw[k])) s[k] = def[k];
         });
+
+        // 【強制存檔修復 2】徹底掃描並清除舊存檔內殘留的無效「正面描述」狀態
+        if (Array.isArray(s.status)) {
+            const positiveKeywords = ["完成", "初開", "顯化", "洗禮", "淬體", "真元初生", "突破", "重塑", "擴張", "翻湧", "修復"];
+            s.status = s.status.filter(st => {
+                if (st === "凡體肉身" || st === "健康" || st === "【已身死道消】") return true;
+                return !positiveKeywords.some(kw => st.includes(kw)); // 包含正向關鍵字直接刪除
+            });
+            if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
+        } else {
+            s.status = def.status;
+        }
 
         if (s.hp <= 0) {
             s.hp = 0;
@@ -494,8 +508,8 @@
             delete rawState.questUpdates;
         }
 
-        // 過濾掉正面關鍵字，防止被誤認為負面狀態異常塞進去
-        const positiveKeywords = ["完成", "初開", "顯化", "洗禮", "淬體", "生", "突破", "重塑", "健康"];
+        // 持續過濾掉正面關鍵字，防止新的回合被誤加
+        const positiveKeywords = ["完成", "初開", "顯化", "洗禮", "淬體", "真元初生", "突破", "重塑", "擴張", "翻湧", "修復"];
         if (rawState.statusChanges && Array.isArray(rawState.statusChanges)) {
             rawState.statusChanges.forEach(st => {
                 if (typeof st === 'string' && st.trim() !== "") {
@@ -518,7 +532,7 @@
         const isHealingAction = /(閉關療傷|專心療傷|調養經脈)/.test(actionText);
         if (isHealingAction && checkData.success && (checkData.daysSpent || 0) >= 10) {
             // 療傷成功時，清除主要負面 Debuff
-            s.status = s.status.filter(st => !["經脈殘破", "經脈受損", "重度殘廢", "重傷", "劇毒", "反噬", "失血過多", "昏迷"].some(k => st.includes(k)));
+            s.status = s.status.filter(st => !["經脈殘破", "經脈受損", "重度殘廢", "重傷", "劇毒", "反噬", "失血過多", "昏迷", "逆流", "受創", "動盪"].some(k => st.includes(k)));
             if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         }
 
