@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.11)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.12)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -236,7 +236,7 @@
     ];
 
     let gameState = {
-        version: "4.11",
+        version: "4.12",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -295,7 +295,7 @@
 【嚴格規則限制】
 1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
 2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
-3. 【身世選擇完全自由 (極重要)】：玩家選擇身世後，絕對禁止強行把玩家預設為『青雲宗弟子』！玩家目前是完全無宗門的散修/逃生者，後續去向（投靠宗門、隱姓埋名、混跡市井、黑市尋機緣）必須由玩家在選項中自選決定！
+3. 【身世開局絕對禁寫青雲宗 (極極重要)】：玩家選擇身世開局時（如落魄少主），故事地點必須設定在『九州邊境 · 荒郊破廟』或逃亡途中的山林！【嚴禁】寫出『你來到了青雲宗』或『你站在青雲宗山門前』！玩家目前完全是無宗門的逃亡散修，去不去宗門、去哪個宗門，必須由玩家在後續選項中自主選擇！
 4. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
 5. 【靈根體質顯化時機】：玩家在凡人 (Lv.0) 階段時，靈根資質必須保持為「待顯化」！嚴禁在劇情中擅自寫出『已測出普通/雜靈根』，除非玩家發起並通過專屬的「測靈石大典」或「引氣入體突破」！JSON 中的 linggen 亦須嚴格維持 "待顯化"。
 6. 【參悟與修練真實反饋】：玩家發起【參悟】時，需根據其暗骰與悟性進行推演。若失敗需寫出氣血紊亂、走火入魔或毫無收穫，並扣減 HP 或給予負面狀態，嚴禁成功與故事矛盾！
@@ -320,7 +320,7 @@
   "npcs": [],
   "quests": [{"name": "逃亡定局", "progress": "暫時躲避仇家追殺，思索未來的去向與修仙路", "status": "進行中"}],
   "worldEvents": [],
-  "choices": ["前往附近的『青雲宗山門』嘗試拜師求庇護", "前往黑市集市尋找隱姓埋名的機會", "留在破廟嘗試溝通神秘古戒"]
+  "choices": ["前往附近的宗門山門嘗試拜師求庇護", "前往黑市集市尋找隱姓埋名的機會", "留在破廟嘗試溝通神秘古戒"]
 }
 \`\`\``;
 
@@ -493,23 +493,34 @@
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
         
-        // 選取身世開局：解綁特定宗門，給予通用的個人信物
+        // 選取身世開局：強制歸零宗門，設定地點為荒郊破廟
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
+            s.location = "九州邊境 · 荒郊破廟";
+            s.sect = { name: "無", rank: "散修", contribution: 0, position: "無" };
             s.equipment.armor = getItemMeta("粗布衣");
             s.inventory = s.inventory.filter(i => normalizeItemName(i) !== "粗布衣");
 
             if (actionText.includes("落魄少主")) {
                 s.equipment.accessory = getItemMeta("神秘古戒");
-                s.equipment.treasure = getItemMeta("家族傳家玉佩"); // 解綁宗門令牌，改為家族玉佩
+                s.equipment.treasure = getItemMeta("家族傳家玉佩");
             }
         }
 
         if (!rawState) return s;
 
-        if (rawState.location) s.location = rawState.location;
+        // 如果剛選身世且 AI 誤傳青雲宗，前端強行矯正為荒郊破廟
+        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText) || !s.hasChosenOrigin) {
+            s.location = "九州邊境 · 荒郊破廟";
+            s.sect = { name: "無", rank: "散修", contribution: 0, position: "無" };
+        } else if (rawState.location) {
+            s.location = rawState.location;
+        }
+
         if (rawState.physique) s.physique = rawState.physique;
-        if (rawState.sect && rawState.sect.name) s.sect = { ...s.sect, ...rawState.sect };
+        if (rawState.sect && rawState.sect.name && s.hasChosenOrigin && !/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
+            s.sect = { ...s.sect, ...rawState.sect };
+        }
 
         if (s.level === 0 && !storyText.includes("測靈石") && !storyText.includes("顯化靈根")) {
             s.linggen = "待顯化";
@@ -586,7 +597,7 @@
         if (s.hasChosenOrigin) {
             rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
             if (rawChoices.length === 0) {
-                rawChoices = ["前往附近宗門尋求庇護", "前往黑市集市尋找機緣", "找尋隱蔽之地調理傷勢"];
+                rawChoices = ["前往附近的宗門山門嘗試拜師求庇護", "前往黑市集市尋找隱姓埋名的機會", "留在破廟嘗試溝通神秘古戒"];
             }
         }
         s.choices = rawChoices;
@@ -935,12 +946,23 @@
         renderUI();
     }
     function initNewGame() {
+        conversationHistory = []; // 徹底清空發給 AI 的對話歷史
         gameState.hasChosenOrigin = false;
+        gameState.location = "九州邊境 · 荒郊破廟";
+        gameState.sect = { name: "無", rank: "散修", contribution: 0, position: "無" };
         gameState.choices = ["1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"];
         storyLogData = [];
         appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世開局，定下你的先天機緣與命運！", "ai", true, true);
     }
-    function resetGame() { if(confirm("確定刪除存檔並輪迴重置？")) { localStorage.clear(); location.reload(); } }
+    function resetGame() { 
+        if(confirm("確定刪除存檔並輪迴重置？")) { 
+            localStorage.removeItem("blade_v4_state"); 
+            conversationHistory = [];
+            initNewGame();
+            renderUI();
+            alert("✨ 輪迴洗盡前塵，已重置開局！");
+        } 
+    }
 </script>
 </body>
 </html>
