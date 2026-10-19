@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.09)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.11)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -105,7 +105,7 @@
 <div class="game-container">
     <div class="panel story-panel">
         <div class="story-header">
-            <div style="font-weight:bold; color:var(--border-gold);" id="ui-location-top">📜 九州史詩 - 青雲宗山門</div>
+            <div style="font-weight:bold; color:var(--border-gold);" id="ui-location-top">📜 九州史詩 - 九州邊境 · 荒郊破廟</div>
             <div id="ui-sect-top" class="sect-badge">無宗門 (散修)</div>
         </div>
         <div id="ui-world-modifier" class="modifier-badge" style="display:none;"></div>
@@ -236,12 +236,12 @@
     ];
 
     let gameState = {
-        version: "4.09",
+        version: "4.11",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
         spiritStone: 0, breakthroughLuck: 0,
-        location: "青雲宗山門",
+        location: "九州邊境 · 荒郊破廟",
         scenarioState: "safe",
         hasChosenOrigin: false,
         sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -262,8 +262,9 @@
     function normalizeItemName(rawName) {
         if (!rawName || typeof rawName !== 'string') return rawName;
         let clean = rawName.trim();
-        if (/(外門弟子令牌|弟子令牌|弟子令)/.test(clean)) return "青雲宗外門弟子令";
+        if (/(外門弟子令牌|弟子令牌|弟子令)/.test(clean)) return "宗門外門弟子令";
         if (/(古戒|神秘古戒|帶血古戒)/.test(clean)) return "神秘古戒";
+        if (/(玉佩|傳家玉佩|家族玉佩)/.test(clean)) return "家族傳家玉佩";
         return clean;
     }
 
@@ -294,30 +295,32 @@
 【嚴格規則限制】
 1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
 2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
-3. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
-4. 【參悟與修練真實反饋】：玩家發起【參悟】時，需根據其暗骰與悟性進行推演。若失敗需寫出氣血紊亂、走火入魔或毫無收穫，並扣減 HP 或給予負面狀態，嚴禁成功與故事矛盾！
-5. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，必須是玩家當前【精準且不衝突】的所有狀態！當傷勢康復或氣血平穩時，嚴禁保留『氣血紊亂/經脈受損/心神不寧』等舊負面狀態！
-6. 【靈石餘額硬性約束】：務必比對玩家 current spiritStone。若玩家靈石不夠，選項嚴禁出現『掏靈石購買成功』！若玩家強行掏靈石購買，AI 必須推演為『店家嫌靈石不足拒絕交易』且 stoneChange 設為 0，絕對禁止讄買成功！
-7. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
+3. 【身世選擇完全自由 (極重要)】：玩家選擇身世後，絕對禁止強行把玩家預設為『青雲宗弟子』！玩家目前是完全無宗門的散修/逃生者，後續去向（投靠宗門、隱姓埋名、混跡市井、黑市尋機緣）必須由玩家在選項中自選決定！
+4. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
+5. 【靈根體質顯化時機】：玩家在凡人 (Lv.0) 階段時，靈根資質必須保持為「待顯化」！嚴禁在劇情中擅自寫出『已測出普通/雜靈根』，除非玩家發起並通過專屬的「測靈石大典」或「引氣入體突破」！JSON 中的 linggen 亦須嚴格維持 "待顯化"。
+6. 【參悟與修練真實反饋】：玩家發起【參悟】時，需根據其暗骰與悟性進行推演。若失敗需寫出氣血紊亂、走火入魔或毫無收穫，並扣減 HP 或給予負面狀態，嚴禁成功與故事矛盾！
+7. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，必須是玩家當前【精準且不衝突】的所有狀態！當傷勢康復或氣血平穩時，嚴禁保留『氣血紊亂/經脈受損/心神不寧』等舊負面狀態！
+8. 【靈石餘額硬性約束】：務必比對玩家 current spiritStone。若玩家靈石不夠，選項嚴禁出現『掏靈石購買成功』！若玩家強行掏靈石購買，AI 必須推演為『店家嫌靈石不足拒絕交易』且 stoneChange 設為 0，絕對禁止購買成功！
+9. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
 {
   "success": true,
-  "location": "青雲宗外門弟子居所",
+  "location": "九州邊境 · 荒郊破廟",
   "scenarioState": "safe", 
-  "hpChange": -10,
+  "hpChange": -5,
   "expReward": 0,
   "stoneChange": 0,
   "gainedItems": [],
   "gainedKungfu": [],
   "gainedSkills": [],
   "currentStatus": ["凡體肉身", "氣血紊亂"], 
-  "linggen": "普通靈根",
+  "linggen": "待顯化",
   "physique": "凡體",
-  "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10},
+  "sect": {"name": "無", "rank": "散修", "contribution": 0},
   "npcs": [],
-  "quests": [{"name": "引氣入體", "progress": "調理紊亂氣血，尋求正確引氣之法", "status": "進行中"}],
+  "quests": [{"name": "逃亡定局", "progress": "暫時躲避仇家追殺，思索未來的去向與修仙路", "status": "進行中"}],
   "worldEvents": [],
-  "choices": ["調整心息，平復紊亂的經脈與氣血", "前往宗門集市散心或尋求協助", "嘗試溝通懷中的神秘古戒尋求指點"]
+  "choices": ["前往附近的『青雲宗山門』嘗試拜師求庇護", "前往黑市集市尋找隱姓埋名的機會", "留在破廟嘗試溝通神秘古戒"]
 }
 \`\`\``;
 
@@ -464,10 +467,12 @@
         s.quests = Array.isArray(raw.quests) ? raw.quests : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
         s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents : [];
         s.status = Array.isArray(raw.status) ? raw.status : ["凡體肉身"];
+        
+        if (s.level === 0 && (!s.linggen || s.linggen === "普通靈根")) s.linggen = "待顯化";
+        
         return s;
     }
 
-    // 清理與抵銷矛盾狀態的函式
     function sanitizeStatusList(list) {
         if (!Array.isArray(list) || list.length === 0) return ["凡體肉身"];
         let clean = [...new Set(list)];
@@ -478,7 +483,6 @@
             }
         };
 
-        // 抵銷邏輯
         removeIfHas(["平穩", "充沛", "復原", "健全", "好轉"], ["氣血紊亂", "氣血微虛"]);
         removeIfHas(["經脈復原", "經脈通暢", "經脈完好"], ["經脈輕微受損", "經脈受損", "經脈斷裂"]);
         removeIfHas(["心神安定", "寧靜"], ["心神不寧", "心魔困擾"]);
@@ -489,6 +493,7 @@
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
         
+        // 選取身世開局：解綁特定宗門，給予通用的個人信物
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
             s.equipment.armor = getItemMeta("粗布衣");
@@ -496,18 +501,22 @@
 
             if (actionText.includes("落魄少主")) {
                 s.equipment.accessory = getItemMeta("神秘古戒");
-                s.equipment.treasure = getItemMeta("青雲宗外門弟子令");
+                s.equipment.treasure = getItemMeta("家族傳家玉佩"); // 解綁宗門令牌，改為家族玉佩
             }
         }
 
         if (!rawState) return s;
 
         if (rawState.location) s.location = rawState.location;
-        if (rawState.linggen) s.linggen = rawState.linggen;
         if (rawState.physique) s.physique = rawState.physique;
         if (rawState.sect && rawState.sect.name) s.sect = { ...s.sect, ...rawState.sect };
 
-        // 靈石扣減與防刷
+        if (s.level === 0 && !storyText.includes("測靈石") && !storyText.includes("顯化靈根")) {
+            s.linggen = "待顯化";
+        } else if (rawState.linggen) {
+            s.linggen = rawState.linggen;
+        }
+
         if (Number.isFinite(rawState.stoneChange)) {
             s.spiritStone = Math.max(0, s.spiritStone + rawState.stoneChange);
         }
@@ -516,7 +525,6 @@
             s.hp = Math.max(0, Math.min(getMaxHp(), s.hp + rawState.hpChange));
         }
 
-        // 狀態全量覆蓋與矛盾抵銷清理
         if (Array.isArray(rawState.currentStatus)) {
             s.status = sanitizeStatusList(rawState.currentStatus);
         } else if (Array.isArray(rawState.statusChanges)) {
@@ -535,7 +543,7 @@
 
         const npcMatch = storyText.match(/「([\u4e00-\u9fa5]{2,4})」/);
         if (npcMatch && !s.npcs.some(n => n.name === npcMatch[1])) {
-            s.npcs.push({ name: npcMatch[1], identity: "宗門同門", affinity: 10, relation: "結識" });
+            s.npcs.push({ name: npcMatch[1], identity: "江湖修士", affinity: 10, relation: "結識" });
         }
 
         if (checkData.breakthroughMeta && checkData.breakthroughMeta.success) {
@@ -578,7 +586,7 @@
         if (s.hasChosenOrigin) {
             rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
             if (rawChoices.length === 0) {
-                rawChoices = ["留在傳功殿請教長老", "前往宗門集市採購資源", "返回洞府閉關修練"];
+                rawChoices = ["前往附近宗門尋求庇護", "前往黑市集市尋找機緣", "找尋隱蔽之地調理傷勢"];
             }
         }
         s.choices = rawChoices;
