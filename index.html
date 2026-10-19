@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V2.60)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V2.70)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -99,7 +99,6 @@
         .kungfu-stats { color: #888; font-size: 0.75rem; display: flex; gap: 8px; }
         .modifier-badge { background: #4a1515; color: #ff8a80; padding: 4px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid #ff5252; text-align: center; margin-bottom: 8px; }
         
-        /* 昏迷覆蓋層特效 */
         .incapacitated-overlay { position: relative; }
         .incapacitated-overlay::after { content: ''; position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(5,6,8,0.7); z-index: 10; pointer-events: none; border-radius: 4px; border: 1px solid #ff5252; }
     </style>
@@ -170,7 +169,7 @@
         </div>
 
         <div id="tab-skills" class="tab-content">
-            <h2>💫 狀態異常 (去重機制啟用)</h2>
+            <h2>💫 狀態異常 (去重與甦醒機制)</h2>
             <div id="ui-status" class="scroll-list" style="color: var(--accent-red);">• 凡體肉身</div>
             <h2>📖 主修心法</h2>
             <div id="ui-kungfu" class="scroll-list" style="color: var(--hl-cyan);">• 無</div>
@@ -247,7 +246,6 @@
         { level: 16, name: "元嬰圓滿", maxAge: 2000, maxHp: 55000, maxExp: 5000000 }
     ];
 
-    // V2.60 底層重構: 狀態分類目錄，用於去重與覆蓋
     const STATUS_CATEGORIES = {
         "經脈類": ["經脈", "丹田", "氣海", "竅穴"],
         "意識類": ["昏迷", "垂危", "瀕死", "失去意識", "彌留", "神智不清"],
@@ -256,7 +254,7 @@
     };
 
     let gameState = {
-        version: "2.60",
+        version: "2.70",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -287,7 +285,8 @@
 1. 玩家目前為【凡人 (Lv.0)】開局。靈根尚未顯化。
 2. 【禁止破壞沉浸感】：絕不可在故事中出現「判定成功」等標籤！成敗完全透過敘事隱性呈現。
 3. 【嚴格行動互斥】：閉關/療傷只能獲得修為。探索不可掉落戰技。戰鬥不可掉落功法。
-4. 【生死聯動】：若遇到致命重擊或走火入魔，請給予包含「昏迷」、「經脈斷裂」、「垂危」字眼的狀態 (statusChanges)，系統底層會自動扣除修為並鎖死玩家行動。
+4. 【生死聯動】：若遇到致命重擊，請給予包含「昏迷」、「垂危」的狀態，系統會鎖死玩家行動。
+5. 【甦醒機制】：若玩家處於昏迷，但在劇情中因為NPC幫助或機緣巧合醒來，請在 statusChanges 傳回「甦醒」或「清醒」，系統才能解除其行動鎖定。
 
 【嚴格 JSON 回傳格式】
 每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊。請嚴格參照此結構：
@@ -306,7 +305,7 @@
   "lostItems": [],
   "gainedKungfu": [{"name":"玄雷化煞經", "grade":"玄階中品", "expBonus": 10, "hpBonus": 50, "breakthroughBonus": 2, "statBonus":{"con": 2}}],
   "gainedSkills": ["驚雷劍法"],
-  "statusChanges": ["重傷昏迷"],
+  "statusChanges": ["甦醒"], 
   "questUpdates": [{"name": "身世問心", "progress": "身世已定", "status": "進行中"}],
   "npcs": [{"name": "林老", "faction": "散修", "title": "神秘老者", "relation": "點撥", "affinity": 10}],
   "worldEvents": ["妖獸潮爆發"],
@@ -384,10 +383,9 @@
         else if (/[擋扛體耐防受屏]/.test(actionText)) { statKey = "con"; statName = "根骨"; actionType = "防禦"; dc = 10; maxExpPct = 0.1; days = 1; }
         else if (/(買東西|查看|聊天|散步|逛坊市|送禮|拜訪|宗門任務)/.test(actionText)) { actionType = "日常"; dc = 5; maxExpPct = 0.05; days = 1; }
         
-        // V2.60: 昏迷攔截，只能聽天由命
         const isIncapacitated = gameState.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
         if (isIncapacitated) {
-            return { message: "[系統強制：玩家正處於深度昏迷/垂危狀態，無意識行動。請描寫周遭環境變化或他人干預，成敗隨機。]", shortRes: "聽天由命", success: Math.random() > 0.7, maxExpReward: 0, daysSpent: 5, actionType: "昏迷等待" };
+            return { message: "[系統強制：玩家目前處於昏迷。若劇情中有人施救或奇蹟發生，請在回傳的 statusChanges 加上「甦醒」，並給予正數 hpChange，即可解除昏迷！]", shortRes: "聽天由命", success: Math.random() > 0.5, maxExpReward: 0, daysSpent: 2, actionType: "昏迷等待" };
         }
 
         let statVal = getTotalStat(statKey), compatibilityMod = 0, compatibilityMsg = "普通";
@@ -475,7 +473,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "2.60", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "2.70", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
             worldModifier: { event: "無", exploreRisk: 0, battleReward: 0 },
@@ -490,7 +488,7 @@
         
         if(raw.stats) { 
             s.stats = { ...def.stats }; 
-            const cap = 20 + (s.level * 10); // V2.60 屬性上限鎖定
+            const cap = 20 + (s.level * 10);
             ['str','con','agi','int','wis','luk'].forEach(k => { s.stats[k] = Math.min(cap, Math.max(1, raw.stats[k])); }); 
         }
         
@@ -523,18 +521,28 @@
             if (rawState.stoneChange > 0) rawState.stoneChange = 0; if (rawState.hpChange > 0) rawState.hpChange = 0;
         }
 
-        // V2.60: 狀態標籤去重覆蓋機制
+        // V2.70 奇蹟甦醒機制判斷變數
+        let aiWokePlayerUp = false;
+        const wakeUpKeywords = ["甦醒", "清醒", "恢復意識", "痊癒"];
+
         if (rawState.statusChanges && Array.isArray(rawState.statusChanges)) {
             const positiveKeywords = ["完成", "初開", "顯化", "洗禮", "淬體", "突破", "重塑", "擴張", "翻湧", "修復"];
             rawState.statusChanges.forEach(newSt => {
                 if (typeof newSt !== 'string' || !newSt.trim() || positiveKeywords.some(kw => newSt.includes(kw))) return;
                 
+                // 檢查是否是 AI 發出的甦醒信號
+                if (wakeUpKeywords.some(kw => newSt.includes(kw))) {
+                    aiWokePlayerUp = true;
+                    // 直接拔除所有意識類負面標籤
+                    s.status = s.status.filter(st => !STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
+                    return; // 甦醒詞彙本身不作為狀態加入
+                }
+
                 let assignedCat = "其他";
                 for (let cat in STATUS_CATEGORIES) {
                     if (STATUS_CATEGORIES[cat].some(kw => newSt.includes(kw))) { assignedCat = cat; break; }
                 }
 
-                // 移除同類別舊狀態
                 s.status = s.status.filter(oldSt => {
                     if (oldSt === "凡體肉身" || oldSt === "健康") return false;
                     let oldCat = "其他";
@@ -545,12 +553,17 @@
             });
         }
 
+        // V2.70 聽天由命補血自動甦醒：如果按了昏迷按鈕，但 AI 給了補血，強制甦醒
+        if (actionText.includes("聽天由命") && rawState.hpChange > 0) {
+            aiWokePlayerUp = true;
+            s.status = s.status.filter(st => !STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
+        }
+
         if (checkData && checkData.success) {
             if (rawState.linggen && s.linggen === "待顯化") s.linggen = rawState.linggen;
             if (rawState.physique && s.physique === "凡體") s.physique = rawState.physique;
         }
 
-        // 醫療拔除狀態
         const isHealingAction = /(醫館|求醫|療傷|調養)/.test(actionText);
         if (isHealingAction && checkData.success) {
             s.status = s.status.filter(st => !["殘破", "受損", "殘廢", "重傷", "劇毒", "反噬", "昏迷", "崩裂"].some(k => st.includes(k)));
@@ -568,14 +581,12 @@
         if (typeof rawState.expReward === 'number' && rawState.expReward > 0 && checkData.success) {
             let battleMod = rawState.eventType === "battle" ? (s.worldModifier?.battleReward || 0) : 0;
             let finalExp = Math.floor(Math.min(rawState.expReward, checkData.maxExpReward) * (1 + (kungfuExpBonus + battleMod)/100));
-            // V2.60: 無心法懲罰 (升級極慢)
             if (s.kungfu.length === 0 && s.level > 0) finalExp = Math.floor(finalExp * 0.2); 
             s.exp = Math.min(s.maxExp, s.exp + finalExp);
         }
 
-        // V2.60: 經脈斷裂散功懲罰
         const isMeridianBroken = s.status.some(st => ["碎", "斷", "崩裂", "毀滅", "殘破"].some(k => st.includes(k)) && ["經脈", "丹田"].some(k => st.includes(k)));
-        if (isMeridianBroken) { s.exp = Math.floor(s.exp * 0.1); } // 直接散去 90% 修為
+        if (isMeridianBroken) { s.exp = Math.floor(s.exp * 0.1); } 
 
         if (typeof rawState.maxAgeChange === 'number' && (rawState.maxAgeChange < 0 || /(延壽|天地靈物|仙丹)/.test(actionText))) {
             s.maxAge = Math.max(1, s.maxAge + rawState.maxAgeChange);
@@ -603,10 +614,10 @@
         let realMaxHp = (REALMS.find(r => r.level === s.level) || REALMS[REALMS.length - 1]).maxHp + s.kungfu.reduce((sum, k) => sum + (k.hpBonus || 0), 0);
         if (typeof rawState.hpChange === 'number') s.hp = Math.min(realMaxHp, Math.max(0, s.hp + rawState.hpChange)); else s.hp = Math.min(realMaxHp, s.hp); 
         
-        // V2.60: 敘事與血量的強制同步
+        // V2.70: 修正血量鎖定機制，只有在「未被AI喚醒」且「血量沒有增加」的情況下才鎖血
         const isDying = s.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
-        if (isDying && s.hp > (realMaxHp * 0.1)) {
-            s.hp = Math.max(1, Math.floor(realMaxHp * 0.05)); // 若敘事判定垂危，強制將血量扣至 5%
+        if (isDying && !aiWokePlayerUp && (rawState.hpChange || 0) <= 0 && s.hp > (realMaxHp * 0.1)) {
+            s.hp = Math.max(1, Math.floor(realMaxHp * 0.05));
         }
 
         if (rawState.npcs && Array.isArray(rawState.npcs) && !isClosedDoor) {
@@ -716,7 +727,6 @@
         const busy = isTyping || loadingInterval !== null;
         const dead = gameState.hp <= 0;
         
-        // V2.60: 昏迷硬控場判定
         const isIncapacitated = gameState.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
         const controlsArea = document.getElementById("controls-area");
         const actionInput = document.getElementById("action-input");
@@ -741,7 +751,6 @@
         document.querySelectorAll(".quick-btn").forEach(btn => { btn.disabled = busy || dead; });
         document.querySelectorAll(".choice-btn").forEach(btn => { btn.disabled = (dead && !btn.textContent.includes("輪迴")) ? true : busy; });
 
-        // V2.60 散功懲罰: 經脈斷裂禁止突破
         const isMeridianBroken = gameState.status.some(st => ["碎", "斷", "崩裂", "毀滅", "殘破"].some(k => st.includes(k)) && ["經脈", "丹田"].some(k => st.includes(k)));
         const deduceBtn = document.getElementById("btn-deduce");
         deduceBtn.disabled = busy || dead || (gameState.exp < gameState.maxExp) || isMeridianBroken;
@@ -827,7 +836,6 @@
             kfCont.innerHTML += `<div class="kungfu-card"><div class="kungfu-title">${k.name} <span style="color:#ab47bc">[${k.grade||'未知'}]</span></div><div class="kungfu-stats">修練+${k.expBonus||0}% | HP+${k.hpBonus||0} | 破境+${k.breakthroughBonus||0} ${statBonusStr ? '| '+statBonusStr : ''}</div></div>`; 
         });
 
-        // 重新繪製選擇鈕
         const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = ""; 
         const isIncapacitated = s.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
         if (s.hp <= 0) { 
