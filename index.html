@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V3.10)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V3.30)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -262,12 +262,13 @@
     };
 
     let gameState = {
-        version: "3.10",
+        version: "3.30",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
         spiritStone: 0, breakthroughLuck: 0,
         scenarioState: "safe",
+        hasChosenOrigin: false, // 標記是否已完成身世選擇
         sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
         worldModifier: { event: "無", exploreRisk: 0, battleReward: 0 },
         stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
@@ -296,8 +297,9 @@
    - 選項或對話中出現的名詞（如「獸皮卷」、「龍吟庇體」），絕對不可塞入 gainedItems 或 gainedSkills！
    - gainedItems 只能包含玩家明確「獲得/撿到」的真實道具。
    - gainedSkills 只能包含玩家明確「參悟秘籍學會」的正式術法，不得將形容詞或臨時氣勢當成技能發放。
-3. 【慈悲與死亡一致性】：若故事中NPC或長老寫下『今日饒你不死』、『滾吧』、『留你一命』，必須將 isDead 設為 false，且不可給予致死級別的巨大 hpChange。
-4. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。
+3. 【身世選擇一次性原則】：玩家只要選擇了身世，後續選項絕對禁止再出現「1. 宗門棄子」、「2. 奪舍死囚」、「3. 落魄少主」！請根據當前劇情提供 2~3 個當前情境的冒險抉擇。
+4. 【慈悲與死亡一致性】：若故事中NPC或長老寫下『今日饒你不死』、『滾吧』、『留你一命』，必須將 isDead 設為 false，且不可給予致死級別的巨大 hpChange。
+5. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。開局選擇身世時請保持 safe。
 
 【嚴格 JSON 回傳格式】
 每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊：
@@ -305,7 +307,7 @@
 {
   "success": true,
   "eventType": "battle",
-  "scenarioState": "combat", 
+  "scenarioState": "safe", 
   "rarity": "rare",
   "hpChange": -15,
   "maxAgeChange": 0,
@@ -318,7 +320,7 @@
   "gainedKungfu": [],
   "gainedSkills": [],
   "statusChanges": ["受傷"], 
-  "questUpdates": [{"name": "身世問心", "progress": "遭遇強者威壓", "status": "進行中"}],
+  "questUpdates": [{"name": "身世問心", "progress": "踏入修仙界", "status": "已完成"}],
   "npcs": [],
   "worldEvents": [],
   "currentWorldModifier": {"event": "無", "exploreRisk": 0, "battleReward": 0},
@@ -451,7 +453,6 @@
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days, actionType: actionType };
     }
 
-    // V3.10 重構：突破不提前修改 gameState，打包 metadata 傳給 sendAction 延後提交
     function attemptBreakthrough() {
         if (gameState.hp <= 0) return alert("已身死道消...");
         if (gameState.exp < gameState.maxExp) return;
@@ -503,12 +504,11 @@
         });
     }
 
-    // V3.10 完整修復：完整轉載 daysPassed, ageBase, linggen, physique, breakthroughLuck, status 避免讀檔歸零
     function normalizeFullState(raw) {
         const def = {
-            version: "3.10", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "3.30", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
-            scenarioState: "safe",
+            scenarioState: "safe", hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
             worldModifier: { event: "無", exploreRisk: 0, battleReward: 0 },
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
@@ -517,12 +517,12 @@
         if(!raw || typeof raw !== 'object') return def;
         let s = { ...def };
 
-        // 完整讀取原本遺失的欄位
         s.daysPassed = Number.isFinite(Number(raw.daysPassed)) ? Math.max(0, Number(raw.daysPassed)) : 0;
         s.ageBase = Number.isFinite(Number(raw.ageBase)) ? Math.max(1, Number(raw.ageBase)) : 18;
         s.linggen = typeof raw.linggen === 'string' && raw.linggen.trim() ? raw.linggen : "待顯化";
         s.physique = typeof raw.physique === 'string' && raw.physique.trim() ? raw.physique : "凡體";
         s.breakthroughLuck = Number.isFinite(Number(raw.breakthroughLuck)) ? Math.max(0, Number(raw.breakthroughLuck)) : 0;
+        s.hasChosenOrigin = Boolean(raw.hasChosenOrigin);
 
         const rawLevel = Number(raw.level);
         s.level = Number.isFinite(rawLevel) ? Math.min(REALMS.length - 1, Math.max(0, Math.floor(rawLevel))) : 0;
@@ -569,7 +569,6 @@
             s[k] = Array.isArray(raw[k]) ? raw[k] : def[k];
         });
 
-        // 完整讀取狀態陣列
         if (Array.isArray(raw.status) && raw.status.length > 0) {
             s.status = raw.status.map(st => typeof st === 'string' ? st.trim() : "").filter(Boolean);
         } else {
@@ -584,10 +583,14 @@
         return s;
     }
 
-    // 第三層：過濾提交層 (處理突破的原子提交與 AI 扣血過濾)
     function applyStateDelta(currentState, rawState, checkData, actionText) {
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
+
+        // 身世選擇標記判定
+        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
+            s.hasChosenOrigin = true;
+        }
 
         const storyTextStr = String(lastRawStoryText || "");
         const mercyKeywords = ["饒你不死", "留你一命", "饒你一命", "滾吧", "苟延殘喘", "保住一命", "饒過你"];
@@ -601,10 +604,9 @@
             return s; 
         }
 
-        // V3.10 原子提交突破結果，並屏蔽 AI 的重複 hpChange
         if (checkData.actionType === "突破" && checkData.breakthroughMeta) {
             const meta = checkData.breakthroughMeta;
-            rawState.hpChange = 0; // 屏蔽 AI 的 hpChange 避免雙重扣血
+            rawState.hpChange = 0;
 
             if (meta.success) {
                 s.level = meta.nextLevel;
@@ -635,7 +637,9 @@
         }
 
         if (rawState.scenarioState && ["safe", "combat", "trapped"].includes(rawState.scenarioState)) {
-            if (s.scenarioState !== "safe" && rawState.scenarioState === "safe") {
+            if (!s.hasChosenOrigin) {
+                s.scenarioState = "safe"; 
+            } else if (s.scenarioState !== "safe" && rawState.scenarioState === "safe") {
                 if (checkData.success || /(逃跑|脫困|擊敗|回到|離開|陣法破除|遁地符)/.test(actionText)) {
                     s.scenarioState = "safe";
                 }
@@ -753,6 +757,18 @@
 
         s.equipItem = applyArrayChanges(s.equipItem, rawState.gainedItems, rawState.lostItems);
         s.skills = applyArrayChanges(s.skills, rawState.gainedSkills, rawState.lostSkills);
+
+        // 防範重複選身世選項 (一次性過濾)
+        if (s.hasChosenOrigin && rawState.choices && Array.isArray(rawState.choices)) {
+            const hasOriginChoice = rawState.choices.some(c => /(宗門棄子|奪舍死囚|落魄少主)/.test(c));
+            if (hasOriginChoice) {
+                s.choices = ["咬牙忍痛，檢查周遭環境", "打坐調息，穩定體內紊亂氣血", "謹慎前行，尋求機緣與生路"];
+            } else {
+                s.choices = rawState.choices;
+            }
+        } else if (rawState.choices && Array.isArray(rawState.choices)) {
+            s.choices = rawState.choices;
+        }
 
         if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         if (s.hp <= 0) { s.hp = 0; if (!s.status.includes("【已身死道消】")) s.status = ["【已身死道消】"]; }
@@ -1140,11 +1156,20 @@
     function loadApiKey() { if(localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key"); if(localStorage.getItem("blade_api_provider")) document.getElementById("api-provider").value = localStorage.getItem("blade_api_provider"); if(localStorage.getItem("blade_api_model")) document.getElementById("api-model").value = localStorage.getItem("blade_api_model"); }
     function saveGameState() { localStorage.setItem("blade_state", JSON.stringify(gameState)); if(conversationHistory.length > 30) conversationHistory = conversationHistory.slice(-30); localStorage.setItem("blade_history", JSON.stringify(conversationHistory)); localStorage.setItem("blade_log_data", JSON.stringify(storyLogData)); }
     function loadGameState() { try { const s = localStorage.getItem("blade_state"); if (s && localStorage.getItem("blade_history")) { gameState = normalizeFullState(JSON.parse(s)); conversationHistory = JSON.parse(localStorage.getItem("blade_history")); storyLogData = JSON.parse(localStorage.getItem("blade_log_data") || "[]"); renderStoryLogs(); renderUI(); } else initNewGame(); } catch(e) { initNewGame(); } }
-    function initNewGame() { conversationHistory = []; storyLogData = []; document.getElementById("story-log").innerHTML = ""; appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世開局，定下你的先天機緣與命運！", "ai", true, true); renderUI(); }
+    
+    function initNewGame() { 
+        gameState.scenarioState = "safe"; 
+        gameState.hasChosenOrigin = false;
+        conversationHistory = []; 
+        storyLogData = []; 
+        document.getElementById("story-log").innerHTML = ""; 
+        appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世開局，定下你的先天機緣與命運！", "ai", true, true); 
+        renderUI(); 
+    }
     
     function exportSave() { 
         const exportData = {
-            version: gameState.version || "3.10",
+            version: gameState.version || "3.30",
             state: structuredClone(gameState),
             history: structuredClone(conversationHistory),
             logData: structuredClone(storyLogData)
