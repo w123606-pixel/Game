@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.02)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.03 Fix)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -115,16 +115,16 @@
         <div class="controls-area" id="controls-area">
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
             <div class="input-group">
-                <input type="text" id="action-input" placeholder="輸入行動或選擇上方選項..." onkeydown="if(event.key==='Enter') sendAction()">
+                <input type="text" id="action-input" placeholder="請先點擊上方身世選項定下開局..." onkeydown="if(event.key==='Enter') sendAction()">
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
             <div class="quick-actions" id="quick-actions-container">
                 <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)">🧘 閉關(10天)</button>
                 <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)">⛰️ 死關(30天)</button>
                 <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;">🏥 求醫(50石)</button>
-                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059;">📜 宗門任務</button>
-                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059;">📚 藏經閣</button>
-                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple); grid-column: span 2;" onclick="attemptBreakthrough()" disabled>✨ 引氣入體</button>
+                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059; display:none;">📜 宗門任務</button>
+                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059; display:none;">📚 藏經閣</button>
+                <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple); grid-column: span 2;" onclick="attemptBreakthrough()" disabled>✨ 需先點選上方身世開局</button>
             </div>
         </div>
     </div>
@@ -238,7 +238,7 @@
     ];
 
     let gameState = {
-        version: "4.02",
+        version: "4.03",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -266,7 +266,8 @@
 1. 【嚴禁越權越級敘事】：點擊「突破」之前禁止寫突破！只能寫氣海翻湧。
 2. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
 3. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
-4. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
+4. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」選項！
+5. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
 {
   "success": true,
@@ -325,15 +326,18 @@
 
     function quickHeal(days) {
         if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
+        if (gameState.scenarioState !== 'safe') return alert("身處險境，無法安心閉關！");
         sendAction(`【在洞府閉關打坐 ${days} 天，調理真元與傷勢。】`);
     }
 
     function hospitalHeal() {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.spiritStone < 50) return alert("靈石不足 50 枚！");
         sendAction("【前往醫館支付 50 靈石，請醫師調理氣血與傷勢。】");
     }
 
     function sectAction(type) {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (!gameState.location.includes("青雲宗") && !gameState.location.includes("宗門")) return alert("你目前不在宗門內，請先返回山門！");
         if (type === 'quest') sendAction("【前往宗門執事堂接取任務，賺取貢獻度與資源！】");
         else if (type === 'library') sendAction("【前往藏經閣參悟高階心法與法訣！】");
@@ -392,6 +396,7 @@
     }
 
     function attemptBreakthrough() {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.exp < gameState.maxExp) return alert("修為未滿，無法突破！");
         const nextLevel = gameState.level + 1;
         const nextRealm = REALMS[nextLevel] || REALMS[REALMS.length - 1];
@@ -410,6 +415,7 @@
         s.level = Number.isFinite(Number(raw.level)) ? Number(raw.level) : 0;
         s.realm = (REALMS[s.level] || REALMS[0]).name;
         s.maxExp = (REALMS[s.level] || REALMS[0]).maxExp;
+        s.hasChosenOrigin = Boolean(raw.hasChosenOrigin);
         s.equipment = raw.equipment || { weapon: null, armor: null, accessory: null, treasure: null };
         s.inventory = Array.isArray(raw.inventory) ? raw.inventory : ["粗布衣", "聚氣丹"];
         s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu : [];
@@ -445,7 +451,14 @@
             rawState.gainedItems.forEach(i => { if (typeof i === 'string' && !s.inventory.includes(i)) s.inventory.push(i); });
         }
 
-        s.choices = rawState.choices || ["繼續向前探索", "返回洞府閉關修練"];
+        let rawChoices = rawState.choices || [];
+        if (s.hasChosenOrigin) {
+            rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
+            if (rawChoices.length === 0) {
+                rawChoices = ["前往傳功殿領取功法", "前往後山執行任務", "返回洞府閉關修練"];
+            }
+        }
+        s.choices = rawChoices;
         return s;
     }
 
@@ -492,7 +505,6 @@
 
     function getSystemPrompt() { return SYSTEM_INSTRUCTION + "\n\n【當前玩家狀態】\n" + JSON.stringify(gameState, null, 2); }
 
-    // 維持 3.5 優先，3.7 與 3.8 備援的 Gemini API 呼叫函式
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim();
         const candidateModels = customModel 
@@ -543,6 +555,53 @@
         return data.choices[0].message.content;
     }
 
+    function syncControlsState() {
+        const s = gameState;
+        const busy = isTyping;
+        const dead = s.hp <= 0;
+        const hasChosen = s.hasChosenOrigin;
+        const isSafe = (s.scenarioState === "safe" || !s.scenarioState) && hasChosen;
+        const inSectLoc = (s.location.includes("青雲宗") || s.location.includes("宗門")) && isSafe;
+        const hasSect = s.sect && s.sect.name !== "無" && !s.sect.name.includes("散修");
+
+        // 身世未選前，快捷動作全面鎖定
+        document.getElementById("btn-heal").disabled = busy || dead || !isSafe;
+        document.getElementById("btn-long-heal").disabled = busy || dead || !isSafe;
+        document.getElementById("btn-hospital").disabled = busy || dead || !isSafe;
+
+        // 宗門按鈕：未選身世或不在宗門時隱藏/禁用
+        const btnSectQuest = document.getElementById("btn-sect-quest");
+        const btnSectLib = document.getElementById("btn-sect-lib");
+        
+        btnSectQuest.style.display = hasSect ? "block" : "none";
+        btnSectQuest.disabled = busy || dead || !inSectLoc;
+
+        btnSectLib.style.display = hasSect ? "block" : "none";
+        btnSectLib.disabled = busy || dead || !inSectLoc;
+
+        // 引氣入體 / 突破按鈕
+        const deduceBtn = document.getElementById("btn-deduce");
+        const canBreak = s.exp >= s.maxExp;
+        deduceBtn.disabled = busy || dead || !hasChosen || !canBreak;
+        
+        if (!hasChosen) {
+            deduceBtn.textContent = "✨ 需先點選上方身世開局";
+        } else if (!canBreak) {
+            deduceBtn.textContent = `✨ 修為未滿 (${s.exp}/${s.maxExp})`;
+        } else {
+            deduceBtn.textContent = s.level === 0 ? "✨ 點此引氣入體破境！" : "⚡ 突破境界瓶頸";
+        }
+
+        // 輸入框與送出按鈕
+        document.getElementById("action-input").disabled = busy || dead || !hasChosen;
+        document.getElementById("btn-submit").disabled = busy || dead || !hasChosen;
+        if (!hasChosen) {
+            document.getElementById("action-input").placeholder = "請先點擊上方身世選項定下開局...";
+        } else {
+            document.getElementById("action-input").placeholder = "輸入行動或選擇上方選項...";
+        }
+    }
+
     function renderUI() {
         const s = gameState;
         document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${s.location}`;
@@ -577,12 +636,16 @@
         });
 
         const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = "";
-        s.choices.forEach(c => {
+        let validChoices = s.choices || [];
+        if (s.hasChosenOrigin) {
+            validChoices = validChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
+        }
+        validChoices.forEach(c => {
             let b = document.createElement("button"); b.className = "choice-btn"; b.textContent = c;
             b.onclick = () => sendAction(c); choiceCont.appendChild(b);
         });
 
-        document.getElementById("btn-deduce").disabled = s.exp < s.maxExp;
+        syncControlsState();
     }
 
     function appendLogData(role, text, type, isSafeHtml = false, immediateRender = false) {
@@ -623,7 +686,14 @@
     function loadGameState() {
         const raw = localStorage.getItem("blade_v4_state");
         if (raw) gameState = normalizeFullState(JSON.parse(raw));
+        else initNewGame();
         renderUI();
+    }
+    function initNewGame() {
+        gameState.hasChosenOrigin = false;
+        gameState.choices = ["1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"];
+        storyLogData = [];
+        appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世開局，定下你的先天機緣與命運！", "ai", true, true);
     }
     function resetGame() { if(confirm("確定刪除存檔並輪迴重置？")) { localStorage.clear(); location.reload(); } }
 </script>
