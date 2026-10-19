@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V3.80)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V3.90)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -226,24 +226,24 @@
         return str.replace(/[&<>'"]/g, t => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[t])); 
     }
 
+    // V3.90 精準對應：1-3層前期、4-6層中期、7-9層後期、10層圓滿、11層築基初期
     const REALMS = [
         { level: 0, name: "凡人", maxAge: 100, maxHp: 50, maxExp: 100 },
-        { level: 1, name: "練氣前期", maxAge: 110, maxHp: 90, maxExp: 150 },
-        { level: 2, name: "練氣中期", maxAge: 120, maxHp: 130, maxExp: 300 },
-        { level: 3, name: "練氣後期", maxAge: 140, maxHp: 180, maxExp: 600 },
-        { level: 4, name: "練氣圓滿", maxAge: 160, maxHp: 250, maxExp: 1200 },
-        { level: 5, name: "築基初期", maxAge: 220, maxHp: 500, maxExp: 2500 },
-        { level: 6, name: "築基中期", maxAge: 260, maxHp: 750, maxExp: 5000 },
-        { level: 7, name: "築基後期", maxAge: 300, maxHp: 1100, maxExp: 10000 },
-        { level: 8, name: "築基圓滿", maxAge: 350, maxHp: 1600, maxExp: 20000 },
-        { level: 9, name: "金丹初期", maxAge: 500, maxHp: 3000, maxExp: 40000 },
-        { level: 10, name: "金丹中期", maxAge: 600, maxHp: 4500, maxExp: 80000 },
-        { level: 11, name: "金丹後期", maxAge: 750, maxHp: 7000, maxExp: 160000 },
-        { level: 12, name: "金丹圓滿", maxAge: 900, maxHp: 10000, maxExp: 320000 },
-        { level: 13, name: "元嬰初期", maxAge: 1200, maxHp: 18000, maxExp: 640000 },
-        { level: 14, name: "元嬰中期", maxAge: 1400, maxHp: 26000, maxExp: 1280000 },
-        { level: 15, name: "元嬰後期", maxAge: 1700, maxHp: 38000, maxExp: 2500000 },
-        { level: 16, name: "元嬰圓滿", maxAge: 2000, maxHp: 55000, maxExp: 5000000 }
+        { level: 1, name: "練氣一層 (初期)", maxAge: 110, maxHp: 80, maxExp: 120 },
+        { level: 2, name: "練氣二層 (初期)", maxAge: 115, maxHp: 100, maxExp: 150 },
+        { level: 3, name: "練氣三層 (初期)", maxAge: 120, maxHp: 130, maxExp: 200 },
+        { level: 4, name: "練氣四層 (中期)", maxAge: 130, maxHp: 170, maxExp: 280 },
+        { level: 5, name: "練氣五層 (中期)", maxAge: 135, maxHp: 220, maxExp: 380 },
+        { level: 6, name: "練氣六層 (中期)", maxAge: 140, maxHp: 280, maxExp: 500 },
+        { level: 7, name: "練氣七層 (後期)", maxAge: 150, maxHp: 350, maxExp: 700 },
+        { level: 8, name: "練氣八層 (後期)", maxAge: 155, maxHp: 430, maxExp: 950 },
+        { level: 9, name: "練氣九層 (後期)", maxAge: 160, maxHp: 520, maxExp: 1300 },
+        { level: 10, name: "練氣圓滿", maxAge: 180, maxHp: 650, maxExp: 1800 },
+        { level: 11, name: "築基初期", maxAge: 250, maxHp: 1200, maxExp: 3000 },
+        { level: 12, name: "築基中期", maxAge: 300, maxHp: 1800, maxExp: 5000 },
+        { level: 13, name: "築基後期", maxAge: 350, maxHp: 2600, maxExp: 8000 },
+        { level: 14, name: "築基圓滿", maxAge: 400, maxHp: 3500, maxExp: 12000 },
+        { level: 15, name: "金丹初期", maxAge: 600, maxHp: 6000, maxExp: 20000 }
     ];
 
     const STATUS_CATEGORIES = {
@@ -262,7 +262,7 @@
     };
 
     let gameState = {
-        version: "3.80",
+        version: "3.90",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -292,8 +292,8 @@
 
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【嚴格規則限制 - 防範 AI 幻覺與邏輯脫鉤】
-1. 【嚴禁越權越級敘事】：在玩家點擊「突破 / 引氣入體」按鈕之前，你的劇情文字絕對禁止寫出「成功突破境界」、「打破凡體枷鎖」、「正式踏入煉氣期」！因為境界完全由系統按鈕控制。你只能寫「氣海翻湧、感悟加深、觸及瓶頸、真元激盪」。
-2. 【宗門歸屬綁定】：當玩家成功加入宗門（如青雲宗），必須在回傳的 JSON 中精確填入 "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10, "position": "弟子"}。
+1. 【嚴禁越權越級敘事】：在玩家點擊「突破」按鈕之前，你的劇情文字絕對禁止寫出「成功突破境界」！境界完全由系統按鈕控制。你只能寫「氣海翻湧、感悟加深、觸及瓶頸」。
+2. 【宗門歸屬綁定】：當玩家加入宗門（如青雲宗），必須在回傳的 JSON 中精確填入 "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10, "position": "弟子"}。
 3. 【物品/技能歸屬律】：
    - 劇情或選項中出現的名詞，絕對不可直接塞入 gainedItems 或 gainedSkills！
    - gainedItems 只能包含玩家明確透過行動獲得的道具。
@@ -389,7 +389,7 @@
 
     function performSkillCheck(actionText) {
         const d20 = Math.floor(Math.random() * 20) + 1;
-        let actionType = "普通", days = 1, maxExpPct = 0.15, dc = 10, statKey = "wis", statName = "悟性";
+        let actionType = "普通", days = 1, maxExpPct = 0.20, dc = 10, statKey = "wis", statName = "悟性";
         
         if (/(查看|觀察|打聽|評估|檢查|詢問價格|對話|交流)/.test(actionText) && !/(攻擊|偷襲|搶劫)/.test(actionText)) {
             actionType = "觀察"; dc = 5; maxExpPct = 0.05; days = 0; statKey = "int"; statName = "神識";
@@ -397,7 +397,7 @@
         else if (/(死關|30天)/.test(actionText)) { actionType = "死關"; dc = 15; maxExpPct = 0.35; days = 30; statKey = "wis"; }
         else if (/(醫館|求醫|回春丹)/.test(actionText)) { actionType = "醫療"; dc = 5; maxExpPct = 0.08; days = 3; }
         else if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; dc = 8; maxExpPct = 0.15; days = 10; }
-        else if (/(修練|吐納|打坐|閉關|參悟|融會貫通|拜訪傳功殿)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.25; days = 5; }
+        else if (/(修練|吐納|打坐|閉關|參悟|融會貫通|拜訪傳功殿)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.30; days = 5; }
         else if (/(攻擊|斬殺|力戰|迎戰|偷襲|揮劍|廝殺|執行清剿)/.test(actionText)) {
             statKey = "str"; statName = "膂力"; actionType = "戰鬥"; dc = 12; maxExpPct = 0.25; days = 1;
         }
@@ -427,7 +427,7 @@
     function attemptBreakthrough() {
         if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.hp <= 0) return alert("已身死道消...");
-        if (gameState.exp < gameState.maxExp) return alert("修為尚未圓滿，無法引氣入體！");
+        if (gameState.exp < gameState.maxExp) return alert("修為尚未圓滿，無法突破！");
         if (gameState.scenarioState === 'combat') return alert("戰鬥中強行突破極其危險，請先脫戰！");
         
         const nextLevel = gameState.level + 1;
@@ -453,7 +453,7 @@
         let promptMsg = "";
         if (success) {
             promptMsg = isMortal 
-                ? `[系統權威指令：引氣入體大成功！請以震撼描寫靈氣灌體覺醒靈根，正式跨入「練氣前期」！]`
+                ? `[系統權威指令：引氣入體大成功！請以震撼描寫靈氣灌體覺醒靈根，正式跨入「${nextRealm.name}」！]`
                 : `[系統權威指令：境界晉升大成功！成功跨入「${nextRealm.name}」！請描寫破境氣象。]`;
         } else {
             const maxHp = getMaxHp();
@@ -477,7 +477,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "3.80", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "3.90", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
             scenarioState: "safe", hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -548,7 +548,6 @@
             s.hasChosenOrigin = true;
         }
 
-        // V3.80 宗門同步防禦：若 AI 忘記在 JSON 填寫 sect，但劇情文字或道具明確提到加入青雲宗或弟子令，自動解鎖宗門！
         if (rawState.sect && rawState.sect.name && rawState.sect.name !== "無") {
             s.sect = { ...s.sect, ...rawState.sect };
         } else if (storyText.includes("青雲宗") || storyText.includes("收入門牆") || storyText.includes("宗門長老") || s.equipItem.some(i => i.includes("弟子令"))) {
@@ -804,7 +803,6 @@
         document.getElementById("ui-exp-text").innerText = `${formatNum(s.exp)} / ${formatNum(s.maxExp)}`;
         document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
         
-        // 宗門頂端 UI 聯動顯示
         const sectTop = document.getElementById("ui-sect-top");
         if (s.sect && s.sect.name && s.sect.name !== "無" && !s.sect.name.includes("散修")) {
             sectTop.innerText = `${s.sect.name} (${s.sect.rank || '弟子'}) 貢獻:${s.sect.contribution || 0}`;
