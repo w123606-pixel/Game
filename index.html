@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V3.40)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V3.50)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -116,7 +116,7 @@
         <div class="controls-area" id="controls-area">
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
             <div class="input-group">
-                <input type="text" id="action-input" placeholder="輸入行動或選擇上方選項..." onkeydown="if(event.key==='Enter') sendAction()">
+                <input type="text" id="action-input" placeholder="請先點擊上方身世選項開局..." onkeydown="if(event.key==='Enter') sendAction()">
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
             <div class="quick-actions" id="quick-actions-container">
@@ -262,7 +262,7 @@
     };
 
     let gameState = {
-        version: "3.40",
+        version: "3.50",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -295,9 +295,9 @@
 1. 【嚴禁越權突破】：在常規閉關/戰鬥中，絕對不可在劇情文字寫出『打破凡體、成功踏入煉氣期/突破境界』！玩家未點擊「突破」按鈕前，境界永遠由系統控制，你只能描寫『靈氣充沛、感悟增加』。
 2. 【物品/技能歸屬律】：
    - 選項或對話中出現的名詞（如「獸皮卷」、「龍吟庇體」），絕對不可塞入 gainedItems 或 gainedSkills！
-   - gainedItems 只能包含玩家明確「獲得/撿到」的真實道具。
-   - gainedSkills 只能包含玩家明確「參悟秘籍學會」的正式術法，不得將形容詞或臨時氣勢當成技能發放。
-3. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續的 choices 絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」！請根據當前遭遇（如遭遇幽冥魘犬）提供 2~3 個與戰鬥/逃跑/應變相關的冒險抉擇。
+   - gainedItems 只能包含玩家明確 "獲得/撿到" 的真實道具。
+   - gainedSkills 只能包含玩家明確 "參悟秘籍學會" 的正式術法，不得將形容詞或臨時氣勢當成技能發放。
+3. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續的 choices 絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」！請根據當前遭遇提供 2~3 個與冒險相關的抉擇。
 4. 【慈悲與死亡一致性】：若故事中NPC或長老寫下『今日饒你不死』、『滾吧』、『留你一命』，必須將 isDead 設為 false，且不可給予致死級別的巨大 hpChange。
 5. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。
 
@@ -307,7 +307,7 @@
 {
   "success": true,
   "eventType": "battle",
-  "scenarioState": "combat", 
+  "scenarioState": "safe", 
   "rarity": "rare",
   "hpChange": -15,
   "maxAgeChange": 0,
@@ -320,13 +320,13 @@
   "gainedKungfu": [],
   "gainedSkills": [],
   "statusChanges": ["受傷"], 
-  "questUpdates": [{"name": "身世問心", "progress": "遭遇幽冥魘犬襲擊", "status": "進行中"}],
+  "questUpdates": [{"name": "身世問心", "progress": "踏入修仙界", "status": "已完成"}],
   "npcs": [],
   "worldEvents": [],
   "currentWorldModifier": {"event": "無", "exploreRisk": 0, "battleReward": 0},
   "sectContribution": 0,
   "relationshipChanges": [],
-  "choices": ["強忍劇痛，就地翻滾閃避魘犬撲擊", "凝聚殘存真氣，揮拳迎擊狂暴妖獸", "拼死向谷外狹窄通道逃竄"]
+  "choices": ["咬牙起身離開", "原地服藥調養"]
 }
 \`\`\``;
 
@@ -352,6 +352,7 @@
     }
 
     function quickHeal(days) {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局，才能進行閉關！");
         if (gameState.scenarioState !== 'safe') return alert("身處險境，無法安心閉關！");
         if (days === 10) {
             if (gameState.spiritStone < 5) return sendAction("【靈石匱乏，只能硬扛著傷痛強行打坐療傷 10 天...事倍功半！】");
@@ -362,6 +363,7 @@
     }
 
     function hospitalHeal() {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局，才能前往醫館！");
         if (gameState.scenarioState !== 'safe') return alert("身處險境，根本找不到醫館！");
         if (gameState.spiritStone < 50) return alert("靈石不足 50 枚，醫館將你拒之門外！");
         sendAction("【前往坊市醫館，支付 50 枚下品靈石，請醫師施展妙手回春之術，服用回春丹調養！】");
@@ -376,6 +378,7 @@
     }
 
     function sectAction(type) {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.scenarioState !== 'safe') return alert("身處險境，無法回到宗門！");
         if (type === 'quest') sendAction("【前往宗門執事堂，申請接取符合當前境界的宗門任務，賺取貢獻度！】");
         else if (type === 'library') {
@@ -445,6 +448,7 @@
     }
 
     function attemptBreakthrough() {
+        if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.hp <= 0) return alert("已身死道消...");
         if (gameState.exp < gameState.maxExp) return;
         if (gameState.scenarioState === 'combat') return alert("戰鬥中強行突破極其危險，請先脫戰！");
@@ -497,7 +501,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "3.40", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "3.50", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
             scenarioState: "safe", hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -578,7 +582,6 @@
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
 
-        // 偵測是否點擊了身世開局選項
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
         }
@@ -747,7 +750,6 @@
         s.equipItem = applyArrayChanges(s.equipItem, rawState.gainedItems, rawState.lostItems);
         s.skills = applyArrayChanges(s.skills, rawState.gainedSkills, rawState.lostSkills);
 
-        // V3.40 嚴格防禦：若已經選過身世，強制過濾掉任何包含身世關鍵字的選項
         let rawChoices = rawState.choices || [];
         if (s.hasChosenOrigin) {
             rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
@@ -873,6 +875,7 @@
     function syncControlsState() {
         const busy = isTyping || loadingInterval !== null;
         const dead = gameState.hp <= 0;
+        const hasChosen = gameState.hasChosenOrigin; // 開局身世選擇防禦鎖
         
         const isIncapacitated = gameState.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
         const controlsArea = document.getElementById("controls-area");
@@ -891,17 +894,21 @@
             return;
         } else {
             controlsArea.classList.remove("incapacitated-overlay");
-            actionInput.placeholder = "輸入行動或選擇上方選項...";
+            actionInput.placeholder = hasChosen ? "輸入行動或選擇上方選項..." : "請先點擊上方身世選項開局...";
             quickActions.style.display = "grid";
         }
 
-        const isSafe = gameState.scenarioState === "safe" || !gameState.scenarioState;
+        const isSafe = (gameState.scenarioState === "safe" || !gameState.scenarioState) && hasChosen;
         
         document.getElementById("btn-heal").disabled = busy || dead || !isSafe;
         document.getElementById("btn-long-heal").disabled = busy || dead || !isSafe;
         document.getElementById("btn-hospital").disabled = busy || dead || !isSafe;
         
-        if (!isSafe) {
+        if (!hasChosen) {
+            document.getElementById("btn-hospital").textContent = "🏥 需先選身世";
+            document.getElementById("btn-heal").textContent = "🧘 需先選身世";
+            document.getElementById("btn-long-heal").textContent = "⛰️ 需先選身世";
+        } else if (!isSafe) {
             document.getElementById("btn-hospital").textContent = "🏥 險境禁醫";
             document.getElementById("btn-heal").textContent = "🧘 險境禁閉關";
             document.getElementById("btn-long-heal").textContent = "⛰️ 險境禁死關";
@@ -911,14 +918,16 @@
             document.getElementById("btn-long-heal").textContent = "⛰️ 死關(30天)";
         }
 
-        document.querySelectorAll(".quick-btn").forEach(btn => { if(btn.id !== "btn-heal" && btn.id !== "btn-long-heal" && btn.id !== "btn-hospital") btn.disabled = busy || dead; });
+        document.querySelectorAll(".quick-btn").forEach(btn => { if(btn.id !== "btn-heal" && btn.id !== "btn-long-heal" && btn.id !== "btn-hospital") btn.disabled = busy || dead || !hasChosen; });
         document.querySelectorAll(".choice-btn").forEach(btn => { btn.disabled = (dead && !btn.textContent.includes("輪迴")) ? true : busy; });
 
         const isMeridianBroken = gameState.status.some(st => ["碎", "斷", "崩裂", "毀滅", "殘破"].some(k => st.includes(k)) && ["經脈", "丹田"].some(k => st.includes(k)));
         const deduceBtn = document.getElementById("btn-deduce");
-        deduceBtn.disabled = busy || dead || (gameState.exp < gameState.maxExp) || isMeridianBroken || (gameState.scenarioState === 'combat');
+        deduceBtn.disabled = busy || dead || !hasChosen || (gameState.exp < gameState.maxExp) || isMeridianBroken || (gameState.scenarioState === 'combat');
         
-        if (gameState.scenarioState === 'combat') {
+        if (!hasChosen) {
+            deduceBtn.textContent = "✨ 需先選擇身世開局";
+        } else if (gameState.scenarioState === 'combat') {
             deduceBtn.textContent = "⚔️ 戰鬥中禁突破";
         } else if (gameState.scenarioState === 'trapped') {
             deduceBtn.textContent = "⚡ 險地強行突破 (-20%)";
@@ -928,7 +937,7 @@
             deduceBtn.textContent = gameState.level === 0 ? "✨ 引氣入體" : (gameState.level % 4 === 0) ? "⚡ 突破瓶頸" : "✨ 晉升小境界";
         }
         
-        const hasSect = gameState.sect && gameState.sect.name !== "無" && !gameState.sect.name.includes("散修");
+        const hasSect = hasChosen && gameState.sect && gameState.sect.name !== "無" && !gameState.sect.name.includes("散修");
         const btnSectQuest = document.getElementById("btn-sect-quest");
         const btnSectLib = document.getElementById("btn-sect-lib");
         btnSectQuest.style.display = hasSect ? "block" : "none";
@@ -936,7 +945,7 @@
         btnSectQuest.disabled = busy || dead || !isSafe;
         btnSectLib.disabled = busy || dead || !isSafe;
 
-        const hasNpc = gameState.npcs && gameState.npcs.length > 0;
+        const hasNpc = hasChosen && gameState.npcs && gameState.npcs.length > 0;
         document.getElementById("btn-npc-gift").style.display = hasNpc ? "block" : "none";
         document.getElementById("btn-npc-help").style.display = hasNpc ? "block" : "none";
         document.getElementById("btn-npc-invite").style.display = hasNpc ? "block" : "none";
@@ -977,7 +986,10 @@
         document.getElementById("ui-sect-top").innerText = s.sect && s.sect.name !== "無" ? `${s.sect.name} (${s.sect.rank}) 貢獻:${s.sect.contribution}` : "無宗門 (散修)";
 
         const modBadge = document.getElementById("ui-world-modifier");
-        if (s.scenarioState !== "safe") {
+        if (!s.hasChosenOrigin) {
+            modBadge.style.display = "block";
+            modBadge.innerText = "📜 請先點擊下方身世按鈕選擇開局！";
+        } else if (s.scenarioState !== "safe") {
             modBadge.style.display = "block";
             modBadge.innerText = s.scenarioState === "combat" ? "⚔️ 戰鬥狀態：無法進行安逸行動！" : "⚠️ 身處險境：無法返回城鎮，突破受懲罰！";
         } else if (s.worldModifier && s.worldModifier.event !== "無") {
@@ -1023,7 +1035,6 @@
                 </div>`; 
         });
 
-        // V3.40 前端雙重防禦過濾：若已選過身世，絕對不渲染身世選項
         const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = ""; 
         const isIncapacitated = s.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
         if (s.hp <= 0) { 
@@ -1040,7 +1051,7 @@
             validChoices.forEach(c => { 
                 let b = document.createElement("button"); b.className = "choice-btn"; b.textContent = c; b.onclick = () => sendAction(c); choiceCont.appendChild(b); 
             });
-            if (s.scenarioState === 'trapped') {
+            if (s.hasChosenOrigin && s.scenarioState === 'trapped') {
                 let exitBtn = document.createElement("button"); exitBtn.className = "choice-btn"; exitBtn.style.borderColor = "#64b5f6"; exitBtn.textContent = "🌀 尋找出口脫離險境"; exitBtn.onclick = () => sendAction("【環顧四周，憑藉感知尋找離開險地的生路出口！】"); choiceCont.appendChild(exitBtn);
             }
         }
@@ -1164,7 +1175,7 @@
     
     function exportSave() { 
         const exportData = {
-            version: gameState.version || "3.40",
+            version: gameState.version || "3.50",
             state: structuredClone(gameState),
             history: structuredClone(conversationHistory),
             logData: structuredClone(storyLogData)
