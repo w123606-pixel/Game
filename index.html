@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.04)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.06 Full)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -164,7 +164,7 @@
         </div>
 
         <div id="tab-skills" class="tab-content">
-            <h2>💫 狀態異常</h2>
+            <h2>💫 狀態異常 / 效果</h2>
             <div id="ui-status" class="scroll-list" style="color: var(--accent-red);">• 凡體肉身</div>
             <h2>📖 主修心法 (運轉槽)</h2>
             <div id="ui-kungfu-active" style="background:#0a0b10; border:1px solid var(--border-gold); padding:8px; border-radius:4px; margin-bottom:8px; font-size:0.85rem; color:var(--hl-cyan);">• 尚未運轉任何心法</div>
@@ -188,11 +188,11 @@
 
         <div id="tab-social" class="tab-content">
             <h2>📜 當前任務</h2>
-            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);">• 主線：身世問心，選擇身世踏入修仙界</div>
+            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);"></div>
             <h2>👥 結識人物 (NPC)</h2>
             <div id="ui-npcs-list" class="scroll-list"></div>
             <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (長期記憶)</h2>
-            <div id="ui-world-events" class="scroll-list" style="color: #c5a059;">• 無</div>
+            <div id="ui-world-events" class="scroll-list" style="color: #c5a059;"></div>
         </div>
 
         <div id="tab-sys" class="tab-content">
@@ -236,7 +236,7 @@
     ];
 
     let gameState = {
-        version: "4.04",
+        version: "4.06",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -259,7 +259,6 @@
     let storyLogData = [];
     let isTyping = false;
 
-    // 道具屬性與分類檢索庫
     function getItemMeta(itemName) {
         if (/(衣|甲|冠|鞋|靴|袍|服)/.test(itemName)) {
             return { type: 'equip', slot: 'armor', name: itemName, desc: '防具 [HP+20, 根骨+1]', hpBonus: 20, stats: { con: 1 } };
@@ -284,7 +283,7 @@
 
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【嚴格規則限制】
-1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location（若在宗門建築如傳功殿、藏經閣、執事堂，必須精準傳回！）。
+1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
 2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
 3. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
 4. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
@@ -300,8 +299,12 @@
   "gainedKungfu": [],
   "gainedSkills": [],
   "statusChanges": [], 
+  "linggen": "普通靈根",
+  "physique": "凡體",
   "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10},
   "npcs": [],
+  "quests": [{"name": "引氣入體", "progress": "感應靈氣突破至練氣一層", "status": "進行中"}],
+  "worldEvents": ["成功拜入青雲宗，成為外門弟子"],
   "choices": ["留在傳功殿請教長老", "前往宗門集市採購", "返回洞府閉關修練"]
 }
 \`\`\``;
@@ -331,17 +334,11 @@
     }
 
     function showLinggenInfo() {
-        let info = "靈根資質：\n";
-        if (gameState.linggen.includes("雷")) info += "⚡ 變異雷靈根：雷系術法威力 +30%，修為積累速度 +15%。";
-        else info += "🌱 普通靈根：吸收天地靈氣中規中矩。";
-        alert(info);
+        alert(`靈根資質：${gameState.linggen}`);
     }
 
     function showPhysiqueInfo() {
-        let info = "體質天賦：\n";
-        if (gameState.physique.includes("淬體") || gameState.physique.includes("雷靈")) info += "💪 雷靈之體：基礎膂力+5、悟性+5，對負面傷勢抗性提升！";
-        else info += "🦴 凡體：平庸之軀，需洗髓伐骨。";
-        alert(info);
+        alert(`體質天賦：${gameState.physique}`);
     }
 
     function quickHeal(days) {
@@ -362,29 +359,26 @@
         else if (type === 'library') sendAction("【前往藏經閣參悟高階心法與法訣！】");
     }
 
-    // 道具使用/穿戴/參悟分流邏輯
     function handleItemAction(itemName) {
         const meta = getItemMeta(itemName);
         
         if (meta.type === 'equip') {
-            // 穿戴裝備
             if (gameState.equipment[meta.slot]) unequipItem(meta.slot);
             gameState.equipment[meta.slot] = meta;
             gameState.inventory = gameState.inventory.filter(i => i !== itemName);
             appendLogData("系統", `你裝備了【${itemName}】，屬性得到提升！`, "system", false, true);
         } else if (meta.type === 'consumable') {
-            // 服用丹藥
             gameState.inventory = gameState.inventory.filter(i => i !== itemName);
             gameState.hp = Math.min(getMaxHp(), gameState.hp + 30);
             gameState.exp = Math.min(gameState.maxExp, gameState.exp + 20);
             appendLogData("系統", `你服用了【${itemName}】，氣血獲得恢復，感悟有所提升！`, "system", false, true);
         } else if (meta.type === 'studyable') {
-            // 參悟玉簡
             gameState.inventory = gameState.inventory.filter(i => i !== itemName);
-            if (!gameState.skills.some(s => s.name === itemName)) {
-                gameState.skills.push({ name: itemName.replace("玉簡", ""), realm: "入門", exp: 0, maxExp: 100 });
+            const cleanName = itemName.replace("玉簡", "");
+            if (!gameState.skills.some(s => s.name === cleanName)) {
+                gameState.skills.push({ name: cleanName, realm: "入門", exp: 0, maxExp: 100 });
             }
-            appendLogData("系統", `你成功參悟了【${itemName}】，掌控了新的法訣！`, "system", false, true);
+            appendLogData("系統", `你成功參悟了【${itemName}】，掌控了新的法訣【${cleanName}】！`, "system", false, true);
         }
         renderUI();
     }
@@ -454,13 +448,15 @@
         s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu : [];
         s.skills = Array.isArray(raw.skills) ? raw.skills : [];
         s.npcs = Array.isArray(raw.npcs) ? raw.npcs : [];
+        s.quests = Array.isArray(raw.quests) ? raw.quests : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
+        s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents : [];
+        s.status = Array.isArray(raw.status) ? raw.status : ["凡體肉身"];
         return s;
     }
 
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
         
-        // 選擇身世觸發邏輯與獎勵自動補充
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
             if (actionText.includes("落魄少主")) {
@@ -472,7 +468,24 @@
         if (!rawState) return s;
 
         if (rawState.location) s.location = rawState.location;
+        if (rawState.linggen) s.linggen = rawState.linggen;
+        if (rawState.physique) s.physique = rawState.physique;
         if (rawState.sect && rawState.sect.name) s.sect = { ...s.sect, ...rawState.sect };
+
+        // 狀態變更 (Buff/傷勢) 同步
+        if (Array.isArray(rawState.statusChanges)) {
+            rawState.statusChanges.forEach(st => {
+                if (typeof st === 'string' && !s.status.includes(st)) s.status.push(st);
+            });
+        }
+
+        // 任務與世界紀事同步
+        if (Array.isArray(rawState.quests)) s.quests = rawState.quests;
+        if (Array.isArray(rawState.worldEvents)) {
+            rawState.worldEvents.forEach(we => {
+                if (typeof we === 'string' && !s.worldEvents.includes(we)) s.worldEvents.push(we);
+            });
+        }
 
         const npcMatch = storyText.match(/「([\u4e00-\u9fa5]{2,4})」/);
         if (npcMatch && !s.npcs.some(n => n.name === npcMatch[1])) {
@@ -490,6 +503,18 @@
 
         if (Array.isArray(rawState.gainedItems)) {
             rawState.gainedItems.forEach(i => { if (typeof i === 'string' && !s.inventory.includes(i)) s.inventory.push(i); });
+        }
+        if (Array.isArray(rawState.gainedKungfu)) {
+            rawState.gainedKungfu.forEach(k => {
+                let name = typeof k === 'string' ? k : k.name;
+                if (!s.kungfu.some(ex => ex.name === name)) s.kungfu.push({ name: name, expBonus: 10, hpBonus: 40 });
+            });
+        }
+        if (Array.isArray(rawState.gainedSkills)) {
+            rawState.gainedSkills.forEach(sk => {
+                let name = typeof sk === 'string' ? sk : sk.name;
+                if (!s.skills.some(ex => ex.name === name)) s.skills.push({ name: name, realm: "入門", exp: 0, maxExp: 100 });
+            });
         }
 
         let rawChoices = rawState.choices || [];
@@ -603,7 +628,6 @@
         const hasChosen = s.hasChosenOrigin;
         const isSafe = (s.scenarioState === "safe" || !s.scenarioState) && hasChosen;
 
-        // 全面擴充宗門建築地點關鍵字檢測
         const sectKeywords = ["青雲宗", "宗門", "傳功殿", "藏經閣", "執事堂", "後山", "洞府", "長老殿", "執法堂", "演武場", "百草園"];
         const inSectLoc = (sectKeywords.some(kw => s.location.includes(kw)) || (s.sect && s.sect.name !== "無" && s.location.includes(s.sect.name))) && isSafe;
         const hasSect = s.sect && s.sect.name !== "無" && !s.sect.name.includes("散修");
@@ -663,24 +687,45 @@
         });
         drawRadarChart(s.stats);
 
+        // 1. 狀態異常動態繪製 (修復點)
+        const statusBox = document.getElementById("ui-status");
+        statusBox.innerHTML = s.status && s.status.length > 0 ? s.status.map(st => `• ${st}`).join("<br>") : "• 正常";
+
+        // 主修心法 UI 渲染
         const kfActive = document.getElementById("ui-kungfu-active");
         if (s.activeKungfu) {
-            kfActive.innerHTML = `<strong>運轉中：${s.activeKungfu.name}</strong>`;
+            kfActive.innerHTML = `<strong>運轉中：${s.activeKungfu.name}</strong><br><span style="font-size:0.75rem; color:#aaa;">+${s.activeKungfu.expBonus || 10}% 修為速度 / +${s.activeKungfu.hpBonus || 30} HP</span>`;
         } else kfActive.innerText = "• 尚未運轉任何心法";
 
-        // 裝備欄位呈現（附帶屬性提示）
+        const kfList = document.getElementById("ui-kungfu-list"); kfList.innerHTML = "";
+        s.kungfu.forEach(k => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>📖 ${k.name}</span><div class="item-actions">
+                <button onclick="toggleKungfu('${k.name}')">${s.activeKungfu && s.activeKungfu.name === k.name ? '停止' : '運轉'}</button>
+                <button onclick="switchItemCategory('${k.name}', 'kungfu')">轉為招式</button></div>`;
+            kfList.appendChild(div);
+        });
+
+        // 術法招式 UI 渲染
+        const skList = document.getElementById("ui-skills-list"); skList.innerHTML = "";
+        s.skills.forEach(sk => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>⚔️ ${sk.name} <small style="color:var(--hl-gold)">(${sk.realm || '入門'})</small></span>
+                <div class="item-actions"><button onclick="switchItemCategory('${sk.name}', 'skill')">轉為心法</button></div>`;
+            skList.appendChild(div);
+        });
+
+        // 裝備欄位呈現
         ['weapon', 'armor', 'accessory', 'treasure'].forEach(slot => {
             const eq = s.equipment[slot];
             document.getElementById(`eq-${slot}`).innerText = eq ? `${eq.name} (${eq.desc || ''})` : '無';
         });
 
-        // 背包道具呈現（根據類型顯示不同操作按鈕）
+        // 背包道具呈現
         const invList = document.getElementById("ui-inventory-list"); invList.innerHTML = "";
         s.inventory.forEach(inv => {
             const meta = getItemMeta(inv);
-            let btnText = "使用";
-            let btnClass = "";
-            
+            let btnText = "使用", btnClass = "";
             if (meta.type === 'equip') { btnText = "裝備"; btnClass = "btn-equip"; }
             else if (meta.type === 'consumable') { btnText = "服用"; btnClass = "btn-use"; }
             else if (meta.type === 'studyable') { btnText = "參悟"; btnClass = "btn-use"; }
@@ -690,6 +735,26 @@
                 <div class="item-actions"><button class="${btnClass}" onclick="handleItemAction('${inv}')">${btnText}</button></div>`;
             invList.appendChild(div);
         });
+
+        // 2. 當前任務動態繪製 (修復點)
+        const questBox = document.getElementById("ui-quests");
+        questBox.innerHTML = s.quests && s.quests.length > 0 
+            ? s.quests.map(q => `• [${q.status || '進行中'}] ${q.name}：${q.progress}`).join("<br>") 
+            : "• 無主要任務";
+
+        // NPC 面板 UI 渲染
+        const npcList = document.getElementById("ui-npcs-list"); npcList.innerHTML = "";
+        s.npcs.forEach(n => {
+            let div = document.createElement("div"); div.className = "item-row";
+            div.innerHTML = `<span>👥 ${n.name} (${n.identity}) - 好感: ${n.affinity}</span><div class="item-actions"><button onclick="sendAction('【前去拜訪${n.name}】')">互動</button></div>`;
+            npcList.appendChild(div);
+        });
+
+        // 3. 世界紀事動態繪製 (修復點)
+        const worldEventBox = document.getElementById("ui-world-events");
+        worldEventBox.innerHTML = s.worldEvents && s.worldEvents.length > 0 
+            ? s.worldEvents.map(e => `• ${e}`).join("<br>") 
+            : "• 尚無重大世界紀事";
 
         const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = "";
         let validChoices = s.choices || [];
