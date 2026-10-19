@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.12)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.14)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -164,8 +164,8 @@
         </div>
 
         <div id="tab-skills" class="tab-content">
-            <h2>💫 狀態異常 / 效果</h2>
-            <div id="ui-status" class="scroll-list" style="color: var(--accent-red);">• 凡體肉身</div>
+            <h2>💫 狀態效果</h2>
+            <div id="ui-status" class="scroll-list"></div>
             <h2>📖 主修心法 (運轉槽)</h2>
             <div id="ui-kungfu-active" style="background:#0a0b10; border:1px solid var(--border-gold); padding:8px; border-radius:4px; margin-bottom:8px; font-size:0.85rem; color:var(--hl-cyan);">• 尚未運轉任何心法</div>
             <div id="ui-kungfu-list" class="scroll-list"></div>
@@ -236,7 +236,7 @@
     ];
 
     let gameState = {
-        version: "4.12",
+        version: "4.14",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -258,6 +258,8 @@
     let conversationHistory = [];
     let storyLogData = [];
     let isTyping = false;
+
+    const NON_NPC_BLACKLIST = ["聚氣丹", "神秘古戒", "青雲宗", "太上青雲訣", "粗布衣", "家族傳家玉佩", "靈石", "切磋", "突破", "參悟", "閉關", "死關", "青雲劍氣"];
 
     function normalizeItemName(rawName) {
         if (!rawName || typeof rawName !== 'string') return rawName;
@@ -295,13 +297,14 @@
 【嚴格規則限制】
 1. 【地點與環境鎖定】：劇情開頭標明地點，並回傳 location。
 2. 【情境三角選項 (3個)】：選項需符合上下文邏輯。
-3. 【身世開局絕對禁寫青雲宗 (極極重要)】：玩家選擇身世開局時（如落魄少主），故事地點必須設定在『九州邊境 · 荒郊破廟』或逃亡途中的山林！【嚴禁】寫出『你來到了青雲宗』或『你站在青雲宗山門前』！玩家目前完全是無宗門的逃亡散修，去不去宗門、去哪個宗門，必須由玩家在後續選項中自主選擇！
-4. 【身世選擇一次性】：選擇身世後絕對禁止再出現身世選項！
-5. 【靈根體質顯化時機】：玩家在凡人 (Lv.0) 階段時，靈根資質必須保持為「待顯化」！嚴禁在劇情中擅自寫出『已測出普通/雜靈根』，除非玩家發起並通過專屬的「測靈石大典」或「引氣入體突破」！JSON 中的 linggen 亦須嚴格維持 "待顯化"。
-6. 【參悟與修練真實反饋】：玩家發起【參悟】時，需根據其暗骰與悟性進行推演。若失敗需寫出氣血紊亂、走火入魔或毫無收穫，並扣減 HP 或給予負面狀態，嚴禁成功與故事矛盾！
-7. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，必須是玩家當前【精準且不衝突】的所有狀態！當傷勢康復或氣血平穩時，嚴禁保留『氣血紊亂/經脈受損/心神不寧』等舊負面狀態！
-8. 【靈石餘額硬性約束】：務必比對玩家 current spiritStone。若玩家靈石不夠，選項嚴禁出現『掏靈石購買成功』！若玩家強行掏靈石購買，AI 必須推演為『店家嫌靈石不足拒絕交易』且 stoneChange 設為 0，絕對禁止購買成功！
-9. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
+3. 【身世開局絕對禁寫青雲宗】：玩家選擇身世開局時（如落魄少主），故事地點必須設定在『九州邊境 · 荒郊破廟』或逃亡途中的山林！【嚴禁】寫出『你來到了青雲宗』！去不去宗門由玩家自主選擇。
+4. 【功法獲得精準發放 (極重要)】：當玩家在劇情中獲得/賜予功法（如《太上青雲訣》），JSON 中的 gainedKungfu 陣列【必須】放入該功法名稱（例如 ["太上青雲訣"]），確保玩家背包與功法庫即時獲得！
+5. 【靈根顯化精準回傳】：當玩家在劇情中通過測靈石測試或破境顯化靈根時（例如顯化混沌天靈根/天靈根），JSON 必須同步將 linggen 欄位更新為對應顯化的靈根名稱！
+6. 【NPC精準判定】：npcs 陣列只填寫【明確登場的有姓名或具體身份的人類/妖怪人物】。絕對禁止把『聚氣丹』、『神秘古戒』、『青雲宗』等道具或門派寫入 npcs 陣列！
+7. 【參悟與修練真實反饋】：玩家發起【參悟】時，需根據其暗骰與悟性進行推演。若失敗需寫出氣血紊亂、走火入魔或毫無收穫，並扣減 HP 或給予負面狀態，嚴禁成功與故事矛盾！
+8. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，僅包含氣血/經脈/心神等狀態（如氣血平穩、氣血紊亂）。嚴禁放入體質名稱或境界名稱！
+9. 【靈石餘額硬性約束】：務必比對玩家 current spiritStone。若玩家靈石不夠，選項嚴禁出現『掏靈石購買成功』！
+10. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
 {
   "success": true,
@@ -311,9 +314,9 @@
   "expReward": 0,
   "stoneChange": 0,
   "gainedItems": [],
-  "gainedKungfu": [],
+  "gainedKungfu": ["太上青雲訣"],
   "gainedSkills": [],
-  "currentStatus": ["凡體肉身", "氣血紊亂"], 
+  "currentStatus": ["氣血紊亂"], 
   "linggen": "待顯化",
   "physique": "凡體",
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
@@ -463,20 +466,28 @@
         s.inventory = Array.isArray(raw.inventory) ? raw.inventory.map(normalizeItemName) : ["粗布衣", "聚氣丹"];
         s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu : [];
         s.skills = Array.isArray(raw.skills) ? raw.skills : [];
-        s.npcs = Array.isArray(raw.npcs) ? raw.npcs : [];
+        s.npcs = (Array.isArray(raw.npcs) ? raw.npcs : []).filter(n => n && n.name && !NON_NPC_BLACKLIST.some(inv => n.name.includes(inv)));
         s.quests = Array.isArray(raw.quests) ? raw.quests : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
         s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents : [];
-        s.status = Array.isArray(raw.status) ? raw.status : ["凡體肉身"];
+        s.status = Array.isArray(raw.status) ? raw.status : ["氣血平穩"];
         
-        if (s.level === 0 && (!s.linggen || s.linggen === "普通靈根")) s.linggen = "待顯化";
-        
+        // 自動補救：如果在歷史記錄中出現過太上青雲訣但沒加入列表，自動補入並設為運轉心法
+        if (!s.kungfu.some(k => k.name === "太上青雲訣") && storyLogData.some(log => log.content.includes("太上青雲訣"))) {
+            s.kungfu.push({ name: "太上青雲訣", expBonus: 20, hpBonus: 50 });
+        }
+        if (!s.activeKungfu && s.kungfu.length > 0) {
+            s.activeKungfu = s.kungfu[0];
+        }
+
         return s;
     }
 
-    function sanitizeStatusList(list) {
-        if (!Array.isArray(list) || list.length === 0) return ["凡體肉身"];
+    function sanitizeStatusList(list, physique, realm) {
+        if (!Array.isArray(list) || list.length === 0) return ["氣血平穩"];
         let clean = [...new Set(list)];
         
+        clean = clean.filter(st => st !== physique && st !== realm && !st.includes("練氣初成") && !NON_NPC_BLACKLIST.some(b => st.includes(b)));
+
         const removeIfHas = (positives, negatives) => {
             if (clean.some(s => positives.some(p => s.includes(p)))) {
                 clean = clean.filter(s => !negatives.some(n => s.includes(n)));
@@ -487,13 +498,12 @@
         removeIfHas(["經脈復原", "經脈通暢", "經脈完好"], ["經脈輕微受損", "經脈受損", "經脈斷裂"]);
         removeIfHas(["心神安定", "寧靜"], ["心神不寧", "心魔困擾"]);
 
-        return clean.length > 0 ? clean : ["凡體肉身"];
+        return clean.length > 0 ? clean : ["氣血平穩"];
     }
 
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
         
-        // 選取身世開局：強制歸零宗門，設定地點為荒郊破廟
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
             s.location = "九州邊境 · 荒郊破廟";
@@ -509,23 +519,20 @@
 
         if (!rawState) return s;
 
-        // 如果剛選身世且 AI 誤傳青雲宗，前端強行矯正為荒郊破廟
-        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText) || !s.hasChosenOrigin) {
-            s.location = "九州邊境 · 荒郊破廟";
-            s.sect = { name: "無", rank: "散修", contribution: 0, position: "無" };
-        } else if (rawState.location) {
-            s.location = rawState.location;
-        }
-
+        if (rawState.location) s.location = rawState.location;
         if (rawState.physique) s.physique = rawState.physique;
-        if (rawState.sect && rawState.sect.name && s.hasChosenOrigin && !/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
+        if (rawState.sect && rawState.sect.name && s.hasChosenOrigin) {
             s.sect = { ...s.sect, ...rawState.sect };
         }
 
-        if (s.level === 0 && !storyText.includes("測靈石") && !storyText.includes("顯化靈根")) {
-            s.linggen = "待顯化";
-        } else if (rawState.linggen) {
+        if (storyText.includes("混沌天靈根")) {
+            s.linggen = "混沌天靈根";
+        } else if (storyText.includes("天靈根")) {
+            s.linggen = "天靈根";
+        } else if (rawState.linggen && rawState.linggen !== "待顯化") {
             s.linggen = rawState.linggen;
+        } else if (s.level > 0 && s.linggen === "待顯化") {
+            s.linggen = "上品靈根";
         }
 
         if (Number.isFinite(rawState.stoneChange)) {
@@ -537,12 +544,12 @@
         }
 
         if (Array.isArray(rawState.currentStatus)) {
-            s.status = sanitizeStatusList(rawState.currentStatus);
+            s.status = sanitizeStatusList(rawState.currentStatus, s.physique, s.realm);
         } else if (Array.isArray(rawState.statusChanges)) {
             rawState.statusChanges.forEach(st => {
                 if (typeof st === 'string' && !s.status.includes(st)) s.status.push(st);
             });
-            s.status = sanitizeStatusList(s.status);
+            s.status = sanitizeStatusList(s.status, s.physique, s.realm);
         }
 
         if (Array.isArray(rawState.quests)) s.quests = rawState.quests;
@@ -552,10 +559,17 @@
             });
         }
 
-        const npcMatch = storyText.match(/「([\u4e00-\u9fa5]{2,4})」/);
-        if (npcMatch && !s.npcs.some(n => n.name === npcMatch[1])) {
-            s.npcs.push({ name: npcMatch[1], identity: "江湖修士", affinity: 10, relation: "結識" });
+        if (Array.isArray(rawState.npcs)) {
+            rawState.npcs.forEach(n => {
+                if (n && n.name && typeof n.name === 'string') {
+                    let cleanName = n.name.trim();
+                    if (!NON_NPC_BLACKLIST.some(inv => cleanName.includes(inv)) && !s.npcs.some(ex => ex.name === cleanName)) {
+                        s.npcs.push({ name: cleanName, identity: n.identity || "江湖修士", affinity: n.affinity || 10, relation: "結識" });
+                    }
+                }
+            });
         }
+        s.npcs = s.npcs.filter(n => n && n.name && !NON_NPC_BLACKLIST.some(inv => n.name.includes(inv)));
 
         if (checkData.breakthroughMeta && checkData.breakthroughMeta.success) {
             s.level = checkData.breakthroughMeta.nextLevel;
@@ -578,26 +592,46 @@
             });
         }
 
-        if (checkData.success) {
-            if (Array.isArray(rawState.gainedKungfu)) {
-                rawState.gainedKungfu.forEach(k => {
-                    let name = typeof k === 'string' ? k : k.name;
-                    if (!s.kungfu.some(ex => ex.name === name)) s.kungfu.push({ name: name, expBonus: 10, hpBonus: 40 });
-                });
-            }
-            if (Array.isArray(rawState.gainedSkills)) {
-                rawState.gainedSkills.forEach(sk => {
-                    let name = typeof sk === 'string' ? sk : sk.name;
-                    if (!s.skills.some(ex => ex.name === name)) s.skills.push({ name: name, realm: "入門", exp: 0, maxExp: 100 });
-                });
-            }
+        // 1. 處理 AI JSON 回傳的 gainedKungfu（解除暗骰成功條件）
+        if (Array.isArray(rawState.gainedKungfu)) {
+            rawState.gainedKungfu.forEach(k => {
+                let name = typeof k === 'string' ? k : k.name;
+                if (!s.kungfu.some(ex => ex.name === name)) {
+                    s.kungfu.push({ name: name, expBonus: 20, hpBonus: 50 });
+                }
+            });
+        }
+
+        // 2. 雙重保障：用正則自動掃描劇情文本中出現的《功法名稱》
+        const kungfuMatches = storyText.match(/《([^》]+)》/g);
+        if (kungfuMatches) {
+            kungfuMatches.forEach(raw => {
+                const kName = raw.replace(/[《》]/g, '').trim();
+                if (/(訣|功|法|經|典|心法|錄|圖)/.test(kName)) {
+                    if (!s.kungfu.some(ex => ex.name === kName) && !s.skills.some(ex => ex.name === kName)) {
+                        s.kungfu.push({ name: kName, expBonus: 20, hpBonus: 50 });
+                    }
+                }
+            });
+        }
+
+        // 3. 自動預設運轉：若當前未運轉任何心法且擁有了心法，自動為玩家開啟運轉
+        if (!s.activeKungfu && s.kungfu.length > 0) {
+            s.activeKungfu = s.kungfu[0];
+        }
+
+        if (checkData.success && Array.isArray(rawState.gainedSkills)) {
+            rawState.gainedSkills.forEach(sk => {
+                let name = typeof sk === 'string' ? sk : sk.name;
+                if (!s.skills.some(ex => ex.name === name)) s.skills.push({ name: name, realm: "入門", exp: 0, maxExp: 100 });
+            });
         }
 
         let rawChoices = rawState.choices || [];
         if (s.hasChosenOrigin) {
             rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
             if (rawChoices.length === 0) {
-                rawChoices = ["前往附近的宗門山門嘗試拜師求庇護", "前往黑市集市尋找隱姓埋名的機會", "留在破廟嘗試溝通神秘古戒"];
+                rawChoices = ["留在洞府繼續鞏固修為", "前往宗門集市交流資源", "前往藏經閣挑選功法"];
             }
         }
         s.choices = rawChoices;
@@ -838,11 +872,19 @@
         drawRadarChart(s);
 
         const statusBox = document.getElementById("ui-status");
-        statusBox.innerHTML = s.status && s.status.length > 0 ? s.status.map(st => `• ${st}`).join("<br>") : "• 正常";
+        if (s.status && s.status.length > 0) {
+            statusBox.innerHTML = s.status.map(st => {
+                const isNegative = /(紊亂|受損|不寧|微虛|困擾|傷|毒|殘)/.test(st);
+                const color = isNegative ? "var(--accent-red)" : "var(--hl-cyan)";
+                return `<span style="color: ${color}">• ${st}</span>`;
+            }).join("<br>");
+        } else {
+            statusBox.innerHTML = "<span style='color:var(--hl-cyan)'>• 氣血平穩</span>";
+        }
 
         const kfActive = document.getElementById("ui-kungfu-active");
         if (s.activeKungfu) {
-            kfActive.innerHTML = `<strong>運轉中：${s.activeKungfu.name}</strong><br><span style="font-size:0.75rem; color:#aaa;">+${s.activeKungfu.expBonus || 10}% 修為速度 / +${s.activeKungfu.hpBonus || 30} HP</span>`;
+            kfActive.innerHTML = `<strong>運轉中：${s.activeKungfu.name}</strong><br><span style="font-size:0.75rem; color:#aaa;">+${s.activeKungfu.expBonus || 20}% 修為速度 / +${s.activeKungfu.hpBonus || 50} HP</span>`;
         } else kfActive.innerText = "• 尚未運轉任何心法";
 
         const kfList = document.getElementById("ui-kungfu-list"); kfList.innerHTML = "";
@@ -946,7 +988,7 @@
         renderUI();
     }
     function initNewGame() {
-        conversationHistory = []; // 徹底清空發給 AI 的對話歷史
+        conversationHistory = [];
         gameState.hasChosenOrigin = false;
         gameState.location = "九州邊境 · 荒郊破廟";
         gameState.sect = { name: "無", rank: "散修", contribution: 0, position: "無" };
