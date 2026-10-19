@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V3.60)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V3.80)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -262,7 +262,7 @@
     };
 
     let gameState = {
-        version: "3.60",
+        version: "3.80",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -293,11 +293,12 @@
     const SYSTEM_INSTRUCTION = `你現在是硬核修仙RPG《九州裂天錄》的天道DM。
 【嚴格規則限制 - 防範 AI 幻覺與邏輯脫鉤】
 1. 【嚴禁越權越級敘事】：在玩家點擊「突破 / 引氣入體」按鈕之前，你的劇情文字絕對禁止寫出「成功突破境界」、「打破凡體枷鎖」、「正式踏入煉氣期」！因為境界完全由系統按鈕控制。你只能寫「氣海翻湧、感悟加深、觸及瓶頸、真元激盪」。
-2. 【物品/技能歸屬律】：
-   - 劇情或選項中出現的名詞（如「古戒」、「玉簡」、「丹藥」），絕對不可直接塞入 gainedItems 或 gainedSkills！
+2. 【宗門歸屬綁定】：當玩家成功加入宗門（如青雲宗），必須在回傳的 JSON 中精確填入 "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10, "position": "弟子"}。
+3. 【物品/技能歸屬律】：
+   - 劇情或選項中出現的名詞，絕對不可直接塞入 gainedItems 或 gainedSkills！
    - gainedItems 只能包含玩家明確透過行動獲得的道具。
-3. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續的 choices 絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」！
-4. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。
+4. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續的 choices 絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」！
+5. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。
 
 【嚴格 JSON 回傳格式】
 每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊：
@@ -319,12 +320,13 @@
   "gainedSkills": [],
   "statusChanges": [], 
   "questUpdates": [],
+  "sect": {"name": "青雲宗", "rank": "外門弟子", "contribution": 10, "position": "弟子"},
   "npcs": [],
   "worldEvents": [],
   "currentWorldModifier": {"event": "無", "exploreRisk": 0, "battleReward": 0},
   "sectContribution": 0,
   "relationshipChanges": [],
-  "choices": ["立刻盤膝參悟剛獲得的古老玉簡與丹藥", "鞏固剛明悟的心境，將暴漲的力量徹底融會貫通"]
+  "choices": ["拜訪傳功殿領取基礎功法", "閉關修練吸收洞府靈氣"]
 }
 \`\`\``;
 
@@ -395,8 +397,8 @@
         else if (/(死關|30天)/.test(actionText)) { actionType = "死關"; dc = 15; maxExpPct = 0.35; days = 30; statKey = "wis"; }
         else if (/(醫館|求醫|回春丹)/.test(actionText)) { actionType = "醫療"; dc = 5; maxExpPct = 0.08; days = 3; }
         else if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; dc = 8; maxExpPct = 0.15; days = 10; }
-        else if (/(修練|吐納|打坐|閉關|參悟|融會貫通)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.25; days = 5; }
-        else if (/(攻擊|斬殺|力戰|迎戰|偷襲|揮劍|廝殺)/.test(actionText)) {
+        else if (/(修練|吐納|打坐|閉關|參悟|融會貫通|拜訪傳功殿)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.25; days = 5; }
+        else if (/(攻擊|斬殺|力戰|迎戰|偷襲|揮劍|廝殺|執行清剿)/.test(actionText)) {
             statKey = "str"; statName = "膂力"; actionType = "戰鬥"; dc = 12; maxExpPct = 0.25; days = 1;
         }
         else if (/(買|賣|交易|砍價|逛坊市|送禮|拜訪|宗門任務)/.test(actionText)) {
@@ -440,7 +442,6 @@
         const total = d20 + mod + kungfuBonus + (gameState.breakthroughLuck || 0);
         const success = d20 !== 1 && (total >= dc || d20 === 20);
         
-        let promptMsg = "";
         let breakthroughMeta = {
             isBreakthrough: true,
             success: success,
@@ -449,6 +450,7 @@
             isMortal: isMortal
         };
 
+        let promptMsg = "";
         if (success) {
             promptMsg = isMortal 
                 ? `[系統權威指令：引氣入體大成功！請以震撼描寫靈氣灌體覺醒靈根，正式跨入「練氣前期」！]`
@@ -475,7 +477,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "3.60", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "3.80", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
             scenarioState: "safe", hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -538,12 +540,21 @@
         return s;
     }
 
-    function applyStateDelta(currentState, rawState, checkData, actionText) {
+    function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
 
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
+        }
+
+        // V3.80 宗門同步防禦：若 AI 忘記在 JSON 填寫 sect，但劇情文字或道具明確提到加入青雲宗或弟子令，自動解鎖宗門！
+        if (rawState.sect && rawState.sect.name && rawState.sect.name !== "無") {
+            s.sect = { ...s.sect, ...rawState.sect };
+        } else if (storyText.includes("青雲宗") || storyText.includes("收入門牆") || storyText.includes("宗門長老") || s.equipItem.some(i => i.includes("弟子令"))) {
+            if (s.sect.name === "無" || s.sect.name === "散修") {
+                s.sect = { name: "青雲宗", rank: "外門弟子", contribution: 10, position: "弟子" };
+            }
         }
 
         if (checkData.actionType === "突破" && checkData.breakthroughMeta) {
@@ -621,7 +632,7 @@
         if (s.hasChosenOrigin) {
             rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
             if (rawChoices.length === 0) {
-                rawChoices = ["立刻盤膝參悟剛獲得的古老玉簡與丹藥", "鞏固剛明悟的心境，將暴漲的力量徹底融會貫通"];
+                rawChoices = ["前往傳功殿進一步參悟更高階法門", "前往後山執行清剿妖獸任務"];
             }
         }
         s.choices = rawChoices;
@@ -662,10 +673,10 @@
             if (!parsedState) throw new Error("AI 未回傳合法的 JSON 狀態");
 
             let oldState = structuredClone(gameState);
-            gameState.daysPassed += checkData.daysSpent ?? 1;
             
+            gameState.daysPassed += checkData.daysSpent ?? 1;
             lastRawStoryText = storyText;
-            gameState = applyStateDelta(gameState, parsedState, checkData, actionText);
+            gameState = applyStateDelta(gameState, parsedState, checkData, actionText, storyText);
             
             if(gameState.hp > 0 && onSuccessCallback) onSuccessCallback(); 
             
@@ -675,8 +686,13 @@
             stopLoadingAnim(); saveGameState();
         } catch (error) {
             console.error(error); stopLoadingAnim();
-            conversationHistory = backupHistory; gameState = backupState; storyLogData = backupLogs; renderStoryLogs();
-            inputEl.value = actionText; appendLogData("系統", `推演中斷 (${error.message})。已退回狀態。`, "system", false, true);
+            conversationHistory = backupHistory; 
+            gameState = backupState; 
+            storyLogData = backupLogs; 
+            renderStoryLogs();
+            renderUI();
+            inputEl.value = actionText; 
+            appendLogData("系統", `推演中斷 (${error.message})。已完整回滾狀態與資源。`, "system", false, true);
         }
     }
 
@@ -747,7 +763,6 @@
         document.getElementById("btn-long-heal").disabled = busy || dead || !isSafe;
         document.getElementById("btn-hospital").disabled = busy || dead || !isSafe;
 
-        // 當修為累積滿 100 且未突破時，點亮引氣入體按鈕
         const deduceBtn = document.getElementById("btn-deduce");
         const canBreak = gameState.exp >= gameState.maxExp;
         deduceBtn.disabled = busy || dead || !hasChosen || !canBreak;
@@ -789,6 +804,21 @@
         document.getElementById("ui-exp-text").innerText = `${formatNum(s.exp)} / ${formatNum(s.maxExp)}`;
         document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
         
+        // 宗門頂端 UI 聯動顯示
+        const sectTop = document.getElementById("ui-sect-top");
+        if (s.sect && s.sect.name && s.sect.name !== "無" && !s.sect.name.includes("散修")) {
+            sectTop.innerText = `${s.sect.name} (${s.sect.rank || '弟子'}) 貢獻:${s.sect.contribution || 0}`;
+            sectTop.style.display = "inline-block";
+        } else {
+            sectTop.innerText = "無宗門 (散修)";
+        }
+
+        const hasSect = s.sect && s.sect.name && s.sect.name !== "無" && !s.sect.name.includes("散修");
+        const btnSectQuest = document.getElementById("btn-sect-quest");
+        const btnSectLib = document.getElementById("btn-sect-lib");
+        btnSectQuest.style.display = hasSect ? "block" : "none";
+        btnSectLib.style.display = hasSect ? "block" : "none";
+
         const modBadge = document.getElementById("ui-world-modifier");
         if (!s.hasChosenOrigin) {
             modBadge.style.display = "block";
@@ -829,7 +859,7 @@
             if (s.hasChosenOrigin) {
                 validChoices = validChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
                 if (validChoices.length === 0) {
-                    validChoices = ["立刻盤膝參悟剛獲得的古老玉簡與丹藥", "鞏固剛明悟的心境，將暴漲的力量徹底融會貫通"];
+                    validChoices = ["前往傳功殿進一步參悟更高階法門", "前往後山執行清剿妖獸任務"];
                 }
             }
             validChoices.forEach(c => { 
@@ -859,9 +889,9 @@
 
     function formatStoryHtml(rawText) {
         return escapeHTML(rawText).replace(/\n/g, "<br>")
-            .replace(/(獲得|突破|頓悟|大成功|引氣入體|妙手回春|機緣)/g, '<span class="hl-skill">$1</span>')
+            .replace(/(獲得|突破|頓悟|大成功|引氣入體|妙手回春|機緣|收入門牆)/g, '<span class="hl-skill">$1</span>')
             .replace(/(重傷|毒煞|反噬|走火入魔|心魔|壽元將盡|慘痛失敗|大失敗)/g, '<span class="hl-danger">$1</span>')
-            .replace(/(法寶|靈器|丹藥|靈石|玉簡)/g, '<span class="hl-item">$1</span>');
+            .replace(/(法寶|靈器|丹藥|靈石|玉簡|弟子令)/g, '<span class="hl-item">$1</span>');
     }
 
     async function typeWriterLog(role, rawText, type) {
