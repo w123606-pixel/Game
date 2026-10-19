@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V3.30)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V3.40)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -262,13 +262,13 @@
     };
 
     let gameState = {
-        version: "3.30",
+        version: "3.40",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
         spiritStone: 0, breakthroughLuck: 0,
         scenarioState: "safe",
-        hasChosenOrigin: false, // 標記是否已完成身世選擇
+        hasChosenOrigin: false,
         sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
         worldModifier: { event: "無", exploreRisk: 0, battleReward: 0 },
         stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
@@ -297,9 +297,9 @@
    - 選項或對話中出現的名詞（如「獸皮卷」、「龍吟庇體」），絕對不可塞入 gainedItems 或 gainedSkills！
    - gainedItems 只能包含玩家明確「獲得/撿到」的真實道具。
    - gainedSkills 只能包含玩家明確「參悟秘籍學會」的正式術法，不得將形容詞或臨時氣勢當成技能發放。
-3. 【身世選擇一次性原則】：玩家只要選擇了身世，後續選項絕對禁止再出現「1. 宗門棄子」、「2. 奪舍死囚」、「3. 落魄少主」！請根據當前劇情提供 2~3 個當前情境的冒險抉擇。
+3. 【身世選擇一次性原則】：玩家只要選擇了身世（hasChosenOrigin 為 true），後續的 choices 絕對禁止再出現「宗門棄子」、「奪舍死囚」、「落魄少主」！請根據當前遭遇（如遭遇幽冥魘犬）提供 2~3 個與戰鬥/逃跑/應變相關的冒險抉擇。
 4. 【慈悲與死亡一致性】：若故事中NPC或長老寫下『今日饒你不死』、『滾吧』、『留你一命』，必須將 isDead 設為 false，且不可給予致死級別的巨大 hpChange。
-5. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。開局選擇身世時請保持 safe。
+5. 【場景狀態(scenarioState)】：請依劇情精確判定： safe (城鎮/洞府), combat (激烈戰鬥), trapped (險地/受困)。
 
 【嚴格 JSON 回傳格式】
 每次推演後，必須在回覆最後附上 markdown \`\`\`json 區塊：
@@ -307,7 +307,7 @@
 {
   "success": true,
   "eventType": "battle",
-  "scenarioState": "safe", 
+  "scenarioState": "combat", 
   "rarity": "rare",
   "hpChange": -15,
   "maxAgeChange": 0,
@@ -320,13 +320,13 @@
   "gainedKungfu": [],
   "gainedSkills": [],
   "statusChanges": ["受傷"], 
-  "questUpdates": [{"name": "身世問心", "progress": "踏入修仙界", "status": "已完成"}],
+  "questUpdates": [{"name": "身世問心", "progress": "遭遇幽冥魘犬襲擊", "status": "進行中"}],
   "npcs": [],
   "worldEvents": [],
   "currentWorldModifier": {"event": "無", "exploreRisk": 0, "battleReward": 0},
   "sectContribution": 0,
   "relationshipChanges": [],
-  "choices": ["咬牙起身離開", "原地服藥調養"]
+  "choices": ["強忍劇痛，就地翻滾閃避魘犬撲擊", "凝聚殘存真氣，揮拳迎擊狂暴妖獸", "拼死向谷外狹窄通道逃竄"]
 }
 \`\`\``;
 
@@ -396,8 +396,8 @@
         else if (/(療傷|調養|恢復)/.test(actionText)) { actionType = "療傷"; dc = 8; maxExpPct = 0.10; days = 10; }
         else if (/(修練|吐納|打坐|閉關)/.test(actionText)) { actionType = "修練"; dc = 8; maxExpPct = 0.15; days = 5; }
         else if (/(上古|仙帝|神獸|滅世|天劫)/.test(actionText)) { actionType = "作死"; dc = 20; maxExpPct = 0.40; days = 10; }
-        else if (/(攻擊|斬殺|力戰|迎戰|偷襲|揮劍|廝殺|敲打敵人)/.test(actionText) || /(戰鬥|奪寶|搶劫)/.test(actionText)) {
-            statKey = "str"; statName = "膂力"; actionType = "戰鬥"; dc = 15; maxExpPct = 0.25; days = 3;
+        else if (/(攻擊|斬殺|力戰|迎戰|偷襲|揮劍|廝殺|敲打|迎擊|翻滾|閃避)/.test(actionText) || /(戰鬥|奪寶|搶劫)/.test(actionText)) {
+            statKey = "str"; statName = "膂力"; actionType = "戰鬥"; dc = 12; maxExpPct = 0.25; days = 1;
         }
         else if (/(買|賣|交易|砍價|逛坊市|送禮|拜訪|宗門任務)/.test(actionText)) {
             actionType = "日常"; dc = 5; maxExpPct = 0.02; days = 1; statKey = "wis"; statName = "悟性";
@@ -418,13 +418,6 @@
             compatibilityMsg += " [身處險境進行安逸行動，極度危險！]";
         }
 
-        if (actionType === "探索") {
-            const roll = Math.random() * 100;
-            if (roll <= 15) { compatibilityMod -= 5; compatibilityMsg += " [強制擲入15%危險池]"; } 
-            else if (roll <= 50) { compatibilityMsg += " [強制擲入35%普通池]"; } 
-            else { compatibilityMod += 5; compatibilityMsg += " [強制擲入50%機緣池]"; }
-        }
-        
         let bestHelper = gameState.npcs.find(n => (n.affinity || 0) >= 50);
         if (bestHelper && ["戰鬥", "探索", "作死"].includes(actionType)) { compatibilityMod += 2; compatibilityMsg += ` [摯友 ${bestHelper.name} 護法 +2]`; }
         
@@ -448,8 +441,6 @@
         else { res = (totalScore <= dc - 5) ? "慘痛失敗" : "失敗"; isSuccess = false; }
         
         let msg = `[天道暗骰：${statName}檢定。補正：【${compatibilityMsg}】。成敗：【${res}】。請隱性撰寫敘事！]`;
-        if (actionType === "醫療" && gameState.scenarioState === "safe") { msg += " [系統強制：求醫成功，拔除外傷劇毒並恢復HP！]"; isSuccess = true; }
-        
         return { message: msg, shortRes: res, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days, actionType: actionType };
     }
 
@@ -506,7 +497,7 @@
 
     function normalizeFullState(raw) {
         const def = {
-            version: "3.30", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            version: "3.40", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughLuck: 0,
             scenarioState: "safe", hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -587,7 +578,7 @@
         const s = structuredClone(currentState);
         if (!rawState || typeof rawState !== 'object') return s;
 
-        // 身世選擇標記判定
+        // 偵測是否點擊了身世開局選項
         if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
             s.hasChosenOrigin = true;
         }
@@ -637,9 +628,7 @@
         }
 
         if (rawState.scenarioState && ["safe", "combat", "trapped"].includes(rawState.scenarioState)) {
-            if (!s.hasChosenOrigin) {
-                s.scenarioState = "safe"; 
-            } else if (s.scenarioState !== "safe" && rawState.scenarioState === "safe") {
+            if (s.scenarioState !== "safe" && rawState.scenarioState === "safe") {
                 if (checkData.success || /(逃跑|脫困|擊敗|回到|離開|陣法破除|遁地符)/.test(actionText)) {
                     s.scenarioState = "safe";
                 }
@@ -758,17 +747,15 @@
         s.equipItem = applyArrayChanges(s.equipItem, rawState.gainedItems, rawState.lostItems);
         s.skills = applyArrayChanges(s.skills, rawState.gainedSkills, rawState.lostSkills);
 
-        // 防範重複選身世選項 (一次性過濾)
-        if (s.hasChosenOrigin && rawState.choices && Array.isArray(rawState.choices)) {
-            const hasOriginChoice = rawState.choices.some(c => /(宗門棄子|奪舍死囚|落魄少主)/.test(c));
-            if (hasOriginChoice) {
-                s.choices = ["咬牙忍痛，檢查周遭環境", "打坐調息，穩定體內紊亂氣血", "謹慎前行，尋求機緣與生路"];
-            } else {
-                s.choices = rawState.choices;
+        // V3.40 嚴格防禦：若已經選過身世，強制過濾掉任何包含身世關鍵字的選項
+        let rawChoices = rawState.choices || [];
+        if (s.hasChosenOrigin) {
+            rawChoices = rawChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
+            if (rawChoices.length === 0) {
+                rawChoices = ["強忍劇痛，就地翻滾閃避", "凝聚殘存真氣，迎擊妖獸", "拼死向谷外通道突圍逃跑"];
             }
-        } else if (rawState.choices && Array.isArray(rawState.choices)) {
-            s.choices = rawState.choices;
         }
+        s.choices = rawChoices;
 
         if (s.status.length === 0) s.status = s.level === 0 ? ["凡體肉身"] : ["健康"];
         if (s.hp <= 0) { s.hp = 0; if (!s.status.includes("【已身死道消】")) s.status = ["【已身死道消】"]; }
@@ -1036,13 +1023,21 @@
                 </div>`; 
         });
 
+        // V3.40 前端雙重防禦過濾：若已選過身世，絕對不渲染身世選項
         const choiceCont = document.getElementById("dynamic-choices-container"); choiceCont.innerHTML = ""; 
         const isIncapacitated = s.status.some(st => STATUS_CATEGORIES["意識類"].some(k => st.includes(k)));
         if (s.hp <= 0) { 
             choiceCont.innerHTML = `<button class="choice-btn" style="background:#4a1515;color:#fff;grid-column:1/-1;" onclick="resetGame()">💀 壽盡身亡 / 輪迴重啟</button>`; 
         } 
         else if (s.choices && !isIncapacitated) { 
-            s.choices.forEach(c => { 
+            let validChoices = s.choices;
+            if (s.hasChosenOrigin) {
+                validChoices = validChoices.filter(c => !/(宗門棄子|奪舍死囚|落魄少主)/.test(c));
+                if (validChoices.length === 0) {
+                    validChoices = ["強忍劇痛，就地翻滾閃避", "凝聚殘存真氣，迎擊妖獸", "拼死向谷外通道突圍逃跑"];
+                }
+            }
+            validChoices.forEach(c => { 
                 let b = document.createElement("button"); b.className = "choice-btn"; b.textContent = c; b.onclick = () => sendAction(c); choiceCont.appendChild(b); 
             });
             if (s.scenarioState === 'trapped') {
@@ -1169,7 +1164,7 @@
     
     function exportSave() { 
         const exportData = {
-            version: gameState.version || "3.30",
+            version: gameState.version || "3.40",
             state: structuredClone(gameState),
             history: structuredClone(conversationHistory),
             logData: structuredClone(storyLogData)
