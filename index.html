@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.18)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.19)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -248,7 +248,7 @@
     };
 
     let gameState = {
-        version: "4.18",
+        version: "4.19",
         level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
         daysPassed: 0, ageBase: 18, maxAge: 100,
         hp: 50, exp: 0, maxExp: 100,
@@ -342,10 +342,69 @@
             const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
             const intStat = rMeta.tier === 0 ? 0 : 1 + Math.floor(rMeta.statMul / 2);
             const hp = rMeta.hpMul * 5;
-            let desc = `[${rMeta.label}] 飾品 [悟性+${wis}${intStat > 0 ? `, 神識+${intStat}` : ''}]`; return { type: 'equip', slot: 'accessory', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat } }; }  if (/(佩\vert{}令\vert{}珠\vert{}鏡\vert{}印\vert{}鼎\vert{}塔\vert{}寶)/.test(baseName)) { const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul; const intStat = rMeta.tier === 0 ? 0 : 1 + Math.floor(rMeta.statMul / 2); const luk = rMeta.tier >= 2 ? 1 + Math.floor(rMeta.statMul / 3) : 0; const hp = rMeta.hpMul * 8; let desc = `[${rMeta.label}] 法寶 [悟性+${wis}, 神識+${intStat}${luk > 0 ? `, 氣運+${luk}` : ''}]`; return { type: 'equip', slot: 'treasure', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat, luk: luk } }; }  if (/(丹\vert{}散\vert{}膏\vert{}丸\vert{}水\vert{}草\vert{}藥)/.test(baseName)) { return { type: 'consumable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 丹藥 [增益/恢復氣血]` };
+            let desc = `[${rMeta.label}] 飾品 [悟性+${wis}${intStat > 0 ? `, 神識+${intStat}` : ''}]`;
+            return { type: 'equip', slot: 'accessory', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat } };
+        }
+
+        if (/(佩|令|珠|鏡|印|鼎|塔|寶)/.test(baseName)) {
+            const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
+            const intStat = rMeta.tier === 0 ? 0 : 1 + Math.floor(rMeta.statMul / 2);
+            const luk = rMeta.tier >= 2 ? 1 + Math.floor(rMeta.statMul / 3) : 0;
+            const hp = rMeta.hpMul * 8;
+            let desc = `[${rMeta.label}] 法寶 [悟性+${wis}, 神識+${intStat}${luk > 0 ? `, 氣運+${luk}` : ''}]`;
+            return { type: 'equip', slot: 'treasure', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat, luk: luk } };
+        }
+
+        if (/(丹|散|膏|丸|水|草|藥)/.test(baseName)) {
+            return { type: 'consumable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 丹藥 [增益/恢復氣血]` };
         }
         if (/(玉簡|秘籍|心法|殘篇|圖錄|訣)/.test(baseName)) {
-            return { type: 'studyable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 功法玉簡 [點擊參悟]` }; } return { type: 'misc', name: cleanName, rarity: "中品", color: "#aaa", desc: '普通物品' }; }  // 計算並折算靈石數值（下品 1:1, 中品 1:100, 上品 1:10000） function parseSpiritStoneValue(itemStr) { if (typeof itemStr !== 'string') return 0; let match = itemStr.match(/x(\d+)/i) \vert{}\vert{} itemStr.match(/(\d+)/); let count = match ? parseInt(match[1], 10) : 1;  let multiplier = 1; if (itemStr.includes("中品")) multiplier = 100; else if (itemStr.includes("上品")) multiplier = 10000; else if (itemStr.includes("極品")) multiplier = 1000000;  return count * multiplier; }  function absorbSpiritStones(state) { let cleanInv = []; let totalAdded = 0; state.inventory.forEach(item => { if (typeof item === 'string' && item.includes("靈石")) { let val = parseSpiritStoneValue(item); totalAdded += val; } else { cleanInv.push(item); } }); state.spiritStone += totalAdded; state.inventory = cleanInv; }  // 智能清理劇情中被擊殺/幹掉的死者 NPC function cleanDeadNPCs(state, actionText = "", storyText = "") { if (!Array.isArray(state.npcs)) return; const combinedText = (actionText + " " + storyText).toLowerCase(); const killKeywords = ["擊殺", "斬殺", "幹掉", "殺死", "身亡", "殞命", "命喪", "手刃", "誅殺", "化為灰燼", "已被你殺害", "討伐", "取其性命", "廢掉", "被殺"];  state.npcs = state.npcs.filter(npc => { if (!npc \vert{}\vert{} !npc.name) return false; if (npc.isDead \vert{}\vert{} npc.status === "死亡" \vert{}\vert{} npc.status === "已故") return false;  const npcName = npc.name.toLowerCase(); const isKilled = killKeywords.some(kw => combinedText.includes(kw) && combinedText.includes(npcName)); if (isKilled) { appendLogData("系統", `【${npc.name}】已身亡，自結識列表中移除。`, "system", false, true);
+            return { type: 'studyable', name: cleanName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 功法玉簡 [點擊參悟]` };
+        }
+        return { type: 'misc', name: cleanName, rarity: "中品", color: "#aaa", desc: '普通物品' };
+    }
+
+    function parseSpiritStoneValue(itemStr) {
+        if (typeof itemStr !== 'string') return 0;
+        let match = itemStr.match(/x(\d+)/i) || itemStr.match(/(\d+)/);
+        let count = match ? parseInt(match[1], 10) : 1;
+        
+        let multiplier = 1;
+        if (itemStr.includes("中品")) multiplier = 100;
+        else if (itemStr.includes("上品")) multiplier = 10000;
+        else if (itemStr.includes("極品")) multiplier = 1000000;
+        
+        return count * multiplier;
+    }
+
+    function absorbSpiritStones(state) {
+        let cleanInv = [];
+        let totalAdded = 0;
+        state.inventory.forEach(item => {
+            if (typeof item === 'string' && item.includes("靈石")) {
+                let val = parseSpiritStoneValue(item);
+                totalAdded += val;
+            } else {
+                cleanInv.push(item);
+            }
+        });
+        state.spiritStone += totalAdded;
+        state.inventory = cleanInv;
+    }
+
+    function cleanDeadNPCs(state, actionText = "", storyText = "") {
+        if (!Array.isArray(state.npcs)) return;
+        const combinedText = (actionText + " " + storyText).toLowerCase();
+        const killKeywords = ["擊殺", "斬殺", "幹掉", "殺死", "身亡", "殞命", "命喪", "手刃", "誅殺", "化為灰燼", "已被你殺害", "討伐", "取其性命", "廢掉", "被殺"];
+
+        state.npcs = state.npcs.filter(npc => {
+            if (!npc || !npc.name) return false;
+            if (npc.isDead || npc.status === "死亡" || npc.status === "已故") return false;
+
+            const npcName = npc.name.toLowerCase();
+            const isKilled = killKeywords.some(kw => combinedText.includes(kw) && combinedText.includes(npcName));
+            if (isKilled) {
+                appendLogData("系統", `【${npc.name}】已身亡，自結識列表中移除。`, "system", false, true);
                 return false;
             }
             return true;
@@ -366,7 +425,7 @@
 4. 【裝備品階規範】：若賜予裝備/法寶，可在名字加入品階標籤（如『上品·雲紋法衣』、『【仙器】誅仙劍』）。
 5. 【功法獲得精準發放】：當玩家在劇情中獲得功法（如《太上青雲訣》），JSON 中的 gainedKungfu 陣列【必須】放入該功法名稱。
 6. 【靈石獎勵原則】：若玩家獲得靈石，請使用 stoneChange 數值增減，嚴禁寫入 gainedItems 陣列！
-7. 【NPC精準判定與陣亡移除】：npcs 陣列只填寫【明確登場的人類/妖怪人物】。絕對禁止把『藏經閣』等建築寫入！若 NPC 在劇情中被擊殺或死亡，JSON 中的 npcs 陣列【絕不能】包含該 NPC。
+7. 【NPC精準判定與陣亡移除】：npcs 陣列只填寫【明確登場的人類/妖怪人物】。絕對禁止把『藏經閣』等建築寫入！若 NPC 在劇情中被擊殺，JSON 中的 npcs 陣列【絕不能】包含該 NPC。
 8. 【狀態維護currentStatus】：回傳 currentStatus 陣列時，僅包含氣血/經脈/心神等狀態。嚴禁放入體質名稱或境界名稱！
 9. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
@@ -454,18 +513,21 @@
             gameState.inventory = gameState.inventory.filter(i => normalizeItemName(i) !== meta.name);
             appendLogData("系統", `你提煉折算【${meta.name}】，將 ${val} 顆靈石納入庫存！`, "system", false, true);
             renderUI();
+            saveGameState();
         } else if (meta.type === 'equip') {
             if (gameState.equipment[meta.slot]) unequipItem(meta.slot);
             gameState.equipment[meta.slot] = meta;
             gameState.inventory = gameState.inventory.filter(i => normalizeItemName(i) !== meta.name);
             appendLogData("系統", `你裝備了【${meta.name}】，屬性得到顯著提升！`, "system", false, true);
             renderUI();
+            saveGameState();
         } else if (meta.type === 'consumable') {
             gameState.inventory = gameState.inventory.filter(i => normalizeItemName(i) !== meta.name);
             gameState.hp = Math.min(getMaxHp(), gameState.hp + 30);
             gameState.exp = Math.min(gameState.maxExp, gameState.exp + 20);
             appendLogData("系統", `你服用了【${meta.name}】，氣血獲得恢復！`, "system", false, true);
             renderUI();
+            saveGameState();
         } else if (meta.type === 'studyable') {
             sendAction(`【研讀並嘗試參悟背包中的《${meta.name}》，試圖領悟其中玄妙。】`);
         }
@@ -476,6 +538,7 @@
         gameState.inventory.push(gameState.equipment[slot].name);
         gameState.equipment[slot] = null;
         renderUI();
+        saveGameState();
     }
 
     function toggleKungfu(kfName) {
@@ -483,6 +546,7 @@
         if (target) {
             gameState.activeKungfu = (gameState.activeKungfu && gameState.activeKungfu.name === kfName) ? null : target;
             renderUI();
+            saveGameState();
         }
     }
 
@@ -495,6 +559,7 @@
             gameState.kungfu.push({ name: name, expBonus: 10, hpBonus: 30 });
         }
         renderUI();
+        saveGameState();
     }
 
     function performSkillCheck(actionText) {
@@ -531,13 +596,14 @@
         s.realm = (REALMS[s.level] || REALMS[0]).name;
         s.maxExp = (REALMS[s.level] || REALMS[0]).maxExp;
         s.spiritStone = Number.isFinite(Number(raw.spiritStone)) ? Number(raw.spiritStone) : 0;
-        s.hasChosenOrigin = Boolean(raw.hasChosenOrigin);
         
         s.equipment = {};
+        let hasEquip = false;
         if (raw.equipment) {
             ['weapon', 'armor', 'accessory', 'treasure'].forEach(slot => {
                 if (raw.equipment[slot] && raw.equipment[slot].name) {
                     s.equipment[slot] = getItemMeta(raw.equipment[slot].name);
+                    hasEquip = true;
                 } else {
                     s.equipment[slot] = null;
                 }
@@ -548,6 +614,13 @@
         s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu : [];
         s.skills = Array.isArray(raw.skills) ? raw.skills : [];
         
+        // 自癒修復：如果玩家有裝備、境界等級大於0或有功法，自動補正身世開局標記為已選擇
+        if (s.level > 0 || hasEquip || s.kungfu.length > 0 || (s.sect && s.sect.name !== "無")) {
+            s.hasChosenOrigin = true;
+        } else {
+            s.hasChosenOrigin = Boolean(raw.hasChosenOrigin);
+        }
+
         absorbSpiritStones(s);
 
         s.npcs = (Array.isArray(raw.npcs) ? raw.npcs : []).filter(n => n && n.name && isRealNPC(n.name));
@@ -749,7 +822,8 @@
             renderUI();
             setWritingAnim();
             await typeWriterLog("天道", storyText, "ai");
-            stopLoadingAnim(); saveGameState();
+            stopLoadingAnim(); 
+            saveGameState();
         } catch (error) {
             stopLoadingAnim(); 
             appendLogData("系統", `推演失敗：${error.message}`, "system", false, true);
@@ -1075,27 +1149,45 @@
     function saveApiKey() { localStorage.setItem("blade_api_key", document.getElementById("api-key").value.trim()); alert("⚙️ API Key 已成功儲存！"); }
     function clearApiKey() { localStorage.removeItem("blade_api_key"); document.getElementById("api-key").value = ""; alert("🗑️ API Key 已清除！"); }
     function loadApiKey() { if(localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key"); }
-    function saveGameState() { localStorage.setItem("blade_v4_state", JSON.stringify(gameState)); }
+    
+    function saveGameState() { 
+        localStorage.setItem("blade_v4_state", JSON.stringify(gameState));
+        localStorage.setItem("blade_v4_logs", JSON.stringify(storyLogData));
+        localStorage.setItem("blade_v4_history", JSON.stringify(conversationHistory));
+    }
+    
     function loadGameState() {
-        const raw = localStorage.getItem("blade_v4_state");
-        if (raw) gameState = normalizeFullState(JSON.parse(raw));
+        const rawLogs = localStorage.getItem("blade_v4_logs");
+        if (rawLogs) storyLogData = JSON.parse(rawLogs);
+
+        const rawHistory = localStorage.getItem("blade_v4_history");
+        if (rawHistory) conversationHistory = JSON.parse(rawHistory);
+
+        const rawState = localStorage.getItem("blade_v4_state");
+        if (rawState) gameState = normalizeFullState(JSON.parse(rawState));
         else initNewGame();
+
+        renderStoryLogs();
         renderUI();
     }
+
     function initNewGame() {
         conversationHistory = [];
+        storyLogData = [];
         gameState.hasChosenOrigin = false;
         gameState.location = "九州邊境 · 荒郊破廟";
         gameState.sect = { name: "無", rank: "散修", contribution: 0, position: "無" };
         gameState.choices = ["1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"];
-        storyLogData = [];
         appendLogData("天道", "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請由下方選擇身世開局，定下你的先天機緣與命運！", "ai", true, true);
     }
+
     function resetGame() { 
         if(confirm("確定刪除存檔並輪迴重置？")) { 
             localStorage.removeItem("blade_v4_state"); 
-            conversationHistory = [];
+            localStorage.removeItem("blade_v4_logs"); 
+            localStorage.removeItem("blade_v4_history"); 
             initNewGame();
+            renderStoryLogs();
             renderUI();
             alert("✨ 輪迴洗盡前塵，已重置開局！");
         } 
