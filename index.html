@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.27)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.29)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -279,7 +279,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.27",
+            version: "4.29",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100,
             hp: 50, exp: 0, maxExp: 100,
@@ -398,8 +398,8 @@
             return { type: 'equip', slot: 'treasure', name: baseName, rarity: rarityKey, color: rMeta.color, desc: desc, hpBonus: hp, stats: { wis: wis, int: intStat, luk: luk } };
         }
 
-        if (/(破境丹|護脈丹|清心丹)/.test(baseName)) {
-            return { type: 'breaking_pill', name: baseName, rarity: "上品", color: "#ab47bc", desc: `[上品] 破境丹藥 [消除突破冷卻與經脈傷勢]` };
+        if (/(破境丹|護脈丹|清心丹|築基丹|金丹丹)/.test(baseName)) {
+            return { type: 'breaking_pill', name: baseName, rarity: "上品", color: "#ab47bc", desc: `[上品] 破境輔助丹藥 [突破率+20% / 失敗護脈]` };
         }
 
         if (/(丹|散|膏|丸|水|草|藥|靈乳)/.test(baseName)) {
@@ -533,11 +533,12 @@
 4. 【NPC 強制記錄與名稱更新】：
    - 只要劇情中出現具名 NPC（如『趙長老』、『韓師兄』），務必填入 npcs 陣列。
    - 若原本以職務/頭銜稱呼（如『雜役堂執事』），後來得知真實姓名（如『唐三』），請在 JSON 的 npcs 陣列中回傳 {"name": "唐三", "identity": "雜役堂執事"}，系統會自動覆蓋名稱並繼承好感度！
-5. 【對戰戰力對比】：戰鬥時請顯化對手名稱與戰力：『【敵人: 執法弟子 | 戰力: 1200 | 你的戰力: 1500】』。
-6. 【招式與心法熟練度】：戰鬥或練習時可在 gainedSkills 中回傳升級或經驗：[{"name": "青雲劍氣", "realm": "精通", "exp": 40}]。
-7. 【雜記與功法區分】：修練心得、解讀殘篇放入 gainedItems 道具，【嚴禁】放入 gainedKungfu！
-8. 【靈石獎勵原則】：使用 stoneChange 數值增減，嚴禁寫入 gainedItems 陣列！
-9. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
+5. 【大境界渡劫描繪】：若玩家行動包含『天劫』或『心魔劫』渡劫，請用極具畫面的文字描繪雷劫聲勢（如三九雷劫、九轉心魔）與渡劫過程！
+6. 【對戰戰力對比】：戰鬥時請顯化對手名稱與戰力：『【敵人: 執法弟子 | 戰力: 1200 | 你的戰力: 1500】』。
+7. 【招式與心法熟練度】：戰鬥或練習時可在 gainedSkills 中回傳升級或經驗：[{"name": "青雲劍氣", "realm": "精通", "exp": 40}]。
+8. 【雜記與功法區分】：修練心得、解讀殘篇放入 gainedItems 道具，【嚴禁】放入 gainedKungfu！
+9. 【靈石獎勵原則】：使用 stoneChange 數值增減，嚴禁寫入 gainedItems 陣列！
+10. 【嚴格 JSON 格式】：回覆結尾務必附加 markdown JSON：
 \`\`\`json
 {
   "success": true,
@@ -757,34 +758,107 @@
         return { message: `[暗骰：${statName}檢定。結果：${isSuccess ? '成功' : '失敗'}]`, success: isSuccess, maxExpReward: Math.floor(gameState.maxExp * maxExpPct), daysSpent: days };
     }
 
+    function getTribulationName(lvl) {
+        if (lvl === 10) return "【築基心魔劫與小雷劫】";
+        if (lvl === 14) return "【三九重天雷劫】";
+        if (lvl === 18) return "【六九天劫與九轉心魔劫】";
+        if (lvl >= 21) return "【九九天道無上雷劫】";
+        return null;
+    }
+
+    function calculateBreakthroughChance() {
+        const lvl = gameState.level;
+        let baseChance = 0.80;
+
+        if (lvl === 0) baseChance = 0.85;
+        else if (lvl === 10) baseChance = 0.35;
+        else if (lvl === 14) baseChance = 0.25;
+        else if (lvl === 18) baseChance = 0.15;
+        else if (lvl >= 19) baseChance = Math.max(0.05, 0.12 - (lvl - 19) * 0.02);
+        else baseChance = Math.max(0.20, 0.75 - lvl * 0.03);
+
+        const safeLocs = ["洞府", "客棧", "破廟", "宗門", "修練室"];
+        const isSafe = safeLocs.some(loc => gameState.location.includes(loc));
+        let envMod = isSafe ? 0 : -0.20;
+
+        const totalLuk = getTotalStat('luk');
+        let lukBonus = (totalLuk - 10) * 0.015;
+
+        let pillBonus = 0;
+        let usedPill = null;
+        const pillKeywords = ["破境丹", "護脈丹", "清心丹", "築基丹", "金丹丹"];
+        for (let kw of pillKeywords) {
+            let found = gameState.inventory.find(i => normalizeItemName(i).includes(kw));
+            if (found) {
+                usedPill = normalizeItemName(found);
+                pillBonus = 0.20;
+                break;
+            }
+        }
+
+        let finalChance = Math.min(0.95, Math.max(0.05, baseChance + envMod + lukBonus + pillBonus));
+        return {
+            finalChance,
+            baseChance,
+            envMod,
+            lukBonus,
+            pillBonus,
+            usedPill,
+            isSafe,
+            tribulation: getTribulationName(lvl)
+        };
+    }
+
     function attemptBreakthrough() {
         if (!gameState.hasChosenOrigin) return alert("請先選擇身世開局！");
         if (gameState.exp < gameState.maxExp) return alert("修為未滿，無法突破！");
         if (gameState.breakthroughCdDays > 0) return alert(`⚠️ 經脈反噬尚未平復！還需調息 ${gameState.breakthroughCdDays} 天，或服用【破境丹】消除冷卻！`);
         
-        const safeLocs = ["洞府", "客棧", "破廟", "宗門", "修練室"];
-        const isSafe = safeLocs.some(loc => gameState.location.includes(loc));
+        const calc = calculateBreakthroughChance();
         const nextLevel = gameState.level + 1;
         const nextRealm = getRealmDef(nextLevel);
-        
-        const successChance = isSafe ? 0.75 : 0.40;
-        const isSuccess = Math.random() < successChance;
+        const isSuccess = Math.random() < calc.finalChance;
+
+        if (calc.usedPill) {
+            gameState.inventory = removeItemFromInventory(gameState.inventory, calc.usedPill);
+            appendLogData("系統", `💊 突破時自動消耗一枚【${calc.usedPill}】，突破成功率提升 +20% (獲得護脈效果)！`, "system", false, true);
+        }
+
+        const basePct = Math.round(calc.baseChance * 100);
+        const envPct = Math.round(calc.envMod * 100);
+        const lukPct = Math.round(calc.lukBonus * 100);
+        const pillPct = Math.round(calc.pillBonus * 100);
+        const finalPct = Math.round(calc.finalChance * 100);
+
+        let analysisMsg = `🎯 【突破概率分析】基礎機率:${basePct}% | 地點:${envPct >= 0 ? '+' : ''}${envPct}% | 氣運:${lukPct >= 0 ? '+' : ''}${lukPct}% | 丹藥:+${pillPct}% ➔ 最終成功率:${finalPct}%`;
+        appendLogData("系統", analysisMsg, "system", false, true);
+
+        let actionPrompt = `【全力運轉全身真元，衝擊瓶頸突破至 ${nextRealm.name}！】`;
+        if (calc.tribulation) {
+            actionPrompt = `【修為達到瓶頸，強行引動天道，迎戰 ${calc.tribulation}，衝擊 ${nextRealm.name} 境界！】`;
+        }
 
         if (isSuccess) {
-            sendAction(`【全力運轉全身真元，衝擊瓶頸突破至 ${nextRealm.name}！】`, {
-                message: `[系統指令：突破成功！晉升至 ${nextRealm.name}]`,
+            sendAction(actionPrompt, {
+                message: `[系統指令：突破成功！${calc.tribulation ? '成功渡過天劫/心魔，' : ''}晉升至 ${nextRealm.name}]`,
                 success: true, maxExpReward: 0, daysSpent: 5,
                 breakthroughMeta: { isBreakthrough: true, success: true, nextLevel, nextRealm }
             });
         } else {
-            gameState.breakthroughCdDays = 30;
-            gameState.hp = Math.max(5, Math.floor(gameState.hp * 0.5));
+            const penaltyMult = calc.usedPill ? 0.5 : 1.0;
+            const cdDays = Math.round(30 * penaltyMult);
+            const hpLossRatio = 0.5 * penaltyMult;
+
+            gameState.breakthroughCdDays = cdDays;
+            gameState.hp = Math.max(5, Math.floor(gameState.hp * (1 - hpLossRatio)));
             gameState.exp = Math.floor(gameState.maxExp * 0.7);
-            
+
             if (!gameState.status.includes("衝擊反噬")) gameState.status.push("衝擊反噬");
             if (!gameState.status.includes("經脈受損")) gameState.status.push("經脈受損");
+            if (calc.tribulation && !gameState.status.includes("心魔滋生")) gameState.status.push("心魔滋生");
 
-            appendLogData("系統", `⚠️ 衝擊瓶頸失敗！真元逆流引發劇烈反噬，氣血暴跌 50%，修為散失 30%！經脈紊亂（需要調息 ${gameState.breakthroughCdDays} 天，或服用【破境丹】）。`, "system", false, true);
+            let failMsg = `⚠️ 衝擊瓶頸失敗！${calc.tribulation ? `在 ${calc.tribulation} 中遭受重創，` : ''}真元逆流引發劇烈反噬，氣血暴跌，修為散失！${calc.usedPill ? '（幸有丹藥護脈，傷勢與冷卻天數減半）' : ''}（需要調息 ${gameState.breakthroughCdDays} 天，或服用【破境丹】）。`;
+            appendLogData("系統", failMsg, "system", false, true);
             renderUI(); saveGameState();
         }
     }
@@ -878,6 +952,18 @@
         return s;
     }
 
+    function checkLifespan(s) {
+        const totalMonths = Math.floor((s.daysPassed || 0) / 30);
+        const addYears = Math.floor(totalMonths / 12);
+        const curAge = (s.ageBase || 18) + addYears;
+        const maxAgeDef = getRealmDef(s.level).maxAge;
+
+        if (curAge >= maxAgeDef && s.hp > 0) {
+            s.hp = 0;
+            appendLogData("天道", `💀 壽元耗盡！你的大限已至（現年 ${curAge} 歲 / 壽命上限 ${maxAgeDef} 歲），因未能及時突破境界，最終於洞府內遺撼坐化身死...`, "ai", false, true);
+        }
+    }
+
     function applyStateDelta(currentState, rawState, checkData, actionText, storyText = "") {
         const s = structuredClone(currentState);
         
@@ -898,11 +984,14 @@
         if (s.breakthroughCdDays > 0) {
             s.breakthroughCdDays = Math.max(0, s.breakthroughCdDays - spent);
             if (s.breakthroughCdDays === 0) {
-                s.status = s.status.filter(st => !/(衝擊反噬|經脈受損)/.test(st));
+                s.status = s.status.filter(st => !/(衝擊反噬|經脈受損|心魔滋生)/.test(st));
             }
         }
 
-        if (!rawState) return s;
+        if (!rawState) {
+            checkLifespan(s);
+            return s;
+        }
 
         if (rawState.location) s.location = rawState.location;
         if (rawState.sect && rawState.sect.name && s.hasChosenOrigin) {
@@ -938,23 +1027,19 @@
             });
         }
 
-        // 1. 從 AI JSON 寫入 NPC (支援頭銜轉換為真名自動覆蓋機制)
         if (Array.isArray(rawState.npcs)) {
             rawState.npcs.forEach(n => {
                 if (n && n.name && isRealNPC(n.name)) {
                     let cleanName = cleanNameStrict(n.name);
                     let cleanIdentity = cleanNameStrict(n.identity || "江湖修士");
 
-                    // 檢查是否存在同名 NPC
                     let existingByName = s.npcs.find(ex => cleanNameStrict(ex.name) === cleanName);
-                    // 檢查是否存在「以頭銜為名字」的舊 NPC（例如舊名是『雜役堂執事』，新名是『唐三』且身份為『雜役堂執事』）
                     let existingByTitle = s.npcs.find(ex => ex.name === cleanIdentity || (cleanIdentity && ex.identity.includes(ex.name)));
 
                     if (existingByName) {
                         if (n.identity) existingByName.identity = cleanIdentity;
                         if (n.affinity) existingByName.affinity = n.affinity;
                     } else if (existingByTitle) {
-                        // 發現頭銜升級為真名：更新名稱並繼承原本好感度！
                         appendLogData("系統", `結識人物【${existingByTitle.name}】真名顯化為【${cleanName}】！`, "system", false, true);
                         existingByTitle.name = cleanName;
                         existingByTitle.identity = cleanIdentity;
@@ -966,7 +1051,6 @@
             });
         }
 
-        // 2. 補抓機制：自動從故事內文掃描常見 NPC 名稱與頭銜（防止 AI JSON 漏寫）
         const npcTitleRegex = /([張王李趙陳林黃周吳徐朱馬胡郭何高韓顧許蕭鳳葉楚蘇阮穆][一-龍a-zA-Z]{1,2}(?:長老|師兄|師姐|師弟|師妹|掌門|執事|真人|尊者|堂主|閣主|殿主|掌櫃|家主|老者))/g;
         let matches = storyText.match(npcTitleRegex);
         if (matches) {
@@ -988,6 +1072,7 @@
             s.maxExp = rDef.maxExp;
             s.exp = 0;
             s.breakthroughCdDays = 0;
+            s.status = s.status.filter(st => !/(衝擊反噬|經脈受損|心魔滋生)/.test(st));
         } else if (rawState.expReward && checkData.success) {
             s.exp = Math.min(s.maxExp, s.exp + rawState.expReward);
         }
@@ -1044,6 +1129,8 @@
             }
         }
         s.choices = rawChoices;
+
+        checkLifespan(s);
         return s;
     }
 
@@ -1161,10 +1248,12 @@
         const inCd = s.breakthroughCdDays > 0;
         deduceBtn.disabled = busy || dead || !hasChosen || !canBreak || inCd;
         
+        const trib = getTribulationName(s.level);
         if (!hasChosen) deduceBtn.textContent = "✨ 需先點選上方身世開局";
         else if (inCd) deduceBtn.textContent = `⏳ 經脈紊亂 (還需調息 ${s.breakthroughCdDays} 天)`;
         else if (!canBreak) deduceBtn.textContent = `✨ 修為未滿 (${s.exp}/${s.maxExp})`;
-        else deduceBtn.textContent = s.level === 0 ? "✨ 點此引氣入體破境！" : "⚡ 突破境界瓶頸";
+        else if (trib) deduceBtn.textContent = `⚡ 迎戰 ${trib.replace(/[【】]/g,'')} 破境！`;
+        else deduceBtn.textContent = s.level === 0 ? "✨ 點此引氣入體破境！" : "⚡ 衝擊突破境界瓶頸";
 
         document.getElementById("action-input").disabled = busy || dead || !hasChosen;
         document.getElementById("btn-submit").disabled = busy || dead || !hasChosen;
@@ -1229,9 +1318,26 @@
         const s = gameState;
         const curCP = calculateCombatPower(s);
 
+        const totalMonths = Math.floor((s.daysPassed || 0) / 30);
+        const addYears = Math.floor(totalMonths / 12);
+        const remMonths = totalMonths % 12;
+        const curAge = (s.ageBase || 18) + addYears;
+        const maxAgeDef = getRealmDef(s.level).maxAge;
+
         document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${s.location}`;
         document.getElementById("ui-realm").innerText = `${s.realm} (Lv.${s.level})`;
         document.getElementById("ui-cp").innerText = `${curCP}`;
+        
+        const ageEl = document.getElementById("ui-age");
+        if (ageEl) {
+            ageEl.innerText = `${curAge}歲${remMonths}月 / ${maxAgeDef}歲`;
+            if (curAge >= maxAgeDef - 5) {
+                ageEl.style.color = "var(--accent-red)";
+            } else {
+                ageEl.style.color = "#ff8a80";
+            }
+        }
+
         document.getElementById("ui-linggen").innerText = s.linggen;
         document.getElementById("ui-physique").innerText = s.physique;
         document.getElementById("ui-hp").innerText = `${s.hp} / ${getMaxHp()}`;
@@ -1258,7 +1364,7 @@
 
         const statusBox = document.getElementById("ui-status");
         if (s.status && s.status.length > 0) {
-            statusBox.innerHTML = s.status.map(st => `<span style="color: ${/(紊亂|受損|反噬|不寧|傷|毒)/.test(st) ? "var(--accent-red)" : "var(--hl-cyan)"}">• ${st}</span>`).join("<br>");
+            statusBox.innerHTML = s.status.map(st => `<span style="color: ${/(紊亂|受損|反噬|不寧|傷|毒|心魔)/.test(st) ? "var(--accent-red)" : "var(--hl-cyan)"}">• ${st}</span>`).join("<br>");
         } else statusBox.innerHTML = "<span style='color:var(--hl-cyan)'>• 氣血平穩</span>";
 
         const kfActive = document.getElementById("ui-kungfu-active");
