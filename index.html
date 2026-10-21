@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.50)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.51)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -169,6 +169,7 @@
             </div>
             <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18歲0月 / 100歲</span></div>
             <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">50 / 50</span></div>
+            <div class="stat-item"><span class="stat-label">修練疲勞度</span><span class="stat-value" style="color:#ffb74d" id="ui-fatigue">0 / 100</span></div>
             <div class="stat-item"><span class="stat-label">靈根資質 (點擊詳解)</span><span class="stat-value clickable-tag" id="ui-linggen" onclick="showLinggenModal()">待顯化</span></div>
             <div class="stat-item"><span class="stat-label">體質天賦 (點擊詳解)</span><span class="stat-value clickable-tag" id="ui-physique" onclick="showPhysiqueModal()">凡體</span></div>
             <div class="stat-item"><span class="stat-label">靈石貨幣 (下品折算)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0 顆</span></div>
@@ -268,10 +269,148 @@
         if (safeLvl < REALMS.length) return REALMS[safeLvl];
         let base = REALMS[REALMS.length - 1];
         let diff = safeLvl - (REALMS.length - 1);
-        return { level: safeLvl, name: `化神老祖 (Lv.${safeLvl})`, maxAge: base.maxAge + diff * 200, maxHp: base.maxHp + diff * 30000, maxExp: base.maxExp + diff * 300000 }; }  const SKILL_STAGES = ["入門", "熟練", "精通", "大成", "圓滿"]; function getStageMaxExp(realmStr) { const idx = SKILL_STAGES.indexOf(realmStr \vert{}\vert{} "入門"); return [100, 250, 500, 1000, 2000][idx] \vert{}\vert{} 100; }  const DEFAULT_ORIGIN_CHOICES = [ "1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡" ];  const DEFAULT_EXPLORE_CHOICES = ["1. 觀察周圍區域環境", "2. 盤膝運轉真元調息", "3. 探索附近未知的遺蹟"]; const DEFAULT_WELCOME_MSG = "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請選擇上方預設身世或直接在下方輸入自訂身世開局！";  function getDefaultGameState() { return { version: "4.50", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體", daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0, location: "九州邊境 · 荒郊破廟", scenarioState: "safe", hasChosenOrigin: false, sect: { name: "無", rank: "散修", contribution: 0, position: "無" }, stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 }, status: ["凡體肉身"], activeKungfu: null, kungfu: [], skills: [], equipment: { weapon: null, armor: null, accessory: null, treasure: null }, inventory: ["粗布衣", "聚氣丹", "破境丹"], npcs: [], worldEvents: [], quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }], choices: [...DEFAULT_ORIGIN_CHOICES] }; }  let gameState = getDefaultGameState(); let conversationHistory = []; let storyLogData = []; let isTyping = false;  // 🌟 品級色彩與字典系統 (Rarity Engine) const RARITY_TIERS = { '凡品': { name: '凡品', color: '#888888', mult: 1.0 }, '下品': { name: '下品', color: '#43a047', mult: 1.2 }, '中品': { name: '中品', color: '#0288d1', mult: 1.5 }, '上品': { name: '上品', color: '#ab47bc', mult: 2.0 }, '極品': { name: '極品', color: '#ffd700', mult: 3.0 }, '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 } };  function cleanNameStrict(rawName) { if (!rawName) return ""; return String(typeof rawName === 'object' ? (rawName.name \vert{}\vert{} rawName.title \vert{}\vert{} "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim(); }  // 🌟 100\% 確定性物品品級與屬性解析器 function getItemMeta(itemInput) { const rawName = typeof itemInput === 'object' ? (itemInput.name \vert{}\vert{} '') : String(itemInput \vert{}\vert{} ''); const clean = cleanNameStrict(rawName);  // 1. 辨識品級 (預設為下品/中品) let tierKey = '下品'; if (/凡\vert{}粗\vert{}劣\vert{}破/.test(clean)) tierKey = '凡品'; else if (/中/.test(clean)) tierKey = '中品'; else if (/上\vert{}玄\vert{}地/.test(clean)) tierKey = '上品'; else if (/極\vert{}天\vert{}寶/.test(clean)) tierKey = '極品'; else if (/仙\vert{}神\vert{}聖/.test(clean)) tierKey = '仙品';  const rarity = RARITY_TIERS[tierKey];  // 2. 丹藥與消耗品 if (/聚氣丹\vert{}修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
-        if (/培元丹|療傷丹|回春丹|金創藥/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` }; if (/破境丹\vert{}築基丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(100 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(100 * rarity.mult)} 點修為` };
+        return { level: safeLvl, name: `化神老祖 (Lv.${safeLvl})`, maxAge: base.maxAge + diff * 200, maxHp: base.maxHp + diff * 30000, maxExp: base.maxExp + diff * 300000 };
+    }
 
-        // 3. 裝備類別歸類與加成演算
+    const SKILL_STAGES = ["入門", "熟練", "精通", "大成", "圓滿"];
+    function getStageMaxExp(realmStr) {
+        const idx = SKILL_STAGES.indexOf(realmStr || "入門");
+        return [100, 250, 500, 1000, 2000][idx] || 100;
+    }
+
+    const DEFAULT_ORIGIN_CHOICES = [
+        "1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", 
+        "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", 
+        "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"
+    ];
+
+    const DEFAULT_EXPLORE_CHOICES = ["1. 觀察周圍區域環境", "2. 盤膝運轉真元調息", "3. 探索附近未知的遺蹟"];
+    const DEFAULT_WELCOME_MSG = "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請選擇上方預設身世或直接在下方輸入自訂身世開局！";
+
+    function getDefaultGameState() {
+        return {
+            version: "4.51",
+            level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
+            daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
+            spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
+            isDead: false,
+            location: "九州邊境 · 荒郊破廟", scenarioState: "safe",
+            hasChosenOrigin: false,
+            sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
+            stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
+            status: ["凡體肉身"], activeKungfu: null, kungfu: [], skills: [],
+            equipment: { weapon: null, armor: null, accessory: null, treasure: null },
+            inventory: ["粗布衣", "聚氣丹", "破境丹"], npcs: [], worldEvents: [],
+            quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
+            choices: [...DEFAULT_ORIGIN_CHOICES]
+        };
+    }
+
+    let gameState = getDefaultGameState();
+    let conversationHistory = [];
+    let storyLogData = [];
+    let isTyping = false;
+
+    const RARITY_TIERS = {
+        '凡品': { name: '凡品', color: '#888888', mult: 1.0 },
+        '下品': { name: '下品', color: '#43a047', mult: 1.2 },
+        '中品': { name: '中品', color: '#0288d1', mult: 1.5 },
+        '上品': { name: '上品', color: '#ab47bc', mult: 2.0 },
+        '極品': { name: '極品', color: '#ffd700', mult: 3.0 },
+        '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
+    };
+
+    function cleanNameStrict(rawName) {
+        if (!rawName) return "";
+        return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
+    }
+
+    // 🌟 100% 雙重保障體質解析引擎
+    function getPhysiqueMeta(physiqueInput) {
+        let name = "凡體";
+        let explicitTier = null;
+
+        if (typeof physiqueInput === 'object' && physiqueInput) {
+            name = physiqueInput.name || "凡體";
+            explicitTier = physiqueInput.tier || null;
+        } else {
+            name = String(physiqueInput || "凡體");
+        }
+        const clean = cleanNameStrict(name);
+
+        if (explicitTier === 'immortal' || explicitTier === '仙體') return { name: clean, tier: 'immortal', hpMult: 1.60, cpBonus: 600, label: "HP+60% / CP+600 / 全屬性+15", color: "#ff6d00", desc: "🌟 [仙體/混沌階] 肉身成聖，萬劫不朽。" };
+        if (explicitTier === 'saint' || explicitTier === '聖體') return { name: clean, tier: 'saint', hpMult: 1.35, cpBonus: 300, label: "HP+35% / CP+300 / 膂骨+10", color: "#ffd700", desc: "✨ [聖體/王體階] 氣血如虹，威壓萬界。" };
+        if (explicitTier === 'spirit' || explicitTier === '靈體') return { name: clean, tier: 'spirit', hpMult: 1.15, cpBonus: 100, label: "HP+15% / CP+100", color: "#ab47bc", desc: "🔮 [靈體階] 氣血與感應皆優於凡人。" };
+
+        if (/(混沌|鴻蒙|先天|道胎|太初|無上|萬劫|帝體|仙體|仙)/.test(clean)) {
+            return { name: clean, tier: 'immortal', hpMult: 1.60, cpBonus: 600, label: "HP+60% / CP+600 / 全屬性+15", color: "#ff6d00", desc: "🌟 [仙體/混沌階] 肉身成聖，萬劫不朽。" };
+        }
+        if (/(聖體|王體|霸體|神體|尊體|荒古|至尊|神|聖|王|霸)/.test(clean)) {
+            return { name: clean, tier: 'saint', hpMult: 1.35, cpBonus: 300, label: "HP+35% / CP+300 / 膂骨+10", color: "#ffd700", desc: "✨ [聖體/王體階] 氣血如虹，威壓萬界。" };
+        }
+        if (/(靈體|純陽|純陰|寶體|琉璃|玄體|冥體|戰體|陰陽|五行|靈|體)/.test(clean)) {
+            return { name: clean, tier: 'spirit', hpMult: 1.15, cpBonus: 100, label: "HP+15% / CP+100", color: "#ab47bc", desc: "🔮 [靈體階] 氣血與感應皆優於凡人。" };
+        }
+
+        return { name: clean, tier: 'mortal', hpMult: 1.0, cpBonus: 0, label: "無氣血加成", color: "#888888", desc: "🧍 [凡體] 普通凡人肉身。" };
+    }
+
+    // 🌟 100% 雙重保障靈根解析引擎
+    function getLinggenMeta(linggenInput) {
+        let name = "待顯化";
+        let explicitTier = null;
+
+        if (typeof linggenInput === 'object' && linggenInput) {
+            name = linggenInput.name || "待顯化";
+            explicitTier = linggenInput.tier || null;
+        } else {
+            name = String(linggenInput || "待顯化");
+        }
+        const clean = cleanNameStrict(name);
+
+        if (clean === "待顯化" || /(未顯化|尚未|無靈根|斷裂|缺損|無)/.test(clean)) {
+            return { name: clean, tier: 'none', expRate: 1.0, breakBonus: 0.0, label: "無修修煉加成", color: "#888888", desc: "🔒 [未顯化/無靈根] 凡人身軀，無法獲得額外靈氣吸納加成。" };
+        }
+
+        if (explicitTier === 'chaos' || explicitTier === '混沌') return { name: clean, tier: 'chaos', expRate: 3.0, breakBonus: 0.10, label: "+200%修煉 / +10%突破", color: "#ff6d00", desc: "🌌 [混沌/先天靈根] 萬法歸一，奪天地之造化。" };
+        if (explicitTier === 'heavenly' || explicitTier === '天靈根') return { name: clean, tier: 'heavenly', expRate: 2.0, breakBonus: 0.05, label: "+100%修煉 / +5%突破", color: "#ffd700", desc: "⚡ [天靈根] 單一屬性極致，修練一日千里。" };
+        if (explicitTier === 'mutation' || explicitTier === '異靈根') return { name: clean, tier: 'mutation', expRate: 1.4, breakBonus: 0.03, label: "+40%修煉 / +3%突破", color: "#ab47bc", desc: "🌀 [變異靈根] 風雷冰光暗，戰力與修練俱佳。" };
+        if (explicitTier === 'true' || explicitTier === '真靈根') return { name: clean, tier: 'true', expRate: 1.1, breakBonus: 0.01, label: "+10%修煉 / +1%突破", color: "#43a047", desc: "🍂 [真靈根] 雙三屬性俱全，規矩穩定。" };
+        if (explicitTier === 'pseudo' || explicitTier === '偽靈根') return { name: clean, tier: 'pseudo', expRate: 0.8, breakBonus: 0.00, label: "-20%修煉 (雜質多)", color: "#888888", desc: "🥀 [偽/雜靈根] 四五屬性混雜，吐納緩慢。" };
+
+        if (/(混沌|鴻蒙|太初|萬劫|無上|全屬性|先天)/.test(clean)) {
+            return { name: clean, tier: 'chaos', expRate: 3.0, breakBonus: 0.10, label: "+200%修煉 / +10%突破", color: "#ff6d00", desc: "🌌 [混沌/先天靈根] 萬法歸一，奪天地之造化。" };
+        }
+        if (/(天靈根|單靈根|純陽|純陰|極致|天)/.test(clean)) {
+            return { name: clean, tier: 'heavenly', expRate: 2.0, breakBonus: 0.05, label: "+100%修煉 / +5%突破", color: "#ffd700", desc: "⚡ [天靈根] 單一屬性極致，修練一日千里。" };
+        }
+        if (/(風|雷|冰|光|暗|異|變異)/.test(clean)) {
+            return { name: clean, tier: 'mutation', expRate: 1.4, breakBonus: 0.03, label: "+40%修煉 / +3%突破", color: "#ab47bc", desc: "🌀 [變異靈根] 風雷冰光暗，戰力與修練俱佳。" };
+        }
+        if (/(四|五|雜|偽|廢|劣|四屬性|五屬性)/.test(clean)) {
+            return { name: clean, tier: 'pseudo', expRate: 0.8, breakBonus: 0.00, label: "-20%修煉 (雜質多)", color: "#888888", desc: "🥀 [偽/雜靈根] 四五屬性混雜，吐納緩慢。" };
+        }
+
+        return { name: clean, tier: 'true', expRate: 1.1, breakBonus: 0.01, label: "+10%修煉 / +1%突破", color: "#43a047", desc: "🍂 [真靈根] 雙三屬性俱全，規矩穩定。" };
+    }
+
+    function getItemMeta(itemInput) {
+        const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
+        const clean = cleanNameStrict(rawName);
+
+        let tierKey = '下品';
+        if (/凡|粗|劣|破/.test(clean)) tierKey = '凡品';
+        else if (/中/.test(clean)) tierKey = '中品';
+        else if (/上|玄|地/.test(clean)) tierKey = '上品';
+        else if (/極|天|寶/.test(clean)) tierKey = '極品';
+        else if (/仙|神|聖/.test(clean)) tierKey = '仙品';
+
+        const rarity = RARITY_TIERS[tierKey];
+
+        if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
+        if (/培元丹|療傷丹|回春丹|金創藥/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
+        if (/破境丹|築基丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(100 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(100 * rarity.mult)} 點修為` };
+
         if (/(劍|刀|槍|戟|弓|刃|杖|斧)/.test(clean)) {
             return { type: 'equipment', slot: 'weapon', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: Math.floor(20 * rarity.mult), strBonus: Math.floor(5 * rarity.mult), desc: `🗡️ 裝備增加 ${Math.floor(20 * rarity.mult)} HP 與 ${Math.floor(5 * rarity.mult)} 膂力` };
         }
@@ -285,7 +424,6 @@
             return { type: 'equipment', slot: 'treasure', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: Math.floor(80 * rarity.mult), intBonus: Math.floor(8 * rarity.mult), wisBonus: Math.floor(5 * rarity.mult), desc: `🔮 裝備增加 ${Math.floor(80 * rarity.mult)} HP,${Math.floor(8 * rarity.mult)} 神識` };
         }
 
-        // 4. 普通雜物/材料
         return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: 0, desc: "普通修仙雜物" };
     }
 
@@ -303,7 +441,7 @@
         return Math.floor((realmDef.maxHp + kfHp + eqHp) * (phyMeta.hpMult || 1.0));
     }
 
-    // 🌟 升級版戰力算式：採計境界 + 六維總和 + 裝備總加成
+    // 🌟 升級版全指標戰力 CP 算式
     function calculateCombatPower(s = gameState) {
         let baseCp = (s.level || 0) * 150 + 100;
         let statsSum = 0;
@@ -317,32 +455,19 @@
                 eqBonus += (meta.hpBonus || 0) + ((meta.strBonus || 0) + (meta.conBonus || 0) + (meta.intBonus || 0)) * 10;
             }
         });
+        let kfBonus = (s.kungfu || []).length * 50 + (s.skills || []).length * 30;
         const phyMeta = getPhysiqueMeta(s.physique);
-        return Math.floor(baseCp + statsSum * 5 + eqBonus + (phyMeta.cpBonus || 0));
+        return Math.floor(baseCp + statsSum * 5 + eqBonus + kfBonus + (phyMeta.cpBonus || 0));
     }
 
-    function getLinggenMeta(linggenInput) {
-        let name = "待顯化";
-        if (typeof linggenInput === 'object' && linggenInput) name = linggenInput.name || "待顯化";
-        else name = String(linggenInput || "待顯化");
-        const clean = cleanNameStrict(name);
-
-        if (clean === "待顯化" || /(廢|缺|無|斷|損|尚未)/.test(clean)) {
-            return { name: clean, tier: 'none', expRate: 1.0, breakBonus: 0.0, label: "無修修煉加成", color: "#888", desc: "🔒 [未顯化/無靈根] 凡人身軀，無法獲得額外靈氣吸納加成。" };
+    // 🌟 壽元坐化死亡檢查器
+    function checkLifeStatus(s = gameState) {
+        const years = Math.floor((s.daysPassed || 0) / 365);
+        const curAge = (s.ageBase || 18) + years;
+        if (curAge >= (s.maxAge || 100)) {
+            s.isDead = true;
+            openGameModal("💀 壽元耗盡 · 坐化羽化", `修士 <b>${curAge}</b> 歲壽終正寢，未能在壽元耗盡前突破至更高境界。請點擊系統選單進行【輪迴重置】開啟新篇章。`);
         }
-        return { name: clean, tier: 'basic', expRate: 1.10, breakBonus: 0.01, label: "+10%修煉 / +1%突破", color: "#43a047", desc: "🍂 [基礎靈根] 吸納天地靈氣規矩穩定。" };
-    }
-
-    function getPhysiqueMeta(physiqueInput) {
-        let name = "凡體";
-        if (typeof physiqueInput === 'object' && physiqueInput) name = physiqueInput.name || "凡體";
-        else name = String(physiqueInput || "凡體");
-        const clean = cleanNameStrict(name);
-
-        if (clean === "凡體" || /(廢體|無|病弱|未覺醒)/.test(clean)) {
-            return { name: clean, tier: 'normal', hpMult: 1.0, cpBonus: 0, label: "無氣血加成", color: "#888", desc: "🧍 [凡人普通肉身] 普通體質。" };
-        }
-        return { name: clean, tier: 'spirit', hpMult: 1.15, cpBonus: 100, label: "HP+15% / CP+100", color: "#ab47bc", desc: "✨ [特殊靈體] 氣血與感應皆優於凡人。" };
     }
 
     function openGameModal(titleText, contentElement) {
@@ -408,8 +533,8 @@
         return clean.length > 0;
     }
 
-    // 🗡️ 穿戴裝備系統
     function equipItem(itemName) {
+        if (gameState.isDead) return;
         const idx = gameState.inventory.indexOf(itemName);
         if (idx === -1) return;
 
@@ -430,8 +555,8 @@
         saveGameState();
     }
 
-    // 💊 使用消耗品系統
     function useItem(itemName) {
+        if (gameState.isDead) return;
         const idx = gameState.inventory.indexOf(itemName);
         if (idx === -1) return;
 
@@ -454,6 +579,7 @@
     }
 
     function unequipItem(slot) {
+        if (gameState.isDead) return;
         if (!gameState.equipment || !gameState.equipment[slot]) return;
         const itemObj = gameState.equipment[slot];
         const name = typeof itemObj === 'object' ? itemObj.name : itemObj;
@@ -464,14 +590,16 @@
     }
 
     function quickHeal(days) {
+        if (gameState.isDead) return;
         if (!gameState.hasChosenOrigin) {
             openGameModal("⚠️ 未開局", "請先設定身世開局後方可進行閉關打坐！");
             return;
         }
-        sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days, healPartial: true });
+        sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days, healPartial: true, addFatigue: 15 });
     }
 
     function hospitalHeal() {
+        if (gameState.isDead) return;
         if (!gameState.hasChosenOrigin) {
             openGameModal("⚠️ 未開局", "請先設定身世開局後方可求醫！");
             return;
@@ -480,10 +608,11 @@
             openGameModal("⚠️ 靈石不足", "求醫需要至少 50 顆靈石！");
             return;
         }
-        sendAction("【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（扣除 50 靈石與消耗 1 天時間）。請描繪求醫過程與名醫診斷。】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true });
+        sendAction("【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（扣除 50 靈石、消耗 1 天時間，並清除修練疲勞）。請描繪求醫過程與名醫診斷。】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true, clearFatigue: true });
     }
 
     function sectAction(type) {
+        if (gameState.isDead) return;
         if (!gameState.hasChosenOrigin) {
             openGameModal("⚠️ 未開局", "請先設定身世開局！");
             return;
@@ -493,20 +622,26 @@
     }
 
     function attemptBreakthrough() {
+        if (gameState.isDead) return;
         if (!gameState.hasChosenOrigin) return;
+        if ((gameState.breakthroughCdDays || 0) > 0) {
+            openGameModal("⚠️ 經脈受損", `衝關經脈受損，尚需調理 ${gameState.breakthroughCdDays} 天後方可再次嘗試突破！`);
+            return;
+        }
         if (gameState.exp < gameState.maxExp) {
             openGameModal("⚠️ 修為未滿", "修為尚未圓滿，無法強行突破！");
             return;
         }
 
         const luk = gameState.stats?.luk || 10;
-        const successRate = Math.min(0.95, 0.60 + (luk * 0.02));
+        const lgMeta = getLinggenMeta(gameState.linggen);
+        const successRate = Math.min(0.95, 0.60 + (luk * 0.02) + (lgMeta.breakBonus || 0));
         const isSuccess = Math.random() < successRate;
 
         if (isSuccess) {
             sendAction(`【衝擊境界瓶頸：天道判定成功！】修為順利突破至下一境界！請描繪渡劫衝關的震撼過程與肉身脫胎換骨之變。`, { isBreakthrough: true, breakthroughSuccess: true });
         } else {
-            sendAction(`【衝擊境界瓶頸：天道判定失敗！】真元逆衝遭受經脈反噬受傷！請描繪衝關失敗時的凶險與真元紊亂狀況。`, { isBreakthrough: true, breakthroughSuccess: false });
+            sendAction(`【衝擊境界瓶頸：天道判定失敗！】真元逆衝遭受經脈反噬受傷（冷卻 15 天）！請描繪衝關失敗時的凶險與真元紊亂狀況。`, { isBreakthrough: true, breakthroughSuccess: false });
         }
     }
 
@@ -533,7 +668,7 @@
   "gainedItems": [], "gainedKungfu": [], "gainedSkills": [],
   "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
-  "npcs": [], "choices": ["繼續探索", "原地調息", "前往集市"]
+  "npcs": [], "worldEvents": [], "choices": ["繼續探索", "原地調息", "前往集市"]
 }
 \`\`\``; 
     }
@@ -628,6 +763,10 @@
             }));
         }
 
+        if (Array.isArray(raw.worldEvents)) {
+            validated.worldEvents = raw.worldEvents.map(cleanNameStrict).filter(Boolean);
+        }
+
         if (Array.isArray(raw.choices)) {
             validated.choices = raw.choices.map(c => cleanNameStrict(String(c))).filter(Boolean);
         }
@@ -635,7 +774,7 @@
         return validated;
     }
 
-    // 🌟 P1 修正 (問題 1)：choices 完全依據 hasChosenOrigin 正確分流
+    // 🌟 核心狀態套用與疲勞度遞減
     function applyStateDelta(currentState, rawState, checkData = null, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -657,7 +796,8 @@
             if (rawState.expReward && rawState.expReward > 0) {
                 const lgMeta = getLinggenMeta(s.linggen);
                 const checkMult = checkData ? checkData.expMult : 1.0;
-                const gainExp = Math.floor(rawState.expReward * (lgMeta.expRate || 1.0) * checkMult);
+                const fatigueMult = (s.practiceFatigue || 0) > 50 ? 0.5 : 1.0;
+                const gainExp = Math.floor(rawState.expReward * (lgMeta.expRate || 1.0) * checkMult * fatigueMult);
                 s.exp = Math.min(s.maxExp, (s.exp || 0) + gainExp);
             }
         }
@@ -704,7 +844,13 @@
 
         if (rawState.quests) s.quests = rawState.quests;
 
-        // 🌟 修正點：確定性分流 Choices 選項
+        if (Array.isArray(rawState.worldEvents)) {
+            rawState.worldEvents.forEach(we => {
+                if (!s.worldEvents.includes(we)) s.worldEvents.unshift(we);
+            });
+            s.worldEvents = s.worldEvents.slice(0, 20);
+        }
+
         if (Array.isArray(rawState.choices) && rawState.choices.length > 0) {
             s.choices = rawState.choices;
         } else if (s.hasChosenOrigin) {
@@ -754,7 +900,7 @@
     }
 
     async function sendAction(choiceText = null, eventMeta = null) {
-        if (isTyping) return;
+        if (isTyping || gameState.isDead) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
         if (!apiKey) {
             openGameModal("⚠️ 未設定 API Key", "請先點擊下方 【系統】 分頁，貼上並儲存有效的 Google Gemini 或 OpenAI API Key 後方能開啟修仙歷程！");
@@ -765,7 +911,6 @@
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
 
-        // 📸 P1 修正 (問題 2)：將 storyLogData 一併納入交易快照
         const stateSnapshot = structuredClone(gameState);
         const historySnapshot = structuredClone(conversationHistory);
         const logSnapshot = structuredClone(storyLogData);
@@ -775,10 +920,17 @@
         if (eventMeta) {
             if (eventMeta.addDays) {
                 gameState.daysPassed = (gameState.daysPassed || 0) + eventMeta.addDays;
+                gameState.breakthroughCdDays = Math.max(0, (gameState.breakthroughCdDays || 0) - eventMeta.addDays);
                 if (eventMeta.healPartial) {
                     const healAmt = Math.floor(getMaxHp(gameState) * (eventMeta.addDays / 30));
                     gameState.hp = Math.min(getMaxHp(gameState), (gameState.hp || 0) + healAmt);
                 }
+            }
+            if (eventMeta.addFatigue) {
+                gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + eventMeta.addFatigue);
+            }
+            if (eventMeta.clearFatigue) {
+                gameState.practiceFatigue = 0;
             }
             if (eventMeta.deductStone) gameState.spiritStone = Math.max(0, (gameState.spiritStone || 0) - eventMeta.deductStone);
             if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
@@ -791,10 +943,12 @@
                     gameState.maxAge = rDef.maxAge;
                     gameState.exp = 0;
                     gameState.hp = getMaxHp(gameState);
+                    gameState.breakthroughCdDays = 0;
                 } else {
                     const damage = Math.floor(getMaxHp(gameState) * 0.3);
                     gameState.hp = Math.max(1, (gameState.hp || 0) - damage);
                     gameState.exp = Math.floor((gameState.exp || 0) * 0.8);
+                    gameState.breakthroughCdDays = 15;
                 }
             }
         }
@@ -813,7 +967,6 @@
 
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
-            // 🌟 P1 修正 (問題 3)：僅在 parsedState 驗證成功時才設定開局標記
             if (parsedState) {
                 if (!gameState.hasChosenOrigin) {
                     gameState.hasChosenOrigin = true;
@@ -825,8 +978,8 @@
             }
 
             appendLogData("天道", storyText, "ai", false, true);
+            checkLifeStatus(gameState);
         } catch (error) {
-            // 🔄 P1 修正 (問題 2)：100% 完全 Rollback 還原（含日誌與手動輸入框）
             console.error("API 請求失敗，執行 Rollback 復原", error);
             gameState = stateSnapshot;
             conversationHistory = historySnapshot;
@@ -859,7 +1012,8 @@
         s.daysPassed = Math.max(0, Number.isInteger(Number(raw.daysPassed)) ? Number(raw.daysPassed) : 0);
         s.ageBase = Math.max(1, Number.isInteger(Number(raw.ageBase)) ? Number(raw.ageBase) : 18);
         s.breakthroughCdDays = Math.max(0, Number.isInteger(Number(raw.breakthroughCdDays)) ? Number(raw.breakthroughCdDays) : 0);
-        s.practiceFatigue = Math.max(0, Number.isInteger(Number(raw.practiceFatigue)) ? Number(raw.practiceFatigue) : 0);
+        s.practiceFatigue = Math.max(0, Math.min(100, Number.isInteger(Number(raw.practiceFatigue)) ? Number(raw.practiceFatigue) : 0));
+        s.isDead = Boolean(raw.isDead);
 
         s.stats = s.stats && typeof s.stats === 'object' && !Array.isArray(s.stats) ? s.stats : {};
         const defaultStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
@@ -939,6 +1093,7 @@
                 let b = document.createElement("button");
                 b.className = "choice-btn";
                 b.textContent = String(c);
+                b.disabled = gameState.isDead;
                 b.onclick = () => sendAction(c);
                 choiceCont.appendChild(b);
             });
@@ -989,6 +1144,7 @@
         document.getElementById("ui-realm").innerText = `${gameState.realm || "凡人"} (Lv.${gameState.level || 0})`;
         document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
         document.getElementById("ui-hp").innerText = `${gameState.hp || 0} / ${getMaxHp(gameState)}`;
+        document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue || 0} / 100`;
         document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone || 0} 顆`;
         document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${gameState.location || '荒郊破廟'}`;
         document.getElementById("ui-sect-top").innerText = `${gameState.sect?.name || '無宗門'} (${gameState.sect?.rank || '散修'})`;
@@ -1038,7 +1194,6 @@
         }
     }
 
-    // 🌟 P1 修正 (問題 4)：品級色彩標示與安全 DOM 裝備/背包渲染
     function renderInventory() {
         const eqSlots = ['weapon', 'armor', 'accessory', 'treasure'];
         eqSlots.forEach(slot => {
@@ -1083,11 +1238,13 @@
                     if (meta.slot) {
                         let btn = document.createElement("button");
                         btn.textContent = "裝備";
+                        btn.disabled = gameState.isDead;
                         btn.onclick = () => equipItem(name);
                         actionGroup.appendChild(btn);
                     } else if (meta.type === 'consumable') {
                         let btn = document.createElement("button");
                         btn.textContent = "使用";
+                        btn.disabled = gameState.isDead;
                         btn.onclick = () => useItem(name);
                         actionGroup.appendChild(btn);
                     }
@@ -1134,8 +1291,14 @@
         try {
             const deduceBtn = document.getElementById("btn-deduce");
             if (deduceBtn) {
-                if (!gameState.hasChosenOrigin) {
+                if (gameState.isDead) {
+                    deduceBtn.textContent = "💀 壽元耗盡坐化";
+                    deduceBtn.disabled = true;
+                } else if (!gameState.hasChosenOrigin) {
                     deduceBtn.textContent = "✨ 需先設定身世開局";
+                    deduceBtn.disabled = true;
+                } else if ((gameState.breakthroughCdDays || 0) > 0) {
+                    deduceBtn.textContent = `⚠️ 經脈受損 (${gameState.breakthroughCdDays}天)`;
                     deduceBtn.disabled = true;
                 } else if (gameState.exp < gameState.maxExp) {
                     deduceBtn.textContent = `✨ 修為未滿 (${gameState.exp}/${gameState.maxExp})`;
@@ -1146,11 +1309,20 @@
                 }
             }
 
+            const submitBtn = document.getElementById("btn-submit");
+            if (submitBtn) submitBtn.disabled = gameState.isDead;
+
+            ['btn-heal', 'btn-long-heal', 'btn-hospital', 'btn-sect-quest', 'btn-sect-lib'].forEach(btnId => {
+                const el = document.getElementById(btnId);
+                if (el) el.disabled = gameState.isDead;
+            });
+
             const actionInput = document.getElementById("action-input");
             if (actionInput) {
-                actionInput.placeholder = gameState.hasChosenOrigin 
-                    ? "輸入行動或選擇上方選項..." 
-                    : "可點擊上方預設身世，或在此輸入自訂身世開局...";
+                actionInput.disabled = gameState.isDead;
+                actionInput.placeholder = gameState.isDead 
+                    ? "壽元耗盡坐化，請於系統頁面進行輪迴重置..." 
+                    : (gameState.hasChosenOrigin ? "輸入行動或選擇上方選項..." : "可點擊上方預設身世，或在此輸入自訂身世開局...");
             }
         } catch(e) { console.error("renderUI Exception:", e); }
     }
@@ -1162,7 +1334,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.50", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.51", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1187,7 +1359,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.50", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.51", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
