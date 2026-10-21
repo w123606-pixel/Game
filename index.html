@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.33)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.34)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -293,7 +293,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.33",
+            version: "4.34",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100,
             hp: 50, exp: 0, maxExp: 100,
@@ -386,6 +386,11 @@
         const rarityKey = detectRarity(baseName);
         const rMeta = ITEM_RARITIES[rarityKey] || ITEM_RARITIES["中品"];
 
+        // 優先過濾參悟/心得/秘籍類道具（防止「劍意心得」因帶有「劍」字而被錯判為武器）
+        if (/(心得|玉簡|秘籍|心法|殘篇|圖錄|訣|殘圖|卷|譜)/.test(baseName)) {
+            return { type: 'studyable', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 功法/秘圖 [點擊參悟/使用]` };
+        }
+
         if (/(衣|甲|冠|鞋|靴|袍|服)/.test(baseName)) {
             const hp = rMeta.tier === 0 ? 5 : 15 * rMeta.hpMul;
             const con = rMeta.tier === 0 ? 0 : 1 + rMeta.statMul;
@@ -426,9 +431,7 @@
         if (/(丹|散|膏|丸|水|草|藥|靈乳)/.test(baseName)) {
             return { type: 'consumable', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 丹藥 [增益/恢復氣血]` };
         }
-        if (/(玉簡|秘籍|心法|殘篇|圖錄|訣|殘圖)/.test(baseName)) {
-            return { type: 'studyable', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 功法/秘圖 [點擊參悟/使用]` };
-        }
+        
         return { type: 'misc', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 奇珍道具` };
     }
 
@@ -1664,7 +1667,7 @@
             if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
 
             const savePackage = {
-                version: "4.33",
+                version: "4.34",
                 state: gameState,
                 logs: storyLogData,
                 history: conversationHistory
@@ -1675,7 +1678,7 @@
             storyLogData = storyLogData.slice(-15);
             conversationHistory = conversationHistory.slice(-5);
             try {
-                const savePackage = { version: "4.33", state: gameState, logs: storyLogData, history: conversationHistory };
+                const savePackage = { version: "4.34", state: gameState, logs: storyLogData, history: conversationHistory };
                 localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
             } catch (err) {
                 console.error("LocalStorage 致命寫入失敗", err);
