@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.49)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.50)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -268,54 +268,57 @@
         if (safeLvl < REALMS.length) return REALMS[safeLvl];
         let base = REALMS[REALMS.length - 1];
         let diff = safeLvl - (REALMS.length - 1);
-        return { level: safeLvl, name: `化神老祖 (Lv.${safeLvl})`, maxAge: base.maxAge + diff * 200, maxHp: base.maxHp + diff * 30000, maxExp: base.maxExp + diff * 300000 };
+        return { level: safeLvl, name: `化神老祖 (Lv.${safeLvl})`, maxAge: base.maxAge + diff * 200, maxHp: base.maxHp + diff * 30000, maxExp: base.maxExp + diff * 300000 }; }  const SKILL_STAGES = ["入門", "熟練", "精通", "大成", "圓滿"]; function getStageMaxExp(realmStr) { const idx = SKILL_STAGES.indexOf(realmStr \vert{}\vert{} "入門"); return [100, 250, 500, 1000, 2000][idx] \vert{}\vert{} 100; }  const DEFAULT_ORIGIN_CHOICES = [ "1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡" ];  const DEFAULT_EXPLORE_CHOICES = ["1. 觀察周圍區域環境", "2. 盤膝運轉真元調息", "3. 探索附近未知的遺蹟"]; const DEFAULT_WELCOME_MSG = "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請選擇上方預設身世或直接在下方輸入自訂身世開局！";  function getDefaultGameState() { return { version: "4.50", level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體", daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100, spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0, location: "九州邊境 · 荒郊破廟", scenarioState: "safe", hasChosenOrigin: false, sect: { name: "無", rank: "散修", contribution: 0, position: "無" }, stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 }, status: ["凡體肉身"], activeKungfu: null, kungfu: [], skills: [], equipment: { weapon: null, armor: null, accessory: null, treasure: null }, inventory: ["粗布衣", "聚氣丹", "破境丹"], npcs: [], worldEvents: [], quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }], choices: [...DEFAULT_ORIGIN_CHOICES] }; }  let gameState = getDefaultGameState(); let conversationHistory = []; let storyLogData = []; let isTyping = false;  // 🌟 品級色彩與字典系統 (Rarity Engine) const RARITY_TIERS = { '凡品': { name: '凡品', color: '#888888', mult: 1.0 }, '下品': { name: '下品', color: '#43a047', mult: 1.2 }, '中品': { name: '中品', color: '#0288d1', mult: 1.5 }, '上品': { name: '上品', color: '#ab47bc', mult: 2.0 }, '極品': { name: '極品', color: '#ffd700', mult: 3.0 }, '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 } };  function cleanNameStrict(rawName) { if (!rawName) return ""; return String(typeof rawName === 'object' ? (rawName.name \vert{}\vert{} rawName.title \vert{}\vert{} "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim(); }  // 🌟 100\% 確定性物品品級與屬性解析器 function getItemMeta(itemInput) { const rawName = typeof itemInput === 'object' ? (itemInput.name \vert{}\vert{} '') : String(itemInput \vert{}\vert{} ''); const clean = cleanNameStrict(rawName);  // 1. 辨識品級 (預設為下品/中品) let tierKey = '下品'; if (/凡\vert{}粗\vert{}劣\vert{}破/.test(clean)) tierKey = '凡品'; else if (/中/.test(clean)) tierKey = '中品'; else if (/上\vert{}玄\vert{}地/.test(clean)) tierKey = '上品'; else if (/極\vert{}天\vert{}寶/.test(clean)) tierKey = '極品'; else if (/仙\vert{}神\vert{}聖/.test(clean)) tierKey = '仙品';  const rarity = RARITY_TIERS[tierKey];  // 2. 丹藥與消耗品 if (/聚氣丹\vert{}修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
+        if (/培元丹|療傷丹|回春丹|金創藥/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` }; if (/破境丹\vert{}築基丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(100 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(100 * rarity.mult)} 點修為` };
+
+        // 3. 裝備類別歸類與加成演算
+        if (/(劍|刀|槍|戟|弓|刃|杖|斧)/.test(clean)) {
+            return { type: 'equipment', slot: 'weapon', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: Math.floor(20 * rarity.mult), strBonus: Math.floor(5 * rarity.mult), desc: `🗡️ 裝備增加 ${Math.floor(20 * rarity.mult)} HP 與 ${Math.floor(5 * rarity.mult)} 膂力` };
+        }
+        if (/(甲|袍|衣|鎧|衫|盾)/.test(clean)) {
+            return { type: 'equipment', slot: 'armor', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: Math.floor(50 * rarity.mult), conBonus: Math.floor(5 * rarity.mult), desc: `🛡️ 裝備增加 ${Math.floor(50 * rarity.mult)} HP 與 ${Math.floor(5 * rarity.mult)} 根骨` };
+        }
+        if (/(戒|墜|佩|玉|項鏈|鐲)/.test(clean)) {
+            return { type: 'equipment', slot: 'accessory', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: Math.floor(15 * rarity.mult), lukBonus: Math.floor(3 * rarity.mult), agiBonus: Math.floor(3 * rarity.mult), desc: `📿 裝備增加 ${Math.floor(15 * rarity.mult)} HP,${Math.floor(3 * rarity.mult)} 氣運` };
+        }
+        if (/(印|鏡|塔|鼎|幡|珠|葫蘆)/.test(clean)) {
+            return { type: 'equipment', slot: 'treasure', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: Math.floor(80 * rarity.mult), intBonus: Math.floor(8 * rarity.mult), wisBonus: Math.floor(5 * rarity.mult), desc: `🔮 裝備增加 ${Math.floor(80 * rarity.mult)} HP,${Math.floor(8 * rarity.mult)} 神識` };
+        }
+
+        // 4. 普通雜物/材料
+        return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: 0, desc: "普通修仙雜物" };
     }
-
-    const SKILL_STAGES = ["入門", "熟練", "精通", "大成", "圓滿"];
-    function getStageMaxExp(realmStr) {
-        const idx = SKILL_STAGES.indexOf(realmStr || "入門");
-        return [100, 250, 500, 1000, 2000][idx] || 100;
-    }
-
-    const DEFAULT_ORIGIN_CHOICES = [
-        "1. 宗門棄子：被挖至尊骨，棄屍葬龍谷", 
-        "2. 奪舍死囚：帶著神魔記憶在死牢甦醒", 
-        "3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡"
-    ];
-
-    const DEFAULT_EXPLORE_CHOICES = ["1. 觀察周圍區域環境", "2. 盤膝運轉真元調息", "3. 探索附近未知的遺蹟"];
-    const DEFAULT_WELCOME_MSG = "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請選擇上方預設身世或直接在下方輸入自訂身世開局！";
-
-    function getDefaultGameState() {
-        return {
-            version: "4.49",
-            level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
-            daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
-            spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
-            location: "九州邊境 · 荒郊破廟", scenarioState: "safe",
-            hasChosenOrigin: false,
-            sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
-            stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
-            status: ["凡體肉身"], activeKungfu: null, kungfu: [], skills: [],
-            equipment: { weapon: null, armor: null, accessory: null, treasure: null },
-            inventory: ["粗布衣", "聚氣丹", "破境丹"], npcs: [], worldEvents: [],
-            quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
-            choices: [...DEFAULT_ORIGIN_CHOICES]
-        };
-    }
-
-    let gameState = getDefaultGameState();
-    let conversationHistory = [];
-    let storyLogData = [];
-    let isTyping = false;
 
     function getMaxHp(s = gameState) {
         const realmDef = getRealmDef(s.level || 0);
         let kfHp = s.activeKungfu ? (s.activeKungfu.hpBonus || 0) : 0;
         let eqHp = 0;
-        Object.values(s.equipment || {}).forEach(eq => { if (eq && eq.hpBonus) eqHp += eq.hpBonus; });
+        Object.values(s.equipment || {}).forEach(eq => {
+            if (eq) {
+                const meta = getItemMeta(eq);
+                if (meta.hpBonus) eqHp += meta.hpBonus;
+            }
+        });
         const phyMeta = getPhysiqueMeta(s.physique);
         return Math.floor((realmDef.maxHp + kfHp + eqHp) * (phyMeta.hpMult || 1.0));
+    }
+
+    // 🌟 升級版戰力算式：採計境界 + 六維總和 + 裝備總加成
+    function calculateCombatPower(s = gameState) {
+        let baseCp = (s.level || 0) * 150 + 100;
+        let statsSum = 0;
+        if (s.stats) {
+            statsSum = (s.stats.str || 10) + (s.stats.con || 10) + (s.stats.agi || 10) + (s.stats.int || 10) + (s.stats.wis || 10) + (s.stats.luk || 10);
+        }
+        let eqBonus = 0;
+        Object.values(s.equipment || {}).forEach(eq => {
+            if (eq) {
+                const meta = getItemMeta(eq);
+                eqBonus += (meta.hpBonus || 0) + ((meta.strBonus || 0) + (meta.conBonus || 0) + (meta.intBonus || 0)) * 10;
+            }
+        });
+        const phyMeta = getPhysiqueMeta(s.physique);
+        return Math.floor(baseCp + statsSum * 5 + eqBonus + (phyMeta.cpBonus || 0));
     }
 
     function getLinggenMeta(linggenInput) {
@@ -405,21 +408,61 @@
         return clean.length > 0;
     }
 
-    function cleanNameStrict(rawName) {
-        if (!rawName) return "";
-        return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
+    // 🗡️ 穿戴裝備系統
+    function equipItem(itemName) {
+        const idx = gameState.inventory.indexOf(itemName);
+        if (idx === -1) return;
+
+        const meta = getItemMeta(itemName);
+        if (!meta.slot) return;
+
+        gameState.inventory.splice(idx, 1);
+
+        if (gameState.equipment[meta.slot]) {
+            const oldEq = gameState.equipment[meta.slot];
+            const oldName = typeof oldEq === 'object' ? oldEq.name : oldEq;
+            if (oldName) gameState.inventory.push(oldName);
+        }
+
+        gameState.equipment[meta.slot] = meta;
+        gameState.hp = Math.min(getMaxHp(gameState), gameState.hp);
+        renderUI();
+        saveGameState();
     }
 
-    function getItemMeta(itemInput) {
-        let nameStr = typeof itemInput === 'object' ? (itemInput.name || '道具') : String(itemInput || '道具');
-        return { type: 'misc', name: cleanNameStrict(nameStr), rarity: '中品', color: '#43a047', desc: '修仙道具', hpBonus: 10 };
+    // 💊 使用消耗品系統
+    function useItem(itemName) {
+        const idx = gameState.inventory.indexOf(itemName);
+        if (idx === -1) return;
+
+        const meta = getItemMeta(itemName);
+        if (meta.type !== 'consumable') return;
+
+        gameState.inventory.splice(idx, 1);
+
+        if (meta.hpGain) {
+            gameState.hp = Math.min(getMaxHp(gameState), (gameState.hp || 0) + meta.hpGain);
+        }
+        if (meta.expGain) {
+            const lgMeta = getLinggenMeta(gameState.linggen);
+            const gain = Math.floor(meta.expGain * (lgMeta.expRate || 1.0));
+            gameState.exp = Math.min(gameState.maxExp, (gameState.exp || 0) + gain);
+        }
+
+        renderUI();
+        saveGameState();
     }
 
-    function calculateCombatPower(s) {
-        return (s.level || 0) * 150 + 100;
+    function unequipItem(slot) {
+        if (!gameState.equipment || !gameState.equipment[slot]) return;
+        const itemObj = gameState.equipment[slot];
+        const name = typeof itemObj === 'object' ? itemObj.name : itemObj;
+        if (name) gameState.inventory.push(name);
+        gameState.equipment[slot] = null;
+        renderUI();
+        saveGameState();
     }
 
-    // 🌟 P0 修正：預設事件帶入 healPartial，開啟確定性部分恢復
     function quickHeal(days) {
         if (!gameState.hasChosenOrigin) {
             openGameModal("⚠️ 未開局", "請先設定身世開局後方可進行閉關打坐！");
@@ -467,15 +510,6 @@
         }
     }
 
-    function unequipItem(slot) {
-        if (!gameState.equipment || !gameState.equipment[slot]) return;
-        const itemObj = gameState.equipment[slot];
-        gameState.inventory.push(typeof itemObj === 'object' ? itemObj.name : itemObj);
-        gameState.equipment[slot] = null;
-        renderUI();
-        saveGameState();
-    }
-
     function performSkillCheck(actionText) {
         const d20 = Math.floor(Math.random() * 20) + 1;
         let isSuccess = d20 >= 8;
@@ -504,7 +538,6 @@
 \`\`\``; 
     }
 
-    // 🌟 P0 修正：無 "story" 欄位直接剔除無效物件
     function parseApiResponse(text) {
         if (!text) return { storyText: "", parsedState: null };
 
@@ -545,7 +578,7 @@
         if (typeof raw.story === 'string' && raw.story.trim()) {
             validated.story = raw.story.trim();
         } else {
-            return null; // 故事欄位缺失，直接判定無效
+            return null;
         }
 
         if (typeof raw.location === 'string') validated.location = cleanNameStrict(raw.location);
@@ -562,13 +595,8 @@
             };
         }
 
-        if (Array.isArray(raw.currentStatus)) {
-            validated.currentStatus = raw.currentStatus.map(cleanNameStrict).filter(Boolean);
-        }
-
-        if (Array.isArray(raw.gainedItems)) {
-            validated.gainedItems = raw.gainedItems.map(cleanNameStrict).filter(Boolean);
-        }
+        if (Array.isArray(raw.currentStatus)) validated.currentStatus = raw.currentStatus.map(cleanNameStrict).filter(Boolean);
+        if (Array.isArray(raw.gainedItems)) validated.gainedItems = raw.gainedItems.map(cleanNameStrict).filter(Boolean);
 
         if (Array.isArray(raw.gainedKungfu)) {
             validated.gainedKungfu = raw.gainedKungfu.filter(k => k && (typeof k === 'string' || typeof k === 'object')).map(k => {
@@ -607,7 +635,7 @@
         return validated;
     }
 
-    // 🌟 P0 修正：預設/突破事件進行數值變動隔離，防止二次干擾
+    // 🌟 P1 修正 (問題 1)：choices 完全依據 hasChosenOrigin 正確分流
     function applyStateDelta(currentState, rawState, checkData = null, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -676,16 +704,18 @@
 
         if (rawState.quests) s.quests = rawState.quests;
 
+        // 🌟 修正點：確定性分流 Choices 選項
         if (Array.isArray(rawState.choices) && rawState.choices.length > 0) {
             s.choices = rawState.choices;
-        } else if (s.hasChosenOrigin && s.choices === DEFAULT_ORIGIN_CHOICES) {
+        } else if (s.hasChosenOrigin) {
             s.choices = [...DEFAULT_EXPLORE_CHOICES];
+        } else {
+            s.choices = [...DEFAULT_ORIGIN_CHOICES];
         }
 
         return s;
     }
 
-    // 🌟 P0 修正：完美修正樣板字串與 URL 編碼
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
@@ -734,13 +764,14 @@
         const inputEl = document.getElementById("action-input");
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
-        inputEl.value = "";
 
-        // 📸 建立狀態交易快照 (Snapshot)
+        // 📸 P1 修正 (問題 2)：將 storyLogData 一併納入交易快照
         const stateSnapshot = structuredClone(gameState);
         const historySnapshot = structuredClone(conversationHistory);
+        const logSnapshot = structuredClone(storyLogData);
 
-        // 🌟 P0 修正：確定性預先變動套用（包含局部打坐恢復氣血）
+        inputEl.value = "";
+
         if (eventMeta) {
             if (eventMeta.addDays) {
                 gameState.daysPassed = (gameState.daysPassed || 0) + eventMeta.addDays;
@@ -782,23 +813,27 @@
 
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
-            // 🌟 只要順利完成首次回應，即代表身世開局成功
-            if (!gameState.hasChosenOrigin) {
-                gameState.hasChosenOrigin = true;
-                gameState.choices = [...DEFAULT_EXPLORE_CHOICES];
-            }
-
+            // 🌟 P1 修正 (問題 3)：僅在 parsedState 驗證成功時才設定開局標記
             if (parsedState) {
+                if (!gameState.hasChosenOrigin) {
+                    gameState.hasChosenOrigin = true;
+                    gameState.choices = [...DEFAULT_EXPLORE_CHOICES];
+                }
                 gameState = applyStateDelta(gameState, parsedState, checkData, eventMeta);
+            } else if (!gameState.hasChosenOrigin) {
+                appendLogData("系統", "⚠️ 身世開局推演未獲有效回應，請重新選擇身世。", "system", false, true);
             }
 
             appendLogData("天道", storyText, "ai", false, true);
         } catch (error) {
-            // 🔄 API 失敗：原子性 Rollback 快照復原
+            // 🔄 P1 修正 (問題 2)：100% 完全 Rollback 還原（含日誌與手動輸入框）
             console.error("API 請求失敗，執行 Rollback 復原", error);
             gameState = stateSnapshot;
             conversationHistory = historySnapshot;
-            appendLogData("系統", `推演失敗 (${error.message})，狀態已還原。請檢查 API Key 或網路連線後重試。`, "system", false, true);
+            storyLogData = logSnapshot;
+            
+            appendLogData("系統", `⚠️ 行動推演失敗 (${error.message})，已還原至行動前狀態。`, "system", false, true);
+            if (!choiceText && actionText) inputEl.value = actionText;
         } finally {
             isTyping = false;
             stopLoadingAnim();
@@ -810,7 +845,6 @@
     function startLoadingAnim() { document.getElementById("btn-submit").textContent = "🎲 推演中..."; }
     function stopLoadingAnim() { document.getElementById("btn-submit").textContent = "抉擇"; }
 
-    // 🌟 P3 修正：極限嚴格存檔校正器
     function normalizeFullState(raw) {
         const def = getDefaultGameState();
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
@@ -1004,13 +1038,21 @@
         }
     }
 
+    // 🌟 P1 修正 (問題 4)：品級色彩標示與安全 DOM 裝備/背包渲染
     function renderInventory() {
         const eqSlots = ['weapon', 'armor', 'accessory', 'treasure'];
         eqSlots.forEach(slot => {
             const el = document.getElementById(`eq-${slot}`);
             if (el) {
                 const item = gameState.equipment ? gameState.equipment[slot] : null;
-                el.innerText = item ? cleanNameStrict(item.name || item) : "無";
+                if (item) {
+                    const meta = getItemMeta(item);
+                    el.textContent = `[${meta.rarity}] ${meta.name}`;
+                    el.style.color = meta.rarityColor;
+                } else {
+                    el.textContent = "無";
+                    el.style.color = "#888";
+                }
             }
         });
 
@@ -1027,13 +1069,31 @@
                 });
                 
                 Object.entries(counts).forEach(([name, qty]) => {
+                    const meta = getItemMeta(name);
                     let row = document.createElement("div");
                     row.className = "item-row";
                     
                     let span = document.createElement("span");
-                    span.textContent = `📦 ${name} x${qty}`;
-                    
+                    span.textContent = `📦 [${meta.rarity}] ${name} x${qty}`;
+                    span.style.color = meta.rarityColor;
+
+                    let actionGroup = document.createElement("div");
+                    actionGroup.className = "item-actions";
+
+                    if (meta.slot) {
+                        let btn = document.createElement("button");
+                        btn.textContent = "裝備";
+                        btn.onclick = () => equipItem(name);
+                        actionGroup.appendChild(btn);
+                    } else if (meta.type === 'consumable') {
+                        let btn = document.createElement("button");
+                        btn.textContent = "使用";
+                        btn.onclick = () => useItem(name);
+                        actionGroup.appendChild(btn);
+                    }
+
                     row.appendChild(span);
+                    row.appendChild(actionGroup);
                     invBox.appendChild(row);
                 });
             }
@@ -1102,7 +1162,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.49", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.50", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1127,7 +1187,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.49", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.50", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
