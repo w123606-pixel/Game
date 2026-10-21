@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.48)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.49)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -288,7 +288,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.48",
+            version: "4.49",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -342,7 +342,6 @@
         return { name: clean, tier: 'spirit', hpMult: 1.15, cpBonus: 100, label: "HP+15% / CP+100", color: "#ab47bc", desc: "✨ [特殊靈體] 氣血與感應皆優於凡人。" };
     }
 
-    // 🌟 P1 修正：純 DOM 安全彈窗，避免 HTML 注入
     function openGameModal(titleText, contentElement) {
         document.getElementById("modal-title-text").textContent = titleText;
         const bodyEl = document.getElementById("modal-body-text");
@@ -420,12 +419,13 @@
         return (s.level || 0) * 150 + 100;
     }
 
+    // 🌟 P0 修正：預設事件帶入 healPartial，開啟確定性部分恢復
     function quickHeal(days) {
         if (!gameState.hasChosenOrigin) {
             openGameModal("⚠️ 未開局", "請先設定身世開局後方可進行閉關打坐！");
             return;
         }
-        sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（鎖定天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days });
+        sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days, healPartial: true });
     }
 
     function hospitalHeal() {
@@ -437,7 +437,7 @@
             openGameModal("⚠️ 靈石不足", "求醫需要至少 50 顆靈石！");
             return;
         }
-        sendAction("【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（鎖定扣除 50 靈石與消耗 1 天時間）。請描繪求醫過程與名醫診斷。】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true });
+        sendAction("【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（扣除 50 靈石與消耗 1 天時間）。請描繪求醫過程與名醫診斷。】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true });
     }
 
     function sectAction(type) {
@@ -504,7 +504,7 @@
 \`\`\``; 
     }
 
-    // 🌟 P1 強化 JSON 解析器：精確抓取第一個 ```json 區塊
+    // 🌟 P0 修正：無 "story" 欄位直接剔除無效物件
     function parseApiResponse(text) {
         if (!text) return { storyText: "", parsedState: null };
 
@@ -527,8 +527,9 @@
             try {
                 const parsed = JSON.parse(jsonStr);
                 const validatedState = validateStateDelta(parsed);
-                const finalStory = (validatedState && validatedState.story) || storyText.trim() || "（真元翻湧，天道顯化微妙演變...）";
-                return { storyText: finalStory, parsedState: validatedState };
+                if (validatedState && validatedState.story) {
+                    return { storyText: validatedState.story, parsedState: validatedState };
+                }
             } catch (e) {
                 console.warn("JSON 解析或 Schema 驗證失敗，降級處理為純敘事", e);
             }
@@ -537,12 +538,16 @@
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // 🌟 P0 嚴格 Schema 靜態驗證器
     function validateStateDelta(raw) {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
 
         const validated = {};
-        if (typeof raw.story === 'string') validated.story = raw.story.trim();
+        if (typeof raw.story === 'string' && raw.story.trim()) {
+            validated.story = raw.story.trim();
+        } else {
+            return null; // 故事欄位缺失，直接判定無效
+        }
+
         if (typeof raw.location === 'string') validated.location = cleanNameStrict(raw.location);
 
         if (Number.isFinite(raw.hpChange)) validated.hpChange = Math.max(-10000, Math.min(10000, Number(raw.hpChange)));
@@ -602,6 +607,7 @@
         return validated;
     }
 
+    // 🌟 P0 修正：預設/突破事件進行數值變動隔離，防止二次干擾
     function applyStateDelta(currentState, rawState, checkData = null, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -609,8 +615,9 @@
         if (rawState.location) s.location = rawState.location;
         if (rawState.sect) s.sect = { ...s.sect, ...rawState.sect };
 
-        // 🌟 防重複扣款與確定性事件保護
-        if (!eventMeta?.isPresetEvent) {
+        const isLockedEvent = eventMeta && (eventMeta.isPresetEvent || eventMeta.isBreakthrough);
+
+        if (!isLockedEvent) {
             let baseHpChange = rawState.hpChange || 0;
             if (checkData && checkData.hpPenalty) baseHpChange += checkData.hpPenalty;
             s.hp = Math.max(0, Math.min(getMaxHp(s), (s.hp || 0) + baseHpChange));
@@ -618,13 +625,13 @@
             if (rawState.stoneChange) {
                 s.spiritStone = Math.max(0, (s.spiritStone || 0) + rawState.stoneChange);
             }
-        }
 
-        if (rawState.expReward && rawState.expReward > 0) {
-            const lgMeta = getLinggenMeta(s.linggen);
-            const checkMult = checkData ? checkData.expMult : 1.0;
-            const gainExp = Math.floor(rawState.expReward * (lgMeta.expRate || 1.0) * checkMult);
-            s.exp = Math.min(s.maxExp, (s.exp || 0) + gainExp);
+            if (rawState.expReward && rawState.expReward > 0) {
+                const lgMeta = getLinggenMeta(s.linggen);
+                const checkMult = checkData ? checkData.expMult : 1.0;
+                const gainExp = Math.floor(rawState.expReward * (lgMeta.expRate || 1.0) * checkMult);
+                s.exp = Math.min(s.maxExp, (s.exp || 0) + gainExp);
+            }
         }
 
         if (rawState.currentStatus) s.status = rawState.currentStatus;
@@ -678,8 +685,10 @@
         return s;
     }
 
+    // 🌟 P0 修正：完美修正樣板字串與 URL 編碼
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
+        const cleanKey = apiKey.trim();
         const contents = conversationHistory.slice(-10).map(m => ({
             role: m.role === "user" ? "user" : "model",
             parts: [{ text: m.content }]
@@ -690,7 +699,9 @@
             contents: contents
         };
 
-        const res = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){customModel}:generateContent?key=${apiKey}`, {
+        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+
+        const res = await fetch(targetUrl, {
             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
         });
         const data = await res.json();
@@ -700,9 +711,11 @@
 
     async function callOpenAiApi(apiKey) {
         const model = document.getElementById("api-model").value.trim() || "gpt-4o-mini";
+        const cleanKey = apiKey.trim();
         const messages = [{ role: "system", content: getSystemPrompt() }, ...conversationHistory.slice(-10)];
-        const res = await fetch("[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)", {
-            method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST", 
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cleanKey}` },
             body: JSON.stringify({ model: model, messages: messages })
         });
         const data = await res.json();
@@ -710,7 +723,6 @@
         return data.choices[0].message.content;
     }
 
-    // 🌟 P0 原子性狀態交易與 API 失敗 Rollback 復原器
     async function sendAction(choiceText = null, eventMeta = null) {
         if (isTyping) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
@@ -724,19 +736,19 @@
         if (!actionText) return;
         inputEl.value = "";
 
-        // 🌟 身世硬性檢查
-        if (!gameState.hasChosenOrigin && !choiceText && !actionText.includes("開局")) {
-            openGameModal("⚠️ 尚未選擇身世", "請點擊上方三項預設身世之一，或輸入明確身世描述後再行開局！");
-            return;
-        }
-
         // 📸 建立狀態交易快照 (Snapshot)
         const stateSnapshot = structuredClone(gameState);
         const historySnapshot = structuredClone(conversationHistory);
 
-        // 確定性預先變動套用
+        // 🌟 P0 修正：確定性預先變動套用（包含局部打坐恢復氣血）
         if (eventMeta) {
-            if (eventMeta.addDays) gameState.daysPassed = (gameState.daysPassed || 0) + eventMeta.addDays;
+            if (eventMeta.addDays) {
+                gameState.daysPassed = (gameState.daysPassed || 0) + eventMeta.addDays;
+                if (eventMeta.healPartial) {
+                    const healAmt = Math.floor(getMaxHp(gameState) * (eventMeta.addDays / 30));
+                    gameState.hp = Math.min(getMaxHp(gameState), (gameState.hp || 0) + healAmt);
+                }
+            }
             if (eventMeta.deductStone) gameState.spiritStone = Math.max(0, (gameState.spiritStone || 0) - eventMeta.deductStone);
             if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
             if (eventMeta.isBreakthrough) {
@@ -770,6 +782,7 @@
 
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
+            // 🌟 只要順利完成首次回應，即代表身世開局成功
             if (!gameState.hasChosenOrigin) {
                 gameState.hasChosenOrigin = true;
                 gameState.choices = [...DEFAULT_EXPLORE_CHOICES];
@@ -797,6 +810,7 @@
     function startLoadingAnim() { document.getElementById("btn-submit").textContent = "🎲 推演中..."; }
     function stopLoadingAnim() { document.getElementById("btn-submit").textContent = "抉擇"; }
 
+    // 🌟 P3 修正：極限嚴格存檔校正器
     function normalizeFullState(raw) {
         const def = getDefaultGameState();
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
@@ -816,7 +830,8 @@
         s.stats = s.stats && typeof s.stats === 'object' && !Array.isArray(s.stats) ? s.stats : {};
         const defaultStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
         Object.keys(defaultStats).forEach(k => {
-            s.stats[k] = Number.isFinite(Number(s.stats[k])) ? Number(s.stats[k]) : defaultStats[k];
+            let val = Number(s.stats[k]);
+            s.stats[k] = Number.isFinite(val) ? Math.max(1, Math.min(999, val)) : defaultStats[k];
         });
 
         s.equipment = s.equipment && typeof s.equipment === 'object' && !Array.isArray(s.equipment) ? s.equipment : {};
@@ -843,10 +858,29 @@
 
         s.inventory = Array.isArray(raw.inventory) ? raw.inventory.map(cleanNameStrict).filter(Boolean) : ["粗布衣", "聚氣丹", "破境丹"];
         s.status = Array.isArray(raw.status) ? raw.status.filter(st => typeof st === 'string' && st.trim()) : ["氣血平穩"];
-        s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu.filter(k => k && typeof k === 'object') : [];
-        s.skills = Array.isArray(raw.skills) ? raw.skills.filter(sk => sk && typeof sk === 'object') : [];
-        s.npcs = Array.isArray(raw.npcs) ? raw.npcs.filter(isRealNPC) : [];
-        s.quests = Array.isArray(raw.quests) ? raw.quests.filter(q => q && typeof q === 'object') : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
+        
+        s.kungfu = Array.isArray(raw.kungfu) ? raw.kungfu.filter(k => k && typeof k === 'object' && k.name).map(k => ({
+            name: cleanNameStrict(k.name),
+            realm: cleanNameStrict(k.realm || "入門"),
+            exp: Math.max(0, Number(k.exp) || 0),
+            maxExp: getStageMaxExp(k.realm)
+        })) : [];
+
+        s.skills = Array.isArray(raw.skills) ? raw.skills.filter(sk => sk && typeof sk === 'object' && sk.name).map(sk => ({
+            name: cleanNameStrict(sk.name),
+            realm: cleanNameStrict(sk.realm || "入門"),
+            exp: Math.max(0, Number(sk.exp) || 0),
+            maxExp: getStageMaxExp(sk.realm)
+        })) : [];
+
+        s.npcs = Array.isArray(raw.npcs) ? raw.npcs.filter(isRealNPC).map(n => ({
+            name: cleanNameStrict(n.name || n),
+            identity: cleanNameStrict(n.identity || "修士"),
+            affinity: Number.isFinite(n.affinity) ? Math.max(-100, Math.min(100, n.affinity)) : 10,
+            relation: cleanNameStrict(n.relation || "結識")
+        })) : [];
+
+        s.quests = Array.isArray(raw.quests) ? raw.quests.filter(q => q && typeof q === 'object' && q.name) : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
         s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents.filter(we => typeof we === 'string') : [];
 
         if (!s.hasChosenOrigin || !Array.isArray(s.choices) || s.choices.length === 0) {
@@ -970,7 +1004,6 @@
         }
     }
 
-    // 🌟 P1 修正：安全 DOM 背包渲染，徹底消除 innerHTML 拼接
     function renderInventory() {
         const eqSlots = ['weapon', 'armor', 'accessory', 'treasure'];
         eqSlots.forEach(slot => {
@@ -1069,7 +1102,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.48", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.49", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1094,7 +1127,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.48", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.49", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
