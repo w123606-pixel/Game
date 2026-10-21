@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.40)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.41)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -71,9 +71,13 @@
         .choice-btn, .quick-btn { 
             background: #1a1d2a; border: 1px solid #444; color: var(--border-gold); 
             padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-align: left; 
-            transition: 0.2s; line-height: 1.4; min-height: 44px; white-space: normal;
+            transition: background 0.2s, border-color 0.2s; line-height: 1.4; min-height: 44px; white-space: normal;
+            -webkit-tap-highlight-color: transparent;
         }
-        .choice-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
+        @media (hover: hover) {
+            .choice-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
+        }
+        .choice-btn:active:not(:disabled) { background: var(--border-gold); color: #000; }
         
         .input-group { display: flex; gap: 6px; }
         input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
@@ -291,7 +295,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.40",
+            version: "4.41",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -371,6 +375,119 @@
     function calculateCombatPower(s) {
         return (s.level || 0) * 150 + 100;
     }
+
+    function performSkillCheck(actionText) {
+        const d20 = Math.floor(Math.random() * 20) + 1;
+        let isSuccess = d20 >= 8;
+        return { message: `[暗骰檢定：${isSuccess ? '成功' : '失敗'}]`, success: isSuccess, maxExpReward: 25, daysSpent: 1 };
+    }
+
+    function getSystemPrompt() { 
+        return `你現在是修仙RPG《九州裂天錄》的天道DM。
+請推演玩家行動並回傳標準 JSON：
+\`\`\`json
+{
+  "success": true,
+  "location": "${gameState.location || '九州邊境 · 荒郊破廟'}",
+  "hpChange": 0, "expReward": 20, "stoneChange": 0,
+  "gainedItems": [], "gainedKungfu": [], "gainedSkills": [],
+  "currentStatus": ["氣血平穩"], 
+  "sect": {"name": "無", "rank": "散修", "contribution": 0},
+  "npcs": [], "choices": ["繼續探索", "原地調息", "前往集市"]
+}
+\`\`\``; 
+    }
+
+    function parseApiResponse(text) {
+        const match = text.match(/```json\s*([\s\S]*?)\s*```/i);
+        if (!match) return { storyText: text.trim(), parsedState: null };
+        try {
+            return { storyText: (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim(), parsedState: JSON.parse(match[1].trim()) };
+        } catch (e) { return { storyText: text.trim(), parsedState: null }; }
+    }
+
+    async function callGeminiApi(apiKey) {
+        const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
+        const contents = conversationHistory.slice(-10).map(m => ({
+            role: m.role === "user" ? "user" : "model",
+            parts: [{ text: m.content }]
+        }));
+
+        const bodyData = {
+            system_instruction: { parts: [{ text: getSystemPrompt() }] },
+            contents: contents
+        };
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${customModel}:generateContent?key=${apiKey}`, {
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "天道無回應...";
+    }
+
+    async function callOpenAiApi(apiKey) {
+        const model = document.getElementById("api-model").value.trim() || "gpt-4o-mini";
+        const messages = [{ role: "system", content: getSystemPrompt() }, ...conversationHistory.slice(-10)];
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            body: JSON.stringify({ model: model, messages: messages })
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error?.message || `HTTP ${res.status}`);
+        return data.choices[0].message.content;
+    }
+
+    async function sendAction(choiceText = null) {
+        if (isTyping) return;
+        let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
+        if (!apiKey) {
+            openGameModal("⚠️ 未設定 API Key", "請先點擊下方 <b>【系統】</b> 分頁，貼上並儲存有效的 Google Gemini 或 OpenAI API Key 後方能開啟修仙歷程！");
+            return;
+        }
+
+        const inputEl = document.getElementById("action-input");
+        let actionText = choiceText || inputEl.value.trim();
+        if (!actionText) return;
+        inputEl.value = "";
+
+        if (/(宗門棄子|奪舍死囚|落魄少主)/.test(actionText)) {
+            gameState.hasChosenOrigin = true;
+        }
+
+        const checkData = performSkillCheck(actionText);
+        appendLogData("異世旅者", actionText, "player", false, true);
+        conversationHistory.push({ role: "user", content: `${actionText}\n\n${checkData.message}` });
+        
+        startLoadingAnim();
+        isTyping = true;
+
+        try {
+            const provider = document.getElementById("api-provider").value;
+            let aiResponseText = provider === "gemini" ? await callGeminiApi(apiKey) : await callOpenAiApi(apiKey);
+            conversationHistory.push({ role: "assistant", content: aiResponseText });
+
+            const { storyText, parsedState } = parseApiResponse(aiResponseText);
+            
+            if (parsedState) {
+                if (parsedState.choices && Array.isArray(parsedState.choices)) gameState.choices = parsedState.choices;
+                if (parsedState.location) gameState.location = parsedState.location;
+                if (Number.isFinite(parsedState.expReward)) gameState.exp = Math.min(gameState.maxExp, gameState.exp + parsedState.expReward);
+            }
+
+            appendLogData("天道", storyText || "真元翻湧，天道顯化微妙變化...", "ai", false, true);
+        } catch (error) {
+            appendLogData("系統", `推演失敗：${error.message}`, "system", false, true);
+        } finally {
+            isTyping = false;
+            stopLoadingAnim();
+            renderUI();
+            saveGameState();
+        }
+    }
+
+    function startLoadingAnim() { document.getElementById("btn-submit").textContent = "🎲 推演中..."; }
+    function stopLoadingAnim() { document.getElementById("btn-submit").textContent = "抉擇"; }
 
     function normalizeFullState(raw) {
         const def = getDefaultGameState();
@@ -454,12 +571,27 @@
             document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
             document.getElementById("ui-hp").innerText = `${gameState.hp || 0} / 50`;
             document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone || 0} 顆`;
+            
+            const actionInput = document.getElementById("action-input");
+            const submitBtn = document.getElementById("btn-submit");
+            if (gameState.hasChosenOrigin) {
+                actionInput.placeholder = "輸入行動或選擇上方選項...";
+                actionInput.disabled = false;
+                submitBtn.disabled = false;
+            } else {
+                actionInput.placeholder = "請先點擊上方身世選項定下開局...";
+            }
         } catch(e) { console.error("renderUI Exception:", e); }
+    }
+
+    function appendLogData(role, text, type, isSafeHtml = false, immediateRender = false) {
+        storyLogData.push({ role, content: text, type, isSafeHtml });
+        if (immediateRender) renderStoryLogs();
     }
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.40", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.41", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -476,7 +608,6 @@
                 initNewGame();
             }
         } catch (err) {
-            console.error("快取修復救援觸發:", err);
             localStorage.removeItem("blade_v4_unified_save");
             initNewGame();
         }
@@ -491,7 +622,7 @@
     }
 
     function resetGame() { 
-        if(confirm("確定重置遊戲並清除不相容快取？")) { 
+        if(confirm("確定重置遊戲並清除快取？")) { 
             const savedKey = localStorage.getItem("blade_api_key");
             localStorage.clear();
             if (savedKey) localStorage.setItem("blade_api_key", savedKey);
