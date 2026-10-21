@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.47)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.48)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -288,7 +288,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.47",
+            version: "4.48",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -342,15 +342,15 @@
         return { name: clean, tier: 'spirit', hpMult: 1.15, cpBonus: 100, label: "HP+15% / CP+100", color: "#ab47bc", desc: "✨ [特殊靈體] 氣血與感應皆優於凡人。" };
     }
 
-    // 🌟 P3 安全彈窗控制（以文本節點防止 XSS）
-    function openGameModal(titleText, bodyTextNode) {
+    // 🌟 P1 修正：純 DOM 安全彈窗，避免 HTML 注入
+    function openGameModal(titleText, contentElement) {
         document.getElementById("modal-title-text").textContent = titleText;
         const bodyEl = document.getElementById("modal-body-text");
         bodyEl.innerHTML = "";
-        if (typeof bodyTextNode === 'string') {
-            bodyEl.textContent = bodyTextNode;
-        } else if (bodyTextNode instanceof Node) {
-            bodyEl.appendChild(bodyTextNode);
+        if (typeof contentElement === 'string') {
+            bodyEl.textContent = contentElement;
+        } else if (contentElement instanceof Node) {
+            bodyEl.appendChild(contentElement);
         }
         document.getElementById("game-modal").classList.add("active");
     }
@@ -359,13 +359,44 @@
     function showLinggenModal() {
         const meta = getLinggenMeta(gameState.linggen);
         const container = document.createElement("div");
-        container.innerHTML = `<b>天賦名稱：</b><span style="color:${meta.color}">${cleanNameStrict(meta.name)}</span><br>${cleanNameStrict(meta.desc)}`;
+        
+        const titleSpan = document.createElement("span");
+        titleSpan.textContent = "天賦名稱：";
+        
+        const valSpan = document.createElement("span");
+        valSpan.style.color = meta.color;
+        valSpan.textContent = meta.name;
+
+        const descDiv = document.createElement("div");
+        descDiv.style.marginTop = "6px";
+        descDiv.textContent = meta.desc;
+
+        container.appendChild(titleSpan);
+        container.appendChild(valSpan);
+        container.appendChild(descDiv);
+
         openGameModal("📜 靈根資質天賦解析", container);
     }
+
     function showPhysiqueModal() {
         const meta = getPhysiqueMeta(gameState.physique);
         const container = document.createElement("div");
-        container.innerHTML = `<b>天賦名稱：</b><span style="color:${meta.color}">${cleanNameStrict(meta.name)}</span><br>${cleanNameStrict(meta.desc)}`;
+        
+        const titleSpan = document.createElement("span");
+        titleSpan.textContent = "天賦名稱：";
+        
+        const valSpan = document.createElement("span");
+        valSpan.style.color = meta.color;
+        valSpan.textContent = meta.name;
+
+        const descDiv = document.createElement("div");
+        descDiv.style.marginTop = "6px";
+        descDiv.textContent = meta.desc;
+
+        container.appendChild(titleSpan);
+        container.appendChild(valSpan);
+        container.appendChild(descDiv);
+
         openGameModal("🔥 體質天賦解析", container);
     }
 
@@ -377,7 +408,7 @@
 
     function cleanNameStrict(rawName) {
         if (!rawName) return "";
-        return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”]/g, '').trim();
+        return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
     }
 
     function getItemMeta(itemInput) {
@@ -394,10 +425,7 @@
             openGameModal("⚠️ 未開局", "請先設定身世開局後方可進行閉關打坐！");
             return;
         }
-        gameState.daysPassed = (gameState.daysPassed || 0) + days;
-        const healAmt = Math.floor(getMaxHp(gameState) * (days / 30));
-        gameState.hp = Math.min(getMaxHp(gameState), (gameState.hp || 0) + healAmt);
-        sendAction(`【在安穩之地閉關打坐 ${days} 天（消耗 ${days} 天時間，調理恢復 ${healAmt} HP）。請描繪閉關靜修感悟。】`);
+        sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（鎖定天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days });
     }
 
     function hospitalHeal() {
@@ -409,10 +437,7 @@
             openGameModal("⚠️ 靈石不足", "求醫需要至少 50 顆靈石！");
             return;
         }
-        gameState.spiritStone -= 50;
-        gameState.hp = getMaxHp(gameState);
-        gameState.daysPassed = (gameState.daysPassed || 0) + 1;
-        sendAction("【前往醫館/丹房支付 50 靈石，請名醫全救治，傷勢徹底痊癒。請描繪求醫過程與名醫診斷。】");
+        sendAction("【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（鎖定扣除 50 靈石與消耗 1 天時間）。請描繪求醫過程與名醫診斷。】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true });
     }
 
     function sectAction(type) {
@@ -436,19 +461,9 @@
         const isSuccess = Math.random() < successRate;
 
         if (isSuccess) {
-            gameState.level = (gameState.level || 0) + 1;
-            const rDef = getRealmDef(gameState.level);
-            gameState.realm = rDef.name;
-            gameState.maxExp = rDef.maxExp;
-            gameState.maxAge = rDef.maxAge;
-            gameState.exp = 0;
-            gameState.hp = getMaxHp(gameState);
-            sendAction(`【衝擊境界瓶頸：判定成功！】天道感應，修為順利突破至【${gameState.realm}】！請描繪渡劫衝關的震撼過程與肉身脫胎換骨之變。`);
+            sendAction(`【衝擊境界瓶頸：天道判定成功！】修為順利突破至下一境界！請描繪渡劫衝關的震撼過程與肉身脫胎換骨之變。`, { isBreakthrough: true, breakthroughSuccess: true });
         } else {
-            const damage = Math.floor(getMaxHp(gameState) * 0.3);
-            gameState.hp = Math.max(1, (gameState.hp || 0) - damage);
-            gameState.exp = Math.floor((gameState.exp || 0) * 0.8);
-            sendAction(`【衝擊境界瓶頸：判定失敗！】真元逆衝遭受經脈反噬受傷（扣除 ${damage} HP，修為退回 80%）！請描繪衝關失敗時的凶險與真元紊亂狀況。`);
+            sendAction(`【衝擊境界瓶頸：天道判定失敗！】真元逆衝遭受經脈反噬受傷！請描繪衝關失敗時的凶險與真元紊亂狀況。`, { isBreakthrough: true, breakthroughSuccess: false });
         }
     }
 
@@ -461,7 +476,6 @@
         saveGameState();
     }
 
-    // 🌟 P3 實質 D20 檢定
     function performSkillCheck(actionText) {
         const d20 = Math.floor(Math.random() * 20) + 1;
         let isSuccess = d20 >= 8;
@@ -475,10 +489,10 @@
 
     function getSystemPrompt() { 
         return `你現在是修仙RPG《九州裂天錄》的天道DM。
-請推演玩家行動並回傳標準 JSON：
+請推演玩家行動並回傳標準 JSON 格式（必須包含 "story" 欄位）：
 \`\`\`json
 {
-  "story": "在此撰寫詳細精彩的故事劇情、環境描繪與行動結果...",
+  "story": "在此撰寫詳細精彩的故事劇情與環境描繪...",
   "success": true,
   "location": "${gameState.location || '九州邊境 · 荒郊破廟'}",
   "hpChange": 0, "expReward": 20, "stoneChange": 0,
@@ -490,6 +504,7 @@
 \`\`\``; 
     }
 
+    // 🌟 P1 強化 JSON 解析器：精確抓取第一個 ```json 區塊
     function parseApiResponse(text) {
         if (!text) return { storyText: "", parsedState: null };
 
@@ -511,98 +526,148 @@
         if (jsonStr) {
             try {
                 const parsed = JSON.parse(jsonStr);
-                const finalStory = parsed.story || storyText.trim() || "（真元翻湧，天道顯化微妙演變...）";
-                return { storyText: finalStory, parsedState: parsed };
+                const validatedState = validateStateDelta(parsed);
+                const finalStory = (validatedState && validatedState.story) || storyText.trim() || "（真元翻湧，天道顯化微妙演變...）";
+                return { storyText: finalStory, parsedState: validatedState };
             } catch (e) {
-                console.warn("JSON 解析失敗，降級處理文字", e);
+                console.warn("JSON 解析或 Schema 驗證失敗，降級處理為純敘事", e);
             }
         }
 
         return { storyText: text.trim(), parsedState: null };
     }
 
-    function applyStateDelta(currentState, rawState, checkData = null) {
+    // 🌟 P0 嚴格 Schema 靜態驗證器
+    function validateStateDelta(raw) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+
+        const validated = {};
+        if (typeof raw.story === 'string') validated.story = raw.story.trim();
+        if (typeof raw.location === 'string') validated.location = cleanNameStrict(raw.location);
+
+        if (Number.isFinite(raw.hpChange)) validated.hpChange = Math.max(-10000, Math.min(10000, Number(raw.hpChange)));
+        if (Number.isFinite(raw.stoneChange)) validated.stoneChange = Math.max(-50000, Math.min(50000, Number(raw.stoneChange)));
+        if (Number.isFinite(raw.expReward)) validated.expReward = Math.max(0, Math.min(1000, Number(raw.expReward)));
+
+        if (raw.sect && typeof raw.sect === 'object') {
+            validated.sect = {
+                name: cleanNameStrict(raw.sect.name || "無"),
+                rank: cleanNameStrict(raw.sect.rank || "散修"),
+                contribution: Number.isFinite(raw.sect.contribution) ? Math.max(0, Number(raw.sect.contribution)) : 0
+            };
+        }
+
+        if (Array.isArray(raw.currentStatus)) {
+            validated.currentStatus = raw.currentStatus.map(cleanNameStrict).filter(Boolean);
+        }
+
+        if (Array.isArray(raw.gainedItems)) {
+            validated.gainedItems = raw.gainedItems.map(cleanNameStrict).filter(Boolean);
+        }
+
+        if (Array.isArray(raw.gainedKungfu)) {
+            validated.gainedKungfu = raw.gainedKungfu.filter(k => k && (typeof k === 'string' || typeof k === 'object')).map(k => {
+                let name = typeof k === 'string' ? k : k.name;
+                return { name: cleanNameStrict(name), realm: cleanNameStrict(k.realm || "入門") };
+            }).filter(k => k.name);
+        }
+
+        if (Array.isArray(raw.gainedSkills)) {
+            validated.gainedSkills = raw.gainedSkills.filter(s => s && (typeof s === 'string' || typeof s === 'object')).map(s => {
+                let name = typeof s === 'string' ? s : s.name;
+                return { name: cleanNameStrict(name), realm: cleanNameStrict(s.realm || "入門") };
+            }).filter(s => s.name);
+        }
+
+        if (Array.isArray(raw.npcs)) {
+            validated.npcs = raw.npcs.filter(isRealNPC).map(n => ({
+                name: cleanNameStrict(n.name || n),
+                identity: cleanNameStrict(n.identity || "修士"),
+                affinity: Number.isFinite(n.affinity) ? Math.max(-100, Math.min(100, n.affinity)) : 10
+            }));
+        }
+
+        if (Array.isArray(raw.quests)) {
+            validated.quests = raw.quests.filter(q => q && typeof q === 'object' && q.name).map(q => ({
+                name: cleanNameStrict(q.name),
+                progress: cleanNameStrict(q.progress || "進行中"),
+                status: cleanNameStrict(q.status || "進行中")
+            }));
+        }
+
+        if (Array.isArray(raw.choices)) {
+            validated.choices = raw.choices.map(c => cleanNameStrict(String(c))).filter(Boolean);
+        }
+
+        return validated;
+    }
+
+    function applyStateDelta(currentState, rawState, checkData = null, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
 
-        if (rawState.location) s.location = String(rawState.location);
-        if (rawState.sect && typeof rawState.sect === 'object') {
-            s.sect = { ...s.sect, ...rawState.sect };
+        if (rawState.location) s.location = rawState.location;
+        if (rawState.sect) s.sect = { ...s.sect, ...rawState.sect };
+
+        // 🌟 防重複扣款與確定性事件保護
+        if (!eventMeta?.isPresetEvent) {
+            let baseHpChange = rawState.hpChange || 0;
+            if (checkData && checkData.hpPenalty) baseHpChange += checkData.hpPenalty;
+            s.hp = Math.max(0, Math.min(getMaxHp(s), (s.hp || 0) + baseHpChange));
+
+            if (rawState.stoneChange) {
+                s.spiritStone = Math.max(0, (s.spiritStone || 0) + rawState.stoneChange);
+            }
         }
 
-        let baseHpChange = Number.isFinite(rawState.hpChange) ? rawState.hpChange : 0;
-        if (checkData && checkData.hpPenalty) baseHpChange += checkData.hpPenalty;
-        s.hp = Math.max(0, Math.min(getMaxHp(s), (s.hp || 0) + baseHpChange));
-
-        if (Number.isFinite(rawState.stoneChange)) {
-            s.spiritStone = Math.max(0, (s.spiritStone || 0) + rawState.stoneChange);
-        }
-
-        if (Number.isFinite(rawState.expReward) && rawState.expReward > 0) {
+        if (rawState.expReward && rawState.expReward > 0) {
             const lgMeta = getLinggenMeta(s.linggen);
             const checkMult = checkData ? checkData.expMult : 1.0;
             const gainExp = Math.floor(rawState.expReward * (lgMeta.expRate || 1.0) * checkMult);
             s.exp = Math.min(s.maxExp, (s.exp || 0) + gainExp);
         }
 
-        if (Array.isArray(rawState.currentStatus)) {
-            s.status = rawState.currentStatus.filter(st => typeof st === 'string' && st.trim());
-        }
+        if (rawState.currentStatus) s.status = rawState.currentStatus;
 
-        if (Array.isArray(rawState.gainedItems)) {
-            rawState.gainedItems.forEach(item => {
-                if (item) {
-                    const cleanItem = cleanNameStrict(item);
-                    if (cleanItem) s.inventory.push(cleanItem);
-                }
+        if (rawState.gainedItems) {
+            rawState.gainedItems.forEach(cleanItem => {
+                if (cleanItem) s.inventory.push(cleanItem);
             });
         }
 
-        if (Array.isArray(rawState.gainedKungfu)) {
+        if (rawState.gainedKungfu) {
             rawState.gainedKungfu.forEach(k => {
-                let name = typeof k === 'string' ? k : (k ? k.name : "");
-                let cleanName = cleanNameStrict(name);
-                if (cleanName && !s.kungfu.some(ex => cleanNameStrict(ex.name) === cleanName)) {
-                    s.kungfu.push({ name: cleanName, realm: k.realm || "入門", exp: k.exp || 0, maxExp: getStageMaxExp(k.realm) });
+                if (!s.kungfu.some(ex => cleanNameStrict(ex.name) === k.name)) {
+                    s.kungfu.push({ name: k.name, realm: k.realm || "入門", exp: 0, maxExp: getStageMaxExp(k.realm) });
                 }
             });
         }
 
-        if (Array.isArray(rawState.gainedSkills)) {
+        if (rawState.gainedSkills) {
             rawState.gainedSkills.forEach(sk => {
-                let name = typeof sk === 'string' ? sk : (sk ? sk.name : "");
-                let cleanName = cleanNameStrict(name);
-                let existing = s.skills.find(ex => cleanNameStrict(ex.name) === cleanName);
+                let existing = s.skills.find(ex => cleanNameStrict(ex.name) === sk.name);
                 if (existing) {
                     existing.realm = sk.realm || existing.realm;
                     existing.maxExp = getStageMaxExp(existing.realm);
-                } else if (cleanName) {
-                    s.skills.push({ name: cleanName, realm: sk.realm || "入門", exp: sk.exp || 0, maxExp: getStageMaxExp(sk.realm) });
+                } else {
+                    s.skills.push({ name: sk.name, realm: sk.realm || "入門", exp: 0, maxExp: getStageMaxExp(sk.realm) });
                 }
             });
         }
 
-        if (Array.isArray(rawState.npcs)) {
+        if (rawState.npcs) {
             rawState.npcs.forEach(n => {
-                if (n && isRealNPC(n)) {
-                    let cleanName = cleanNameStrict(n.name || n);
-                    let existing = s.npcs.find(ex => cleanNameStrict(ex.name) === cleanName);
-                    if (existing) {
-                        if (n.identity) existing.identity = cleanNameStrict(n.identity);
-                        if (Number.isFinite(n.affinity)) existing.affinity = n.affinity;
-                    } else {
-                        s.npcs.push({ name: cleanName, identity: cleanNameStrict(n.identity || "修仙者"), affinity: n.affinity || 10, relation: "結識" });
-                    }
+                let existing = s.npcs.find(ex => cleanNameStrict(ex.name) === n.name);
+                if (existing) {
+                    if (n.identity) existing.identity = n.identity;
+                    if (Number.isFinite(n.affinity)) existing.affinity = n.affinity;
+                } else {
+                    s.npcs.push({ name: n.name, identity: n.identity || "修仙者", affinity: n.affinity, relation: "結識" });
                 }
             });
         }
 
-        if (Array.isArray(rawState.quests)) s.quests = rawState.quests;
-        if (Array.isArray(rawState.worldEvents)) {
-            rawState.worldEvents.forEach(we => {
-                if (typeof we === 'string' && !s.worldEvents.includes(we)) s.worldEvents.push(we);
-            });
-        }
+        if (rawState.quests) s.quests = rawState.quests;
 
         if (Array.isArray(rawState.choices) && rawState.choices.length > 0) {
             s.choices = rawState.choices;
@@ -625,7 +690,7 @@
             contents: contents
         };
 
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${customModel}:generateContent?key=${apiKey}`, {
+        const res = await fetch(`[https://generativelanguage.googleapis.com/v1beta/models/$](https://generativelanguage.googleapis.com/v1beta/models/$){customModel}:generateContent?key=${apiKey}`, {
             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
         });
         const data = await res.json();
@@ -636,7 +701,7 @@
     async function callOpenAiApi(apiKey) {
         const model = document.getElementById("api-model").value.trim() || "gpt-4o-mini";
         const messages = [{ role: "system", content: getSystemPrompt() }, ...conversationHistory.slice(-10)];
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        const res = await fetch("[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)", {
             method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
             body: JSON.stringify({ model: model, messages: messages })
         });
@@ -645,7 +710,8 @@
         return data.choices[0].message.content;
     }
 
-    async function sendAction(choiceText = null) {
+    // 🌟 P0 原子性狀態交易與 API 失敗 Rollback 復原器
+    async function sendAction(choiceText = null, eventMeta = null) {
         if (isTyping) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
         if (!apiKey) {
@@ -658,7 +724,37 @@
         if (!actionText) return;
         inputEl.value = "";
 
-        const isFirstOriginSelection = !gameState.hasChosenOrigin;
+        // 🌟 身世硬性檢查
+        if (!gameState.hasChosenOrigin && !choiceText && !actionText.includes("開局")) {
+            openGameModal("⚠️ 尚未選擇身世", "請點擊上方三項預設身世之一，或輸入明確身世描述後再行開局！");
+            return;
+        }
+
+        // 📸 建立狀態交易快照 (Snapshot)
+        const stateSnapshot = structuredClone(gameState);
+        const historySnapshot = structuredClone(conversationHistory);
+
+        // 確定性預先變動套用
+        if (eventMeta) {
+            if (eventMeta.addDays) gameState.daysPassed = (gameState.daysPassed || 0) + eventMeta.addDays;
+            if (eventMeta.deductStone) gameState.spiritStone = Math.max(0, (gameState.spiritStone || 0) - eventMeta.deductStone);
+            if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
+            if (eventMeta.isBreakthrough) {
+                if (eventMeta.breakthroughSuccess) {
+                    gameState.level = (gameState.level || 0) + 1;
+                    const rDef = getRealmDef(gameState.level);
+                    gameState.realm = rDef.name;
+                    gameState.maxExp = rDef.maxExp;
+                    gameState.maxAge = rDef.maxAge;
+                    gameState.exp = 0;
+                    gameState.hp = getMaxHp(gameState);
+                } else {
+                    const damage = Math.floor(getMaxHp(gameState) * 0.3);
+                    gameState.hp = Math.max(1, (gameState.hp || 0) - damage);
+                    gameState.exp = Math.floor((gameState.exp || 0) * 0.8);
+                }
+            }
+        }
 
         const checkData = performSkillCheck(actionText);
         appendLogData("異世旅者", actionText, "player", false, true);
@@ -674,18 +770,22 @@
 
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
-            if (isFirstOriginSelection) {
+            if (!gameState.hasChosenOrigin) {
                 gameState.hasChosenOrigin = true;
                 gameState.choices = [...DEFAULT_EXPLORE_CHOICES];
             }
 
             if (parsedState) {
-                gameState = applyStateDelta(gameState, parsedState, checkData);
+                gameState = applyStateDelta(gameState, parsedState, checkData, eventMeta);
             }
 
             appendLogData("天道", storyText, "ai", false, true);
         } catch (error) {
-            appendLogData("系統", `推演失敗：${error.message}`, "system", false, true);
+            // 🔄 API 失敗：原子性 Rollback 快照復原
+            console.error("API 請求失敗，執行 Rollback 復原", error);
+            gameState = stateSnapshot;
+            conversationHistory = historySnapshot;
+            appendLogData("系統", `推演失敗 (${error.message})，狀態已還原。請檢查 API Key 或網路連線後重試。`, "system", false, true);
         } finally {
             isTyping = false;
             stopLoadingAnim();
@@ -697,7 +797,6 @@
     function startLoadingAnim() { document.getElementById("btn-submit").textContent = "🎲 推演中..."; }
     function stopLoadingAnim() { document.getElementById("btn-submit").textContent = "抉擇"; }
 
-    // 🌟 P3 嚴格深層存檔校正器
     function normalizeFullState(raw) {
         const def = getDefaultGameState();
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
@@ -871,6 +970,7 @@
         }
     }
 
+    // 🌟 P1 修正：安全 DOM 背包渲染，徹底消除 innerHTML 拼接
     function renderInventory() {
         const eqSlots = ['weapon', 'armor', 'accessory', 'treasure'];
         eqSlots.forEach(slot => {
@@ -883,19 +983,24 @@
 
         const invBox = document.getElementById("ui-inventory-list");
         if (invBox) {
+            invBox.innerHTML = "";
             if (!gameState.inventory || gameState.inventory.length === 0) {
-                invBox.innerText = "背包空空如也";
+                invBox.textContent = "背包空空如也";
             } else {
                 let counts = {};
                 gameState.inventory.forEach(i => {
                     let name = cleanNameStrict(i);
                     counts[name] = (counts[name] || 0) + 1;
                 });
-                invBox.innerHTML = "";
+                
                 Object.entries(counts).forEach(([name, qty]) => {
                     let row = document.createElement("div");
                     row.className = "item-row";
-                    row.innerHTML = `<span>📦 ${name} x${qty}</span>`;
+                    
+                    let span = document.createElement("span");
+                    span.textContent = `📦 ${name} x${qty}`;
+                    
+                    row.appendChild(span);
                     invBox.appendChild(row);
                 });
             }
@@ -964,7 +1069,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.47", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.48", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -989,7 +1094,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.47", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.48", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
