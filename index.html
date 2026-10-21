@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.36)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.38)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -104,6 +104,24 @@
 
         .clickable-tag { text-decoration: underline; cursor: pointer; }
         .clickable-tag:hover { filter: brightness(1.2); }
+
+        /* 🌟 V4.38 自訂遊戲模組彈窗 UI */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card {
+            background: #12141d; border: 1px solid var(--border-gold);
+            border-radius: 8px; width: 90%; max-width: 420px; padding: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 10px;
+        }
+        .modal-title { color: var(--border-gold); font-size: 1.05rem; font-weight: bold; border-bottom: 1px solid var(--ui-border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { font-size: 0.88rem; line-height: 1.6; color: #d1d1d6; }
+        .modal-close-btn { background: var(--border-gold); color: #000; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 8px; }
+        .modal-close-btn:hover { filter: brightness(1.2); }
     </style>
 </head>
 <body>
@@ -154,8 +172,8 @@
             </div>
             <div class="stat-item"><span class="stat-label">壽命 / 年齡</span><span class="stat-value" style="color:#ff8a80" id="ui-age">18歲0月 / 100歲</span></div>
             <div class="stat-item"><span class="stat-label">生命 (HP)</span><span class="stat-value" style="color:var(--accent-red)" id="ui-hp">50 / 50</span></div>
-            <div class="stat-item"><span class="stat-label">靈根資質 (點擊查看)</span><span class="stat-value clickable-tag" style="color:#00e676" id="ui-linggen" onclick="showLinggenInfo()">待顯化</span></div>
-            <div class="stat-item"><span class="stat-label">體質天賦 (點擊查看)</span><span class="stat-value clickable-tag" style="color:#e040fb" id="ui-physique" onclick="showPhysiqueInfo()">凡體</span></div>
+            <div class="stat-item"><span class="stat-label">靈根資質 (點擊詳解)</span><span class="stat-value clickable-tag" id="ui-linggen" onclick="showLinggenModal()">待顯化</span></div>
+            <div class="stat-item"><span class="stat-label">體質天賦 (點擊詳解)</span><span class="stat-value clickable-tag" id="ui-physique" onclick="showPhysiqueModal()">凡體</span></div>
             <div class="stat-item"><span class="stat-label">靈石貨幣 (下品折算)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0 顆</span></div>
             
             <h2 style="margin-top: 10px;">📊 六維屬性 (含裝備/功法/靈根體質加成)</h2>
@@ -226,6 +244,15 @@
     </div>
 </div>
 
+<!-- 🌟 V4.38 遊戲彈窗組件 -->
+<div class="modal-overlay" id="game-modal">
+    <div class="modal-card">
+        <div class="modal-title" id="modal-title-text">天賦詳解</div>
+        <div class="modal-body" id="modal-body-text">加成載入中...</div>
+        <button class="modal-close-btn" onclick="closeGameModal()">領旨閉合</button>
+    </div>
+</div>
+
 <script>
     const REALMS = [
         { level: 0, name: "凡人", maxAge: 100, maxHp: 50, maxExp: 100 },
@@ -293,7 +320,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.36",
+            version: "4.38",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100,
             hp: 50, exp: 0, maxExp: 100,
@@ -320,46 +347,148 @@
     let storyLogData = [];
     let isTyping = false;
 
-    // 🌟 V4.36 靈根與體質數值演算法矩陣
-    function getLinggenMeta(linggenStr) {
-        const str = cleanNameStrict(linggenStr || "待顯化");
-        if (str.includes("混沌") || str.includes("變異天靈根")) {
-            return { name: str, expRate: 1.75, breakBonus: 0.15, stats: { str: 5, con: 5, agi: 5, int: 8, wis: 8, luk: 5 }, desc: "✨ [無上傳奇] 混沌交織，修煉速度+75%，突破成功率+15%，全屬性大幅提升！" };
+    // 🌟 V4.38 100% 精準 評分梯隊演算法 (Tier-Scoring System)
+    function getLinggenMeta(linggenInput) {
+        let name = "待顯化";
+        let tier = null;
+
+        if (typeof linggenInput === 'object' && linggenInput) {
+            name = linggenInput.name || "待顯化";
+            tier = linggenInput.tier || null;
+        } else {
+            name = String(linggenInput || "待顯化");
         }
-        if (str.includes("天靈根")) {
-            return { name: str, expRate: 1.45, breakBonus: 0.10, stats: { int: 6, wis: 4 }, desc: "⚡ [稀世天資] 單一純粹靈根，吸納天地靈氣極快！修煉速度+45%，突破成功率+10%，神識+6, 悟性+4。" };
+
+        const clean = cleanNameStrict(name);
+
+        // 1. Tier 0：負面 / 無 / 未顯化
+        if (tier === 'none' || clean === "待顯化" || /(廢|缺|無|斷|損|尚未|普通人)/.test(clean)) {
+            return {
+                name: clean, tier: 'none', expRate: 1.0, breakBonus: 0.0, label: "無修修煉加成", stats: {},
+                color: "#888", desc: "🔒 <b>[未顯化/無靈根]</b> 凡人身軀或受損靈根，無法獲得額外靈氣吸納加成。"
+            };
         }
-        if (str.includes("真靈根") || str.includes("雙屬性") || str.includes("三屬性")) {
-            return { name: str, expRate: 1.25, breakBonus: 0.03, stats: { int: 3, wis: 2 }, desc: "🌱 [優秀資質] 靈根較為純粹，修煉速度+25%，神識+3, 悟性+2。" };
+
+        // 2. Tier 4：混沌/無上 (優先級最高)
+        if (tier === 'legend' || /(混沌|鴻蒙|無上|天道|全屬性|宇宙)/.test(clean)) {
+            return {
+                name: clean, tier: 'legend', expRate: 1.75, breakBonus: 0.15, label: "+75%修煉 / +15%突破",
+                stats: { str: 5, con: 5, agi: 5, int: 8, wis: 8, luk: 5 }, color: "#ffd700",
+                desc: "✨ <b>[無上混沌傳奇]</b> 萬法相生，天地靈氣如鯨吞般匯聚！修煉速度狂飆 +75%，突破概率提升 +15%，全屬性大幅增益！"
+            };
         }
-        if (str.includes("偽靈根") || str.includes("雜靈根")) {
-            return { name: str, expRate: 1.10, breakBonus: 0.0, stats: { int: 1 }, desc: "🍂 [平凡資質] 四五屬性雜亂，吸納靈氣較慢。修煉速度+10%，神識+1。" };
+
+        // 3. Tier 3：天靈根/極品
+        if (tier === 'heaven' || /(天靈根|變異|風靈|雷靈|冰靈|暗靈|光靈|極品|單靈根|重瞳|帝)/.test(clean)) {
+            return {
+                name: clean, tier: 'heaven', expRate: 1.45, breakBonus: 0.10, label: "+45%修煉 / +10%突破",
+                stats: { int: 6, wis: 4 }, color: "#ab47bc",
+                desc: "⚡ <b>[稀世天資靈根]</b> 純粹極致靈根，經脈通暢無阻！修煉速度大幅提升 +45%，突破成功率 +10%，神識+6，悟性+4。"
+            };
         }
-        return { name: "待顯化", expRate: 1.0, breakBonus: 0.0, stats: {}, desc: "🔒 [未顯化] 凡人身軀尚未踏入感應靈氣階段，待破境或測靈後顯化。" };
+
+        // 4. Tier 2：真靈根/優秀
+        if (tier === 'rare' || /(真靈根|雙靈根|三靈根|雙屬性|三屬性|純|仙|特殊)/.test(clean)) {
+            return {
+                name: clean, tier: 'rare', expRate: 1.25, breakBonus: 0.03, label: "+25%修煉 / +3%突破",
+                stats: { int: 3, wis: 2 }, color: "#0288d1",
+                desc: "🌱 <b>[優秀純粹資質]</b> 靈根結構較為精純，真元凝練穩定。修煉速度提升 +25%，突破成功率 +3%，神識+3，悟性+2。"
+            };
+        }
+
+        // 5. Tier 1：五行/雜靈根/預設兜底 (100% 保證包含五行靈根、凡品靈根等所有名稱)
+        return {
+            name: clean, tier: 'basic', expRate: 1.10, breakBonus: 0.01, label: "+10%修煉 / +1%突破",
+            stats: { int: 1 }, color: "#43a047",
+            desc: "🍂 <b>[基礎五行/雜靈根]</b> 五行齊全或屬性稍雜，吸納天地靈氣規矩穩定。修煉速度提升 +10%，突破成功率 +1%，神識+1。"
+        };
     }
 
-    function getPhysiqueMeta(physiqueStr) {
-        const str = cleanNameStrict(physiqueStr || "凡體");
-        if (str.includes("混沌") || str.includes("道體") || str.includes("道胎")) {
-            return { name: str, hpMult: 1.6, cpBonus: 600, stats: { str: 8, con: 8, agi: 8, int: 8, wis: 8, luk: 8 }, desc: "🌌 [天道無上體] 天道親和，生命上限+60%，戰力CP+600，全屬性+8！" };
+    function getPhysiqueMeta(physiqueInput) {
+        let name = "凡體";
+        let tier = null;
+
+        if (typeof physiqueInput === 'object' && physiqueInput) {
+            name = physiqueInput.name || "凡體";
+            tier = physiqueInput.tier || null;
+        } else {
+            name = String(physiqueInput || "凡體");
         }
-        if (str.includes("聖體") || str.includes("霸體") || str.includes("至尊骨")) {
-            return { name: str, hpMult: 1.4, cpBonus: 300, stats: { str: 12, con: 12 }, desc: "🔥 [荒古強健體] 肉身橫渡虛空，生命上限+40%，戰力CP+300，膂力+12, 根骨+12！" };
+
+        const clean = cleanNameStrict(name);
+
+        // 1. Tier 0：凡體/廢體
+        if (tier === 'normal' || clean === "凡體" || /(廢體|無|病弱|絕脈|未覺醒)/.test(clean)) {
+            return {
+                name: clean, tier: 'normal', hpMult: 1.0, cpBonus: 0, label: "無氣血加成", stats: {},
+                color: "#888", desc: "🧍 <b>[凡人普通肉身]</b> 未曾受過特別洗髓與天地氣血淬煉的普通體質。"
+            };
         }
-        if (str.includes("靈體") || str.includes("純陽") || str.includes("純陰") || str.includes("仙體")) {
-            return { name: str, hpMult: 1.15, cpBonus: 100, stats: { con: 5, wis: 5 }, desc: "✨ [特殊靈體] 氣血真元生生不息，生命上限+15%，戰力CP+100，根骨+5, 悟性+5。" };
+
+        // 2. Tier 4：無上道體
+        if (tier === 'dao' || /(混沌|道體|道胎|天道|無上|宇宙|萬劫)/.test(clean)) {
+            return {
+                name: clean, tier: 'dao', hpMult: 1.6, cpBonus: 600, label: "HP+60% / CP+600",
+                stats: { str: 8, con: 8, agi: 8, int: 8, wis: 8, luk: 8 }, color: "#00ffff",
+                desc: "🌌 <b>[天道無上聖體]</b> 肉身溝通天地本源，真元氣血生生不息！生命上限提升 +60%，戰力CP爆發 +600，全屬性+8！"
+            };
         }
-        return { name: "凡體", hpMult: 1.0, cpBonus: 0, stats: {}, desc: "🧍 [凡人肉身] 未曾受過特別洗髓與氣血淬煉的普通體質。" };
+
+        // 3. Tier 3：荒古聖體
+        if (tier === 'saint' || /(聖體|霸體|至尊|神體|仙體|荒古|重瞳|神魔)/.test(clean)) {
+            return {
+                name: clean, tier: 'saint', hpMult: 1.4, cpBonus: 300, label: "HP+40% / CP+300",
+                stats: { str: 12, con: 12 }, color: "#ffd700",
+                desc: "🔥 <b>[荒古強健霸體]</b> 肉身強悍至極，血氣如烘爐熾熱！生命上限提升 +40%，戰力CP爆發 +300，膂力+12，根骨+12！"
+            };
+        }
+
+        // 4. Tier 1~2：凡品靈體 / 特殊血脈 / 骨 / 軀 / 預設兜底 (100% 覆蓋所有靈體)
+        return {
+            name: clean, tier: 'spirit', hpMult: 1.15, cpBonus: 100, label: "HP+15% / CP+100",
+            stats: { con: 5, wis: 5 }, color: "#ab47bc",
+            desc: "✨ <b>[特殊靈體/血脈天賦]</b> 經脈受過靈氣洗髓，氣血與感應皆優於凡人。生命上限提升 +15%，戰力CP+100，根骨+5，悟性+5。"
+        };
     }
 
-    function showLinggenInfo() {
+    // 🌟 遊戲風彈窗控制邏輯
+    function openGameModal(title, htmlContent) {
+        document.getElementById("modal-title-text").innerText = title;
+        document.getElementById("modal-body-text").innerHTML = htmlContent;
+        document.getElementById("game-modal").classList.add("active");
+    }
+    function closeGameModal() {
+        document.getElementById("game-modal").classList.remove("active");
+    }
+
+    function showLinggenModal() {
         const meta = getLinggenMeta(gameState.linggen);
-        alert(`【靈根資質解析】\n資質：${meta.name}\n\n${meta.desc}`);
+        let statListStr = Object.entries(meta.stats).map(([k, v]) => {
+            const mapName = { str:'膂力', con:'根骨', agi:'身法', int:'神識', wis:'悟性', luk:'氣運' };
+            return `<span style="color:#00e676;">${mapName[k] \vert{}\vert{} k}+${v}</span>`;
+        }).join("、");
+
+        let content = `
+            <div style="margin-bottom:8px;"><b>天賦名稱：</b><span style="color:${meta.color}; font-size:1rem; font-weight:bold;">${meta.name}</span></div>
+            <div style="margin-bottom:8px;"><b>面板加成：</b><span style="color:var(--hl-gold);">${meta.label}</span></div>${statListStr ? `<div style="margin-bottom:8px;"><b>屬性增益：</b>${statListStr}</div>` : ''}
+            <div style="background:#0a0b10; border:1px solid #2a2d3d; padding:8px; border-radius:4px; font-size:0.82rem; color:#aaa; margin-top:10px;">${meta.desc}</div>
+        `;
+        openGameModal("📜 靈根資質天賦解析", content);
     }
 
-    function showPhysiqueInfo() {
+    function showPhysiqueModal() {
         const meta = getPhysiqueMeta(gameState.physique);
-        alert(`【體質天賦解析】\n天賦：${meta.name}\n\n${meta.desc}`);
+        let statListStr = Object.entries(meta.stats).map(([k, v]) => {
+            const mapName = { str:'膂力', con:'根骨', agi:'身法', int:'神識', wis:'悟性', luk:'氣運' };
+            return `<span style="color:#00e676;">${mapName[k] \vert{}\vert{} k}+${v}</span>`;
+        }).join("、");
+
+        let content = `
+            <div style="margin-bottom:8px;"><b>天賦名稱：</b><span style="color:${meta.color}; font-size:1rem; font-weight:bold;">${meta.name}</span></div>
+            <div style="margin-bottom:8px;"><b>面板加成：</b><span style="color:var(--hl-gold);">${meta.label}</span></div>${statListStr ? `<div style="margin-bottom:8px;"><b>屬性增益：</b>${statListStr}</div>` : ''}
+            <div style="background:#0a0b10; border:1px solid #2a2d3d; padding:8px; border-radius:4px; font-size:0.82rem; color:#aaa; margin-top:10px;">${meta.desc}</div>
+        `;
+        openGameModal("🔥 體質天賦解析", content);
     }
 
     const NON_NPC_BLACKLIST = [
@@ -435,14 +564,11 @@
                 if (itemSlot === 'armor') {
                     const hp = rMeta.tier === 0 ? 5 : 15 * rMeta.hpMul;
                     const con = rMeta.tier === 0 ? 0 : 1 + rMeta.statMul;
-                    const agi = rMeta.tier >= 2 ? Math.floor(rMeta.statMul / 2) : 0;
-                    return { type: 'equip', slot: 'armor', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 防具 [HP+${hp}${con > 0 ? `, 根骨+${con}` : ''}]`, hpBonus: hp, stats: { con: con, agi: agi } };
+                    return { type: 'equip', slot: 'armor', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 防具 [HP+${hp}${con > 0 ? `, 根骨+${con}` : ''}]`, hpBonus: hp, stats: { con: con, agi: 0 } };
                 }
                 if (itemSlot === 'weapon') {
                     const str = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
-                    const agi = rMeta.tier >= 2 ? Math.floor(rMeta.statMul / 2) : 0;
-                    const hp = rMeta.hpMul * 5;
-                    return { type: 'equip', slot: 'weapon', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 武器 [膂力+${str}${agi > 0 ? `, 身法+${agi}` : ''}]`, hpBonus: hp, stats: { str: str, agi: agi } };
+                    return { type: 'equip', slot: 'weapon', name: baseName, rarity: rarityKey, color: rMeta.color, desc: `[${rMeta.label}] 武器 [膂力+${str}]`, hpBonus: rMeta.hpMul * 5, stats: { str: str, agi: 0 } };
                 }
                 if (itemSlot === 'accessory') {
                     const wis = rMeta.tier === 0 ? 1 : 2 + rMeta.statMul;
@@ -614,6 +740,8 @@
 5. 【修仙境界、靈根與體質鎖定】：
    - 玩家若為【凡人 (Lv.0)】，靈根必須保持為"待顯化"，體質必須保持為"凡體"！
    - 只有當玩家進行測靈陣測試，或是成功引氣入體破境至【練氣一層 (Lv.1)】時，才能在 JSON 中回傳顯化後的靈根與覺醒體質！
+   - 顯化靈根時請傳結構物件：{"name": "五行靈根", "tier": "basic"} (tier可選: none/basic/rare/heaven/legend)
+   - 顯化體質時請傳結構物件：{"name": "凡品靈體", "tier": "spirit"} (tier可選: normal/spirit/saint/dao)
 6. 【NPC 強制記錄與名稱更新】：
    - 只要劇情中出現具名 NPC（如『趙長老』、『韓師兄』），務必填入 npcs 陣列。
    - 若原本以職務/頭銜稱呼（如『雜役堂執事』），後來得知真實姓名（如『唐三』），請在 JSON 的 npcs 陣列中回傳 {"name": "唐三", "identity": "雜役堂執事"}，系統會自動覆蓋名稱並繼承好感度！
@@ -643,8 +771,8 @@
   "gainedKungfu": [],
   "gainedSkills": [],
   "currentStatus": ["氣血紊亂"], 
-  "linggen": "待顯化",
-  "physique": "凡體",
+  "linggen": {"name": "待顯化", "tier": "none"},
+  "physique": {"name": "凡體", "tier": "normal"},
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
   "npcs": [{"name": "唐三", "identity": "雜役堂執事", "affinity": 20}],
   "quests": [{"name": "修仙探秘", "progress": "探索身邊未解之謎", "status": "進行中"}],
@@ -1179,13 +1307,13 @@
         if (s.level >= 1 || hasAwakenedEvent) {
             if (storyText.includes("混沌天靈根")) s.linggen = "混沌天靈根";
             else if (storyText.includes("天靈根")) s.linggen = "天靈根";
-            else if (rawState.linggen && rawState.linggen !== "待顯化") s.linggen = cleanNameStrict(rawState.linggen);
+            else if (rawState.linggen) s.linggen = rawState.linggen;
         } else {
             s.linggen = "待顯化";
         }
 
         if (s.level >= 1 || hasAwakenedEvent) {
-            if (rawState.physique && rawState.physique !== "凡體") s.physique = cleanNameStrict(rawState.physique);
+            if (rawState.physique) s.physique = rawState.physique;
         } else {
             s.physique = "凡體";
         }
@@ -1551,8 +1679,12 @@
                 ageEl.style.color = curAge >= maxAgeDef - 5 ? "var(--accent-red)" : "#ff8a80";
             }
 
-            document.getElementById("ui-linggen").innerText = s.linggen || "待顯化";
-            document.getElementById("ui-physique").innerText = s.physique || "凡體";
+            // 🌟 V4.38 面板顯化與加成標籤
+            const lgMeta = getLinggenMeta(s.linggen);
+            const phyMeta = getPhysiqueMeta(s.physique);
+            document.getElementById("ui-linggen").innerHTML = `<span style="color:${lgMeta.color}">${lgMeta.name}</span> <small style="color:#aaa; font-weight:normal;">(${lgMeta.label})</small>`;
+            document.getElementById("ui-physique").innerHTML = `<span style="color:${phyMeta.color}">${phyMeta.name}</span> <small style="color:#aaa; font-weight:normal;">(${phyMeta.label})</small>`;
+
             document.getElementById("ui-hp").innerText = `${s.hp || 0} / ${getMaxHp()}`;
             document.getElementById("ui-exp-text").innerText = `${s.exp || 0} / ${s.maxExp || 100}`;
             document.getElementById("ui-exp-fill").style.width = `${Math.min(100, ((s.exp || 0) / (s.maxExp || 100)) * 100)}%`;
@@ -1747,7 +1879,7 @@
             if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
 
             const savePackage = {
-                version: "4.36",
+                version: "4.38",
                 state: gameState,
                 logs: storyLogData,
                 history: conversationHistory
@@ -1758,7 +1890,7 @@
             storyLogData = storyLogData.slice(-15);
             conversationHistory = conversationHistory.slice(-5);
             try {
-                const savePackage = { version: "4.36", state: gameState, logs: storyLogData, history: conversationHistory };
+                const savePackage = { version: "4.38", state: gameState, logs: storyLogData, history: conversationHistory };
                 localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
             } catch (err) {
                 console.error("LocalStorage 致命寫入失敗", err);
