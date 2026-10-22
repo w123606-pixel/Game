@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.58)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.59)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -118,8 +118,10 @@
         }
         .modal-title { color: var(--border-gold); font-size: 1.05rem; font-weight: bold; border-bottom: 1px solid var(--ui-border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { font-size: 0.88rem; line-height: 1.6; color: #d1d1d6; }
-        .modal-close-btn { background: var(--border-gold); color: #000; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 8px; }
-        .modal-close-btn:hover { filter: brightness(1.2); }
+        .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+        .modal-btn { background: #2a2d3d; color: #fff; border: 1px solid #444; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+        .modal-btn.primary { background: var(--border-gold); color: #000; border: none; }
+        .modal-btn:hover { filter: brightness(1.2); }
     </style>
 </head>
 <body>
@@ -270,7 +272,9 @@
     <div class="modal-card">
         <div class="modal-title" id="modal-title-text">天賦詳解</div>
         <div class="modal-body" id="modal-body-text">加成載入中...</div>
-        <button class="modal-close-btn" onclick="closeGameModal()">領旨閉合</button>
+        <div class="modal-actions" id="modal-actions-area">
+            <button class="modal-btn primary" onclick="closeGameModal()">領旨閉合</button>
+        </div>
     </div>
 </div>
 
@@ -314,7 +318,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.58",
+            version: "4.59",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -621,7 +625,6 @@
         }
     }
 
-    // 🌟 全局生命狀態監控（含嚴格鎖定與致死處理）
     function checkLifeStatus(s = gameState) {
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
@@ -639,17 +642,32 @@
         }
     }
 
-    function openGameModal(titleText, contentElement) {
+    function openGameModal(titleText, contentElement, customButtons = null) {
         document.getElementById("modal-title-text").textContent = titleText;
         const bodyEl = document.getElementById("modal-body-text");
+        const actionsEl = document.getElementById("modal-actions-area");
         bodyEl.innerHTML = "";
+        actionsEl.innerHTML = "";
+
         if (typeof contentElement === 'string') {
-            bodyEl.textContent = contentElement;
+            bodyEl.innerHTML = contentElement;
         } else if (contentElement instanceof Node) {
             bodyEl.appendChild(contentElement);
         }
+
+        if (Array.isArray(customButtons) && customButtons.length > 0) {
+            customButtons.forEach(btn => actionsEl.appendChild(btn));
+        } else {
+            const closeBtn = document.createElement("button");
+            closeBtn.className = "modal-btn primary";
+            closeBtn.textContent = "領旨閉合";
+            closeBtn.onclick = closeGameModal;
+            actionsEl.appendChild(closeBtn);
+        }
+
         document.getElementById("game-modal").classList.add("active");
     }
+
     function closeGameModal() { document.getElementById("game-modal").classList.remove("active"); }
 
     function showLinggenModal() {
@@ -752,18 +770,17 @@
         if (gameState.isDead || !gameState.hasChosenOrigin) return;
         
         const locMod = getLocationModifier(gameState.location);
+        const displayText = `【在「${gameState.location}」閉關打坐 ${days} 天靜修】`;
+        const promptText = `【在「${gameState.location}」(${locMod.name})閉關打坐 ${days} 天。環境靈氣加成：恢復倍率 ${locMod.hpMult}x，每日獲得 ${locMod.expPerDay} 點感悟。請描繪吐納靈氣與靜修過程。】`;
         
-        sendAction(
-            `【在「${gameState.location}」(${locMod.name})閉關打坐 ${days} 天。環境靈氣加成：恢復倍率 ${locMod.hpMult}x，每日獲得 ${locMod.expPerDay} 點感悟。請描繪吐納靈氣與靜修過程。】`, 
-            { 
-                isPresetEvent: true, 
-                addDays: days, 
-                healPartial: true, 
-                locMult: locMod.hpMult,
-                addExp: locMod.expPerDay * days,
-                addFatigue: locMod.fatigueCost 
-            }
-        );
+        sendAction(displayText, { 
+            isPresetEvent: true, 
+            addDays: days, 
+            healPartial: true, 
+            locMult: locMod.hpMult,
+            addExp: locMod.expPerDay * days,
+            addFatigue: locMod.fatigueCost 
+        }, promptText);
     }
 
     function hospitalHeal() {
@@ -772,7 +789,7 @@
             openGameModal("⚠️ 靈石不足", "求醫需要至少 50 顆靈石！");
             return;
         }
-        sendAction("【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（扣除 50 靈石、消耗 1 天時間，並清除修練疲勞）。請描繪求醫過程與名醫診斷。】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true, clearFatigue: true });
+        sendAction("【前往醫館治癒傷勢】", { isPresetEvent: true, addDays: 1, deductStone: 50, restoreFullHp: true, clearFatigue: true }, "【前往醫館/丹房支付 50 靈石，請名醫治癒全滿氣血（扣除 50 靈石、消耗 1 天時間，並清除修練疲勞）。請描繪求醫過程與名醫診斷。】");
     }
 
     function sectAction(type) {
@@ -781,10 +798,11 @@
             openGameModal("⚠️ 尚未加入宗門", "你目前仍是散修，需在遊歷中尋得機緣拜入門派後，方可開啟宗門任務與藏經閣！");
             return;
         }
-        if (type === 'quest') sendAction("【前往宗門執事堂查看並接取歷練任務！】");
-        else if (type === 'library') sendAction("【前往藏經閣參悟高階心法與法訣！】");
+        if (type === 'quest') sendAction("【前往宗門執事堂接取任務】", null, "【前往宗門執事堂查看並接取歷練任務！】");
+        else if (type === 'library') sendAction("【前往宗門藏經閣參悟功法】", null, "【前往藏經閣參悟高階心法與法訣！】");
     }
 
+    // 🌟 重修突破邏輯：增加重傷警告彈窗 + 分離 Prompt 描繪慘烈破境
     function attemptBreakthrough() {
         if (gameState.isDead || !gameState.hasChosenOrigin) return;
         if ((gameState.breakthroughCdDays || 0) > 0) {
@@ -796,16 +814,58 @@
             return;
         }
 
+        const maxHp = getMaxHp(gameState);
+        const curHp = gameState.hp || 0;
+        const hpRatio = curHp / maxHp;
+
+        // 若目前血量低於 50%，跳出重傷孤注一擲警告
+        if (hpRatio < 0.5) {
+            const cancelBtn = document.createElement("button");
+            cancelBtn.className = "modal-btn";
+            cancelBtn.textContent = "暫緩衝關 (先尋求療傷)";
+            cancelBtn.onclick = closeGameModal;
+
+            const gambleBtn = document.createElement("button");
+            gambleBtn.className = "modal-btn primary";
+            gambleBtn.style.background = "#ff5252";
+            gambleBtn.style.color = "#fff";
+            gambleBtn.textContent = "孤注一擲 (賭命衝關)";
+            gambleBtn.onclick = () => {
+                closeGameModal();
+                executeBreakthroughProcess(true);
+            };
+
+            openGameModal(
+                "⚠️ 氣血虛弱 · 強行衝關風險極高", 
+                `你目前氣血虛弱 (HP: <b>${curHp}/${maxHp}</b>)，處於重傷狀態。此時強行突破將極易走火入魔！是否仍要孤注一擲賭命衝關？`,
+                [cancelBtn, gambleBtn]
+            );
+            return;
+        }
+
+        executeBreakthroughProcess(false);
+    }
+
+    function executeBreakthroughProcess(isGambling = false) {
         const luk = gameState.stats?.luk || 10;
         const lgMeta = getLinggenMeta(gameState.linggen);
-        const successRate = Math.min(0.95, 0.60 + (luk * 0.02) + (lgMeta.breakBonus || 0));
-        const isSuccess = Math.random() < successRate;
+        let successRate = Math.min(0.95, 0.60 + (luk * 0.02) + (lgMeta.breakBonus || 0));
+        
+        if (isGambling) successRate -= 0.20; // 孤注一擲賭命降低 20% 成功率
 
+        const isSuccess = Math.random() < successRate;
+        const displayText = isGambling ? "【孤注一擲，強提殘存真元衝擊境界瓶頸！】" : "【盤膝運功，凝練全身真元衝擊境界瓶頸！】";
+
+        let promptText = "";
         if (isSuccess) {
-            sendAction(`【衝擊境界瓶頸：天道判定成功！】修為順利突破至下一境界！請描繪渡劫衝關的震撼過程與肉身脫胎換骨之變。`, { isBreakthrough: true, breakthroughSuccess: true });
+            promptText = isGambling
+                ? `【衝擊境界瓶頸：天道判定成功（賭命突破）！】玩家目前處於重傷倒地的絕境下，強行燃燒殘存真元孤注一擲突破成功！請描繪忍辱喋血、經脈劇痛但強行破境脫胎換骨的慘烈過程，切勿出現紫氣東來或古戒憑空救場的失真情節。`
+                : `【衝擊境界瓶頸：天道判定成功！】修為順利突破至下一境界！請描繪渡劫衝關的震撼過程與肉身脫胎換骨之變。`;
         } else {
-            sendAction(`【衝擊境界瓶頸：天道判定失敗！】真元逆衝遭受經脈反噬受傷（冷卻 15 天）！請描繪衝關失敗時的凶險與真元紊亂狀況。`, { isBreakthrough: true, breakthroughSuccess: false });
+            promptText = `【衝擊境界瓶頸：天道判定失敗！】真元逆衝遭受經脈反噬受傷（冷卻 15 天）！請描繪衝關失敗時真元紊亂與強行吐血的險境。`;
         }
+
+        sendAction(displayText, { isBreakthrough: true, breakthroughSuccess: isSuccess }, promptText);
     }
 
     function performSkillCheck(actionText) {
@@ -943,7 +1003,7 @@
         if (Array.isArray(raw.worldEvents)) {
             validated.worldEvents = raw.worldEvents.map(cleanNameStrict).filter(we => {
                 if (!we) return false;
-                if (/(追兵|搜山|躲藏|破廟|逃亡|受傷|小路|暗格)/.test(we)) return false;
+                if (/(追兵|搜山|躲藏|破廟|逃亡|受傷|小路|暗格)/.test(we);
                 return true;
             });
         }
@@ -955,12 +1015,10 @@
         return validated;
     }
 
-    // 🌟 核心防禦：雙重保底與殘血校正機制
     function applyStateDelta(currentState, rawState, checkData = null, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
 
-        // 1. 若 AI 明確判定致死，直接宣告死亡
         if (rawState.isDead === true) {
             s.isDead = true;
             s.hp = 0;
@@ -991,10 +1049,8 @@
             }
         }
 
-        // 🌟 2. 前端硬性保護：若 AI 未判定死亡，無論扣血多猛，強制殘血保底 1 HP！
         if (!s.isDead) {
             const maxHp = getMaxHp(s);
-            // 只要沒死，HP 絕對鎖定在 [1 ~ maxHp] 之間
             s.hp = Math.max(1, Math.min(maxHp, s.hp));
         }
 
@@ -1095,7 +1151,8 @@
         return data.choices[0].message.content;
     }
 
-    async function sendAction(choiceText = null, eventMeta = null) {
+    // 🌟 sendAction 改造：支援「顯示文字 (displayText)」與「AI 指令 (customPromptText)」分離
+    async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
         if (!apiKey) {
@@ -1106,6 +1163,8 @@
         const inputEl = document.getElementById("action-input");
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
+
+        const promptToSend = customPromptText || actionText;
 
         const stateSnapshot = structuredClone(gameState);
         const historySnapshot = structuredClone(conversationHistory);
@@ -1159,8 +1218,8 @@
         }
 
         const checkData = performSkillCheck(actionText);
-        appendLogData("異世旅者", actionText, "player", false, true);
-        conversationHistory.push({ role: "user", content: `${actionText}\n\n${checkData.message}` });
+        appendLogData("異世旅者", actionText, "player", false, true); // 印出優雅的【顯示文字】
+        conversationHistory.push({ role: "user", content: `${promptToSend}\n\n${checkData.message}` }); // 傳給 AI 詳細的【Prompt 指令】
         
         startLoadingAnim();
         isTyping = true;
@@ -1290,7 +1349,6 @@
         }
 
         let parsedHp = Number.isFinite(Number(raw.hp)) ? Number(raw.hp) : 50;
-        // 🌟 存檔自我修復：若非死亡狀態，HP 自動修正為至少 1 血
         if (!s.isDead && parsedHp <= 0) {
             s.hp = 1;
         } else {
@@ -1517,7 +1575,7 @@
     }
 
     function renderUI() {
-        checkLifeStatus(gameState); // 每次渲染畫面時強制檢查一次生命狀態
+        checkLifeStatus(gameState);
 
         const isFuncDisabled = gameState.isDead || !gameState.hasChosenOrigin;
         const hasJoinedSect = gameState.sect && gameState.sect.name !== '無' && gameState.sect.name !== '無宗門';
@@ -1582,7 +1640,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.58", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.59", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1607,7 +1665,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.58", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.59", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
