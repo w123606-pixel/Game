@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.76)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.77)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -333,12 +333,12 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.76",
+            version: "4.77",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
             danToxin: 0, hospitalVisitCount: 0, lastHospitalDay: -999,
-            isDead: false,
+            isDead: false, deathModalShown: false,
             location: "九州邊境 · 荒郊破廟", scenarioMode: "IDLE", activeThreats: [],
             hasChosenOrigin: false, originType: "未明",
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -371,16 +371,17 @@
         return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
     }
 
+    // 🌟 P1 修正：嚴格由高到低檢查稀有度，避免 "仙品寶劍" 被寶字誤判為極品
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
 
         let tierKey = '下品';
-        if (/凡|粗|劣|破/.test(clean)) tierKey = '凡品';
-        else if (/中/.test(clean)) tierKey = '中品';
+        if (/仙|神|聖/.test(clean)) tierKey = '仙品';
+        else if (/極|天/.test(clean)) tierKey = '極品';
         else if (/上|玄|地/.test(clean)) tierKey = '上品';
-        else if (/極|天|寶/.test(clean)) tierKey = '極品';
-        else if (/仙|神|聖/.test(clean)) tierKey = '仙品';
+        else if (/中/.test(clean)) tierKey = '中品';
+        else if (/凡|粗|劣|破/.test(clean)) tierKey = '凡品';
 
         const rarity = RARITY_TIERS[tierKey];
 
@@ -430,15 +431,16 @@
         return { name: clean, hpMult: 1.0, cpBonus: 0, color: "#888888", desc: "🧍 [凡體] 普通凡人肉身。" };
     }
 
+    // 🌟 P1 修正：優先檢查高級靈根，避免 "無上靈根" 被誤判為無/未顯化
     function getLinggenMeta(linggenInput) {
         let name = "待顯化";
         if (typeof linggenInput === 'object' && linggenInput) name = linggenInput.name || "待顯化";
         else name = String(linggenInput || "待顯化");
         const clean = cleanNameStrict(name);
 
-        if (clean === "待顯化" || /(未顯化|無)/.test(clean)) return { name: clean, expRate: 1.0, breakBonus: 0.0, color: "#888888", desc: "🔒 [未顯化] 無額外修練加成。" };
-        if (/(混沌|天靈根)/.test(clean)) return { name: clean, expRate: 2.0, breakBonus: 0.05, color: "#ffd700", desc: "⚡ [天靈根/混沌] 吐納一日千里。" };
+        if (/(混沌|天靈根|無上靈根)/.test(clean)) return { name: clean, expRate: 2.0, breakBonus: 0.05, color: "#ffd700", desc: "⚡ [天靈根/混沌/無上] 吐納一日千里。" };
         if (/(風|雷|冰|異)/.test(clean)) return { name: clean, expRate: 1.4, breakBonus: 0.03, color: "#ab47bc", desc: "🌀 [變異靈根] 戰力與修練俱佳。" };
+        if (clean === "待顯化" || /(未顯化|^無$)/.test(clean)) return { name: clean, expRate: 1.0, breakBonus: 0.0, color: "#888888", desc: "🔒 [未顯化] 無額外修練加成。" };
         return { name: clean, expRate: 1.1, breakBonus: 0.01, color: "#43a047", desc: "🍂 [真靈根] 穩健修練。" };
     }
 
@@ -591,17 +593,24 @@
         return s.scenarioMode || "IDLE";
     }
 
+    // 🌟 P1 修正：新增 deathModalShown 旗標，防止死亡彈窗重複洗版
     function checkLifeStatus(s = gameState) {
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
         if (curAge >= (s.maxAge || 100)) {
             s.isDead = true; s.hp = 0;
-            openGameModal("💀 壽元耗盡 · 坐化羽化", `修士 <b>${curAge}</b> 歲壽終正寢。請點擊系統選單進行【輪迴重置】。`);
+            if (!s.deathModalShown) {
+                s.deathModalShown = true;
+                openGameModal("💀 壽元耗盡 · 坐化羽化", `修士 <b>${curAge}</b> 歲壽終正寢。請點擊系統選單進行【輪迴重置】。`);
+            }
             return;
         }
         if (s.isDead || (s.hp || 0) <= 0) {
             s.hp = 0; s.isDead = true;
-            openGameModal("💀 傷勢過重 · 身消道殞", `修士肉身遭受重創崩解。請點擊系統選單進行【輪迴重置】。`);
+            if (!s.deathModalShown) {
+                s.deathModalShown = true;
+                openGameModal("💀 傷勢過重 · 身消道殞", `修士肉身遭受重創崩解。請點擊系統選單進行【輪迴重置】。`);
+            }
         }
     }
 
@@ -788,7 +797,7 @@
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
 
-        if (mode === "DIALOGUE") { openGameModal("⚠️ 對話中", "當前正在與人對話,無法抽身前往醫館！"); return; }
+        if (mode === "DIALOGUE") { openGameModal("⚠️ 對話中", "當前正在與人對話，無法抽身前往醫館！"); return; }
         if (mode === "SHOPPING") { openGameModal("⚠️ 採買中", "當前正在市集交易，請先完成採買再求醫！"); return; }
         if (mode === "DANGER") { openGameModal("⚠️ 強敵追殺", "當前強敵環伺，無法脫身前往醫館求醫！"); return; }
         
@@ -827,8 +836,14 @@
         else if (type === 'library') sendAction("【前往宗門藏經閣參悟功法】");
     }
 
+    // 🌟 P1 修正：境界上限防護檢查
     function attemptBreakthrough() {
         if (gameState.isDead) return;
+        if (gameState.level >= REALMS.length - 1) {
+            openGameModal("✨ 圓滿無漏", "你已處於天地規則極致（大主宰境），位列諸天之巔，無法繼續突破！");
+            return;
+        }
+
         const mode = getEffectiveMode(gameState);
         if (mode === "DIALOGUE" || mode === "DANGER") { openGameModal("⚠️ 時機不對", "當前情勢緊繃或正在對話，無法分心衝擊境界！"); return; }
         if (gameState.exp < gameState.maxExp) { openGameModal("⚠️ 修為未滿", "修為尚未圓滿，無法強行突破！"); return; }
@@ -918,7 +933,6 @@
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // 🌟 修正：完整解析並套用 AI 回傳的 hpChange, expReward, stoneChange, currentStatus, sect, npcs 等狀態
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -1025,7 +1039,6 @@
         return data.candidates?.[0]?.content?.parts?.[0]?.text || "天道無回應...";
     }
 
-    // 🌟 修正：將 eventMeta 的狀態變更移至 API 請求成功後才執行（交易原子性防護）
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
@@ -1050,7 +1063,6 @@
             conversationHistory.push({ role: "assistant", content: aiResponseText });
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
-            // 🌟 確保只有在 API 成功回傳後，才正式套用閉關、求醫、突破等本地確定性結算
             if (eventMeta) {
                 if (eventMeta.addDays) gameState.daysPassed += eventMeta.addDays;
                 if (eventMeta.addExp) {
@@ -1110,6 +1122,7 @@
         return `${baseVal}`;
     }
 
+    // 🌟 P1 修正：補齊地點、靈根、體質、狀態、任務與 NPC 的即時介面更新
     function renderUI() {
         checkLifeStatus(gameState);
         const choiceCont = document.getElementById("dynamic-choices-container");
@@ -1124,11 +1137,21 @@
             });
         }
 
+        document.getElementById("ui-location-top").textContent = `📜 九州史詩 - ${gameState.location || "九州邊境 · 荒郊破廟"}`;
         document.getElementById("ui-realm").innerText = `${gameState.realm} (Lv.${gameState.level})`;
         document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
         document.getElementById("ui-hp").innerText = `${gameState.hp} / ${getMaxHp(gameState)}`;
         document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue} / 100`;
         document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone} 顆`;
+
+        // 靈根與體質動態標籤顏色渲染
+        const lgMeta = getLinggenMeta(gameState.linggen);
+        const lgEl = document.getElementById("ui-linggen");
+        lgEl.textContent = lgMeta.name; lgEl.style.color = lgMeta.color;
+
+        const phyMeta = getPhysiqueMeta(gameState.physique);
+        const phyEl = document.getElementById("ui-physique");
+        phyEl.textContent = phyMeta.name; phyEl.style.color = phyMeta.color;
 
         const expPct = Math.min(100, Math.floor((gameState.exp / gameState.maxExp) * 100));
         document.getElementById("ui-exp-text").innerText = `${gameState.exp} / ${gameState.maxExp} (${expPct}%)`;
@@ -1142,6 +1165,25 @@
         const statusBox = document.getElementById("ui-status");
         if (statusBox) {
             statusBox.innerHTML = gameState.status.length > 0 ? gameState.status.map(st => `• ${st}`).join("<br>") : "身體康健";
+        }
+
+        // 任務與 NPC 列表渲染
+        const questsBox = document.getElementById("ui-quests");
+        if (questsBox) {
+            questsBox.innerHTML = (gameState.quests && gameState.quests.length > 0)
+                ? gameState.quests.map(q => `• 【${q.name}】${q.progress} (${q.status})`).join("<br>")
+                : "暫無當前任務";
+        }
+
+        const npcsBox = document.getElementById("ui-npcs-list");
+        if (npcsBox) {
+            npcsBox.innerHTML = (gameState.npcs && gameState.npcs.length > 0)
+                ? gameState.npcs.map(n => {
+                    const name = typeof n === 'string' ? n : (n.name || '未知NPC');
+                    const relation = typeof n === 'object' && n.relation ? ` [${n.relation}]` : '';
+                    return `• ${name}${relation}`;
+                }).join("<br>")
+                : "尚無結識人物";
         }
 
         const eqTypes = ['weapon', 'armor', 'accessory', 'treasure'];
@@ -1239,6 +1281,7 @@
         if (immediateRender) renderStoryLogs();
     }
 
+    // 🌟 P1 修正：改用安全的 DOM 節點與 textContent 組合，防範 AI 內容的 XSS 注入風險
     function renderStoryLogs() {
         const logBox = document.getElementById("story-log");
         if (!logBox) return;
@@ -1246,18 +1289,36 @@
         storyLogData.forEach(log => {
             const block = document.createElement('div');
             block.className = `story-block ${log.type || 'system'}`;
-            block.innerHTML = `<strong>${log.role}：</strong><br><span>${log.content}</span>`;
+
+            const strong = document.createElement('strong');
+            strong.textContent = `${log.role}：`;
+            block.appendChild(strong);
+
+            block.appendChild(document.createElement('br'));
+
+            const span = document.createElement('span');
+            span.textContent = log.content;
+            block.appendChild(span);
+
             logBox.appendChild(block);
         });
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v476_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v477_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    
+    // 🌟 P1 修正：確保讀檔後立即呼叫 renderStoryLogs() 渲染開場劇情
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v476_save");
+        const saved = localStorage.getItem("blade_v477_save") || localStorage.getItem("blade_v476_save") || localStorage.getItem("blade_v475_save");
         if (saved) {
-            const pkg = JSON.parse(saved);
-            gameState = pkg.state; storyLogData = pkg.logs; conversationHistory = pkg.history;
+            try {
+                const pkg = JSON.parse(saved);
+                gameState = pkg.state || getDefaultGameState();
+                storyLogData = pkg.logs || [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
+                conversationHistory = pkg.history || [];
+            } catch (e) {
+                storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
+            }
         } else {
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
         }
@@ -1270,21 +1331,38 @@
         const a = document.createElement('a'); a.href = dataStr; a.download = `save_${Date.now()}.json`; a.click();
     }
 
+    // 🌟 P1 修正：增加匯入存檔的 JSON 結構防呆驗證
     function importSave(e) {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(evt) {
-            const pkg = JSON.parse(evt.target.result);
-            gameState = pkg.state; storyLogData = pkg.logs; conversationHistory = pkg.history;
-            saveGameState(); renderUI(); renderStoryLogs(); alert("存檔匯入成功！");
+            try {
+                const pkg = JSON.parse(evt.target.result);
+                if (!pkg || typeof pkg !== 'object' || !pkg.state || typeof pkg.state.level !== 'number' || !pkg.state.stats) {
+                    throw new Error("存檔結構不符或核心欄位缺失");
+                }
+                gameState = pkg.state; 
+                storyLogData = pkg.logs || []; 
+                conversationHistory = pkg.history || [];
+                saveGameState(); 
+                renderUI(); 
+                renderStoryLogs(); 
+                alert("存檔匯入成功！");
+            } catch (err) {
+                alert(`存檔匯入失敗：檔案格式錯誤或損毀 (${err.message})`);
+            }
         };
         reader.readAsText(file);
     }
 
+    // 🌟 P1 修正：精準清除當前遊戲專屬存檔，不再使用危險的 localStorage.clear()
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
-            localStorage.clear(); 
+            localStorage.removeItem("blade_v477_save");
+            localStorage.removeItem("blade_v476_save");
+            localStorage.removeItem("blade_v475_save");
+            
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
             conversationHistory = [];
@@ -1296,7 +1374,6 @@
 
     function saveApiKey() { localStorage.setItem("blade_api_key", document.getElementById("api-key").value.trim()); alert("Key 已儲存！"); }
     
-    // 🌟 補上遺漏的 clearApiKey 函數
     function clearApiKey() {
         localStorage.removeItem("blade_api_key");
         document.getElementById("api-key").value = "";
