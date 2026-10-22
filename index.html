@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.54)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.55)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -81,7 +81,7 @@
         input[type="text"]:focus { border-color: var(--border-gold); }
         button.primary-btn { background: var(--border-gold); color: #000; min-width: 90px; border: none; font-weight: bold; border-radius: 4px; min-height: 44px; cursor: pointer;}
         button.primary-btn:hover:not(:disabled) { filter: brightness(1.2); }
-        button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none; }
         
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 6px; margin-top: 6px; }
         .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-size: 0.85rem; }
@@ -138,12 +138,13 @@
                 <input type="text" id="action-input" placeholder="可點擊上方預設身世，或在此輸入自訂身世開局..." onkeydown="if(event.key==='Enter') sendAction()">
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
+            <!-- 🌟 靜態 HTML 直接預設全部 disabled，確保未載入完前絕對無法按 -->
             <div class="quick-actions" id="quick-actions-container">
-                <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)">🧘 閉關(10天)</button>
-                <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)">⛰️ 死關(30天)</button>
-                <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;">🏥 求醫(50石)</button>
-                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059;">📜 宗門任務</button>
-                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059;">📚 藏經閣</button>
+                <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)" disabled>🧘 閉關(10天)</button>
+                <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)" disabled>⛰️ 死關(30天)</button>
+                <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;" disabled>🏥 求醫(50石)</button>
+                <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059;" disabled>📜 宗門任務</button>
+                <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059;" disabled>📚 藏經閣</button>
                 <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple); grid-column: span 2;" onclick="attemptBreakthrough()" disabled>✨ 需先設定身世開局</button>
             </div>
         </div>
@@ -205,28 +206,28 @@
                         <div><span class="slot-title">🗡️ 武器：</span><span class="item-name" id="eq-weapon">無</span></div>
                         <div class="item-desc" id="eq-weapon-desc">無屬性加成</div>
                     </div>
-                    <button id="btn-unequip-weapon" onclick="unequipItem('weapon')" style="font-size:0.7rem; padding:2px 4px;">卸下</button>
+                    <button id="btn-unequip-weapon" onclick="unequipItem('weapon')" style="font-size:0.7rem; padding:2px 4px;" disabled>卸下</button>
                 </div>
                 <div class="equip-card">
                     <div>
                         <div><span class="slot-title">🛡️ 防具：</span><span class="item-name" id="eq-armor">無</span></div>
                         <div class="item-desc" id="eq-armor-desc">無屬性加成</div>
                     </div>
-                    <button id="btn-unequip-armor" onclick="unequipItem('armor')" style="font-size:0.7rem; padding:2px 4px;">卸下</button>
+                    <button id="btn-unequip-armor" onclick="unequipItem('armor')" style="font-size:0.7rem; padding:2px 4px;" disabled>卸下</button>
                 </div>
                 <div class="equip-card">
                     <div>
                         <div><span class="slot-title">📿 飾品：</span><span class="item-name" id="eq-accessory">無</span></div>
                         <div class="item-desc" id="eq-accessory-desc">無屬性加成</div>
                     </div>
-                    <button id="btn-unequip-accessory" onclick="unequipItem('accessory')" style="font-size:0.7rem; padding:2px 4px;">卸下</button>
+                    <button id="btn-unequip-accessory" onclick="unequipItem('accessory')" style="font-size:0.7rem; padding:2px 4px;" disabled>卸下</button>
                 </div>
                 <div class="equip-card">
                     <div>
                         <div><span class="slot-title">🔮 法寶：</span><span class="item-name" id="eq-treasure">無</span></div>
                         <div class="item-desc" id="eq-treasure-desc">無屬性加成</div>
                     </div>
-                    <button id="btn-unequip-treasure" onclick="unequipItem('treasure')" style="font-size:0.7rem; padding:2px 4px;">卸下</button>
+                    <button id="btn-unequip-treasure" onclick="unequipItem('treasure')" style="font-size:0.7rem; padding:2px 4px;" disabled>卸下</button>
                 </div>
             </div>
             <h2>🎒 道具背包 (同名自動堆疊)</h2>
@@ -314,7 +315,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.54",
+            version: "4.55",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -417,7 +418,6 @@
         return { name: clean, tier: 'true', expRate: 1.1, breakBonus: 0.01, label: "+10%修煉 / +1%突破", color: "#43a047", desc: "🍂 [真靈根] 雙三屬性俱全，規矩穩定。" };
     }
 
-    // 🌟 100% 裝備屬性加成與描述解析器
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
@@ -461,12 +461,10 @@
         return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: 0, desc: "普通修仙雜物" };
     }
 
-    // 🌟 全屬性加總演算 (基礎 + 裝備 + 體質)
     function getTotalStats(s = gameState) {
         const base = s.stats || { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
         let total = { ...base };
 
-        // 1. 穿戴裝備加成
         Object.values(s.equipment || {}).forEach(eq => {
             if (eq) {
                 const meta = getItemMeta(eq);
@@ -479,7 +477,6 @@
             }
         });
 
-        // 2. 體質天賦加成
         const phyMeta = getPhysiqueMeta(s.physique);
         if (phyMeta.str) total.str += phyMeta.str;
         if (phyMeta.con) total.con += phyMeta.con;
@@ -522,28 +519,64 @@
         return Math.floor(baseCp + statsSum * 8 + eqHp * 2 + kfBonus + (phyMeta.cpBonus || 0));
     }
 
-    // 🌟 六維屬性 Canvas 雷達蜘蛛圖繪製 Engine
     function drawRadarChart(totalStats) {
-        const canvas = document.getElementById("radarCanvas");
-        if (!canvas) return;
-        const ctx = canvas.getContext("2d");
-        const w = canvas.width;
-        const h = canvas.height;
-        ctx.clearRect(0, 0, w, h);
+        try {
+            const canvas = document.getElementById("radarCanvas");
+            if (!canvas) return;
+            const ctx = canvas.getContext("2d");
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
 
-        const centerX = w / 2;
-        const centerY = h / 2;
-        const radius = Math.min(w, h) / 2 - 22;
-        const labels = ["膂力", "根骨", "身法", "神識", "悟性", "氣運"];
-        const keys = ["str", "con", "agi", "int", "wis", "luk"];
-        const numAxes = 6;
-        const maxVal = 50; // 繪圖極限對比值
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const radius = Math.min(w, h) / 2 - 22;
+            const labels = ["膂力", "根骨", "身法", "神識", "悟性", "氣運"];
+            const keys = ["str", "con", "agi", "int", "wis", "luk"];
+            const numAxes = 6;
+            const maxVal = 50;
 
-        // 1. 繪製多層六角網格背景
-        for (let level = 1; level <= 4; level++) {
-            const r = (radius / 4) * level;
+            for (let level = 1; level <= 4; level++) {
+                const r = (radius / 4) * level;
+                ctx.beginPath();
+                for (let i = 0; i < numAxes; i++) {
+                    const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
+                    const x = centerX + r * Math.cos(angle);
+                    const y = centerY + r * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = "#2a2d3d";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            ctx.font = "10px sans-serif";
+            ctx.fillStyle = "#8b8ea8";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            for (let i = 0; i < numAxes; i++) {
+                const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = "#1f2230";
+                ctx.stroke();
+
+                const labelX = centerX + (radius + 14) * Math.cos(angle);
+                const labelY = centerY + (radius + 14) * Math.sin(angle);
+                ctx.fillText(labels[i], labelX, labelY);
+            }
+
             ctx.beginPath();
             for (let i = 0; i < numAxes; i++) {
+                const val = Math.min(maxVal, Math.max(5, totalStats[keys[i]] || 10));
+                const r = (radius * val) / maxVal;
                 const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
                 const x = centerX + r * Math.cos(angle);
                 const y = centerY + r * Math.sin(angle);
@@ -551,65 +584,27 @@
                 else ctx.lineTo(x, y);
             }
             ctx.closePath();
-            ctx.strokeStyle = "#2a2d3d";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
 
-        // 2. 繪製六維放射軸線與標籤
-        ctx.font = "10px sans-serif";
-        ctx.fillStyle = "#8b8ea8";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        for (let i = 0; i < numAxes; i++) {
-            const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
-
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(x, y);
-            ctx.strokeStyle = "#1f2230";
-            ctx.stroke();
-
-            // 標籤位置調教
-            const labelX = centerX + (radius + 14) * Math.cos(angle);
-            const labelY = centerY + (radius + 14) * Math.sin(angle);
-            ctx.fillText(labels[i], labelX, labelY);
-        }
-
-        // 3. 繪製玩家實際屬性填滿區域
-        ctx.beginPath();
-        for (let i = 0; i < numAxes; i++) {
-            const val = Math.min(maxVal, Math.max(5, totalStats[keys[i]] || 10));
-            const r = (radius * val) / maxVal;
-            const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
-            const x = centerX + r * Math.cos(angle);
-            const y = centerY + r * Math.sin(angle);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-
-        ctx.fillStyle = "rgba(197, 160, 89, 0.35)";
-        ctx.fill();
-        ctx.strokeStyle = "#ffd700";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // 繪製頂點圓點
-        for (let i = 0; i < numAxes; i++) {
-            const val = Math.min(maxVal, Math.max(5, totalStats[keys[i]] || 10));
-            const r = (radius * val) / maxVal;
-            const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
-            const x = centerX + r * Math.cos(angle);
-            const y = centerY + r * Math.sin(angle);
-
-            ctx.beginPath();
-            ctx.arc(x, y, 3, 0, Math.PI * 2);
-            ctx.fillStyle = "#00ffff";
+            ctx.fillStyle = "rgba(197, 160, 89, 0.35)";
             ctx.fill();
+            ctx.strokeStyle = "#ffd700";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            for (let i = 0; i < numAxes; i++) {
+                const val = Math.min(maxVal, Math.max(5, totalStats[keys[i]] || 10));
+                const r = (radius * val) / maxVal;
+                const angle = (Math.PI * 2 / numAxes) * i - Math.PI / 2;
+                const x = centerX + r * Math.cos(angle);
+                const y = centerY + r * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = "#00ffff";
+                ctx.fill();
+            }
+        } catch (e) {
+            console.error("drawRadarChart error:", e);
         }
     }
 
@@ -731,6 +726,7 @@
         saveGameState();
     }
 
+    // 🌟 硬性安全防禦
     function quickHeal(days) {
         if (gameState.isDead || !gameState.hasChosenOrigin) return;
         sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days, healPartial: true, addFatigue: 15 });
@@ -789,7 +785,6 @@
         };
     }
 
-    // 🌟 System Prompt：嚴格限定 gainedSkills 與 worldEvents 範疇
     function getSystemPrompt() { 
         return `你現在是修仙RPG《九州裂天錄》的天道DM。
 請推演玩家行動並回傳標準 JSON 格式（必須包含 "story" 欄位）：
@@ -846,7 +841,6 @@
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // 🌟 JS 嚴格過濾驗證器
     function validateStateDelta(raw) {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
 
@@ -881,7 +875,6 @@
             }).filter(k => k.name);
         }
 
-        // 🌟 過濾非招式的被動名詞（微光、庇護、狀態、古戒感應）
         if (Array.isArray(raw.gainedSkills)) {
             validated.gainedSkills = raw.gainedSkills.filter(s => {
                 let name = cleanNameStrict(typeof s === 'string' ? s : s.name);
@@ -910,7 +903,6 @@
             }));
         }
 
-        // 🌟 過濾個人遭遇（追兵、搜山、受傷、躲藏等非世界大事件）
         if (Array.isArray(raw.worldEvents)) {
             validated.worldEvents = raw.worldEvents.map(cleanNameStrict).filter(we => {
                 if (!we) return false;
@@ -1205,7 +1197,6 @@
             maxExp: getStageMaxExp(k.realm)
         })) : [];
 
-        // 清理非招式名稱
         s.skills = Array.isArray(raw.skills) ? raw.skills.filter(sk => {
             if (!sk || !sk.name) return false;
             let name = cleanNameStrict(sk.name);
@@ -1226,7 +1217,6 @@
 
         s.quests = Array.isArray(raw.quests) ? raw.quests.filter(q => q && typeof q === 'object' && q.name) : [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }];
         
-        // 清理非世界紀事名稱
         s.worldEvents = Array.isArray(raw.worldEvents) ? raw.worldEvents.filter(we => {
             if (typeof we !== 'string') return false;
             return !/(追兵|搜山|躲藏|破廟|逃亡|受傷|小路|暗格)/.test(we);
@@ -1302,35 +1292,37 @@
     }
 
     function renderBasicStats() {
-        const totalStats = getTotalStats(gameState);
+        try {
+            const totalStats = getTotalStats(gameState);
 
-        document.getElementById("ui-realm").innerText = `${gameState.realm || "凡人"} (Lv.${gameState.level || 0})`;
-        document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
-        document.getElementById("ui-hp").innerText = `${gameState.hp || 0} / ${getMaxHp(gameState)}`;
-        document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue || 0} / 100`;
-        document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone || 0} 顆`;
-        document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${gameState.location || '荒郊破廟'}`;
-        document.getElementById("ui-sect-top").innerText = `${gameState.sect?.name || '無宗門'} (${gameState.sect?.rank || '散修'})`;
+            document.getElementById("ui-realm").innerText = `${gameState.realm || "凡人"} (Lv.${gameState.level || 0})`;
+            document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
+            document.getElementById("ui-hp").innerText = `${gameState.hp || 0} / ${getMaxHp(gameState)}`;
+            document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue || 0} / 100`;
+            document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone || 0} 顆`;
+            document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${gameState.location || '荒郊破廟'}`;
+            document.getElementById("ui-sect-top").innerText = `${gameState.sect?.name || '無宗門'} (${gameState.sect?.rank || '散修'})`;
 
-        const expPct = Math.min(100, Math.floor(((gameState.exp || 0) / (gameState.maxExp || 100)) * 100));
-        document.getElementById("ui-exp-text").innerText = `${gameState.exp || 0} / ${gameState.maxExp || 100}`;
-        document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
+            const expPct = Math.min(100, Math.floor(((gameState.exp || 0) / (gameState.maxExp || 100)) * 100));
+            document.getElementById("ui-exp-text").innerText = `${gameState.exp || 0} / ${gameState.maxExp || 100}`;
+            document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
 
-        const years = Math.floor((gameState.daysPassed || 0) / 365);
-        const months = Math.floor(((gameState.daysPassed || 0) % 365) / 30);
-        const curAge = (gameState.ageBase || 18) + years;
-        document.getElementById("ui-age").innerText = `${curAge}歲${months}月 / ${gameState.maxAge || 100}歲`;
+            const years = Math.floor((gameState.daysPassed || 0) / 365);
+            const months = Math.floor(((gameState.daysPassed || 0) % 365) / 30);
+            const curAge = (gameState.ageBase || 18) + years;
+            document.getElementById("ui-age").innerText = `${curAge}歲${months}月 / ${gameState.maxAge || 100}歲`;
 
-        // 🌟 印出含加成的最終六維屬性
-        document.getElementById("st-str").innerText = totalStats.str;
-        document.getElementById("st-con").innerText = totalStats.con;
-        document.getElementById("st-agi").innerText = totalStats.agi;
-        document.getElementById("st-int").innerText = totalStats.int;
-        document.getElementById("st-wis").innerText = totalStats.wis;
-        document.getElementById("st-luk").innerText = totalStats.luk;
+            document.getElementById("st-str").innerText = totalStats.str;
+            document.getElementById("st-con").innerText = totalStats.con;
+            document.getElementById("st-agi").innerText = totalStats.agi;
+            document.getElementById("st-int").innerText = totalStats.int;
+            document.getElementById("st-wis").innerText = totalStats.wis;
+            document.getElementById("st-luk").innerText = totalStats.luk;
 
-        // 🌟 重新繪製 Canvas 雷達圖
-        drawRadarChart(totalStats);
+            drawRadarChart(totalStats);
+        } catch (e) {
+            console.error("renderBasicStats Exception:", e);
+        }
     }
 
     function renderSkills() {
@@ -1360,71 +1352,75 @@
     }
 
     function renderInventory() {
-        const eqSlots = ['weapon', 'armor', 'accessory', 'treasure'];
-        eqSlots.forEach(slot => {
-            const el = document.getElementById(`eq-${slot}`);
-            const descEl = document.getElementById(`eq-${slot}-desc`);
-            const btnEl = document.getElementById(`btn-unequip-${slot}`);
-            if (btnEl) btnEl.disabled = gameState.isDead || !gameState.hasChosenOrigin;
+        try {
+            const eqSlots = ['weapon', 'armor', 'accessory', 'treasure'];
+            eqSlots.forEach(slot => {
+                const el = document.getElementById(`eq-${slot}`);
+                const descEl = document.getElementById(`eq-${slot}-desc`);
+                const btnEl = document.getElementById(`btn-unequip-${slot}`);
+                if (btnEl) btnEl.disabled = gameState.isDead || !gameState.hasChosenOrigin;
 
-            if (el) {
-                const item = gameState.equipment ? gameState.equipment[slot] : null;
-                if (item) {
-                    const meta = getItemMeta(item);
-                    el.textContent = `[${meta.rarity}] ${meta.name}`;
-                    el.style.color = meta.rarityColor;
-                    if (descEl) descEl.textContent = meta.desc;
+                if (el) {
+                    const item = gameState.equipment ? gameState.equipment[slot] : null;
+                    if (item) {
+                        const meta = getItemMeta(item);
+                        el.textContent = `[${meta.rarity}] ${meta.name}`;
+                        el.style.color = meta.rarityColor;
+                        if (descEl) descEl.textContent = meta.desc;
+                    } else {
+                        el.textContent = "無";
+                        el.style.color = "#888";
+                        if (descEl) descEl.textContent = "無屬性加成";
+                    }
+                }
+            });
+
+            const invBox = document.getElementById("ui-inventory-list");
+            if (invBox) {
+                invBox.innerHTML = "";
+                if (!gameState.inventory || gameState.inventory.length === 0) {
+                    invBox.textContent = "背包空空如也";
                 } else {
-                    el.textContent = "無";
-                    el.style.color = "#888";
-                    if (descEl) descEl.textContent = "無屬性加成";
+                    let counts = {};
+                    gameState.inventory.forEach(i => {
+                        let name = cleanNameStrict(i);
+                        counts[name] = (counts[name] || 0) + 1;
+                    });
+                    
+                    Object.entries(counts).forEach(([name, qty]) => {
+                        const meta = getItemMeta(name);
+                        let row = document.createElement("div");
+                        row.className = "item-row";
+                        
+                        let span = document.createElement("span");
+                        span.textContent = `📦 [${meta.rarity}] ${name} x${qty}`;
+                        span.style.color = meta.rarityColor;
+
+                        let actionGroup = document.createElement("div");
+                        actionGroup.className = "item-actions";
+
+                        if (meta.slot) {
+                            let btn = document.createElement("button");
+                            btn.textContent = "裝備";
+                            btn.disabled = gameState.isDead || !gameState.hasChosenOrigin;
+                            btn.onclick = () => equipItem(name);
+                            actionGroup.appendChild(btn);
+                        } else if (meta.type === 'consumable') {
+                            let btn = document.createElement("button");
+                            btn.textContent = "使用";
+                            btn.disabled = gameState.isDead || !gameState.hasChosenOrigin;
+                            btn.onclick = () => useItem(name);
+                            actionGroup.appendChild(btn);
+                        }
+
+                        row.appendChild(span);
+                        row.appendChild(actionGroup);
+                        invBox.appendChild(row);
+                    });
                 }
             }
-        });
-
-        const invBox = document.getElementById("ui-inventory-list");
-        if (invBox) {
-            invBox.innerHTML = "";
-            if (!gameState.inventory || gameState.inventory.length === 0) {
-                invBox.textContent = "背包空空如也";
-            } else {
-                let counts = {};
-                gameState.inventory.forEach(i => {
-                    let name = cleanNameStrict(i);
-                    counts[name] = (counts[name] || 0) + 1;
-                });
-                
-                Object.entries(counts).forEach(([name, qty]) => {
-                    const meta = getItemMeta(name);
-                    let row = document.createElement("div");
-                    row.className = "item-row";
-                    
-                    let span = document.createElement("span");
-                    span.textContent = `📦 [${meta.rarity}] ${name} x${qty}`;
-                    span.style.color = meta.rarityColor;
-
-                    let actionGroup = document.createElement("div");
-                    actionGroup.className = "item-actions";
-
-                    if (meta.slot) {
-                        let btn = document.createElement("button");
-                        btn.textContent = "裝備";
-                        btn.disabled = gameState.isDead || !gameState.hasChosenOrigin;
-                        btn.onclick = () => equipItem(name);
-                        actionGroup.appendChild(btn);
-                    } else if (meta.type === 'consumable') {
-                        let btn = document.createElement("button");
-                        btn.textContent = "使用";
-                        btn.disabled = gameState.isDead || !gameState.hasChosenOrigin;
-                        btn.onclick = () => useItem(name);
-                        actionGroup.appendChild(btn);
-                    }
-
-                    row.appendChild(span);
-                    row.appendChild(actionGroup);
-                    invBox.appendChild(row);
-                });
-            }
+        } catch (e) {
+            console.error("renderInventory Exception:", e);
         }
     }
 
@@ -1451,18 +1447,23 @@
         }
     }
 
+    // 🌟 提升按鈕控制優先權，並加上獨立 try-catch
     function renderUI() {
-        renderChoiceButtons();
-        renderStoryLogs();
-        renderBasicStats();
-        renderSkills();
-        renderInventory();
-        renderSocial();
-
         const isFuncDisabled = gameState.isDead || !gameState.hasChosenOrigin;
         const hasJoinedSect = gameState.sect && gameState.sect.name !== '無' && gameState.sect.name !== '無宗門';
 
+        // 優先對控制按鈕進行啟用/禁用更新
         try {
+            ['btn-heal', 'btn-long-heal', 'btn-hospital'].forEach(btnId => {
+                const el = document.getElementById(btnId);
+                if (el) el.disabled = isFuncDisabled;
+            });
+
+            ['btn-sect-quest', 'btn-sect-lib'].forEach(btnId => {
+                const el = document.getElementById(btnId);
+                if (el) el.disabled = isFuncDisabled || !hasJoinedSect;
+            });
+
             const deduceBtn = document.getElementById("btn-deduce");
             if (deduceBtn) {
                 if (gameState.isDead) {
@@ -1486,16 +1487,6 @@
             const submitBtn = document.getElementById("btn-submit");
             if (submitBtn) submitBtn.disabled = gameState.isDead;
 
-            ['btn-heal', 'btn-long-heal', 'btn-hospital'].forEach(btnId => {
-                const el = document.getElementById(btnId);
-                if (el) el.disabled = isFuncDisabled;
-            });
-
-            ['btn-sect-quest', 'btn-sect-lib'].forEach(btnId => {
-                const el = document.getElementById(btnId);
-                if (el) el.disabled = isFuncDisabled || !hasJoinedSect;
-            });
-
             const actionInput = document.getElementById("action-input");
             if (actionInput) {
                 actionInput.disabled = gameState.isDead;
@@ -1503,7 +1494,16 @@
                     ? "壽元耗盡坐化，請於系統頁面進行輪迴重置..." 
                     : (gameState.hasChosenOrigin ? "輸入行動或選擇上方選項..." : "可點擊上方預設身世，或在此輸入自訂身世開局...");
             }
-        } catch(e) { console.error("renderUI Exception:", e); }
+        } catch (e) {
+            console.error("renderUI controls update error:", e);
+        }
+
+        renderChoiceButtons();
+        renderStoryLogs();
+        renderBasicStats();
+        renderSkills();
+        renderInventory();
+        renderSocial();
     }
 
     function appendLogData(role, text, type, isSafeHtml = false, immediateRender = false) {
@@ -1513,7 +1513,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.54", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.55", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1538,7 +1538,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.54", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.55", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
