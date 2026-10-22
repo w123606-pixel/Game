@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.59)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.60)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -88,8 +88,12 @@
         .api-config input, .api-config select { width: 100%; padding: 8px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
         
         .sect-badge { font-size:0.75rem; background: rgba(197, 160, 89, 0.1); border:1px solid var(--border-gold); padding: 2px 6px; border-radius: 3px; color: var(--border-gold); margin-left:6px;}
-        .modifier-badge { background: #4a1515; color: #ff8a80; padding: 4px 6px; border-radius: 4px; font-size: 0.75rem; border: 1px solid #ff5252; text-align: center; margin-bottom: 8px; }
-        
+        .mode-badge { font-size:0.75rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 4px; }
+        .mode-idle { background: rgba(67, 160, 71, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green); }
+        .mode-dialogue { background: rgba(2, 136, 209, 0.15); border: 1px solid var(--accent-blue); color: var(--accent-blue); }
+        .mode-hazard { background: rgba(255, 183, 77, 0.15); border: 1px solid #ffb74d; color: #ffb74d; }
+        .mode-danger { background: rgba(255, 82, 82, 0.2); border: 1px solid var(--accent-red); color: var(--accent-red); }
+
         .equip-slots-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
         .equip-card { background: #0a0b10; border: 1px solid var(--ui-border); border-radius: 4px; padding: 8px; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
         .equip-card .slot-title { color: #888; }
@@ -130,9 +134,11 @@
     <div class="panel story-panel">
         <div class="story-header">
             <div style="font-weight:bold; color:var(--border-gold);" id="ui-location-top">📜 九州史詩 - 九州邊境 · 荒郊破廟</div>
-            <div id="ui-sect-top" class="sect-badge">無宗門 (散修)</div>
+            <div>
+                <span id="ui-scenario-mode" class="mode-badge mode-idle">🟢 平靜遊歷</span>
+                <span id="ui-sect-top" class="sect-badge">無宗門 (散修)</span>
+            </div>
         </div>
-        <div id="ui-world-modifier" class="modifier-badge" style="display:none;"></div>
         <div id="story-log"></div>
         <div class="controls-area" id="controls-area">
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
@@ -318,12 +324,12 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.59",
+            version: "4.60",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
             isDead: false, ringTriggered: false,
-            location: "九州邊境 · 荒郊破廟", scenarioState: "safe",
+            location: "九州邊境 · 荒郊破廟", scenarioMode: "IDLE", activeThreats: [],
             hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
@@ -472,8 +478,8 @@
         if (/(客棧|城|市|密室|陣法|醫館)/.test(loc)) {
             return { name: "安穩之地", hpMult: 1.2, expPerDay: 2, fatigueCost: 10, color: "#43a047" };
         }
-        if (/(破廟|死牢|邊境|戰場|絕地|毒霧|破落)/.test(loc)) {
-            return { name: "靈氣匱乏", hpMult: 0.7, expPerDay: 0, fatigueCost: 25, color: "#ff8a80" };
+        if (/(破廟|死牢|邊境|戰場|絕地|毒霧|破落|禁地|古墓)/.test(loc)) {
+            return { name: "險地環境", hpMult: 0.7, expPerDay: 0, fatigueCost: 25, color: "#ff8a80" };
         }
         return { name: "尋常之地", hpMult: 1.0, expPerDay: 1, fatigueCost: 15, color: "#888888" };
     }
@@ -625,6 +631,25 @@
         }
     }
 
+    // 🌟 計算當前有效遊戲場景模式 (Effective Mode Calculator)
+    function getEffectiveMode(s = gameState) {
+        if (s.isDead) return "DEAD";
+        if (s.activeThreats && s.activeThreats.length > 0) return "DANGER";
+        
+        // 掃描最新 log 是否有極度凶險關鍵字
+        const latestLog = storyLogData[storyLogData.length - 1];
+        if (latestLog && latestLog.type === 'ai') {
+            if (/(追兵|搜山|刀光|當頭劈下|逼近|破門|殺氣|當場|包圍)/.test(latestLog.content)) {
+                return "DANGER";
+            }
+            if (/(禁地|古墓|瘴氣|暴虐靈氣|凶險|殘陣|危險區域)/.test(latestLog.content)) {
+                return "HAZARD";
+            }
+        }
+
+        return s.scenarioMode || "IDLE";
+    }
+
     function checkLifeStatus(s = gameState) {
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
@@ -766,13 +791,63 @@
         saveGameState();
     }
 
+    // 🌟 閉關/打坐修復：針對 HAZARD/DIALOGUE 進行情境引導與 Prompt 補全
     function quickHeal(days) {
         if (gameState.isDead || !gameState.hasChosenOrigin) return;
         
+        const mode = getEffectiveMode(gameState);
         const locMod = getLocationModifier(gameState.location);
-        const displayText = `【在「${gameState.location}」閉關打坐 ${days} 天靜修】`;
-        const promptText = `【在「${gameState.location}」(${locMod.name})閉關打坐 ${days} 天。環境靈氣加成：恢復倍率 ${locMod.hpMult}x，每日獲得 ${locMod.expPerDay} 點感悟。請描繪吐納靈氣與靜修過程。】`;
         
+        if (mode === "DANGER") {
+            openGameModal("⚠️ 強敵在側 · 無法打坐", "當前追兵環伺/身處戰鬥中，無法安穩閉關！請先應對眼前危機或逃離現場。");
+            return;
+        }
+
+        if (mode === "HAZARD") {
+            const prepareBtn = document.createElement("button");
+            prepareBtn.className = "modal-btn primary";
+            prepareBtn.textContent = "尋找隱蔽石窟/佈陣打坐";
+            prepareBtn.onclick = () => {
+                closeGameModal();
+                executeQuickHeal(days, locMod, true);
+            };
+
+            const gambleBtn = document.createElement("button");
+            gambleBtn.className = "modal-btn";
+            gambleBtn.style.color = "#ff8a80";
+            gambleBtn.textContent = "強行閉關 (走火入魔風險)";
+            gambleBtn.onclick = () => {
+                closeGameModal();
+                executeQuickHeal(days, locMod, false, true);
+            };
+
+            openGameModal(
+                "⚠️ 險地環境 · 閉關警示", 
+                `此處 (<b>${gameState.location}</b>) 屬險地/禁地，環境靈氣暴虐。直接打坐有高機率引來妖獸襲擊或走火入魔！`,
+                [prepareBtn, gambleBtn]
+            );
+            return;
+        }
+
+        executeQuickHeal(days, locMod, false, false);
+    }
+
+    function executeQuickHeal(days, locMod, isPreparing = false, isForcedGamble = false) {
+        const mode = getEffectiveMode(gameState);
+        let prefixText = "";
+        if (mode === "DIALOGUE" || mode === "SHOPPING") {
+            prefixText = "【向當前人物告辭離去後】";
+        }
+
+        const displayText = `${prefixText}【在「${gameState.location}」閉關打坐 ${days} 天靜修】`;
+        let promptText = `【${prefixText}在「${gameState.location}」(${locMod.name})閉關打坐 ${days} 天。環境靈氣加成：恢復倍率 ${locMod.hpMult}x，每日獲得 ${locMod.expPerDay} 點感悟。請描繪吐納靈氣與靜修過程。】`;
+
+        if (isPreparing) {
+            promptText = `【${prefixText}先謹慎尋找隱蔽石窟並佈設遮息防護，隨後閉關打坐 ${days} 天。請描繪佈防過程與調息靜修感悟。】`;
+        } else if (isForcedGamble) {
+            promptText = `【${prefixText}不顧險地瘴毒與暴虐靈氣，強行閉關打坐 ${days} 天！天道判定：高機率遭暴虐靈氣反噬經脈受損或遭漫遊妖獸打斷！請描繪凶險狀況。】`;
+        }
+
         sendAction(displayText, { 
             isPresetEvent: true, 
             addDays: days, 
@@ -802,7 +877,6 @@
         else if (type === 'library') sendAction("【前往宗門藏經閣參悟功法】", null, "【前往藏經閣參悟高階心法與法訣！】");
     }
 
-    // 🌟 重修突破邏輯：增加重傷警告彈窗 + 分離 Prompt 描繪慘烈破境
     function attemptBreakthrough() {
         if (gameState.isDead || !gameState.hasChosenOrigin) return;
         if ((gameState.breakthroughCdDays || 0) > 0) {
@@ -818,7 +892,6 @@
         const curHp = gameState.hp || 0;
         const hpRatio = curHp / maxHp;
 
-        // 若目前血量低於 50%，跳出重傷孤注一擲警告
         if (hpRatio < 0.5) {
             const cancelBtn = document.createElement("button");
             cancelBtn.className = "modal-btn";
@@ -851,7 +924,7 @@
         const lgMeta = getLinggenMeta(gameState.linggen);
         let successRate = Math.min(0.95, 0.60 + (luk * 0.02) + (lgMeta.breakBonus || 0));
         
-        if (isGambling) successRate -= 0.20; // 孤注一擲賭命降低 20% 成功率
+        if (isGambling) successRate -= 0.20;
 
         const isSuccess = Math.random() < successRate;
         const displayText = isGambling ? "【孤注一擲，強提殘存真元衝擊境界瓶頸！】" : "【盤膝運功，凝練全身真元衝擊境界瓶頸！】";
@@ -888,10 +961,12 @@
   "success": true,
   "isDead": false,
   "location": "${gameState.location || '九州邊境 · 荒郊破廟'}",
+  "scenarioMode": "IDLE",
+  "activeThreats": [],
   "hpChange": 0, "expReward": 20, "stoneChange": 0,
   "gainedItems": [], "gainedKungfu": [], 
   "gainedSkills": [], 
-  "currentStatus": ["氣血平穩", "遭追殺中"], 
+  "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
   "npcs": [], 
   "worldEvents": [], 
@@ -901,7 +976,7 @@
 ⚠️ 生命與生死嚴格守則：
 1. 若玩家本次行動【存活/倖存】，縱使遭受極重創傷，hpChange 結算後絕對不可讓玩家血量降至 0 或負數（至少保留 1 HP 瀕死殘血）！
 2. 若劇情判定玩家【徹底死亡/當場身亡】，請務必回傳 "isDead": true，並在 story 撰寫死亡結局！
-3. gainedSkills 僅能包含【主動戰鬥招式/術法】。 worldEvents 僅能包含【區域大事件】。`; 
+3. scenarioMode 僅能為 ["IDLE", "DIALOGUE", "SHOPPING", "HAZARD", "DANGER"] 之一。若有追兵敵人在場，請設定為 "DANGER" 並在 activeThreats 填入敵人名稱！`; 
     }
 
     function parseApiResponse(text) {
@@ -949,6 +1024,8 @@
 
         if (typeof raw.isDead === 'boolean') validated.isDead = raw.isDead;
         if (typeof raw.location === 'string') validated.location = cleanNameStrict(raw.location);
+        if (typeof raw.scenarioMode === 'string') validated.scenarioMode = raw.scenarioMode.toUpperCase();
+        if (Array.isArray(raw.activeThreats)) validated.activeThreats = raw.activeThreats.map(cleanNameStrict).filter(Boolean);
 
         if (Number.isFinite(raw.hpChange)) validated.hpChange = Math.max(-10000, Math.min(10000, Number(raw.hpChange)));
         if (Number.isFinite(raw.stoneChange)) validated.stoneChange = Math.max(-50000, Math.min(50000, Number(raw.stoneChange)));
@@ -1003,7 +1080,7 @@
         if (Array.isArray(raw.worldEvents)) {
             validated.worldEvents = raw.worldEvents.map(cleanNameStrict).filter(we => {
                 if (!we) return false;
-                if (/(追兵|搜山|躲藏|破廟|逃亡|受傷|小路|暗格)/.test(we);
+                if (/(追兵|搜山|躲藏|破廟|逃亡|受傷|小路|暗格)/.test(we)) return false;
                 return true;
             });
         }
@@ -1026,6 +1103,8 @@
         }
 
         if (rawState.location) s.location = rawState.location;
+        if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
+        if (Array.isArray(rawState.activeThreats)) s.activeThreats = rawState.activeThreats;
         if (rawState.sect) s.sect = { ...s.sect, ...rawState.sect };
 
         const isLockedEvent = eventMeta && (eventMeta.isPresetEvent || eventMeta.isBreakthrough);
@@ -1089,7 +1168,7 @@
                     if (n.identity) existing.identity = n.identity;
                     if (Number.isFinite(n.affinity)) existing.affinity = n.affinity;
                 } else {
-                    s.npcs.push({ name: n.name, identity: n.identity || "修仙者", affinity: n.affinity, relation: "結識" });
+                    s.npcs.push({ name: n.name, identity: n.identity || "修士", affinity: n.affinity, relation: "結識" });
                 }
             });
         }
@@ -1151,7 +1230,6 @@
         return data.choices[0].message.content;
     }
 
-    // 🌟 sendAction 改造：支援「顯示文字 (displayText)」與「AI 指令 (customPromptText)」分離
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
@@ -1218,8 +1296,8 @@
         }
 
         const checkData = performSkillCheck(actionText);
-        appendLogData("異世旅者", actionText, "player", false, true); // 印出優雅的【顯示文字】
-        conversationHistory.push({ role: "user", content: `${promptToSend}\n\n${checkData.message}` }); // 傳給 AI 詳細的【Prompt 指令】
+        appendLogData("異世旅者", actionText, "player", false, true);
+        conversationHistory.push({ role: "user", content: `${promptToSend}\n\n${checkData.message}` });
         
         startLoadingAnim();
         isTyping = true;
@@ -1279,6 +1357,8 @@
         s.practiceFatigue = Math.max(0, Math.min(100, Number.isInteger(Number(raw.practiceFatigue)) ? Number(raw.practiceFatigue) : 0));
         s.isDead = Boolean(raw.isDead);
         s.ringTriggered = Boolean(raw.ringTriggered);
+        s.scenarioMode = String(raw.scenarioMode || "IDLE").toUpperCase();
+        s.activeThreats = Array.isArray(raw.activeThreats) ? raw.activeThreats.map(cleanNameStrict).filter(Boolean) : [];
 
         s.stats = s.stats && typeof s.stats === 'object' && !Array.isArray(s.stats) ? s.stats : {};
         const defaultStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
@@ -1430,6 +1510,26 @@
             document.getElementById("ui-location-top").innerText = `📜 九州史詩 - ${gameState.location || '荒郊破廟'}`;
             document.getElementById("ui-sect-top").innerText = `${gameState.sect?.name || '無宗門'} (${gameState.sect?.rank || '散修'})`;
 
+            // 更新動態場景模式標籤
+            const modeEl = document.getElementById("ui-scenario-mode");
+            const effMode = getEffectiveMode(gameState);
+            if (effMode === "DANGER") {
+                modeEl.className = "mode-badge mode-danger";
+                modeEl.innerText = "⚔️ 強敵在側";
+            } else if (effMode === "HAZARD") {
+                modeEl.className = "mode-badge mode-hazard";
+                modeEl.innerText = "⚠️ 險地環境";
+            } else if (effMode === "DIALOGUE") {
+                modeEl.className = "mode-badge mode-dialogue";
+                modeEl.innerText = "💬 對話交涉";
+            } else if (effMode === "SHOPPING") {
+                modeEl.className = "mode-badge mode-dialogue";
+                modeEl.innerText = "🛒 坊市採買";
+            } else {
+                modeEl.className = "mode-badge mode-idle";
+                modeEl.innerText = "🟢 平靜遊歷";
+            }
+
             const expPct = Math.min(100, Math.floor(((gameState.exp || 0) / (gameState.maxExp || 100)) * 100));
             document.getElementById("ui-exp-text").innerText = `${gameState.exp || 0} / ${gameState.maxExp || 100}`;
             document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
@@ -1578,17 +1678,19 @@
         checkLifeStatus(gameState);
 
         const isFuncDisabled = gameState.isDead || !gameState.hasChosenOrigin;
+        const effMode = getEffectiveMode(gameState);
+        const isCombatLocked = isFuncDisabled || effMode === "DANGER";
         const hasJoinedSect = gameState.sect && gameState.sect.name !== '無' && gameState.sect.name !== '無宗門';
 
         try {
             ['btn-heal', 'btn-long-heal', 'btn-hospital'].forEach(btnId => {
                 const el = document.getElementById(btnId);
-                if (el) el.disabled = isFuncDisabled;
+                if (el) el.disabled = isCombatLocked;
             });
 
             ['btn-sect-quest', 'btn-sect-lib'].forEach(btnId => {
                 const el = document.getElementById(btnId);
-                if (el) el.disabled = isFuncDisabled || !hasJoinedSect;
+                if (el) el.disabled = isCombatLocked || !hasJoinedSect;
             });
 
             const deduceBtn = document.getElementById("btn-deduce");
@@ -1598,6 +1700,9 @@
                     deduceBtn.disabled = true;
                 } else if (!gameState.hasChosenOrigin) {
                     deduceBtn.textContent = "✨ 需先設定身世開局";
+                    deduceBtn.disabled = true;
+                } else if (effMode === "DANGER") {
+                    deduceBtn.textContent = "⚔️ 強敵在側無法衝關";
                     deduceBtn.disabled = true;
                 } else if ((gameState.breakthroughCdDays || 0) > 0) {
                     deduceBtn.textContent = `⚠️ 經脈受損 (${gameState.breakthroughCdDays}天)`;
@@ -1640,7 +1745,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.59", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.60", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1665,7 +1770,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.59", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.60", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
