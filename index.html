@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.55)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.57)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -138,7 +138,6 @@
                 <input type="text" id="action-input" placeholder="可點擊上方預設身世，或在此輸入自訂身世開局..." onkeydown="if(event.key==='Enter') sendAction()">
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
-            <!-- 🌟 靜態 HTML 直接預設全部 disabled，確保未載入完前絕對無法按 -->
             <div class="quick-actions" id="quick-actions-container">
                 <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)" disabled>🧘 閉關(10天)</button>
                 <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)" disabled>⛰️ 死關(30天)</button>
@@ -315,11 +314,11 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.55",
+            version: "4.57",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
-            isDead: false,
+            isDead: false, ringTriggered: false,
             location: "九州邊境 · 荒郊破廟", scenarioState: "safe",
             hasChosenOrigin: false,
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -459,6 +458,20 @@
         }
 
         return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: 0, desc: "普通修仙雜物" };
+    }
+
+    function getLocationModifier(locStr) {
+        const loc = locStr || "";
+        if (/(靈山|洞府|福地|靈脈|宗門|聖地|仙山|聚靈陣)/.test(loc)) {
+            return { name: "洞天福地", hpMult: 1.5, expPerDay: 5, fatigueCost: 5, color: "#ffd700" };
+        }
+        if (/(客棧|城|市|密室|陣法|醫館)/.test(loc)) {
+            return { name: "安穩之地", hpMult: 1.2, expPerDay: 2, fatigueCost: 10, color: "#43a047" };
+        }
+        if (/(破廟|死牢|邊境|戰場|絕地|毒霧|破落)/.test(loc)) {
+            return { name: "靈氣匱乏", hpMult: 0.7, expPerDay: 0, fatigueCost: 25, color: "#ff8a80" };
+        }
+        return { name: "尋常之地", hpMult: 1.0, expPerDay: 1, fatigueCost: 15, color: "#888888" };
     }
 
     function getTotalStats(s = gameState) {
@@ -608,12 +621,38 @@
         }
     }
 
+    // 🌟 壽元與 HP 死亡判定（含古戒護主與硬性鎖定）
     function checkLifeStatus(s = gameState) {
+        // 1. 壽元耗盡判定
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
         if (curAge >= (s.maxAge || 100)) {
             s.isDead = true;
             openGameModal("💀 壽元耗盡 · 坐化羽化", `修士 <b>${curAge}</b> 歲壽終正寢，未能在壽元耗盡前突破至更高境界。請點擊系統選單進行【輪迴重置】開啟新篇章。`);
+            return;
+        }
+
+        // 2. HP 歸零與古戒/保命救命機制
+        if ((s.hp || 0) <= 0) {
+            // 檢查裝備或背包是否有古戒/護身保命物品
+            const hasRing = Boolean(
+                Object.values(s.equipment || {}).some(eq => eq && (eq.name?.includes("古戒") || eq.name?.includes("保命") || eq.name?.includes("護身"))) ||
+                (s.inventory || []).some(item => typeof item === 'string' && (item.includes("古戒") || item.includes("保命丹") || item.includes("續命")))
+            );
+
+            // 尚未觸發過古戒護主且擁有古戒/護身法寶（或開局古戒）
+            if (hasRing && !s.ringTriggered) {
+                s.ringTriggered = true;
+                s.hp = Math.max(1, Math.floor(getMaxHp(s) * 0.1)); // 保留 10% 殘血
+                appendLogData("天道", "✨ 【古戒護主】就在氣絕身亡之際，懷中的神秘古戒突爆發出一陣幽綠微光，強行保住一縷殘魂脈搏！", "ai", false, true);
+                openGameModal("✨ 古戒護主 · 絕處逢生", "懷中的神秘古戒在生死關頭爆發微光，為你抵擋了致死一擊並強行續命保住一絲生機！");
+                return;
+            }
+
+            // 無保命手段，判定徹底身消道殞
+            s.hp = 0;
+            s.isDead = true;
+            openGameModal("💀 傷勢過重 · 身消道殞", `修士肉身遭受重創、氣血耗盡而亡。請點擊系統選單進行【輪迴重置】開啟新輪迴。`);
         }
     }
 
@@ -726,10 +765,22 @@
         saveGameState();
     }
 
-    // 🌟 硬性安全防禦
     function quickHeal(days) {
         if (gameState.isDead || !gameState.hasChosenOrigin) return;
-        sendAction(`【在安穩之地閉關打坐 ${days} 天，調理恢復 HP（天數增加 ${days} 天）。請描繪閉關靜修感悟。】`, { isPresetEvent: true, addDays: days, healPartial: true, addFatigue: 15 });
+        
+        const locMod = getLocationModifier(gameState.location);
+        
+        sendAction(
+            `【在「${gameState.location}」(${locMod.name})閉關打坐 ${days} 天。環境靈氣加成：恢復倍率 ${locMod.hpMult}x，每日獲得 ${locMod.expPerDay} 點感悟。請描繪吐納靈氣與靜修過程。】`, 
+            { 
+                isPresetEvent: true, 
+                addDays: days, 
+                healPartial: true, 
+                locMult: locMod.hpMult,
+                addExp: locMod.expPerDay * days,
+                addFatigue: locMod.fatigueCost 
+            }
+        );
     }
 
     function hospitalHeal() {
@@ -785,6 +836,7 @@
         };
     }
 
+    // 🌟 第一層防護：Prompt 嚴格規範 AI 的血量與致死判定
     function getSystemPrompt() { 
         return `你現在是修仙RPG《九州裂天錄》的天道DM。
 請推演玩家行動並回傳標準 JSON 格式（必須包含 "story" 欄位）：
@@ -792,6 +844,7 @@
 {
   "story": "在此撰寫詳細精彩的故事劇情與環境描繪...",
   "success": true,
+  "isDead": false,
   "location": "${gameState.location || '九州邊境 · 荒郊破廟'}",
   "hpChange": 0, "expReward": 20, "stoneChange": 0,
   "gainedItems": [], "gainedKungfu": [], 
@@ -803,9 +856,10 @@
   "choices": ["繼續探索", "原地調息", "前往集市"]
 }
 \`\`\`
-⚠️ 嚴格分類守則：
-1. gainedSkills 僅能包含【主動戰鬥招式/術法】（如：火球術、御劍術、九霄劍訣）。絕不可將古戒微光、被動感知、狀態或法寶光芒當作招式！
-2. worldEvents 僅能包含【影響全九州/全區域的大事件】（如：天火宗滅門、大周帝國開戰、絕世神兵問世）。玩家個人的個人遭遇（如：搜山、遭追殺、躲避、受傷）絕對禁止放入 worldEvents，請放進 currentStatus！`; 
+⚠️ 生命與生死嚴格守則：
+1. 若玩家本次行動【存活/倖存】，縱使遭受極重創傷，hpChange 結算後絕對不可讓玩家血量降至 0 或負數（至少保留 1 HP 瀕死殘血）！
+2. 若劇情判定玩家【徹底死亡/當場身亡】，請務必回傳 "isDead": true，並在 story 撰寫死亡結局！
+3. gainedSkills 僅能包含【主動戰鬥招式/術法】。 worldEvents 僅能包含【區域大事件】。`; 
     }
 
     function parseApiResponse(text) {
@@ -851,6 +905,7 @@
             return null;
         }
 
+        if (typeof raw.isDead === 'boolean') validated.isDead = raw.isDead;
         if (typeof raw.location === 'string') validated.location = cleanNameStrict(raw.location);
 
         if (Number.isFinite(raw.hpChange)) validated.hpChange = Math.max(-10000, Math.min(10000, Number(raw.hpChange)));
@@ -922,6 +977,12 @@
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
 
+        if (rawState.isDead) {
+            s.isDead = true;
+            s.hp = 0;
+            return s;
+        }
+
         if (rawState.location) s.location = rawState.location;
         if (rawState.sect) s.sect = { ...s.sect, ...rawState.sect };
 
@@ -930,7 +991,9 @@
         if (!isLockedEvent) {
             let baseHpChange = rawState.hpChange || 0;
             if (checkData && checkData.hpPenalty) baseHpChange += checkData.hpPenalty;
-            s.hp = Math.max(0, Math.min(getMaxHp(s), (s.hp || 0) + baseHpChange));
+            
+            // 套用血量變更
+            s.hp = (s.hp || 0) + baseHpChange;
 
             if (rawState.stoneChange) {
                 s.spiritStone = Math.max(0, (s.spiritStone || 0) + rawState.stoneChange);
@@ -1064,9 +1127,18 @@
             if (eventMeta.addDays) {
                 gameState.daysPassed = (gameState.daysPassed || 0) + eventMeta.addDays;
                 gameState.breakthroughCdDays = Math.max(0, (gameState.breakthroughCdDays || 0) - eventMeta.addDays);
+                
                 if (eventMeta.healPartial) {
-                    const healAmt = Math.floor(getMaxHp(gameState) * (eventMeta.addDays / 30));
-                    gameState.hp = Math.min(getMaxHp(gameState), (gameState.hp || 0) + healAmt);
+                    const mult = eventMeta.locMult || 1.0;
+                    const baseHeal = Math.floor(getMaxHp(gameState) * (eventMeta.addDays / 30));
+                    const finalHeal = Math.floor(baseHeal * mult);
+                    gameState.hp = Math.min(getMaxHp(gameState), (gameState.hp || 0) + finalHeal);
+                }
+                
+                if (eventMeta.addExp && eventMeta.addExp > 0) {
+                    const lgMeta = getLinggenMeta(gameState.linggen);
+                    const gainExp = Math.floor(eventMeta.addExp * (lgMeta.expRate || 1.0));
+                    gameState.exp = Math.min(gameState.maxExp, (gameState.exp || 0) + gainExp);
                 }
             }
             if (eventMeta.addFatigue) {
@@ -1157,6 +1229,7 @@
         s.breakthroughCdDays = Math.max(0, Number.isInteger(Number(raw.breakthroughCdDays)) ? Number(raw.breakthroughCdDays) : 0);
         s.practiceFatigue = Math.max(0, Math.min(100, Number.isInteger(Number(raw.practiceFatigue)) ? Number(raw.practiceFatigue) : 0));
         s.isDead = Boolean(raw.isDead);
+        s.ringTriggered = Boolean(raw.ringTriggered);
 
         s.stats = s.stats && typeof s.stats === 'object' && !Array.isArray(s.stats) ? s.stats : {};
         const defaultStats = { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
@@ -1447,12 +1520,11 @@
         }
     }
 
-    // 🌟 提升按鈕控制優先權，並加上獨立 try-catch
+    // 🌟 第三層防護：硬性全功能鎖定
     function renderUI() {
         const isFuncDisabled = gameState.isDead || !gameState.hasChosenOrigin;
         const hasJoinedSect = gameState.sect && gameState.sect.name !== '無' && gameState.sect.name !== '無宗門';
 
-        // 優先對控制按鈕進行啟用/禁用更新
         try {
             ['btn-heal', 'btn-long-heal', 'btn-hospital'].forEach(btnId => {
                 const el = document.getElementById(btnId);
@@ -1467,7 +1539,7 @@
             const deduceBtn = document.getElementById("btn-deduce");
             if (deduceBtn) {
                 if (gameState.isDead) {
-                    deduceBtn.textContent = "💀 壽元耗盡坐化";
+                    deduceBtn.textContent = "💀 傷勢過重身消道殞";
                     deduceBtn.disabled = true;
                 } else if (!gameState.hasChosenOrigin) {
                     deduceBtn.textContent = "✨ 需先設定身世開局";
@@ -1491,7 +1563,7 @@
             if (actionInput) {
                 actionInput.disabled = gameState.isDead;
                 actionInput.placeholder = gameState.isDead 
-                    ? "壽元耗盡坐化，請於系統頁面進行輪迴重置..." 
+                    ? "傷勢過重身消道殞，請於系統頁面進行輪迴重置..." 
                     : (gameState.hasChosenOrigin ? "輸入行動或選擇上方選項..." : "可點擊上方預設身世，或在此輸入自訂身世開局...");
             }
         } catch (e) {
@@ -1513,7 +1585,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.55", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.57", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1538,7 +1610,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.55", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.57", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
