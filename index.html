@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.57)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.58)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -314,7 +314,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.57",
+            version: "4.58",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -621,35 +621,18 @@
         }
     }
 
-    // 🌟 壽元與 HP 死亡判定（含古戒護主與硬性鎖定）
+    // 🌟 全局生命狀態監控（含嚴格鎖定與致死處理）
     function checkLifeStatus(s = gameState) {
-        // 1. 壽元耗盡判定
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
         if (curAge >= (s.maxAge || 100)) {
             s.isDead = true;
+            s.hp = 0;
             openGameModal("💀 壽元耗盡 · 坐化羽化", `修士 <b>${curAge}</b> 歲壽終正寢，未能在壽元耗盡前突破至更高境界。請點擊系統選單進行【輪迴重置】開啟新篇章。`);
             return;
         }
 
-        // 2. HP 歸零與古戒/保命救命機制
-        if ((s.hp || 0) <= 0) {
-            // 檢查裝備或背包是否有古戒/護身保命物品
-            const hasRing = Boolean(
-                Object.values(s.equipment || {}).some(eq => eq && (eq.name?.includes("古戒") || eq.name?.includes("保命") || eq.name?.includes("護身"))) ||
-                (s.inventory || []).some(item => typeof item === 'string' && (item.includes("古戒") || item.includes("保命丹") || item.includes("續命")))
-            );
-
-            // 尚未觸發過古戒護主且擁有古戒/護身法寶（或開局古戒）
-            if (hasRing && !s.ringTriggered) {
-                s.ringTriggered = true;
-                s.hp = Math.max(1, Math.floor(getMaxHp(s) * 0.1)); // 保留 10% 殘血
-                appendLogData("天道", "✨ 【古戒護主】就在氣絕身亡之際，懷中的神秘古戒突爆發出一陣幽綠微光，強行保住一縷殘魂脈搏！", "ai", false, true);
-                openGameModal("✨ 古戒護主 · 絕處逢生", "懷中的神秘古戒在生死關頭爆發微光，為你抵擋了致死一擊並強行續命保住一絲生機！");
-                return;
-            }
-
-            // 無保命手段，判定徹底身消道殞
+        if (s.isDead || (s.hp || 0) <= 0) {
             s.hp = 0;
             s.isDead = true;
             openGameModal("💀 傷勢過重 · 身消道殞", `修士肉身遭受重創、氣血耗盡而亡。請點擊系統選單進行【輪迴重置】開啟新輪迴。`);
@@ -836,7 +819,6 @@
         };
     }
 
-    // 🌟 第一層防護：Prompt 嚴格規範 AI 的血量與致死判定
     function getSystemPrompt() { 
         return `你現在是修仙RPG《九州裂天錄》的天道DM。
 請推演玩家行動並回傳標準 JSON 格式（必須包含 "story" 欄位）：
@@ -973,11 +955,13 @@
         return validated;
     }
 
+    // 🌟 核心防禦：雙重保底與殘血校正機制
     function applyStateDelta(currentState, rawState, checkData = null, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
 
-        if (rawState.isDead) {
+        // 1. 若 AI 明確判定致死，直接宣告死亡
+        if (rawState.isDead === true) {
             s.isDead = true;
             s.hp = 0;
             return s;
@@ -992,7 +976,6 @@
             let baseHpChange = rawState.hpChange || 0;
             if (checkData && checkData.hpPenalty) baseHpChange += checkData.hpPenalty;
             
-            // 套用血量變更
             s.hp = (s.hp || 0) + baseHpChange;
 
             if (rawState.stoneChange) {
@@ -1006,6 +989,13 @@
                 const gainExp = Math.floor(rawState.expReward * (lgMeta.expRate || 1.0) * checkMult * fatigueMult);
                 s.exp = Math.min(s.maxExp, (s.exp || 0) + gainExp);
             }
+        }
+
+        // 🌟 2. 前端硬性保護：若 AI 未判定死亡，無論扣血多猛，強制殘血保底 1 HP！
+        if (!s.isDead) {
+            const maxHp = getMaxHp(s);
+            // 只要沒死，HP 絕對鎖定在 [1 ~ maxHp] 之間
+            s.hp = Math.max(1, Math.min(maxHp, s.hp));
         }
 
         if (rawState.currentStatus) s.status = rawState.currentStatus;
@@ -1299,7 +1289,13 @@
             s.choices = [...DEFAULT_ORIGIN_CHOICES];
         }
 
-        s.hp = Number.isFinite(Number(raw.hp)) ? Math.max(0, Math.min(getMaxHp(s), Number(raw.hp))) : 50;
+        let parsedHp = Number.isFinite(Number(raw.hp)) ? Number(raw.hp) : 50;
+        // 🌟 存檔自我修復：若非死亡狀態，HP 自動修正為至少 1 血
+        if (!s.isDead && parsedHp <= 0) {
+            s.hp = 1;
+        } else {
+            s.hp = Math.max(0, Math.min(getMaxHp(s), parsedHp));
+        }
 
         return s;
     }
@@ -1520,8 +1516,9 @@
         }
     }
 
-    // 🌟 第三層防護：硬性全功能鎖定
     function renderUI() {
+        checkLifeStatus(gameState); // 每次渲染畫面時強制檢查一次生命狀態
+
         const isFuncDisabled = gameState.isDead || !gameState.hasChosenOrigin;
         const hasJoinedSect = gameState.sect && gameState.sect.name !== '無' && gameState.sect.name !== '無宗門';
 
@@ -1585,7 +1582,7 @@
 
     function saveGameState() { 
         try {
-            const savePackage = { version: "4.57", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.58", state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v4_unified_save", JSON.stringify(savePackage));
         } catch (e) { console.error("saveGameState Exception:", e); }
     }
@@ -1610,7 +1607,7 @@
 
     function exportSave() {
         try {
-            const savePackage = { version: "4.57", state: gameState, logs: storyLogData, history: conversationHistory };
+            const savePackage = { version: "4.58", state: gameState, logs: storyLogData, history: conversationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savePackage, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
