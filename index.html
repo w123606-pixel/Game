@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.77)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.78)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -109,21 +109,24 @@
         .clickable-tag:hover { filter: brightness(1.2); }
 
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; inset: 0; width: 100%; height: 100%; height: 100dvh;
+            box-sizing: border-box; padding: 12px;
             background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px);
             display: flex; justify-content: center; align-items: center;
-            z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+            overflow-y: auto; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
         }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .modal-card {
             background: #12141d; border: 1px solid var(--border-gold);
-            border-radius: 8px; width: 90%; max-width: 420px; padding: 16px;
+            border-radius: 8px; width: 100%; max-width: 420px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px);
+            box-sizing: border-box; padding: 16px; min-height: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 10px;
+            overflow-y: auto; overscroll-behavior: contain;
         }
         .modal-title { color: var(--border-gold); font-size: 1.05rem; font-weight: bold; border-bottom: 1px solid var(--ui-border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { font-size: 0.88rem; line-height: 1.6; color: #d1d1d6; }
         .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
-        .modal-btn { background: #2a2d3d; color: #fff; border: 1px solid #444; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+        .modal-btn { background: #2a2d3d; color: #fff; border: 1px solid #444; min-height: 44px; padding: 10px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold; touch-action: manipulation; }
         .modal-btn.primary { background: var(--border-gold); color: #000; border: none; }
         .modal-btn:hover { filter: brightness(1.2); }
     </style>
@@ -253,7 +256,7 @@
         <div id="tab-sys" class="tab-content">
             <div class="api-config">
                 <label>AI 提供商：</label>
-                <select id="api-provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select>
+                <select id="api-provider"><option value="gemini">Google Gemini</option></select>
                 <label>API Key (請貼上有效 Key)：</label>
                 <input type="password" id="api-key" placeholder="貼上你的 API Key">
                 <label>模型名稱 (留空預設 gemini-3.5-flash-lite)：</label>
@@ -333,7 +336,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.77",
+            version: "4.78",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -349,6 +352,74 @@
             inventory: [], npcs: [], worldEvents: [],
             quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
             choices: [...DEFAULT_ORIGIN_CHOICES]
+        };
+    }
+
+    // 數值正規化：保留合法的 0，拒絕 NaN/Infinity，並限制上下界。
+    function safeNumber(value, fallback, min, max) {
+        const n = Number(value);
+        if (value === null || value === undefined || value === '' || !Number.isFinite(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
+    }
+
+    // 🌟 深度正規化防呆函數 (確保任何缺漏欄位都能安全對齊最新版本)
+    function normalizeGameState(raw) {
+        const def = getDefaultGameState();
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
+        const level = Math.floor(safeNumber(raw.level, def.level, 0, REALMS.length - 1));
+        const realmDef = REALMS[level] || REALMS[0];
+        const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
+        const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
+        return {
+            version: "4.78",
+            level,
+            realm: cleanNameStrict(raw.realm) || def.realm,
+            linggen: cleanNameStrict(raw.linggen) || def.linggen,
+            physique: cleanNameStrict(raw.physique) || def.physique,
+            daysPassed: safeNumber(raw.daysPassed, def.daysPassed, 0, 1e9),
+            ageBase: safeNumber(raw.ageBase, def.ageBase, 1, 1e5),
+            maxAge: safeNumber(raw.maxAge, realmDef.maxAge, 1, 1e6),
+            maxHp,
+            hp: safeNumber(raw.hp, def.hp, 0, maxHp),
+            exp: safeNumber(raw.exp, def.exp, 0, maxExp),
+            maxExp,
+            spiritStone: safeNumber(raw.spiritStone, def.spiritStone, 0, 1e12),
+            breakthroughCdDays: safeNumber(raw.breakthroughCdDays, def.breakthroughCdDays, 0, 1e7),
+            practiceFatigue: safeNumber(raw.practiceFatigue, def.practiceFatigue, 0, 100),
+            danToxin: safeNumber(raw.danToxin, def.danToxin, 0, 1e6),
+            hospitalVisitCount: safeNumber(raw.hospitalVisitCount, def.hospitalVisitCount, 0, 1e6),
+            lastHospitalDay: safeNumber(raw.lastHospitalDay, def.lastHospitalDay, -1e9, 1e9),
+            isDead: Boolean(raw.isDead),
+            deathModalShown: Boolean(raw.deathModalShown),
+            location: cleanNameStrict(raw.location) || def.location,
+            scenarioMode: raw.scenarioMode || def.scenarioMode,
+            activeThreats: Array.isArray(raw.activeThreats) ? raw.activeThreats : [],
+            hasChosenOrigin: Boolean(raw.hasChosenOrigin),
+            originType: cleanNameStrict(raw.originType) || def.originType,
+            sect: (raw.sect && typeof raw.sect === 'object') ? {
+                name: cleanNameStrict(raw.sect.name) || "無",
+                rank: cleanNameStrict(raw.sect.rank) || "散修",
+                contribution: safeNumber(raw.sect.contribution, 0, 0, 1e12),
+                position: cleanNameStrict(raw.sect.position) || "無"
+            } : def.sect,
+            stats: (raw.stats && typeof raw.stats === 'object') ? {
+                str: safeNumber(raw.stats.str, 10, 0, 1e6),
+                con: safeNumber(raw.stats.con, 10, 0, 1e6),
+                agi: safeNumber(raw.stats.agi, 10, 0, 1e6),
+                int: safeNumber(raw.stats.int, 10, 0, 1e6),
+                wis: safeNumber(raw.stats.wis, 10, 0, 1e6),
+                luk: safeNumber(raw.stats.luk, 10, 0, 1e6)
+            } : def.stats,
+            status: Array.isArray(raw.status) ? raw.status.map(cleanNameStrict) : [...def.status],
+            activeKungfu: raw.activeKungfu || null,
+            kungfu: Array.isArray(raw.kungfu) ? raw.kungfu : [],
+            skills: Array.isArray(raw.skills) ? raw.skills : [],
+            equipment: (raw.equipment && typeof raw.equipment === 'object') ? raw.equipment : { weapon: null, armor: null, accessory: null, treasure: null },
+            inventory: Array.isArray(raw.inventory) ? raw.inventory.map(cleanNameStrict) : [],
+            npcs: Array.isArray(raw.npcs) ? raw.npcs : [],
+            worldEvents: Array.isArray(raw.worldEvents) ? raw.worldEvents.map(cleanNameStrict) : [],
+            quests: Array.isArray(raw.quests) ? raw.quests : [...def.quests],
+            choices: Array.isArray(raw.choices) ? raw.choices : [...def.choices]
         };
     }
 
@@ -371,7 +442,6 @@
         return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
     }
 
-    // 🌟 P1 修正：嚴格由高到低檢查稀有度，避免 "仙品寶劍" 被寶字誤判為極品
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
@@ -431,7 +501,6 @@
         return { name: clean, hpMult: 1.0, cpBonus: 0, color: "#888888", desc: "🧍 [凡體] 普通凡人肉身。" };
     }
 
-    // 🌟 P1 修正：優先檢查高級靈根，避免 "無上靈根" 被誤判為無/未顯化
     function getLinggenMeta(linggenInput) {
         let name = "待顯化";
         if (typeof linggenInput === 'object' && linggenInput) name = linggenInput.name || "待顯化";
@@ -593,7 +662,6 @@
         return s.scenarioMode || "IDLE";
     }
 
-    // 🌟 P1 修正：新增 deathModalShown 旗標，防止死亡彈窗重複洗版
     function checkLifeStatus(s = gameState) {
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
@@ -703,7 +771,7 @@
         if (item.exp >= baseNeeded) {
             item.realm = SKILL_STAGES[curIdx + 1];
             item.exp = 0;
-            openGameModal("🎉 熟練度突破！", `經過苦心參悟，【${name}】成功突破至【${item.realm}】境界！`);
+            openGameModal("🎉 熟練度突破！", `經過庫心參悟，【${name}】成功突破至【${item.realm}】境界！`);
         }
 
         renderUI(); saveGameState();
@@ -801,12 +869,9 @@
         if (mode === "SHOPPING") { openGameModal("⚠️ 採買中", "當前正在市集交易，請先完成採買再求醫！"); return; }
         if (mode === "DANGER") { openGameModal("⚠️ 強敵追殺", "當前強敵環伺，無法脫身前往醫館求醫！"); return; }
         
-        const daysSinceLast = gameState.daysPassed - (gameState.lastHospitalDay || -999);
-        if (daysSinceLast > 30) {
-            gameState.hospitalVisitCount = 0;
-        }
-
-        const visitCount = (gameState.hospitalVisitCount || 0) + 1;
+        const daysSinceLast = gameState.daysPassed - (Number.isFinite(Number(gameState.lastHospitalDay)) ? Number(gameState.lastHospitalDay) : -999);
+        const priorVisitCount = daysSinceLast > 30 ? 0 : safeNumber(gameState.hospitalVisitCount, 0, 0, 1e6);
+        const visitCount = priorVisitCount + 1;
         let cost = 50;
         if (visitCount === 2) cost = 100;
         else if (visitCount >= 3) cost = 250;
@@ -816,9 +881,6 @@
             return;
         }
 
-        gameState.hospitalVisitCount = visitCount;
-        gameState.lastHospitalDay = gameState.daysPassed;
-        
         sendAction(`【前往坊市醫館求醫，支付 ${cost} 靈石】`, { 
             isPresetEvent: true, 
             addDays: 1, 
@@ -826,7 +888,9 @@
             restoreFullHp: true, 
             clearFatigue: true,
             isHospital: true,
-            hospitalCost: cost
+            hospitalCost: cost,
+            hospitalVisitCountAfter: visitCount,
+            hospitalLastDayAfter: gameState.daysPassed
         }, `【前往醫館支付 ${cost} 靈石求醫。雖治癒傷勢並清空疲勞，但體內殘留藥石丹毒，最大生命值永久受損並影響未來突破！】`);
     }
 
@@ -836,7 +900,6 @@
         else if (type === 'library') sendAction("【前往宗門藏經閣參悟功法】");
     }
 
-    // 🌟 P1 修正：境界上限防護檢查
     function attemptBreakthrough() {
         if (gameState.isDead) return;
         if (gameState.level >= REALMS.length - 1) {
@@ -891,7 +954,6 @@
             } else gameState.inventory.push("隨身防身信物");
             gameState.status.push("身世之謎");
         }
-        renderUI();
     }
 
     function getSystemPrompt() { 
@@ -918,18 +980,33 @@
 2. worldEvents 僅限填入【持續影響未來走勢的重大事件】（如：仇恨追殺, NPC陣亡, 場景毀壞, 神器解鎖），嚴禁填入打坐吐納等個人瑣事！`; 
     }
 
+    // 🌟 多層次彈性 JSON 解析 (支援原始純 JSON、Markdown 程式碼區塊及純文字降級容錯)
     function parseApiResponse(text) {
         if (!text) return { storyText: "", parsedState: null };
-        let jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/i);
-        let jsonStr = jsonMatch ? jsonMatch[1].trim() : null;
-        let storyText = text;
+        let trimmed = text.trim();
 
-        if (jsonStr) {
+        // 嘗試 1：直接把整段文字當作原始 JSON 解析
+        try {
+            if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+                const parsed = JSON.parse(trimmed);
+                if (parsed && typeof parsed === 'object' && parsed.story) {
+                    return { storyText: parsed.story, parsedState: parsed };
+                }
+            }
+        } catch (e) {}
+
+        // 嘗試 2：尋找 Markdown 程式碼區塊
+        let jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        if (jsonMatch) {
             try {
-                const parsed = JSON.parse(jsonStr);
-                return { storyText: parsed.story || text, parsedState: parsed };
-            } catch (e) { console.warn("JSON解析失敗", e); }
+                const parsed = JSON.parse(jsonMatch[1].trim());
+                if (parsed && typeof parsed === 'object') {
+                    return { storyText: parsed.story || text, parsedState: parsed };
+                }
+            } catch (e) {}
         }
+
+        // 嘗試 3：純文字降級防線
         return { storyText: text.trim(), parsedState: null };
     }
 
@@ -1027,18 +1104,33 @@
         return s;
     }
 
+    // 🌟 強化 API 錯誤處理與 HTTP 狀態碼檢查
     async function callGeminiApi(apiKey) {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
         const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
         const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() }] }, contents: contents };
+        
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`, {
             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
         });
+
+        if (!res.ok) {
+            let errDetail = `HTTP ${res.status}`;
+            try {
+                const errJson = await res.json();
+                if (errJson.error && errJson.error.message) {
+                    errDetail = errJson.error.message;
+                }
+            } catch(e) {}
+            throw new Error(`API 請求失敗 (${errDetail})`);
+        }
+
         const data = await res.json();
         return data.candidates?.[0]?.content?.parts?.[0]?.text || "天道無回應...";
     }
 
+    // 🌟 延遲開局初始化至 API 成功後執行 (原子性防護)
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         let apiKey = document.getElementById("api-key").value.trim() || localStorage.getItem("blade_api_key");
@@ -1048,9 +1140,7 @@
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
 
-        if (!gameState.hasChosenOrigin) {
-            applyOriginInitialization(actionText);
-        }
+        const isDoingOrigin = !gameState.hasChosenOrigin;
 
         const promptToSend = customPromptText || actionText;
 
@@ -1060,6 +1150,12 @@
 
         try {
             let aiResponseText = await callGeminiApi(apiKey);
+            
+            // API 成功後才套用開局初始化
+            if (isDoingOrigin) {
+                applyOriginInitialization(actionText);
+            }
+
             conversationHistory.push({ role: "assistant", content: aiResponseText });
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
             
@@ -1081,7 +1177,9 @@
                     gameState.hp = getMaxHp(gameState);
                 }
                 if (eventMeta.isHospital) {
-                    gameState.spiritStone -= eventMeta.hospitalCost;
+                    gameState.hospitalVisitCount = safeNumber(eventMeta.hospitalVisitCountAfter, gameState.hospitalVisitCount, 0, 1e6);
+                    gameState.lastHospitalDay = safeNumber(eventMeta.hospitalLastDayAfter, gameState.daysPassed, -1e9, 1e9);
+                    gameState.spiritStone = Math.max(0, gameState.spiritStone - eventMeta.hospitalCost);
                     gameState.danToxin = (gameState.danToxin || 0) + 1;
                     const toxinName = `藥石丹毒 Lv.${gameState.danToxin}`;
                     if (!gameState.status.includes(toxinName)) {
@@ -1106,7 +1204,10 @@
             appendLogData("天道", storyText, "ai", false, true);
             checkLifeStatus(gameState);
         } catch (error) {
+            // API 失敗時移除剛推入的 conversationHistory 暫存問答
+            conversationHistory.pop();
             appendLogData("系統", `⚠️ 行動失敗 (${error.message})`, "system", false, true);
+            openGameModal("⚠️ 天道感應中斷", `與 AI 伺服器通訊失敗：<br><span style="color:var(--accent-red);">${error.message}</span><br>請檢查網路狀況或 API Key 是否正確。`);
         } finally {
             isTyping = false; stopLoadingAnim(); renderUI(); saveGameState();
             if(inputEl) inputEl.value = "";
@@ -1122,7 +1223,7 @@
         return `${baseVal}`;
     }
 
-    // 🌟 P1 修正：補齊地點、靈根、體質、狀態、任務與 NPC 的即時介面更新
+    // 🌟 全面採用安全的 DOM 節點渲染 (杜絕所有 XSS 與字串注入風險)
     function renderUI() {
         checkLifeStatus(gameState);
         const choiceCont = document.getElementById("dynamic-choices-container");
@@ -1144,7 +1245,6 @@
         document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue} / 100`;
         document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone} 顆`;
 
-        // 靈根與體質動態標籤顏色渲染
         const lgMeta = getLinggenMeta(gameState.linggen);
         const lgEl = document.getElementById("ui-linggen");
         lgEl.textContent = lgMeta.name; lgEl.style.color = lgMeta.color;
@@ -1162,28 +1262,53 @@
         const months = Math.floor(((gameState.daysPassed || 0) % 365) / 30);
         document.getElementById("ui-age").innerText = `${curAge}歲${months}月 / ${gameState.maxAge}歲`;
 
+        // 安全渲染狀態效果
         const statusBox = document.getElementById("ui-status");
         if (statusBox) {
-            statusBox.innerHTML = gameState.status.length > 0 ? gameState.status.map(st => `• ${st}`).join("<br>") : "身體康健";
+            statusBox.innerHTML = "";
+            if (gameState.status && gameState.status.length > 0) {
+                gameState.status.forEach(st => {
+                    let div = document.createElement("div");
+                    div.textContent = `• ${st}`;
+                    statusBox.appendChild(div);
+                });
+            } else {
+                let div = document.createElement("div");
+                div.textContent = "身體康健";
+                statusBox.appendChild(div);
+            }
         }
 
-        // 任務與 NPC 列表渲染
+        // 安全渲染任務列表
         const questsBox = document.getElementById("ui-quests");
         if (questsBox) {
-            questsBox.innerHTML = (gameState.quests && gameState.quests.length > 0)
-                ? gameState.quests.map(q => `• 【${q.name}】${q.progress} (${q.status})`).join("<br>")
-                : "暫無當前任務";
+            questsBox.innerHTML = "";
+            if (gameState.quests && gameState.quests.length > 0) {
+                gameState.quests.forEach(q => {
+                    let div = document.createElement("div");
+                    div.textContent = `• 【${q.name}】${q.progress} (${q.status})`;
+                    questsBox.appendChild(div);
+                });
+            } else {
+                questsBox.textContent = "暫無當前任務";
+            }
         }
 
+        // 安全渲染 NPC 名冊
         const npcsBox = document.getElementById("ui-npcs-list");
         if (npcsBox) {
-            npcsBox.innerHTML = (gameState.npcs && gameState.npcs.length > 0)
-                ? gameState.npcs.map(n => {
+            npcsBox.innerHTML = "";
+            if (gameState.npcs && gameState.npcs.length > 0) {
+                gameState.npcs.forEach(n => {
                     const name = typeof n === 'string' ? n : (n.name || '未知NPC');
                     const relation = typeof n === 'object' && n.relation ? ` [${n.relation}]` : '';
-                    return `• ${name}${relation}`;
-                }).join("<br>")
-                : "尚無結識人物";
+                    let div = document.createElement("div");
+                    div.textContent = `• ${name}${relation}`;
+                    npcsBox.appendChild(div);
+                });
+            } else {
+                npcsBox.textContent = "尚無結識人物";
+            }
         }
 
         const eqTypes = ['weapon', 'armor', 'accessory', 'treasure'];
@@ -1211,27 +1336,76 @@
         document.getElementById("st-wis").innerHTML = formatStatDisplay(breakdown.base.wis, breakdown.bonus.wis);
         document.getElementById("st-luk").innerHTML = formatStatDisplay(breakdown.base.luk, breakdown.bonus.luk);
 
+        // 安全渲染主修心法
         const kfActiveBox = document.getElementById("ui-kungfu-active");
         if (kfActiveBox) {
-            kfActiveBox.innerHTML = gameState.activeKungfu 
-                ? `• 主修心法：<b>${gameState.activeKungfu.name}</b> [${gameState.activeKungfu.realm}] <button onclick="unequipActiveKungfu()" style="font-size:0.7rem;">卸下</button>` 
-                : "• 尚未運轉任何心法";
+            kfActiveBox.innerHTML = "";
+            if (gameState.activeKungfu) {
+                let span = document.createElement("span");
+                span.textContent = `• 主修心法：${gameState.activeKungfu.name} [${gameState.activeKungfu.realm}] `;
+                let btn = document.createElement("button");
+                btn.textContent = "卸下";
+                btn.style.fontSize = "0.7rem";
+                btn.onclick = unequipActiveKungfu;
+                span.appendChild(btn);
+                kfActiveBox.appendChild(span);
+            } else {
+                kfActiveBox.textContent = "• 尚未運轉任何心法";
+            }
         }
 
+        // 安全渲染心法列表
         const kfListBox = document.getElementById("ui-kungfu-list");
         if (kfListBox) {
-            kfListBox.innerHTML = gameState.kungfu.length > 0
-                ? gameState.kungfu.map(k => `<div class="item-row"><span>📖 ${k.name} [${k.realm}]</span><div><button onclick="setActiveKungfu('${k.name}')">運轉</button><button onclick="practiceTechnique('kungfu', '${k.name}')">參悟</button></div></div>`).join("")
-                : "<div style='color:#888'>尚無心法</div>";
+            kfListBox.innerHTML = "";
+            if (gameState.kungfu && gameState.kungfu.length > 0) {
+                gameState.kungfu.forEach(k => {
+                    let row = document.createElement("div"); row.className = "item-row";
+                    let span = document.createElement("span"); span.textContent = `📖 ${k.name} [${k.realm}]`;
+                    let actions = document.createElement("div");
+
+                    let btnRun = document.createElement("button"); btnRun.textContent = "運轉";
+                    btnRun.onclick = () => setActiveKungfu(k.name);
+                    let btnPrac = document.createElement("button"); btnPrac.textContent = "參悟";
+                    btnPrac.onclick = () => practiceTechnique('kungfu', k.name);
+
+                    actions.appendChild(btnRun); actions.appendChild(btnPrac);
+                    row.appendChild(span); row.appendChild(actions);
+                    kfListBox.appendChild(row);
+                });
+            } else {
+                let div = document.createElement("div"); div.style.color = "#888"; div.textContent = "尚無心法";
+                kfListBox.appendChild(div);
+            }
         }
 
+        // 安全渲染招式列表
         const skillsListBox = document.getElementById("ui-skills-list");
         if (skillsListBox) {
-            skillsListBox.innerHTML = gameState.skills.length > 0
-                ? gameState.skills.map(s => `<div class="item-row"><span>⚔️ ${s.name} [${s.realm}]</span><div><button onclick="practiceTechnique('skill', '${s.name}')">參悟</button><button onclick="forgetSkill('${s.name}')" style="background:#4a1515;">遺忘</button></div></div>`).join("")
-                : "<div style='color:#888'>尚無招式</div>";
+            skillsListBox.innerHTML = "";
+            if (gameState.skills && gameState.skills.length > 0) {
+                gameState.skills.forEach(s => {
+                    let row = document.createElement("div"); row.className = "item-row";
+                    let span = document.createElement("span"); span.textContent = `⚔️ ${s.name} [${s.realm}]`;
+                    let actions = document.createElement("div");
+
+                    let btnPrac = document.createElement("button"); btnPrac.textContent = "參悟";
+                    btnPrac.onclick = () => practiceTechnique('skill', s.name);
+                    let btnForget = document.createElement("button"); btnForget.textContent = "遺忘";
+                    btnForget.style.background = "#4a1515";
+                    btnForget.onclick = () => forgetSkill(s.name);
+
+                    actions.appendChild(btnPrac); actions.appendChild(btnForget);
+                    row.appendChild(span); row.appendChild(actions);
+                    skillsListBox.appendChild(row);
+                });
+            } else {
+                let div = document.createElement("div"); div.style.color = "#888"; div.textContent = "尚無招式";
+                skillsListBox.appendChild(div);
+            }
         }
 
+        // 安全渲染道具背包
         const invBox = document.getElementById("ui-inventory-list");
         if (invBox) {
             invBox.innerHTML = "";
@@ -1281,7 +1455,6 @@
         if (immediateRender) renderStoryLogs();
     }
 
-    // 🌟 P1 修正：改用安全的 DOM 節點與 textContent 組合，防範 AI 內容的 XSS 注入風險
     function renderStoryLogs() {
         const logBox = document.getElementById("story-log");
         if (!logBox) return;
@@ -1305,21 +1478,22 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v477_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v478_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
-    // 🌟 P1 修正：確保讀檔後立即呼叫 renderStoryLogs() 渲染開場劇情
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v477_save") || localStorage.getItem("blade_v476_save") || localStorage.getItem("blade_v475_save");
+        const saved = localStorage.getItem("blade_v478_save") || localStorage.getItem("blade_v477_save") || localStorage.getItem("blade_v476_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
-                gameState = pkg.state || getDefaultGameState();
-                storyLogData = pkg.logs || [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
-                conversationHistory = pkg.history || [];
+                gameState = normalizeGameState(pkg.state);
+                storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
+                conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
             } catch (e) {
+                gameState = getDefaultGameState();
                 storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
             }
         } else {
+            gameState = getDefaultGameState();
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
         }
         renderUI();
@@ -1331,7 +1505,6 @@
         const a = document.createElement('a'); a.href = dataStr; a.download = `save_${Date.now()}.json`; a.click();
     }
 
-    // 🌟 P1 修正：增加匯入存檔的 JSON 結構防呆驗證
     function importSave(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -1339,12 +1512,12 @@
         reader.onload = function(evt) {
             try {
                 const pkg = JSON.parse(evt.target.result);
-                if (!pkg || typeof pkg !== 'object' || !pkg.state || typeof pkg.state.level !== 'number' || !pkg.state.stats) {
-                    throw new Error("存檔結構不符或核心欄位缺失");
+                if (!pkg || typeof pkg !== 'object' || !pkg.state) {
+                    throw new Error("存檔結構不符");
                 }
-                gameState = pkg.state; 
-                storyLogData = pkg.logs || []; 
-                conversationHistory = pkg.history || [];
+                gameState = normalizeGameState(pkg.state);
+                storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
+                conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
                 saveGameState(); 
                 renderUI(); 
                 renderStoryLogs(); 
@@ -1356,12 +1529,11 @@
         reader.readAsText(file);
     }
 
-    // 🌟 P1 修正：精準清除當前遊戲專屬存檔，不再使用危險的 localStorage.clear()
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v478_save");
             localStorage.removeItem("blade_v477_save");
             localStorage.removeItem("blade_v476_save");
-            localStorage.removeItem("blade_v475_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
