@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.96 死局解封版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.97 突破死鎖與UI同步修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -376,7 +376,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.96",
+            version: "4.97",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -475,7 +475,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.96",
+            version: "4.97",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -791,14 +791,10 @@
         } catch (e) { console.error(e); }
     }
 
+    // 🌟【V4.97 重大修復】：優先尊重 AI 回傳的 scenarioMode 系統狀態，消除文字誤判死鎖
     function getEffectiveMode(s = gameState) {
         if (s.isDead) return "DEAD";
         if (s.activeThreats && s.activeThreats.length > 0) return "DANGER";
-        const latestLog = storyLogData[storyLogData.length - 1];
-        if (latestLog && latestLog.type === 'ai') {
-            if (/(追兵|搜山|刀光|當頭劈下|逼近|破門|殺氣|當場|包圍|元嬰|化神)/.test(latestLog.content)) return "DANGER";
-            if (/(禁地|古墓|瘴氣|暴虐靈氣|凶險|殘陣|危險區域)/.test(latestLog.content)) return "HAZARD";
-        }
         return s.scenarioMode || "IDLE";
     }
 
@@ -1140,6 +1136,7 @@
         else if (type === 'library') sendAction("【前往宗門藏經閣參悟功法】");
     }
 
+    // 🌟【V4.97 重大修復】：優化突破流程，避免與歷史戰鬥內文產生衝突死鎖
     function attemptBreakthrough() {
         if (gameState.isDead) return;
         if (gameState.level >= REALMS.length - 1) {
@@ -1148,8 +1145,15 @@
         }
 
         const mode = getEffectiveMode(gameState);
-        if (mode === "DIALOGUE" || mode === "DANGER") { openGameModal("⚠️ 時機不對", "當前情勢緊繃或正在對話，無法分心衝擊境界！"); return; }
-        if (gameState.exp < gameState.maxExp) { openGameModal("⚠️ 修為未滿", "修為尚未圓滿，無法強行突破！"); return; }
+        if (mode === "DIALOGUE" || mode === "DANGER") { 
+            openGameModal("⚠️ 時機不對", "當前情勢緊繃或正在對話，無法分心衝擊境界！"); 
+            return; 
+        }
+
+        if (gameState.exp < gameState.maxExp) { 
+            openGameModal("⚠️ 修為未滿", "修為尚未圓滿，無法強行突破！"); 
+            return; 
+        }
 
         const nextDef = getRealmDef(gameState.level + 1);
         let baseRate = nextDef.baseRate || 0.5;
@@ -1159,22 +1163,11 @@
 
         const isSuccess = Math.random() < baseRate;
         const isNascentOrHigher = gameState.level >= 31; 
-        const displayText = `【盤膝運功，衝擊突破至「${nextDef.name}」境界！（當前丹毒層數：${toxin}，成功率修正：${Math.floor(baseRate * 100)}%）】`;
+        const displayText = `【盤膝運功，衝擊突破至「${nextDef.name}」境界！（成功率：${Math.floor(baseRate * 100)}%）】`;
         
-        let promptText = "";
-        if (isSuccess) {
-            if (isNascentOrHigher) {
-                promptText = `【渡劫破境：成功！】突破至「${nextDef.name}」！雷劫散去，降下甘霖洗滌四肢百骸。請詳細描繪渡劫衝關過程！`;
-            } else {
-                promptText = `【衝破瓶頸：成功！】順利突破至「${nextDef.name}」！體內真氣運轉如意，拓寬經脈，實力更進一步。請詳細描繪衝破瓶頸過程！`;
-            }
-        } else {
-            if (isNascentOrHigher) {
-                promptText = `【渡劫破境：失敗！】受天雷反噬與心魔入侵，衝關失敗遭受經脈重傷！風險：${nextDef.risk}。請詳細描繪慘烈渡劫過程！`;
-            } else {
-                promptText = `【衝破瓶頸：失敗！】真元逆走經脈，氣血反噬受傷！風險：${nextDef.risk}。請詳細描繪衝關受挫過程！`;
-            }
-        }
+        let promptText = isSuccess 
+            ? `【衝破瓶頸：成功！】順利突破至「${nextDef.name}」！請詳細描繪突破過程！`
+            : `【衝破瓶頸：失敗！】氣血反噬受傷！請詳細描繪衝關受挫過程！`;
 
         sendAction(displayText, { isBreakthrough: true, breakthroughSuccess: isSuccess }, promptText);
     }
@@ -1527,7 +1520,6 @@
         let promptToSend = customPromptText || actionText;
 
         const currentMode = getEffectiveMode(gameState);
-        // 🌟【V4.96 重大 Bug 修正】：只有當「處於危險」且「玩家明確選擇正面硬剛」時才引發盲裁即死！
         const isBruteForceAction = /(正面硬剛|硬拼|血拼|死戰|單挑|挑釁|強殺|正面交鋒)/.test(actionText);
         const isOverlevelDanger = (currentMode === "DANGER" && isBruteForceAction);
         
@@ -1639,6 +1631,25 @@
 
     function renderUI() {
         checkLifeStatus(gameState);
+
+        // 🌟【V4.97 重大修復】：畫面上方 scenarioMode 狀態標籤同步刷新
+        const currentMode = getEffectiveMode(gameState);
+        const modeBadge = document.getElementById("ui-scenario-mode");
+        if (modeBadge) {
+            if (currentMode === "DANGER") {
+                modeBadge.className = "mode-badge mode-danger";
+                modeBadge.textContent = "🔴 強敵追殺";
+            } else if (currentMode === "HAZARD") {
+                modeBadge.className = "mode-badge mode-hazard";
+                modeBadge.textContent = "🟡 險地環境";
+            } else if (currentMode === "DIALOGUE") {
+                modeBadge.className = "mode-badge mode-dialogue";
+                modeBadge.textContent = "🔵 正在對話";
+            } else {
+                modeBadge.className = "mode-badge mode-idle";
+                modeBadge.textContent = "🟢 平靜遊歷";
+            }
+        }
 
         const choiceCont = document.getElementById("dynamic-choices-container");
         const deathActionCont = document.getElementById("death-action-container");
@@ -2053,10 +2064,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v496_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v497_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v496_save") || localStorage.getItem("blade_v495_save") || localStorage.getItem("blade_v494_save");
+        const saved = localStorage.getItem("blade_v497_save") || localStorage.getItem("blade_v496_save") || localStorage.getItem("blade_v495_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2125,9 +2136,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v497_save");
             localStorage.removeItem("blade_v496_save");
             localStorage.removeItem("blade_v495_save");
-            localStorage.removeItem("blade_v494_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
