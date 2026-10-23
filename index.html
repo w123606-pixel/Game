@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.95 跨平台存檔修復版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.96 死局解封版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -376,7 +376,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.95",
+            version: "4.96",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -475,7 +475,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.95",
+            version: "4.96",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1251,8 +1251,8 @@
 }
 \`\`\`
 ⚠️ 天道無情與降維打擊鐵律（絕對不可違背）：
-1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界（如凡人或練氣期初期）迎戰高大境界（如築基, 金丹, 元嬰期等）修士，且選擇正面硬剛、盲目挑釁或不作任何合理逃生謀略時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須毫不留情地讓玩家重傷甚至當場死亡（isDead: true, hpChange: -999）。
-2. 降維打擊與神識護體：面對元嬰期以上老怪，凡人與低階修士如幼稚園對抗成年人。對方的神識、護體真元與自動護主法寶能瞬間洞察並震碎低階攻擊。絕對禁止讓低階玩家透過小聰明正面反殺高階老怪。
+1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界（如凡人或練氣期初期）選擇正面硬剛、盲目挑釁高階修士時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須描繪其重傷或死亡。但若玩家採取智取、躲藏、血脈引導、老祖殘魂護主或合理逃生謀略，請給予合情合理的生存/轉機劇情，切勿無腦秒殺！
+2. 降維打擊與神識護體：面對元嬰期以上老怪，凡人與低階修士正面攻擊無效。但允許透過環境盲區、法寶殘留氣息或高階因果（如老祖殘魂被動護主）實現智取逃生。
 3. 嚴禁無中生有：禁止讓玩家在絕境中突然爆發莫名其妙的功法反殺。沒有對應道具或修為就是死路一條。
 4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"。
 5. 敘事與狀態一致性（嚴格限制）：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家已經突破境界或升級，只能描述「感受到靈氣流動、修為圓滿、瓶頸鬆動」，必須將真正的突破與等級提升交給系統機制判定！`; 
@@ -1527,7 +1527,9 @@
         let promptToSend = customPromptText || actionText;
 
         const currentMode = getEffectiveMode(gameState);
-        const isOverlevelDanger = currentMode === "DANGER" || /(正面硬剛|硬拼|血拼|死戰|單挑|挑釁|強殺|正面交鋒)/.test(actionText);
+        // 🌟【V4.96 重大 Bug 修正】：只有當「處於危險」且「玩家明確選擇正面硬剛」時才引發盲裁即死！
+        const isBruteForceAction = /(正面硬剛|硬拼|血拼|死戰|單挑|挑釁|強殺|正面交鋒)/.test(actionText);
+        const isOverlevelDanger = (currentMode === "DANGER" && isBruteForceAction);
         
         if (gameState.level < 10 && isOverlevelDanger) {
             promptToSend += `\n[系統絕對強制盲裁指令：玩家當前境界（Lv.${gameState.level}）與強敵或高階修士差距過大！此正面硬剛行為判定 100% 失敗。強制設定 isDead: true, hpChange: -999。請你作為冷酷天道，描繪其遭神識或護體罡氣直接秒殺的慘烈過程。]`;
@@ -2051,10 +2053,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v495_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v496_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v495_save") || localStorage.getItem("blade_v494_save") || localStorage.getItem("blade_v493_save") || localStorage.getItem("blade_v492_save");
+        const saved = localStorage.getItem("blade_v496_save") || localStorage.getItem("blade_v495_save") || localStorage.getItem("blade_v494_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2123,10 +2125,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v496_save");
             localStorage.removeItem("blade_v495_save");
             localStorage.removeItem("blade_v494_save");
-            localStorage.removeItem("blade_v493_save");
-            localStorage.removeItem("blade_v492_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
