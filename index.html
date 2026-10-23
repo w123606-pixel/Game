@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.82 完整修復版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.82 完整無缺版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -16,6 +16,7 @@
             --accent-purple: #ab47bc;
             --hl-gold: #ffd700;
             --hl-cyan: #00ffff;
+            --hl-orange: #ff6d00;
             --ui-border: #2a2d3d;
         }
 
@@ -256,7 +257,7 @@
             <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);"></div>
             <h2>👥 結識人物 (同區域當面 / 異地飛劍傳訊)</h2>
             <div id="ui-npcs-list" style="margin-bottom:10px;"></div>
-            <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (劇情錨點 · 50條上限)</h2>
+            <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (諸天大事件 · 50條上限)</h2>
             <div id="ui-world-events" class="scroll-list" style="color: #c5a059;"></div>
         </div>
 
@@ -295,38 +296,61 @@
 </div>
 
 <script>
-    const REALMS = [
-        { level: 0, name: "凡人", maxAge: 100, maxHp: 50, maxExp: 100, baseRate: 1.0, risk: "無風險" },
-        { level: 1, name: "練氣一層", maxAge: 110, maxHp: 80, maxExp: 150, baseRate: 0.90, risk: "輕微經脈震盪" },
-        { level: 2, name: "練氣二層", maxAge: 115, maxHp: 110, maxExp: 220, baseRate: 0.88, risk: "輕微經脈震盪" },
-        { level: 3, name: "練氣三層", maxAge: 120, maxHp: 150, maxExp: 350, baseRate: 0.85, risk: "小瓶頸" },
-        { level: 4, name: "練氣四層", maxAge: 130, maxHp: 200, maxExp: 500, baseRate: 0.82, risk: "輕微氣血反噬" },
-        { level: 5, name: "練氣五層", maxAge: 135, maxHp: 260, maxExp: 750, baseRate: 0.80, risk: "輕微氣血反噬" },
-        { level: 6, name: "練氣六層", maxAge: 140, maxHp: 330, maxExp: 1100, baseRate: 0.78, risk: "小瓶頸" },
-        { level: 7, name: "練氣七層", maxAge: 150, maxHp: 420, maxExp: 1600, baseRate: 0.75, risk: "氣血反噬" },
-        { level: 8, name: "練氣八層", maxAge: 155, maxHp: 520, maxExp: 2300, baseRate: 0.72, risk: "氣血反噬" },
-        { level: 9, name: "練氣九層", maxAge: 160, maxHp: 650, maxExp: 3200, baseRate: 0.70, risk: "氣血反噬" },
-        { level: 10, name: "練氣圓滿", maxAge: 180, maxHp: 800, maxExp: 5000, baseRate: 0.65, risk: "衝擊築基險境" },
-        { level: 11, name: "築基初期", maxAge: 300, maxHp: 2500, maxExp: 15000, baseRate: 0.60, risk: "經脈重傷" },
-        { level: 12, name: "築基中期", maxAge: 320, maxHp: 4000, maxExp: 30000, baseRate: 0.55, risk: "經脈重傷" },
-        { level: 13, name: "築基後期", maxAge: 350, maxHp: 6000, maxExp: 45000, baseRate: 0.50, risk: "經脈重傷" },
-        { level: 14, name: "築基圓滿", maxAge: 400, maxHp: 8000, maxExp: 60000, baseRate: 0.45, risk: "凝結金丹險境" },
-        { level: 15, name: "金丹初期", maxAge: 800, maxHp: 25000, maxExp: 200000, baseRate: 0.40, risk: "金丹碎裂/修為退步" },
-        { level: 16, name: "元嬰初期 (分水嶺)", maxAge: 3000, maxHp: 300000, maxExp: 5000000, baseRate: 0.30, risk: "⚡ 四九天劫 + 心魔劫" },
-        { level: 17, name: "化神初期", maxAge: 10000, maxHp: 5000000, maxExp: 80000000, baseRate: 0.20, risk: "⚡ 六九重劫 + 虛空風暴" },
-        { level: 18, name: "返虛/合體期", maxAge: 50000, maxHp: 80000000, maxExp: 1200000000, baseRate: 0.12, risk: "⚡ 八九天劫 + 法則反噬" },
-        { level: 19, name: "大乘/渡劫期", maxAge: 200000, maxHp: 1500000000, maxExp: 20000000000, baseRate: 0.08, risk: "⚡ 九九重劫 + 灰飛煙滅" },
-        { level: 20, name: "真仙/金仙境", maxAge: 1000000, maxHp: 20000000000, maxExp: 300000000000, baseRate: 0.05, risk: "⚡ 仙人五衰" },
-        { level: 21, name: "太乙/大羅金仙", maxAge: 9999999, maxHp: 300000000000, maxExp: 8000000000000, baseRate: 0.02, risk: "⚡ 因果業火劫" },
-        { level: 22, name: "準聖境", maxAge: 9999999, maxHp: 5000000000000, maxExp: 200000000000000, baseRate: 0.005, risk: "⚡ 鴻蒙紫氣劫" },
-        { level: 23, name: "聖人境", maxAge: 9999999, maxHp: 100000000000000, maxExp: 5000000000000000, baseRate: 0.0005, risk: "⚡ 諸天同化劫" },
-        { level: 24, name: "大主宰境", maxAge: 9999999, maxHp: 999999999999999, maxExp: 9000000000000000, baseRate: 0.00001, risk: "⚡ 混沌宇宙本源劫" }
-    ];
+    // 1. Programmatically Generate 120-Level Scheme A Realm Array
+    function generateRealms() {
+        const realms = [{ level: 0, name: "凡人", majorIdx: 0, majorName: "凡人", maxAge: 100, maxHp: 50, maxExp: 100, baseRate: 1.0, risk: "無風險" }];
+        const majorNames = ["練氣", "築基", "金丹", "元嬰", "化神", "返虛", "大乘", "真仙", "金仙", "準聖", "聖人", "大主宰"];
+        const subNames = ["一層", "二層", "三層", "四層", "五層", "六層", "七層", "八層", "九層", "圓滿"];
+        
+        let lvl = 1;
+        majorNames.forEach((mName, mIdx) => {
+            const majorIndex = mIdx + 1; // 1 to 12
+            subNames.forEach((sName, sIdx) => {
+                const isNascentOrHigher = majorIndex >= 4; // 元嬰 (MajorIdx 4) 及以上有天劫
+                const maxHp = Math.floor(50 * Math.pow(1.15, lvl) + (lvl * 120) + (majorIndex * 1000));
+                const maxExp = Math.floor(100 * Math.pow(1.18, lvl) + (lvl * 200));
+                const maxAge = 100 + (majorIndex * 150) + (sIdx * 10);
+                const baseRate = Math.max(0.001, Math.min(0.95, 0.95 - (lvl * 0.007)));
+                
+                let risk = "衝破瓶頸";
+                if (sIdx === 9) risk = `衝擊${mName === "大主宰" ? "諸天極致" : majorNames[mIdx + 1] || "更高境界"}`;
+                if (isNascentOrHigher) {
+                    if (majorIndex === 4) risk = "⚡ 四九天劫 + 心魔劫";
+                    else if (majorIndex === 5) risk = "⚡ 六九重劫 + 虛空風暴";
+                    else if (majorIndex === 6) risk = "⚡ 八九天劫 + 法則反噬";
+                    else if (majorIndex === 7) risk = "⚡ 九九重劫 + 飛升仙界";
+                    else if (majorIndex === 8) risk = "⚡ 仙人五衰 + 仙靈重塑";
+                    else if (majorIndex === 9) risk = "⚡ 因果業火劫";
+                    else if (majorIndex === 10) risk = "⚡ 鴻蒙紫氣劫";
+                    else if (majorIndex === 11) risk = "⚡ 諸天同化劫";
+                    else if (majorIndex === 12) risk = "⚡ 混沌宇宙本源劫";
+                }
 
+                realms.push({
+                    level: lvl,
+                    name: `${mName}${sName}`,
+                    majorIdx: majorIndex,
+                    majorName: mName,
+                    maxAge, maxHp, maxExp, baseRate, risk
+                });
+                lvl++;
+            });
+        });
+        return realms;
+    }
+
+    const REALMS = generateRealms();
+
+    // Explicitly provided immediately after REALMS definition
     function getRealmDef(lvl) {
         const safeLvl = Math.max(0, Math.floor(Number(lvl) || 0));
         if (safeLvl < REALMS.length) return REALMS[safeLvl];
         return REALMS[REALMS.length - 1];
+    }
+
+    function getMajorRealmIndex(lvl) {
+        const def = getRealmDef(lvl);
+        return def ? (def.majorIdx || 0) : 0;
     }
 
     const STATUS_EFFECTS_MAP = {
@@ -338,7 +362,7 @@
         "輕傷": { str: -2, con: -2, agi: -1, desc: "膂力-2, 根骨-2, 身法-1" },
         "重傷": { str: -8, con: -8, agi: -5, desc: "全戰力銳減，急需醫治" },
         "疲憊": { wis: -5, agi: -3, desc: "悟性-5, 身法-3" },
-        "心境平和": { wis: 5, desc: "悟性+5" },
+        "經脈震盪": { str: -10, agi: -10, desc: "膂力-10, 身法-10 (強行催動反噬)" },
         "氣血翻湧": { con: -3, str: 3, desc: "根骨-3, 膂力+3" },
         "修為圓滿待突破": { wis: 2, desc: "悟性+2 (氣海充盈)" }
     };
@@ -381,12 +405,14 @@
         return Math.min(max, Math.max(min, n));
     }
 
+    // Module 6: Favorability scale (-100 to 100)
     function getNpcRelationText(favor) {
-        if (favor < 20) return "敵視";
-        if (favor < 50) return "冷淡";
-        if (favor < 80) return "素昧平生";
-        if (favor < 120) return "熟絡";
-        if (favor < 160) return "莫逆之交";
+        const f = Number(favor) || 0;
+        if (f <= -60) return "生死仇敵";
+        if (f <= -20) return "敵視戒備";
+        if (f <= 19) return "素昧平生";
+        if (f <= 59) return "熟絡朋友";
+        if (f <= 89) return "莫逆之交";
         return "生死之交";
     }
 
@@ -397,15 +423,102 @@
         return npcRegion === playerRegion;
     }
 
+    // Module 2: Dynamic Kungfu Unsealing logic based on player major realm
+    function getKungfuUnsealInfo(item, playerLevel) {
+        const mIdx = getMajorRealmIndex(playerLevel);
+        if (mIdx <= 1) { // 練氣期 (Major 1)
+            return {
+                title: "[下品·殘篇]",
+                color: "#43a047",
+                hpBonus: 100,
+                statsBonus: { str: 3, con: 3, wis: 3 },
+                expRateText: "+10%",
+                desc: "解封第一重 (練氣期)：氣血 +100，膂力/根骨/悟性 +3，修為效率 +10%"
+            };
+        } else if (mIdx === 2) { // 築基期 (Major 2)
+            return {
+                title: "[中品·解封]",
+                color: "#0288d1",
+                hpBonus: 500,
+                statsBonus: { str: 15, con: 15, wis: 15 },
+                expRateText: "+30%",
+                desc: "解封第二重 (築基期)：氣血 +500，膂力/根骨/悟性 +15，修為效率 +30%"
+            };
+        } else if (mIdx === 3) { // 金丹期 (Major 3)
+            return {
+                title: "[上品·解封]",
+                color: "#ab47bc",
+                hpBonus: 2500,
+                statsBonus: { str: 45, con: 45, wis: 45 },
+                expRateText: "+60%",
+                desc: "解封第三重 (金丹期)：氣血 +2500，膂力/根骨/悟性 +45，修為效率 +60%"
+            };
+        } else if (mIdx === 4) { // 元嬰期 (Major 4)
+            return {
+                title: "[極品·解封]",
+                color: "#ffd700",
+                hpBonus: 12000,
+                statsBonus: { str: 120, con: 120, wis: 120 },
+                expRateText: "+100%",
+                desc: "解封第四重 (元嬰期)：氣血 +12000，膂力/根骨/悟性 +120，修為效率 +100%"
+            };
+        } else { // 化神期及以上 (Major 5+)
+            return {
+                title: "[仙品·全卷]",
+                color: "#ff6d00",
+                hpBonus: 50000,
+                statsBonus: { str: 300, con: 300, agi: 300, int: 300, wis: 300, luk: 300 },
+                expRateText: "+200%",
+                desc: "太初全卷完全解封 (化神期及以上)：氣血 +50000，全屬性 +300，修為效率 +200%"
+            };
+        }
+    }
+
+    // Module 3: Skill Recommended Realm & Output Multiplier Decay
+    function getSkillDecayInfo(item, playerLevel) {
+        const meta = getItemMeta(item.name || '');
+        let recMajor = 1; // 預設練氣期
+        if (meta.rarity === '中品') recMajor = 2; // 築基
+        else if (meta.rarity === '上品') recMajor = 3; // 金丹
+        else if (meta.rarity === '極品') recMajor = 4; // 元嬰
+        else if (meta.rarity === '仙品') recMajor = 5; // 化神及以上
+
+        const pMajor = getMajorRealmIndex(playerLevel);
+        const diff = recMajor - pMajor;
+
+        let outputRatio = 1.0;
+        let warningText = "完美駕馭 (100% 威力)";
+        let isForced = false;
+
+        if (diff === 1) {
+            outputRatio = 0.60;
+            warningText = "小幅壓制 (60% 威力)";
+        } else if (diff === 2) {
+            outputRatio = 0.35;
+            warningText = "顯著衰減 (35% 威力)";
+        } else if (diff === 3) {
+            outputRatio = 0.20;
+            warningText = "嚴重衰減 (20% 威力)";
+        } else if (diff >= 4) {
+            outputRatio = 0.10;
+            warningText = "⚠️ 強行催動 (僅 10% 威力 · 經脈反噬風險高)";
+            isForced = true;
+        }
+
+        return { recMajor, pMajor, diff, outputRatio, warningText, isForced, rarityColor: meta.rarityColor, rarityName: meta.rarity };
+    }
+
     function getTechniqueMaxExp(item) {
         const meta = getItemMeta(item.name || '');
         let base = 100;
-        if (meta.rarity === '中品' || meta.rarity === '上品') base = 1000;
-        if (meta.rarity === '極品' || meta.rarity === '仙品') base = 10000;
+        if (meta.rarity === '中品') base = 300;
+        else if (meta.rarity === '上品') base = 1000;
+        else if (meta.rarity === '極品') base = 5000;
+        else if (meta.rarity === '仙品') base = 20000;
 
         const curIdx = Math.max(0, SKILL_STAGES.indexOf(item.realm || "初窺門徑"));
         if (curIdx >= SKILL_STAGES.length - 1) return 0;
-        return base * Math.pow(10, curIdx);
+        return Math.floor(base * Math.pow(10, curIdx));
     }
 
     function normalizeGameState(raw) {
@@ -462,12 +575,13 @@
             equipment: (raw.equipment && typeof raw.equipment === 'object') ? raw.equipment : { weapon: null, armor: null, accessory: null, treasure: null },
             inventory: Array.isArray(raw.inventory) ? raw.inventory.map(cleanNameStrict) : [],
             npcs: Array.isArray(raw.npcs) ? raw.npcs.map(n => {
-                if (typeof n === 'string') return { name: cleanNameStrict(n), location: cleanNameStrict(raw.location) || "九州邊境", favor: 50, relation: "素昧平生" };
+                if (typeof n === 'string') return { name: cleanNameStrict(n), location: cleanNameStrict(raw.location) || "九州邊境", favor: -80, relation: "生死仇敵" };
+                const favorVal = safeNumber(n.favor, -80, -100, 100);
                 return {
                     name: cleanNameStrict(n.name) || "神秘修士",
                     location: cleanNameStrict(n.location) || cleanNameStrict(raw.location) || "九州邊境",
-                    favor: safeNumber(n.favor, 50, 0, 200),
-                    relation: cleanNameStrict(n.relation) || getNpcRelationText(safeNumber(n.favor, 50, 0, 200))
+                    favor: favorVal,
+                    relation: cleanNameStrict(n.relation) || getNpcRelationText(favorVal)
                 };
             }) : [],
             worldEvents: Array.isArray(raw.worldEvents) ? raw.worldEvents.map(cleanNameStrict) : [],
@@ -578,6 +692,7 @@
         const base = s.stats || { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
         const bonus = { str: 0, con: 0, agi: 0, int: 0, wis: 0, luk: 0 };
 
+        // Equipment stats
         Object.values(s.equipment || {}).forEach(eq => {
             if (eq) {
                 const meta = getItemMeta(eq);
@@ -590,6 +705,7 @@
             }
         });
 
+        // Physique stats
         const phyMeta = getPhysiqueMeta(s.physique);
         if (phyMeta.str) bonus.str += phyMeta.str;
         if (phyMeta.con) bonus.con += phyMeta.con;
@@ -598,6 +714,20 @@
         if (phyMeta.wis) bonus.wis += phyMeta.wis;
         if (phyMeta.luk) bonus.luk += phyMeta.luk;
 
+        // Active kungfu unsealed stats
+        if (s.activeKungfu) {
+            const kUnseal = getKungfuUnsealInfo(s.activeKungfu, s.level);
+            if (kUnseal.statsBonus) {
+                if (kUnseal.statsBonus.str) bonus.str += kUnseal.statsBonus.str;
+                if (kUnseal.statsBonus.con) bonus.con += kUnseal.statsBonus.con;
+                if (kUnseal.statsBonus.agi) bonus.agi += kUnseal.statsBonus.agi;
+                if (kUnseal.statsBonus.int) bonus.int += kUnseal.statsBonus.int;
+                if (kUnseal.statsBonus.wis) bonus.wis += kUnseal.statsBonus.wis;
+                if (kUnseal.statsBonus.luk) bonus.luk += kUnseal.statsBonus.luk;
+            }
+        }
+
+        // Status effects
         (s.status || []).forEach(stName => {
             const cleanSt = cleanNameStrict(stName);
             if (STATUS_EFFECTS_MAP[cleanSt]) {
@@ -637,7 +767,12 @@
 
     function getMaxHp(s = gameState) {
         const realmDef = getRealmDef(s.level || 0);
-        let kfHp = s.activeKungfu ? (s.activeKungfu.hpBonus || 0) : 0;
+        let kfHp = 0;
+        if (s.activeKungfu) {
+            const kUnseal = getKungfuUnsealInfo(s.activeKungfu, s.level);
+            kfHp = kUnseal.hpBonus || 0;
+        }
+
         let eqHp = 0;
         Object.values(s.equipment || {}).forEach(eq => {
             if (eq) {
@@ -736,6 +871,7 @@
         return s.scenarioMode || "IDLE";
     }
 
+    // Module 7: Fix 1 HP death bug by checking <= 0 and trigger modal
     function checkLifeStatus(s = gameState) {
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
@@ -849,12 +985,12 @@
         gameState.inventory.splice(idx, 1);
         const npc = gameState.npcs.find(n => n.name === npcName);
         if (npc) {
-            npc.favor = Math.min(200, (npc.favor || 50) + favorGain);
+            npc.favor = Math.min(100, Math.max(-100, (npc.favor || -80) + favorGain));
             npc.relation = getNpcRelationText(npc.favor);
         }
 
         if (isNearby) {
-            sendAction(`【當面將「${itemName}」贈予「${npcName}」，對方收下禮物心甚喜之，好感度 +${favorGain}】`);
+            sendAction(`【當面將「${itemName}」贈予「${npcName}」，對方收下禮物，好感度 +${favorGain}】`);
         } else {
             gameState.spiritStone = Math.max(0, gameState.spiritStone - 10);
             sendAction(`【消耗 10 靈石，催動飛劍傳書陣將「${itemName}」跨空郵寄給「${npcName}」，好感度 +${favorGain}】`);
@@ -886,6 +1022,7 @@
         saveGameState();
     }
 
+    // Module 3 & 7: Practice Technique with log integration, skill energy decay & backlash
     function practiceTechnique(type, name) {
         if (gameState.isDead) return;
         let list = type === 'kungfu' ? gameState.kungfu : gameState.skills;
@@ -894,11 +1031,25 @@
 
         appendLogData("異世旅者", `【運轉真氣，全力參悟《${name}》】`, "player", false, true);
 
-        if ((gameState.practiceFatigue || 0) > 80) {
-            if (Math.random() < 0.8) {
-                const dmg = Math.floor(getMaxHp(gameState) * 0.4);
+        // Check forced skill backlash
+        let decayInfo = null;
+        if (type === 'skill') {
+            decayInfo = getSkillDecayInfo(item, gameState.level);
+        }
+
+        // Heavy fatigue check
+        if ((gameState.practiceFatigue || 0) > 80 || (decayInfo && decayInfo.isForced && (gameState.practiceFatigue || 0) > 70)) {
+            const isForcedFail = decayInfo && decayInfo.isForced && Math.random() < 0.50;
+            if (isForcedFail || Math.random() < 0.80) {
+                const dmgPct = (decayInfo && decayInfo.isForced) ? 0.35 : 0.20;
+                const dmg = Math.floor(getMaxHp(gameState) * dmgPct);
                 gameState.hp = Math.max(0, gameState.hp - dmg);
-                appendLogData("天道", `🔥 心神過度疲憊 (疲憊度 ${gameState.practiceFatigue}%)，強行參悟導致真元逆走經脈，吐血遭受重創 (HP -${dmg})！`, "system", false, true);
+                
+                if (!gameState.status.includes("經脈震盪")) {
+                    gameState.status.push("經脈震盪");
+                }
+
+                appendLogData("天道", `🔥 心神過度疲憊且超階強行催動，經脈無法承受龐大靈壓反噬，吐血遭受重創 (HP -${dmg})，獲得狀態【經脈震盪】！`, "system", false, true);
                 checkLifeStatus(gameState);
                 renderUI(); saveGameState(); return;
             }
@@ -913,17 +1064,23 @@
         const neededExp = getTechniqueMaxExp(item);
         const totalStats = getTotalStats(gameState);
         let gainExp = Math.floor(50 * (1 + (totalStats.wis || 10) / 100));
+        
+        if (decayInfo && decayInfo.outputRatio < 1.0) {
+            gainExp = Math.floor(gainExp * decayInfo.outputRatio);
+        }
         if ((gameState.practiceFatigue || 0) > 80) gainExp = Math.floor(gainExp * 0.5);
 
         item.exp = (item.exp || 0) + gainExp;
-        gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + 20);
+        const addFatigue = (decayInfo && decayInfo.isForced) ? 35 : 20;
+        gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + addFatigue);
 
         if (item.exp >= neededExp) {
             item.realm = SKILL_STAGES[curIdx + 1];
             item.exp = 0;
             appendLogData("天道", `🎉 經過苦心參悟，對《${name}》福至心靈，成功突破至【${item.realm}】境界！`, "ai", false, true);
         } else {
-            appendLogData("天道", `🧘 靜心參悟《${name}》，獲得 ${gainExp} 點熟練度！（當前進度：${item.exp} / ${neededExp} EXP）`, "ai", false, true);
+            const outputNote = decayInfo ? ` (${decayInfo.warningText})` : "";
+            appendLogData("天道", `🧘 靜心參悟《${name}》${outputNote}，獲得 ${gainExp} 點熟練度！（當前進度：${item.exp} / ${neededExp} EXP）`, "ai", false, true);
         }
 
         renderUI(); saveGameState();
@@ -1067,16 +1224,16 @@
         let baseRate = nextDef.baseRate || 0.5;
         
         const toxin = gameState.danToxin || 0;
-        baseRate = Math.max(0.01, baseRate - (toxin * 0.06));
+        baseRate = Math.max(0.001, baseRate - (toxin * 0.06));
 
         const isSuccess = Math.random() < baseRate;
-        const isNascentOrHigher = gameState.level >= 16;
-        const displayText = `【盤膝運功，衝擊突破至「${nextDef.name}」境界！（當前丹毒層數：${toxin}，成功率修正：${Math.floor(baseRate * 100)}%）】`;
+        const isNascentOrHigher = gameState.level >= 31; // Level 31 is 元嬰一層
+        const displayText = `【盤膝運功，衝擊突破至「${nextDef.name}」境界！（當前丹毒層數：${toxin}，成功率修正：${(baseRate * 100).toFixed(2)}%）】`;
         
         let promptText = "";
         if (isSuccess) {
             if (isNascentOrHigher) {
-                promptText = `【渡劫破境：成功！】突破至「${nextDef.name}」！四九天劫散去，降下甘霖洗滌四肢百骸。請詳細描繪渡劫衝關過程！`;
+                promptText = `【渡劫破境：成功！】突破至「${nextDef.name}」！劫雲散去，降下甘霖洗滌四肢百骸。請詳細描繪渡劫衝關過程！`;
             } else {
                 promptText = `【衝破瓶頸：成功！】順利突破至「${nextDef.name}」！體內真氣運轉如意，拓寬經脈，實力更進一步。請詳細描繪衝破瓶頸過程！`;
             }
@@ -1117,6 +1274,7 @@
         }
     }
 
+    // Module 4 & 8: System prompt with strictly enforced classification and world events rules
     function getSystemPrompt() { 
         return `你現在是修仙RPG《九州裂天錄》的天道DM。
 請推演玩家行動並回傳標準 JSON 格式（必須包含 "story" 欄位）：
@@ -1135,7 +1293,7 @@
   ],
   "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
-  "npcs": [{"name": "店小二", "location": "青石鎮 · 夜雨客棧", "favor": 50, "relation": "素昧平生"}], 
+  "npcs": [{"name": "黑衣鐵劍客", "location": "青石鎮外 · 官道", "favor": -80, "relation": "生死仇敵"}], 
   "worldEvents": [], 
   "choices": ["繼續探索", "原地調息", "前往集市"]
 }
@@ -1144,8 +1302,16 @@
 1. 功法招式分類 (gainedTechniques)：必須透過 type 標籤 100% 精準區分：
    - type: "kungfu"（主修心法）：凡是用於吐納納氣、洗髓易筋、增加修為、運轉真氣的根本秘訣（即使名字帶「訣」，如《太初噬靈訣》）。
    - type: "skill"（術法招式）：凡是用於攻伐、劍法、拳法、防禦、身法閃避的招式手段（如《太乙劍訣》）。
-2. 嚴禁在普通對話或打坐中主動替玩家宣佈「突破等級/境界」！突破僅能由玩家點擊【衝擊境界突破】觸發。
-3. 境界雷劫規範：練氣、築基、金丹期（Lv.1~15）衝擊突破僅為「衝破瓶頸」，絕對禁止出現雷劫/劫雲！只有元嬰期（Lv.16）及以上才有天劫降臨。`; 
+2. 好感度數值與稱號 (npcs)：favor 數值範圍為 -100 至 100：
+   - -100~-60: 生死仇敵 (追兵仇敵預設 -80)
+   - -59~-20: 敵視戒備
+   - -19~19: 素昧平生
+   - 20~59: 熟絡朋友
+   - 60~89: 莫逆之交
+   - 90~100: 生死之交
+3. 世界紀事 (worldEvents)：嚴格限定為諸天巨變或全域宗門大事，個人身世（如滅門慘案、小鎮恩怨）絕不能寫入 worldEvents！
+4. 嚴禁在普通對話中主動宣佈玩家「突破等級/境界」！突破僅能由玩家點擊【衝擊境界突破】觸發。
+5. 天劫規範：練氣、築基、金丹期 (Lv.1~30) 突破僅為「衝破瓶頸」，絕對禁止出現天劫！只有元嬰期 (Lv.31) 及以上才有天劫降臨。`; 
     }
 
     function parseApiResponse(text) {
@@ -1222,16 +1388,21 @@
                 let npcLoc = cleanNameStrict(typeof npc === 'object' ? npc.location : s.location);
                 if (!npcLoc) npcLoc = s.location;
 
+                let favorVal = typeof npc === 'object' ? safeNumber(npc.favor, -80, -100, 100) : -80;
                 let existing = s.npcs.find(n => n.name === npcName);
                 if (!existing) {
                     s.npcs.push({
                         name: npcName,
                         location: npcLoc,
-                        favor: typeof npc === 'object' ? safeNumber(npc.favor, 50, 0, 200) : 50,
-                        relation: typeof npc === 'object' && npc.relation ? cleanNameStrict(npc.relation) : "素昧平生"
+                        favor: favorVal,
+                        relation: typeof npc === 'object' && npc.relation ? cleanNameStrict(npc.relation) : getNpcRelationText(favorVal)
                     });
-                } else if (typeof npc === 'object' && npc.location) {
-                    existing.location = cleanNameStrict(npc.location);
+                } else {
+                    if (typeof npc === 'object' && npc.location) existing.location = cleanNameStrict(npc.location);
+                    if (typeof npc === 'object' && typeof npc.favor === 'number') {
+                        existing.favor = safeNumber(npc.favor, existing.favor, -100, 100);
+                        existing.relation = getNpcRelationText(existing.favor);
+                    }
                 }
             });
         }
@@ -1286,7 +1457,7 @@
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(we => {
                 let cleanWe = cleanNameStrict(we);
-                if (cleanWe && !/(吐納|打坐|恢復|受傷|微光|閃爍)/.test(cleanWe)) {
+                if (cleanWe && !/(滅門|吐納|打坐|恢復|受傷|微光|閃爍)/.test(cleanWe)) {
                     if (!s.worldEvents.includes(cleanWe)) s.worldEvents.unshift(cleanWe);
                 }
             });
@@ -1398,7 +1569,8 @@
                         gameState.hp = getMaxHp(gameState);
                         gameState.status = gameState.status.filter(st => st !== "修為圓滿待突破");
                     } else {
-                        gameState.hp = Math.max(1, Math.floor(gameState.hp * 0.5));
+                        gameState.hp = Math.max(0, Math.floor(gameState.hp * 0.5));
+                        checkLifeStatus(gameState);
                     }
                 }
             }
@@ -1523,7 +1695,9 @@
 
                     const favorEl = document.createElement("div");
                     favorEl.className = "npc-favor";
-                    favorEl.textContent = `好感度: ${n.favor || 50} [${n.relation || getNpcRelationText(n.favor)}]`;
+                    const favorVal = safeNumber(n.favor, -80, -100, 100);
+                    favorEl.style.color = favorVal < 0 ? "#ff8a80" : "var(--hl-cyan)";
+                    favorEl.textContent = `好感度: ${favorVal} [${n.relation || getNpcRelationText(favorVal)}]`;
 
                     info.appendChild(nameEl);
                     info.appendChild(locEl);
@@ -1600,8 +1774,9 @@
         if (kfActiveBox) {
             kfActiveBox.innerHTML = "";
             if (gameState.activeKungfu) {
+                const kUnseal = getKungfuUnsealInfo(gameState.activeKungfu, gameState.level);
                 let span = document.createElement("span");
-                span.textContent = `• 主修心法：${gameState.activeKungfu.name} [${gameState.activeKungfu.realm}] `;
+                span.innerHTML = `• 主修心法：<span style="color:${kUnseal.color}; font-weight:bold;">${kUnseal.title}</span> ${gameState.activeKungfu.name} [${gameState.activeKungfu.realm}] `;
                 let btn = document.createElement("button");
                 btn.textContent = "卸下";
                 btn.style.fontSize = "0.7rem";
@@ -1618,9 +1793,13 @@
             kfListBox.innerHTML = "";
             if (gameState.kungfu && gameState.kungfu.length > 0) {
                 gameState.kungfu.forEach(k => {
+                    const kUnseal = getKungfuUnsealInfo(k, gameState.level);
                     let row = document.createElement("div"); row.className = "item-row";
                     let top = document.createElement("div"); top.className = "item-top";
-                    let span = document.createElement("span"); span.textContent = `📖 ${k.name} [${k.realm}]`;
+                    
+                    let span = document.createElement("span"); 
+                    span.innerHTML = `📖 <span style="color:${kUnseal.color}; font-weight:bold;">${kUnseal.title}</span> ${k.name} [${k.realm}]`;
+                    
                     let actions = document.createElement("div"); actions.className = "item-actions";
 
                     let btnRun = document.createElement("button"); btnRun.textContent = "運轉";
@@ -1636,8 +1815,8 @@
                     let pct = needed > 0 ? Math.min(100, Math.floor(((k.exp || 0) / needed) * 100)) : 100;
 
                     let barInfo = document.createElement("div");
-                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#888";
-                    barInfo.textContent = `熟練進度: ${expText}`;
+                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#aaa";
+                    barInfo.innerHTML = `<div>✨ ${kUnseal.desc}</div><div>熟練進度: ${expText}</div>`;
 
                     let barCont = document.createElement("div"); barCont.className = "exp-container";
                     let barFill = document.createElement("div"); barFill.className = "exp-fill"; barFill.style.width = `${pct}%`;
@@ -1657,9 +1836,13 @@
             skillsListBox.innerHTML = "";
             if (gameState.skills && gameState.skills.length > 0) {
                 gameState.skills.forEach(s => {
+                    const decayInfo = getSkillDecayInfo(s, gameState.level);
                     let row = document.createElement("div"); row.className = "item-row";
                     let top = document.createElement("div"); top.className = "item-top";
-                    let span = document.createElement("span"); span.textContent = `⚔️ ${s.name} [${s.realm}]`;
+                    
+                    let span = document.createElement("span"); 
+                    span.innerHTML = `⚔️ <span style="color:${decayInfo.rarityColor}; font-weight:bold;">[${decayInfo.rarityName}]</span> ${s.name} [${s.realm}]`;
+                    
                     let actions = document.createElement("div"); actions.className = "item-actions";
 
                     let btnPrac = document.createElement("button"); btnPrac.textContent = "參悟";
@@ -1676,8 +1859,8 @@
                     let pct = needed > 0 ? Math.min(100, Math.floor(((s.exp || 0) / needed) * 100)) : 100;
 
                     let barInfo = document.createElement("div");
-                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#888";
-                    barInfo.textContent = `熟練進度: ${expText}`;
+                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#aaa";
+                    barInfo.innerHTML = `<div>⚡ 威力狀態: <span style="color:${decayInfo.isForced ? 'var(--accent-red)' : 'var(--hl-gold)'};">${decayInfo.warningText}</span></div><div>熟練進度: ${expText}</div>`;
 
                     let barCont = document.createElement("div"); barCont.className = "exp-container";
                     let barFill = document.createElement("div"); barFill.className = "exp-fill"; barFill.style.width = `${pct}%`;
@@ -1733,7 +1916,7 @@
         document.getElementById("btn-sect-lib").disabled = !hasSect;
         document.getElementById("ui-sect-top").textContent = gameState.sect && gameState.sect.name !== '無' ? `${gameState.sect.name} (${gameState.sect.rank})` : "無宗門 (散修)";
 
-        document.getElementById("ui-world-events").innerText = gameState.worldEvents.length > 0 ? gameState.worldEvents.join("\n") : "修仙界風平浪靜";
+        document.getElementById("ui-world-events").innerText = gameState.worldEvents.length > 0 ? gameState.worldEvents.join("\n") : "諸天萬界風平浪靜";
         drawRadarChart(breakdown.total);
     }
 
