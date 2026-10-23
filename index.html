@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.84 引擎裁決平衡版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.86 邏輯重構版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -296,7 +296,6 @@
 </div>
 
 <script>
-    // 方案 A：從【凡人 (Lv.0)】到【大主宰圓滿 (Lv.120)】完整 121 階數值陣列
     const REALM_BASE_NAMES = [
         "練氣", "築基", "金丹", "元嬰", "化神", "返虛/合體", "大乘/渡劫", "真仙/金仙", "太乙/大羅", "準聖", "聖人", "大主宰"
     ];
@@ -370,7 +369,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.84",
+            version: "4.86",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -395,7 +394,6 @@
         return Math.min(max, Math.max(min, n));
     }
 
-    // 好感度範圍重構為 -100 ~ 100
     function getNpcRelationText(favor) {
         if (favor <= -60) return "生死仇敵";
         if (favor <= -20) return "敵視/戒備";
@@ -412,7 +410,6 @@
         return npcRegion === playerRegion;
     }
 
-    // 主修心法隨大境界動態解封
     function getKungfuUnsealInfo(kungfuName, playerLevel) {
         const majorRealmIdx = Math.floor(playerLevel / 10); 
         if (majorRealmIdx === 0) {
@@ -428,7 +425,6 @@
         }
     }
 
-    // 招式靈壓威力衰減計算
     function getSkillDecayInfo(skillItem, playerLevel) {
         const meta = getItemMeta(skillItem.name || '');
         let reqMajor = 0; 
@@ -448,12 +444,11 @@
         return { ratio: 0.10, text: "極致靈壓封印 (10% 威力 · 高反噬)", isDangerous: true };
     }
 
-    // 仙品心法保持高標 EXP 曲線，杜絕低等快速農滿
     function getTechniqueMaxExp(item) {
         const name = item.name || '';
         let base = 100;
         if (/太初噬靈訣/.test(name) || /仙品/.test(name)) {
-            base = 15000; // 仙品心法龐大 EXP 曲線
+            base = 15000; 
         } else {
             const meta = getItemMeta(name);
             if (meta.rarity === '中品' || meta.rarity === '上品') base = 1000;
@@ -473,7 +468,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.84",
+            version: "4.86",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -553,26 +548,32 @@
         return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
     }
 
+    // 重構：動態解析修飾詞判斷品級與類型，解耦類型與品級
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
 
+        // 1. 動態品級解析 (修飾詞前綴優先)
         let tierKey = '下品';
-        if (/仙|神|聖/.test(clean)) tierKey = '仙品';
-        else if (/極|天/.test(clean)) tierKey = '極品';
-        else if (/上|玄|地/.test(clean)) tierKey = '上品';
-        else if (/中/.test(clean)) tierKey = '中品';
-        else if (/凡|粗|劣|破|鏽/.test(clean)) tierKey = '凡品';
+        if (/(仙|神|聖)/.test(clean)) tierKey = '仙品';
+        else if (/(極|天龍|紫金)/.test(clean)) tierKey = '極品';
+        else if (/(上|玄|地|靈|赤)/.test(clean)) tierKey = '上品';
+        else if (/(中|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
+        else if (/(黑|鐵|木|粗|劣|破|鏽|舊|下)/.test(clean)) tierKey = '下品';
+        else if (/(凡|普通)/.test(clean)) tierKey = '凡品';
 
         const rarity = RARITY_TIERS[tierKey];
 
+        // 2. 類型解析
         if (/未鑑定|蒙塵/.test(clean)) return { type: 'unidentified', name: clean, rarity: '凡品', rarityColor: '#888', desc: "蒙塵古物，點擊【鑑定】解鎖真面目" };
         if (/殘片|碎片|廢寶/.test(clean)) return { type: 'fragment', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "湊齊 3 個可【熔煉/拼湊】合成完整古寶" };
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
         if (/培元丹|療傷丹|回春丹|金創藥/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
-        if (/秘笈|殘篇|古籍|心法/.test(clean)) return { type: 'book', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "點擊【參悟】學習對應功法招式" };
+        if (/秘笈|殘篇|古籍|心法|功法/.test(clean)) return { type: 'book', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "點擊【參悟】學習對應功法招式" };
         if (/符/.test(clean)) return { type: 'talisman', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "危急時【催動】保命/逃跑" };
-        if (/信物|令牌|鑰匙|密卷|血書/.test(clean)) return { type: 'quest', name: clean, rarity: '極品', rarityColor: '#ffd700', desc: "🔒 [任務鎖定] 防誤賣，對話時點擊【出示】" };
+        
+        // 信物、令牌類依據修飾詞品級，不再強制定為極品
+        if (/信物|鑰匙|密卷|血書|令牌/.test(clean)) return { type: 'quest', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "🔒 [劇情/身份憑證] 對話時可選擇【出示】" };
 
         if (/(劍|刀|槍|戟|弓|刃|杖|斧)/.test(clean)) {
             const hp = Math.floor(25 * rarity.mult);
@@ -852,7 +853,6 @@
         openGameModal("🔥 體質天賦解析", `<div style="color:${meta.color}">${meta.name}</div><div>${meta.desc}</div>`);
     }
 
-    // 仇敵與利誘賠罪雙軌贈禮彈窗
     function showGiftModal(npcName, isNearby) {
         const npc = gameState.npcs.find(n => n.name === npcName);
         if (!npc) return;
@@ -1067,6 +1067,7 @@
         if (idx === -1) return;
         const meta = getItemMeta(itemName);
         if (!meta.slot) return;
+
         gameState.inventory.splice(idx, 1);
         if (gameState.equipment[meta.slot]) {
             const oldEq = gameState.equipment[meta.slot];
@@ -1079,7 +1080,9 @@
     function unequipItem(slot) {
         if (!gameState.equipment[slot]) return;
         const itemObj = gameState.equipment[slot];
-        gameState.inventory.push(typeof itemObj === 'object' ? itemObj.name : itemObj);
+        const itemName = typeof itemObj === 'object' ? itemObj.name : itemObj;
+
+        gameState.inventory.push(itemName);
         gameState.equipment[slot] = null;
         renderUI(); saveGameState();
     }
@@ -1182,37 +1185,23 @@
         sendAction(displayText, { isBreakthrough: true, breakthroughSuccess: isSuccess }, promptText);
     }
 
+    // 重構 1：取消預設裝備與道具給予，完全交由劇情與 AI 宣告
     function applyOriginInitialization(choiceText) {
         gameState.hasChosenOrigin = true;
         
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
-            gameState.inventory.push("混沌骨髓殘片");
-            gameState.inventory.push("鏽鐵劍");
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
-            gameState.inventory.push("死牢血書");
-            gameState.inventory.push("防身匕首");
             gameState.status.push("修羅煞氣 (凶戾之氣)");
-        } else if (choiceText.includes("3") || choiceText.includes("落魄少主") || choiceText.includes("古戒")) {
+        } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
-            const ringMeta = getItemMeta("神秘古戒");
-            gameState.equipment.accessory = ringMeta; // 直接裝備，避免背包重複
-            gameState.inventory.push("鏽鐵劍"); 
             gameState.status.push("家族血脈殘脈");
         } else {
             gameState.originType = "自訂身世";
-            gameState.inventory.push("鏽鐵劍");
             gameState.status.push("身世之謎");
         }
-
-        gameState.npcs.push({
-            name: "黑衣鐵劍客",
-            location: "九州邊境 · 官道搜查",
-            favor: -80,
-            relation: "生死仇敵"
-        });
     }
 
     function getSystemPrompt() { 
@@ -1240,11 +1229,11 @@
 }
 \`\`\`
 ⚠️ 天道劇情推演嚴格守則：
-1. 實戰與物品同步：只要主角在故事中獲得/搜出/撿到物品（如鏽鐵劍、黑色令牌），必須 100% 寫入 "gainedItems"；只要在戰鬥或打坐中使用了招式或心法，必須在 "usedTechniques" 中回傳獲得的熟練度！
-2. 唯一裝備防重：若主角已經裝備了「神秘古戒」，絕不可在 gainedItems 中再次重複發放古戒！
-3. 好感度範圍 (-100 ~ 100)：仇敵/追兵預設好感度為 -80 到 -100，絕不可以給予正數好感度！
-4. 世界紀事 (worldEvents)：嚴格限定為諸天巨變或宗門大事，個人身世（如林家滅門）切勿寫入 worldEvents！
-5. 功法招式分類：必須帶入 type: "kungfu"（心法）或 type: "skill"（招式）。
+1. 實戰與物品同步：只要主角在故事中獲得/搜出/撿到物品，必須 100% 寫入 "gainedItems"。
+2. 出身開局物品：請根據玩家選定的身世背景，在開局第一時間透過 gainedItems 與 gainedTechniques 發放對應的初始物品與心法（例如落魄少主獲得《太初噬靈訣》與神秘古戒）。
+3. 功法招式分類：心法類請標註 "type": "kungfu"，一般攻擊招式標註 "type": "skill"。
+4. 好感度範圍 (-100 ~ 100)：仇敵/追兵預設好感度為 -80 到 -100，絕不可以給予正數好感度！
+5. 世界紀事 (worldEvents)：嚴格限定為諸天巨變或宗門大事，個人身世切勿寫入 worldEvents！
 6. 引擎裁決至上：戰鬥傷害與生死由引擎根據數值最終裁決，AI 需依據實際 HP 變化撰寫對應情境。`; 
     }
 
@@ -1274,7 +1263,6 @@
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // 引擎數值硬性裁決與驗證防護網 (落實 ChatGPT 建議架構)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -1284,13 +1272,11 @@
         if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
         if (Array.isArray(rawState.activeThreats)) s.activeThreats = rawState.activeThreats;
 
-        // 引擎端 HP 與傷害硬性驗證裁決
         let maxH = getMaxHp(s);
         if (typeof rawState.hpChange === 'number') {
             s.hp = Math.min(maxH, Math.max(0, s.hp + rawState.hpChange));
         }
 
-        // 引擎最終生死判定：不單純依賴 AI 盲目宣告，依實際 HP 裁決
         if (s.hp <= 0 || rawState.isDead === true) {
             s.hp = 0;
             s.isDead = true;
@@ -1351,7 +1337,6 @@
             });
         }
 
-        // 實戰熟練度累積處裡 (`usedTechniques`)
         if (Array.isArray(rawState.usedTechniques)) {
             rawState.usedTechniques.forEach(ut => {
                 let uName = cleanNameStrict(typeof ut === 'string' ? ut : ut.name);
@@ -1387,29 +1372,40 @@
             });
         }
 
-        // 道具過濾與防重裝備檢查 (嚴格防止神秘古戒重複)
+        // 裝備與背包全域去重檢查
         if (Array.isArray(rawState.gainedItems)) {
             rawState.gainedItems.forEach(item => {
                 let name = cleanNameStrict(item);
                 if (name && storyText.includes(name)) {
-                    if (name.includes("神秘古戒") && (s.equipment.accessory || s.inventory.includes("神秘古戒"))) {
-                        return; // 已裝備或擁有古戒，直接過濾防止重複
+                    // 檢查裝備欄或背包是否已有該唯一裝備（例如古戒）
+                    const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(eq) === name);
+                    const inInv = s.inventory.includes(name);
+                    
+                    if (name.includes("古戒") && (inEquip || inInv)) {
+                        return; // 跨區域去重攔截
                     }
                     s.inventory.push(name);
                 }
             });
         }
 
+        // 重構 2：完善心法與招式識別邏輯
         if (Array.isArray(rawState.gainedTechniques)) {
             rawState.gainedTechniques.forEach(t => {
                 let name = cleanNameStrict(typeof t === 'string' ? t : t.name);
-                let type = typeof t === 'object' && t.type ? t.type : (/(功|經|心法|吐納)/.test(name) ? 'kungfu' : 'skill');
+                let explicitType = typeof t === 'object' && t.type ? t.type : null;
+                
+                // 廣義心法名稱匹配 (擴充 訣/典/卷/錄/圖/篇)
+                let isKungfuByName = /(功|經|心法|吐納|訣|典|卷|錄|圖|篇|法)/.test(name);
+                let isKungfu = explicitType === 'kungfu' || (!explicitType && isKungfuByName);
+
                 if (name && storyText.includes(name)) {
-                    if (type === 'kungfu' && s.kungfu.length < 3) {
+                    if (isKungfu && s.kungfu.length < 3) {
                         if (!s.kungfu.some(ex => ex.name === name)) {
                             s.kungfu.push({ name: name, realm: "初窺門徑", exp: 0, element: t.element || "無" });
+                            if (!s.activeKungfu) s.activeKungfu = s.kungfu[s.kungfu.length - 1]; // 自動運轉第一門心法
                         }
-                    } else if (type === 'skill' && s.skills.length < 10) {
+                    } else if (!isKungfu && s.skills.length < 10) {
                         if (!s.skills.some(ex => ex.name === name)) {
                             s.skills.push({ name: name, realm: "初窺門徑", exp: 0 });
                         }
@@ -1432,8 +1428,7 @@
             const mainQuest = s.quests.find(q => q.name === "身世問心");
             if (mainQuest && mainQuest.status === "進行中") {
                 mainQuest.status = "已完成";
-                s.quests.push({ name: "逃離追捕", progress: "擺脫黑衣鐵劍客的搜捕，尋找隱密修練之所", status: "進行中" });
-                s.quests.push({ name: "查明真相", progress: "調查黑色令牌上的圖騰由來", status: "待解鎖" });
+                s.quests.push({ name: "江湖探索", progress: "推進故事劇情，探索九州世界", status: "進行中" });
             }
         }
 
@@ -1881,7 +1876,8 @@
                     let pct = needed > 0 ? Math.min(100, Math.floor(((s.exp || 0) / needed) * 100)) : 100;
 
                     let barInfo = document.createElement("div");
-                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#888";
+                    barInfo.style.fontSize = "0.72rem";
+                    barInfo.style.color = "#888";
                     barInfo.textContent = `熟練進度: ${expText}`;
 
                     let barCont = document.createElement("div"); barCont.className = "exp-container";
@@ -1973,10 +1969,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v484_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v486_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v484_save") || localStorage.getItem("blade_v483_save") || localStorage.getItem("blade_v482_save");
+        const saved = localStorage.getItem("blade_v486_save") || localStorage.getItem("blade_v485_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2030,9 +2026,8 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
-            localStorage.removeItem("blade_v484_save");
-            localStorage.removeItem("blade_v483_save");
-            localStorage.removeItem("blade_v482_save");
+            localStorage.removeItem("blade_v486_save");
+            localStorage.removeItem("blade_v485_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
