@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.88 萬物初始版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.89 去蕪存菁版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -369,7 +369,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.88",
+            version: "4.89",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -468,7 +468,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.88",
+            version: "4.89",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1181,26 +1181,22 @@
         sendAction(displayText, { isBreakthrough: true, breakthroughSuccess: isSuccess }, promptText);
     }
 
-    // 重構 1：實裝「新手大禮包」
+    // 重構 1：移除硬編碼的新手大禮包，全交由 AI 與 Fuzzy Match 統一處理
     function applyOriginInitialization(choiceText) {
         gameState.hasChosenOrigin = true;
         
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
-            gameState.inventory.push("染血的麻布衣");
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
-            gameState.inventory.push("殘破的鐐銬");
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
-            gameState.inventory.push("神祕古戒");
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
-            // 自訂身世的裝備由下方 System Prompt 要求 AI 回傳
         }
     }
 
@@ -1229,7 +1225,7 @@
 }
 \`\`\`
 ⚠️ 天道劇情推演嚴格守則：
-1. 實戰與物品同步：只要主角獲得物品（【強烈要求】：包含玩家「自訂身世」背景中提及的自帶法寶、武器、道具！），必須 100% 寫入 "gainedItems" 陣列作為初始物資發放給系統！若是書名號包裹的功法(如《太初訣》)，寫入 "gainedTechniques"。
+1. 實戰與物品同步：只要主角獲得物品（【強烈要求】：包含玩家「預設或自訂身世」背景中提及的自帶法寶、武器、道具！），必須 100% 寫入 "gainedItems" 陣列作為初始物資發放給系統！若是書名號包裹的功法(如《太初訣》)，寫入 "gainedTechniques"。
 2. 狀態淨化守則："currentStatus" 只能包含生理或心理狀態(如:氣血充沛、重傷、經脈震盪)，絕對禁止寫入境界突破或獲得物品等文字！
 3. 嚴格區分心法與招式：名稱含武器或攻擊動作(如劍/拳/步)歸類為 "skill" (招式)，內功吐納歸類為 "kungfu" (心法)。
 4. 引擎裁決至上：玩家的境界、血量上限絕對由系統數值控制，你只能透過 hpChange 扣血或給予狀態，不可擅自宣告玩家突破成功。
@@ -2018,11 +2014,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v488_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v489_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        // 相容讀取舊版存檔
-        const saved = localStorage.getItem("blade_v488_save") || localStorage.getItem("blade_v487_save") || localStorage.getItem("blade_v486_save");
+        const saved = localStorage.getItem("blade_v489_save") || localStorage.getItem("blade_v488_save") || localStorage.getItem("blade_v487_save") || localStorage.getItem("blade_v486_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2076,6 +2071,7 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v489_save");
             localStorage.removeItem("blade_v488_save");
             localStorage.removeItem("blade_v487_save");
             localStorage.removeItem("blade_v486_save");
