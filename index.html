@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.89 去蕪存菁版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.90 鐵血天道版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -369,7 +369,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.89",
+            version: "4.90",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -468,7 +468,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.89",
+            version: "4.90",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1181,7 +1181,6 @@
         sendAction(displayText, { isBreakthrough: true, breakthroughSuccess: isSuccess }, promptText);
     }
 
-    // 重構 1：移除硬編碼的新手大禮包，全交由 AI 與 Fuzzy Match 統一處理
     function applyOriginInitialization(choiceText) {
         gameState.hasChosenOrigin = true;
         
@@ -1200,36 +1199,32 @@
         }
     }
 
+    // 🛡️ 第一重保險：升級為鐵血無情天道 Prompt
     function getSystemPrompt() { 
-        return `你現在是修仙RPG《九州裂天錄》的天道DM。
+        return `你現在是修仙RPG《九州裂天錄》中冷酷、絕對客觀、遵循弱肉強食法則的「天道」。
 請推演玩家行動並回傳標準 JSON 格式（必須包含 "story" 欄位）：
 \`\`\`json
 {
-  "story": "在此撰寫詳細精彩的故事劇情與環境描繪...",
+  "story": "在此撰寫詳細精彩的故事劇情與冷酷的敗北/受傷描繪...",
   "isDead": false,
   "location": "${gameState.location || '荒郊破廟'}",
   "scenarioMode": "IDLE",
   "activeThreats": [],
   "hpChange": 0, "expReward": 20, "stoneChange": 0,
-  "gainedItems": ["鏽鐵劍", "黑色令牌"], 
-  "usedTechniques": [{"name": "太乙劍訣", "expGain": 25}],
-  "gainedTechniques": [
-    {"name": "太初噬靈訣", "type": "kungfu", "element": "無"},
-    {"name": "太乙劍訣", "type": "skill"}
-  ],
+  "gainedItems": [], 
+  "usedTechniques": [],
   "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
-  "npcs": [{"name": "黑衣鐵劍客", "location": "青石鎮外 · 官道", "favor": -80, "relation": "生死仇敵"}], 
+  "npcs": [], 
   "worldEvents": [], 
-  "choices": ["繼續探索", "原地調息", "前往集市"]
+  "choices": ["逃跑", "求饒", "智取"]
 }
 \`\`\`
-⚠️ 天道劇情推演嚴格守則：
-1. 實戰與物品同步：只要主角獲得物品（【強烈要求】：包含玩家「預設或自訂身世」背景中提及的自帶法寶、武器、道具！），必須 100% 寫入 "gainedItems" 陣列作為初始物資發放給系統！若是書名號包裹的功法(如《太初訣》)，寫入 "gainedTechniques"。
-2. 狀態淨化守則："currentStatus" 只能包含生理或心理狀態(如:氣血充沛、重傷、經脈震盪)，絕對禁止寫入境界突破或獲得物品等文字！
-3. 嚴格區分心法與招式：名稱含武器或攻擊動作(如劍/拳/步)歸類為 "skill" (招式)，內功吐納歸類為 "kungfu" (心法)。
-4. 引擎裁決至上：玩家的境界、血量上限絕對由系統數值控制，你只能透過 hpChange 扣血或給予狀態，不可擅自宣告玩家突破成功。
-5. 好感度範圍 (-100 ~ 100)：仇敵預設好感為負數，世界紀事(worldEvents)僅限諸天巨變或宗門大事。`; 
+⚠️ 天道無情鐵律（嚴格執行，違者無效）：
+1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。當玩家以低境界（如凡人或練氣期初期）迎戰高大境界（如築基期、金丹期）修士，且選擇正面硬剛、盲目挑釁或不作任何智取謀略時，你【必須】毫不留情地讓玩家重傷甚至當場死亡（isDead: true）。
+2. 大境界天塹：築基期修士對凡人是降維打擊，靈壓護體、刀槍不入。正面交鋒絕對是秒殺級別。
+3. 嚴禁無中生有：禁止讓玩家在絕境中突然爆發莫名其妙的功法或力量反殺。凡人就是凡人，沒有對應道具或修為就是死路一條。
+4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"。`; 
     }
 
     function parseApiResponse(text) {
@@ -1368,11 +1363,9 @@
             });
         }
 
-        // 重構 2：放寬道具核實機制的「異體字與簡稱容忍度」
         if (Array.isArray(rawState.gainedItems)) {
             rawState.gainedItems.forEach(item => {
                 let name = cleanNameStrict(item);
-                
                 let isValid = false;
                 if (name && storyText.includes(name)) {
                     isValid = true;
@@ -1508,6 +1501,17 @@
         if (!actionText) return;
 
         let promptToSend = customPromptText || actionText;
+
+        // ==========================================
+        // 🛡️ 第二重保險：引擎端「危險意圖硬卡控 (Hard Interceptor)」
+        // ==========================================
+        const currentMode = getEffectiveMode(gameState);
+        const isOverlevelDanger = currentMode === "DANGER" || /(正面硬剛|硬拼|血拼|死戰|單挑|挑釁|強殺)/.test(actionText);
+        
+        if (gameState.level < 2 && isOverlevelDanger) {
+            promptToSend += `\n[系統絕對強制指令（天道無情鐵律）：玩家當前境界過低（Lv.${gameState.level}），在強敵/危局中選擇正面硬剛或盲目冒進，違背天地規則！你必須判定其「行動完全失敗」，並給予極其嚴重的致命反噬（hpChange: -999, isDead: true 或是重傷昏迷），絕對禁止給予主角光環或讓其輕易反殺！]`;
+        }
+        // ==========================================
 
         if (/(突破|衝擊|升級|破關|築基|結丹|化神)/.test(actionText) && !eventMeta) {
             if (gameState.exp < gameState.maxExp) {
@@ -2014,10 +2018,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v489_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v490_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v489_save") || localStorage.getItem("blade_v488_save") || localStorage.getItem("blade_v487_save") || localStorage.getItem("blade_v486_save");
+        const saved = localStorage.getItem("blade_v490_save") || localStorage.getItem("blade_v489_save") || localStorage.getItem("blade_v488_save") || localStorage.getItem("blade_v487_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2071,10 +2075,10 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v490_save");
             localStorage.removeItem("blade_v489_save");
             localStorage.removeItem("blade_v488_save");
             localStorage.removeItem("blade_v487_save");
-            localStorage.removeItem("blade_v486_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
