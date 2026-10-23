@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.91 鐵血盲裁版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.92 快捷輪迴版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -369,7 +369,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.91",
+            version: "4.92",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -468,7 +468,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.91",
+            version: "4.92",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -803,7 +803,7 @@
             s.isDead = true; s.hp = 0;
             if (!s.deathModalShown) {
                 s.deathModalShown = true;
-                openGameModal("💀 壽元耗盡 · 坐化羽化", `修士 <b>${curAge}</b> 歲壽終正寢。請點擊系統選單進行【輪迴重置】。`);
+                showDeathModal(`修士 <b>${curAge}</b> 歲壽終正寢。`);
             }
             return;
         }
@@ -811,9 +811,22 @@
             s.hp = 0; s.isDead = true;
             if (!s.deathModalShown) {
                 s.deathModalShown = true;
-                openGameModal("💀 傷勢過重 · 身消道殞", `修士肉身遭受重創崩解。請點擊系統選單進行【輪迴重置】。`);
+                showDeathModal(`修士肉身遭受重創崩解，神魂俱滅。`);
             }
         }
+    }
+
+    function showDeathModal(reasonText) {
+        const resetBtn = document.createElement("button");
+        resetBtn.className = "modal-btn primary";
+        resetBtn.style.background = "#4a1515";
+        resetBtn.style.color = "#fff";
+        resetBtn.textContent = "🔄 立即輪迴重修";
+        resetBtn.onclick = () => {
+            closeGameModal();
+            resetGame();
+        };
+        openGameModal("💀 命喪黃泉 · 身消道殞", `${reasonText}<br><br>是否立刻投入六道輪迴，重啟修仙之路？`, [resetBtn]);
     }
 
     function openGameModal(titleText, contentElement, customButtons = null) {
@@ -1199,7 +1212,6 @@
         }
     }
 
-    // 🛡️ V4.91 鐵血天道 Prompt（包含強制 CoT 思維鏈檢視）
     function getSystemPrompt() { 
         return `你現在是修仙RPG《九州裂天錄》中冷酷、絕對客觀、遵循弱肉強食法則的「天道」。
 在輸出 story 之前，你必須先在內部的 combatAnalysis 中進行冷酷客觀的戰力與境界邏輯檢視。
@@ -1509,17 +1521,12 @@
 
         let promptToSend = customPromptText || actionText;
 
-        // ==========================================
-        // 🛡️ 引擎端「實力鴻溝盲裁攔截器 (Blind Interceptor)」
-        // ==========================================
         const currentMode = getEffectiveMode(gameState);
         const isOverlevelDanger = currentMode === "DANGER" || /(正面硬剛|硬拼|血拼|死戰|單挑|挑釁|強殺|正面交鋒)/.test(actionText);
         
         if (gameState.level < 10 && isOverlevelDanger) {
-            // 當前玩家若低於築基期（Lv.10），卻在危局中選擇正面硬剛，引擎直接在底層強制覆寫
             promptToSend += `\n[系統絕對強制盲裁指令：玩家當前境界（Lv.${gameState.level}）與強敵或高階修士差距過大！此正面硬剛行為判定 100% 失敗。強制設定 isDead: true, hpChange: -999。請你作為冷酷天道，描繪其遭神識或護體罡氣直接秒殺的慘烈過程。]`;
         }
-        // ==========================================
 
         if (/(突破|衝擊|升級|破關|築基|結丹|化神)/.test(actionText) && !eventMeta) {
             if (gameState.exp < gameState.maxExp) {
@@ -2026,10 +2033,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v491_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v492_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v491_save") || localStorage.getItem("blade_v490_save") || localStorage.getItem("blade_v489_save") || localStorage.getItem("blade_v488_save");
+        const saved = localStorage.getItem("blade_v492_save") || localStorage.getItem("blade_v491_save") || localStorage.getItem("blade_v490_save") || localStorage.getItem("blade_v489_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2083,10 +2090,10 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v492_save");
             localStorage.removeItem("blade_v491_save");
             localStorage.removeItem("blade_v490_save");
             localStorage.removeItem("blade_v489_save");
-            localStorage.removeItem("blade_v488_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
