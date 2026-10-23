@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.92 快捷輪迴版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.93 直覺重修版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -153,7 +153,15 @@
         <div id="story-log"></div>
         <div class="controls-area" id="controls-area">
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
-            <div class="input-group">
+            
+            <!-- 死亡時專屬顯示的直覺重修按鈕區 -->
+            <div id="death-action-container" style="display:none; margin-bottom: 8px;">
+                <button class="choice-btn" style="width:100%; background:#4a1515; color:#fff; border:1px solid #ff5252; text-align:center; font-weight:bold; padding:12px; font-size:0.95rem; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="resetGame()">
+                    🔄 肉身已隕，神魂俱滅 — 點此立刻啟動輪迴重修
+                </button>
+            </div>
+
+            <div class="input-group" id="normal-input-group">
                 <input type="text" id="action-input" placeholder="可點擊上方預設身世，或在此輸入自訂身世開局..." onkeydown="if(event.key==='Enter') sendAction()">
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
@@ -369,12 +377,12 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.92",
+            version: "4.93",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
             danToxin: 0, hospitalVisitCount: 0, lastHospitalDay: -999,
-            isDead: false, deathModalShown: false,
+            isDead: false,
             location: "九州邊境 · 荒郊破廟", scenarioMode: "IDLE", activeThreats: [],
             hasChosenOrigin: false, originType: "未明",
             sect: { name: "無", rank: "散修", contribution: 0, position: "無" },
@@ -468,7 +476,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.92",
+            version: "4.93",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -487,7 +495,6 @@
             hospitalVisitCount: safeNumber(raw.hospitalVisitCount, def.hospitalVisitCount, 0, 1e6),
             lastHospitalDay: safeNumber(raw.lastHospitalDay, def.lastHospitalDay, -1e9, 1e9),
             isDead: Boolean(raw.isDead),
-            deathModalShown: Boolean(raw.deathModalShown),
             location: cleanNameStrict(raw.location) || def.location,
             scenarioMode: raw.scenarioMode || def.scenarioMode,
             activeThreats: Array.isArray(raw.activeThreats) ? raw.activeThreats : [],
@@ -801,32 +808,11 @@
         const curAge = (s.ageBase || 18) + years;
         if (curAge >= (s.maxAge || 100)) {
             s.isDead = true; s.hp = 0;
-            if (!s.deathModalShown) {
-                s.deathModalShown = true;
-                showDeathModal(`修士 <b>${curAge}</b> 歲壽終正寢。`);
-            }
             return;
         }
         if (s.isDead || (s.hp || 0) <= 0) {
             s.hp = 0; s.isDead = true;
-            if (!s.deathModalShown) {
-                s.deathModalShown = true;
-                showDeathModal(`修士肉身遭受重創崩解，神魂俱滅。`);
-            }
         }
-    }
-
-    function showDeathModal(reasonText) {
-        const resetBtn = document.createElement("button");
-        resetBtn.className = "modal-btn primary";
-        resetBtn.style.background = "#4a1515";
-        resetBtn.style.color = "#fff";
-        resetBtn.textContent = "🔄 立即輪迴重修";
-        resetBtn.onclick = () => {
-            closeGameModal();
-            resetGame();
-        };
-        openGameModal("💀 命喪黃泉 · 身消道殞", `${reasonText}<br><br>是否立刻投入六道輪迴，重啟修仙之路？`, [resetBtn]);
     }
 
     function openGameModal(titleText, contentElement, customButtons = null) {
@@ -1632,16 +1618,29 @@
 
     function renderUI() {
         checkLifeStatus(gameState);
+
         const choiceCont = document.getElementById("dynamic-choices-container");
-        if (choiceCont) {
-            choiceCont.innerHTML = "";
-            let choices = gameState.choices || DEFAULT_ORIGIN_CHOICES;
-            choices.forEach(c => {
-                let b = document.createElement("button");
-                b.className = "choice-btn"; b.textContent = c; b.disabled = gameState.isDead;
-                b.onclick = () => sendAction(c);
-                choiceCont.appendChild(b);
-            });
+        const deathActionCont = document.getElementById("death-action-container");
+        const normalInputGroup = document.getElementById("normal-input-group");
+
+        if (gameState.isDead) {
+            if (choiceCont) choiceCont.style.display = "none";
+            if (deathActionCont) deathActionCont.style.display = "block";
+            if (normalInputGroup) normalInputGroup.style.display = "none";
+        } else {
+            if (deathActionCont) deathActionCont.style.display = "none";
+            if (normalInputGroup) normalInputGroup.style.display = "flex";
+            if (choiceCont) {
+                choiceCont.style.display = "grid";
+                choiceCont.innerHTML = "";
+                let choices = gameState.choices || DEFAULT_ORIGIN_CHOICES;
+                choices.forEach(c => {
+                    let b = document.createElement("button");
+                    b.className = "choice-btn"; b.textContent = c; b.disabled = gameState.isDead;
+                    b.onclick = () => sendAction(c);
+                    choiceCont.appendChild(b);
+                });
+            }
         }
 
         document.getElementById("ui-location-top").textContent = `📜 九州史詩 - ${gameState.location || "九州邊境 · 荒郊破廟"}`;
@@ -2033,10 +2032,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v492_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v493_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v492_save") || localStorage.getItem("blade_v491_save") || localStorage.getItem("blade_v490_save") || localStorage.getItem("blade_v489_save");
+        const saved = localStorage.getItem("blade_v493_save") || localStorage.getItem("blade_v492_save") || localStorage.getItem("blade_v491_save") || localStorage.getItem("blade_v490_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2090,10 +2089,10 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v493_save");
             localStorage.removeItem("blade_v492_save");
             localStorage.removeItem("blade_v491_save");
             localStorage.removeItem("blade_v490_save");
-            localStorage.removeItem("blade_v489_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
