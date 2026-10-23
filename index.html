@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.93 直覺重修版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.94 完美平衡防漏版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -377,7 +377,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.93",
+            version: "4.94",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -476,7 +476,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.93",
+            version: "4.94",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1186,15 +1186,41 @@
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
+            if (!gameState.inventory.includes("至尊骨殘片")) {
+                gameState.inventory.push("至尊骨殘片");
+            }
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
+            if (!gameState.inventory.includes("獄卒令牌")) {
+                gameState.inventory.push("獄卒令牌");
+            }
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
+            const hasRingInEquip = Object.values(gameState.equipment).some(eq => eq && cleanNameStrict(eq).includes("古戒"));
+            if (!gameState.inventory.includes("神祕古戒") && !hasRingInEquip) {
+                gameState.inventory.push("神祕古戒");
+            }
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
+            
+            const text = String(choiceText || "");
+            if ((text.includes("劍") || text.includes("神劍") || text.includes("寶劍")) && !gameState.inventory.includes("青鋼長劍")) {
+                gameState.inventory.push("青鋼長劍");
+            } else if ((text.includes("刀") || text.includes("魔刀")) && !gameState.inventory.includes("烈風長刀")) {
+                gameState.inventory.push("烈風長刀");
+            }
+            if ((text.includes("丹") || text.includes("藥")) && !gameState.inventory.includes("聚氣丹")) {
+                gameState.inventory.push("聚氣丹");
+            }
+            if ((text.includes("戒") || text.includes("戒指")) && !gameState.inventory.includes("古舊鐵戒")) {
+                gameState.inventory.push("古舊鐵戒");
+            }
+            if ((text.includes("鏡") || text.includes("鼎") || text.includes("塔")) && !gameState.inventory.includes("蒙塵古鏡")) {
+                gameState.inventory.push("蒙塵古鏡");
+            }
         }
     }
 
@@ -1371,22 +1397,15 @@
         if (Array.isArray(rawState.gainedItems)) {
             rawState.gainedItems.forEach(item => {
                 let name = cleanNameStrict(item);
-                let isValid = false;
-                if (name && storyText.includes(name)) {
-                    isValid = true;
-                } else if (name && name.length >= 2 && storyText.includes(name.substring(name.length - 2))) {
-                    isValid = true; 
+                if (!name) return;
+
+                const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(typeof eq === 'object' ? eq.name : eq) === name);
+                const inInv = s.inventory.includes(name);
+
+                if (inEquip || inInv) {
+                    return; 
                 }
-                
-                if (isValid) {
-                    const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(eq) === name);
-                    const inInv = s.inventory.includes(name);
-                    
-                    if ((name.includes("古戒") || name.includes("至尊骨")) && (inEquip || inInv)) {
-                        return; 
-                    }
-                    s.inventory.push(name);
-                }
+                s.inventory.push(name);
             });
         }
 
@@ -2032,10 +2051,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v493_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v494_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v493_save") || localStorage.getItem("blade_v492_save") || localStorage.getItem("blade_v491_save") || localStorage.getItem("blade_v490_save");
+        const saved = localStorage.getItem("blade_v494_save") || localStorage.getItem("blade_v493_save") || localStorage.getItem("blade_v492_save") || localStorage.getItem("blade_v491_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2089,10 +2108,10 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v494_save");
             localStorage.removeItem("blade_v493_save");
             localStorage.removeItem("blade_v492_save");
             localStorage.removeItem("blade_v491_save");
-            localStorage.removeItem("blade_v490_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
