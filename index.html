@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.87 引擎分離版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.88 萬物初始版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -369,7 +369,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.87",
+            version: "4.88",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -468,7 +468,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.87",
+            version: "4.88",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1181,21 +1181,26 @@
         sendAction(displayText, { isBreakthrough: true, breakthroughSuccess: isSuccess }, promptText);
     }
 
+    // 重構 1：實裝「新手大禮包」
     function applyOriginInitialization(choiceText) {
         gameState.hasChosenOrigin = true;
         
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
+            gameState.inventory.push("染血的麻布衣");
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
+            gameState.inventory.push("殘破的鐐銬");
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
+            gameState.inventory.push("神祕古戒");
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
+            // 自訂身世的裝備由下方 System Prompt 要求 AI 回傳
         }
     }
 
@@ -1224,7 +1229,7 @@
 }
 \`\`\`
 ⚠️ 天道劇情推演嚴格守則：
-1. 實戰與物品同步：只要主角在故事中獲得/搜出/撿到物品，必須 100% 寫入 "gainedItems"；若是書名號包裹的功法(如《太初噬靈訣》)，請寫入 "gainedTechniques"。
+1. 實戰與物品同步：只要主角獲得物品（【強烈要求】：包含玩家「自訂身世」背景中提及的自帶法寶、武器、道具！），必須 100% 寫入 "gainedItems" 陣列作為初始物資發放給系統！若是書名號包裹的功法(如《太初訣》)，寫入 "gainedTechniques"。
 2. 狀態淨化守則："currentStatus" 只能包含生理或心理狀態(如:氣血充沛、重傷、經脈震盪)，絕對禁止寫入境界突破或獲得物品等文字！
 3. 嚴格區分心法與招式：名稱含武器或攻擊動作(如劍/拳/步)歸類為 "skill" (招式)，內功吐納歸類為 "kungfu" (心法)。
 4. 引擎裁決至上：玩家的境界、血量上限絕對由系統數值控制，你只能透過 hpChange 扣血或給予狀態，不可擅自宣告玩家突破成功。
@@ -1287,13 +1292,12 @@
             s.spiritStone = Math.max(0, s.spiritStone + rawState.stoneChange);
         }
 
-        // 重構 4：狀態淨化器 (Status Sanitizer) - 過濾突破與獲得物品等文字
         if (Array.isArray(rawState.currentStatus)) {
             const permanent = s.status.filter(st => /(凡體|至尊骨|血脈|身世|煞氣)/.test(st));
             const newTemps = rawState.currentStatus
                 .map(cleanNameStrict)
                 .filter(st => st && !permanent.includes(st))
-                .filter(st => !/(境界|突破|Lv|層|期|獲得|成功|失敗)/i.test(st)); // 黑名單攔截
+                .filter(st => !/(境界|突破|Lv|層|期|獲得|成功|失敗)/i.test(st));
             s.status = Array.from(new Set([...permanent, ...newTemps])).slice(0, 5);
         }
 
@@ -1368,14 +1372,23 @@
             });
         }
 
+        // 重構 2：放寬道具核實機制的「異體字與簡稱容忍度」
         if (Array.isArray(rawState.gainedItems)) {
             rawState.gainedItems.forEach(item => {
                 let name = cleanNameStrict(item);
+                
+                let isValid = false;
                 if (name && storyText.includes(name)) {
+                    isValid = true;
+                } else if (name && name.length >= 2 && storyText.includes(name.substring(name.length - 2))) {
+                    isValid = true; 
+                }
+                
+                if (isValid) {
                     const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(eq) === name);
                     const inInv = s.inventory.includes(name);
                     
-                    if (name.includes("古戒") && (inEquip || inInv)) {
+                    if ((name.includes("古戒") || name.includes("至尊骨")) && (inEquip || inInv)) {
                         return; 
                     }
                     s.inventory.push(name);
@@ -1383,7 +1396,6 @@
             });
         }
 
-        // 重構 2 & 3：文本兜底救援 (Regex Rescuer) & 智慧分類
         const techniqueRegex = /《([^》]+)》/g;
         let match;
         const foundInText = [];
@@ -1391,7 +1403,6 @@
             foundInText.push(cleanNameStrict(match[1]));
         }
 
-        // 將 JSON 裡的和文本抓到的合併
         let allGainedTechs = [];
         if (Array.isArray(rawState.gainedTechniques)) {
             allGainedTechs = rawState.gainedTechniques.map(t => {
@@ -1401,7 +1412,7 @@
         
         foundInText.forEach(name => {
             if (!allGainedTechs.some(t => t.name === name)) {
-                allGainedTechs.push({ name: name }); // 文本抓到的兜底，沒有指定 type
+                allGainedTechs.push({ name: name });
             }
         });
 
@@ -1417,15 +1428,12 @@
             } else if (explicitType === 'skill') {
                 isKungfu = false;
             } else {
-                // 第一層：戰鬥與武器特徵 -> 強制為招式
                 if (/(劍|刀|槍|戟|拳|掌|指|腿|步|遁|印|斬|殺|刺|弓|鞭)/.test(name)) {
                     isKungfu = false;
                 } 
-                // 第二層：內功特徵 -> 強制為心法
                 else if (/(功|經|心法|真解|大法|吐納)/.test(name)) {
                     isKungfu = true;
                 } 
-                // 第三層：模糊結尾 -> 預設心法
                 else if (/(訣|典|錄|卷|篇)/.test(name)) {
                     isKungfu = true;
                 } 
@@ -1437,7 +1445,7 @@
             if (isKungfu && s.kungfu.length < 3) {
                 if (!s.kungfu.some(ex => ex.name === name)) {
                     s.kungfu.push({ name: name, realm: "初窺門徑", exp: 0, element: t.element || "無" });
-                    if (!s.activeKungfu) s.activeKungfu = s.kungfu[s.kungfu.length - 1]; // 自動裝備第一門心法
+                    if (!s.activeKungfu) s.activeKungfu = s.kungfu[s.kungfu.length - 1]; 
                 }
             } else if (!isKungfu && s.skills.length < 10) {
                 if (!s.skills.some(ex => ex.name === name)) {
@@ -1505,13 +1513,10 @@
 
         let promptToSend = customPromptText || actionText;
 
-        // 重構 1：前置意圖攔截 (Intent Interceptor) - 防止玩家打字強行突破
         if (/(突破|衝擊|升級|破關|築基|結丹|化神)/.test(actionText) && !eventMeta) {
             if (gameState.exp < gameState.maxExp) {
-                // 修為未滿，偷塞強制失敗指令
                 promptToSend += `\n[系統強制指令：玩家修為不足(${gameState.exp}/${gameState.maxExp})，強行突破必定失敗！請生動描繪其真氣暴走、反噬吐血的過程，絕對禁止出現突破成功的描述，並給予重傷負面狀態。]`;
             } else {
-                // 修為已滿，引導使用正規引擎按鈕
                 openGameModal("⚠️ 系統提示", "修為已圓滿！為確保天地規則正常運作，請點擊右下方的【✨ 衝擊境界突破！】按鈕來進行正式的渡劫與升級判定。");
                 return;
             }
@@ -2013,10 +2018,11 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v487_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v488_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v487_save") || localStorage.getItem("blade_v486_save");
+        // 相容讀取舊版存檔
+        const saved = localStorage.getItem("blade_v488_save") || localStorage.getItem("blade_v487_save") || localStorage.getItem("blade_v486_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2070,6 +2076,7 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v488_save");
             localStorage.removeItem("blade_v487_save");
             localStorage.removeItem("blade_v486_save");
             
