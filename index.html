@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.81 熟練度與劇情連動版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.82 完整修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -323,6 +323,12 @@
         { level: 24, name: "大主宰境", maxAge: 9999999, maxHp: 999999999999999, maxExp: 9000000000000000, baseRate: 0.00001, risk: "⚡ 混沌宇宙本源劫" }
     ];
 
+    function getRealmDef(lvl) {
+        const safeLvl = Math.max(0, Math.floor(Number(lvl) || 0));
+        if (safeLvl < REALMS.length) return REALMS[safeLvl];
+        return REALMS[REALMS.length - 1];
+    }
+
     const STATUS_EFFECTS_MAP = {
         "至尊骨殘痕 (涅槃引子)": { con: 10, wis: 5, str: 5, desc: "根骨+10, 悟性+5, 膂力+5" },
         "修羅煞氣 (凶戾之氣)": { str: 8, con: 4, luk: -2, desc: "膂力+8, 根骨+4, 氣運-2" },
@@ -350,7 +356,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.81",
+            version: "4.82",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -398,7 +404,7 @@
         if (meta.rarity === '極品' || meta.rarity === '仙品') base = 10000;
 
         const curIdx = Math.max(0, SKILL_STAGES.indexOf(item.realm || "初窺門徑"));
-        if (curIdx >= SKILL_STAGES.length - 1) return 0; // 大圓滿
+        if (curIdx >= SKILL_STAGES.length - 1) return 0;
         return base * Math.pow(10, curIdx);
     }
 
@@ -410,7 +416,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.81",
+            version: "4.82",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1762,10 +1768,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v481_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v482_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v481_save") || localStorage.getItem("blade_v480_save") || localStorage.getItem("blade_v479_save");
+        const saved = localStorage.getItem("blade_v482_save") || localStorage.getItem("blade_v481_save") || localStorage.getItem("blade_v480_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -1819,9 +1825,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v482_save");
             localStorage.removeItem("blade_v481_save");
             localStorage.removeItem("blade_v480_save");
-            localStorage.removeItem("blade_v479_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
