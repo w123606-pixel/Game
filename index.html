@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.94 完美平衡防漏版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.95 跨平台存檔修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -65,16 +65,16 @@
         .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); }
         .dynamic-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-bottom: 8px; min-height: 48px; }
         
-        .choice-btn, .quick-btn { 
+        .choice-btn, .quick-btn, .sys-btn { 
             background: #1a1d2a; border: 1px solid #444; color: var(--border-gold); 
-            padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-align: left; 
+            padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-align: center; 
             transition: background 0.2s, border-color 0.2s; line-height: 1.4; min-height: 44px; white-space: normal;
-            -webkit-tap-highlight-color: transparent;
+            -webkit-tap-highlight-color: transparent; display: flex; justify-content: center; align-items: center;
         }
         @media (hover: hover) {
-            .choice-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
+            .choice-btn:hover:not(:disabled), .sys-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
         }
-        .choice-btn:active:not(:disabled) { background: var(--border-gold); color: #000; }
+        .choice-btn:active:not(:disabled), .sys-btn:active:not(:disabled) { background: var(--border-gold); color: #000; }
         
         .input-group { display: flex; gap: 6px; }
         input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
@@ -154,7 +154,6 @@
         <div class="controls-area" id="controls-area">
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
             
-            <!-- 死亡時專屬顯示的直覺重修按鈕區 -->
             <div id="death-action-container" style="display:none; margin-bottom: 8px;">
                 <button class="choice-btn" style="width:100%; background:#4a1515; color:#fff; border:1px solid #ff5252; text-align:center; font-weight:bold; padding:12px; font-size:0.95rem; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="resetGame()">
                     🔄 肉身已隕，神魂俱滅 — 點此立刻啟動輪迴重修
@@ -284,9 +283,9 @@
             </div>
             <h2 style="margin-top:10px;">💾 存檔管理</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                <button onclick="exportSave()" style="padding:10px;">📥 匯出存檔</button>
-                <button onclick="document.getElementById('import-file').click()" style="padding:10px;">📤 匯入存檔</button>
-                <input type="file" id="import-file" style="display:none" accept=".json" onchange="importSave(event)">
+                <button class="sys-btn" onclick="exportSave()">📥 匯出存檔</button>
+                <label for="import-file" class="sys-btn">📤 匯入存檔</label>
+                <input type="file" id="import-file" style="display:none" accept=".json,application/json" onchange="importSave(event)">
             </div>
             <button style="width:100%; background:#4a1515; color:#fff; padding:10px;" onclick="resetGame()">💀 輪迴重置 (重置快取)</button>
         </div>
@@ -377,7 +376,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.94",
+            version: "4.95",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -476,7 +475,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.94",
+            version: "4.95",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1252,11 +1251,11 @@
 }
 \`\`\`
 ⚠️ 天道無情與降維打擊鐵律（絕對不可違背）：
-1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界（如凡人或練氣期初期）迎戰高大境界（如築基、金丹、元嬰期等）修士，且選擇正面硬剛、盲目挑釁或不作任何合理逃生謀略時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須毫不留情地讓玩家重傷甚至當場死亡（isDead: true, hpChange: -999）。
+1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界（如凡人或練氣期初期）迎戰高大境界（如築基, 金丹, 元嬰期等）修士，且選擇正面硬剛、盲目挑釁或不作任何合理逃生謀略時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須毫不留情地讓玩家重傷甚至當場死亡（isDead: true, hpChange: -999）。
 2. 降維打擊與神識護體：面對元嬰期以上老怪，凡人與低階修士如幼稚園對抗成年人。對方的神識、護體真元與自動護主法寶能瞬間洞察並震碎低階攻擊。絕對禁止讓低階玩家透過小聰明正面反殺高階老怪。
 3. 嚴禁無中生有：禁止讓玩家在絕境中突然爆發莫名其妙的功法反殺。沒有對應道具或修為就是死路一條。
-4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"。`; 
-5. 敘事與狀態一致性（嚴格限制）：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中**絕對禁止擅自宣告玩家已經突破境界或升級**，只能描述「感受到靈氣流動、修為圓滿、瓶頸鬆動」，必須將真正的突破與等級提升交給系統機制判定！`;        
+4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"。
+5. 敘事與狀態一致性（嚴格限制）：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家已經突破境界或升級，只能描述「感受到靈氣流動、修為圓滿、瓶頸鬆動」，必須將真正的突破與等級提升交給系統機制判定！`; 
     }
 
     function parseApiResponse(text) {
@@ -2052,10 +2051,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v494_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v495_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v494_save") || localStorage.getItem("blade_v493_save") || localStorage.getItem("blade_v492_save") || localStorage.getItem("blade_v491_save");
+        const saved = localStorage.getItem("blade_v495_save") || localStorage.getItem("blade_v494_save") || localStorage.getItem("blade_v493_save") || localStorage.getItem("blade_v492_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2077,19 +2076,32 @@
     }
 
     function exportSave() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory }));
-        const a = document.createElement('a'); a.href = dataStr; a.download = `save_${Date.now()}.json`; a.click();
+        try {
+            const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
+            const jsonStr = JSON.stringify(saveObj, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `blade_save_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            openGameModal("⚠️ 匯出失敗", `存檔匯出失敗：${err.message}`);
+        }
     }
 
     function importSave(e) {
-        const file = e.target.files[0];
+        const file = e.target.files && e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(evt) {
             try {
                 const pkg = JSON.parse(evt.target.result);
                 if (!pkg || typeof pkg !== 'object' || !pkg.state) {
-                    throw new Error("存檔結構不符");
+                    throw new Error("存檔結構不符，無法識別");
                 }
                 gameState = normalizeGameState(pkg.state);
                 storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
@@ -2099,9 +2111,11 @@
                 saveGameState(); 
                 renderUI(); 
                 renderStoryLogs(); 
-                alert("存檔匯入成功！");
+                openGameModal("📥 存檔讀取成功", "成功載入備份數據，修仙之旅繼續！");
             } catch (err) {
-                alert(`存檔匯入失敗：檔案格式錯誤或損毀 (${err.message})`);
+                openGameModal("⚠️ 匯入失敗", `存檔檔案格式錯誤或已損毀：<br><span style="color:var(--accent-red);">${err.message}</span>`);
+            } finally {
+                e.target.value = ''; 
             }
         };
         reader.readAsText(file);
@@ -2109,10 +2123,10 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v495_save");
             localStorage.removeItem("blade_v494_save");
             localStorage.removeItem("blade_v493_save");
             localStorage.removeItem("blade_v492_save");
-            localStorage.removeItem("blade_v491_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
