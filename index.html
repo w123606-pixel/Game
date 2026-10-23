@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.80 飛劍傳訊與屬性連動版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.81 熟練度與劇情連動版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -41,7 +41,7 @@
         .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 6px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 8px; min-height: 170px; }
         .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.8rem; margin-bottom: 8px; }
 
-        .exp-container { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 2px; width: 100%; border: 1px solid #000; }
+        .exp-container { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 4px; width: 100%; border: 1px solid #000; }
         .exp-fill { height: 100%; background: linear-gradient(90deg, #00838f, var(--hl-cyan)); transition: width 0.5s ease-in-out; }
 
         .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; overflow: hidden; }
@@ -100,9 +100,10 @@
         .equip-card .item-name { font-weight: bold; }
         .equip-card .item-desc { font-size: 0.72rem; color: #aaa; margin-top: 2px; }
         
-        .item-row { background: #1a1d2a; border: 1px solid #2a2d3d; border-radius: 4px; padding: 6px 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
-        .item-actions { display: flex; gap: 4px; }
-        .item-actions button { background: #2a2d3d; border: 1px solid #444; color: #fff; padding: 3px 8px; border-radius: 3px; font-size: 0.75rem; cursor: pointer; }
+        .item-row { background: #1a1d2a; border: 1px solid #2a2d3d; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
+        .item-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .item-actions { display: flex; gap: 6px; align-self: flex-end; }
+        .item-actions button { background: #2a2d3d; border: 1px solid #555; color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; min-height: 36px; }
         .item-actions button:hover:not(:disabled) { filter: brightness(1.2); }
 
         .npc-card { background: #0a0b10; border: 1px solid var(--ui-border); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
@@ -210,7 +211,7 @@
             <h2>📖 主修心法 (容量 3 門 · 運轉 1 門 · 五行相剋)</h2>
             <div id="ui-kungfu-active" style="background:#0a0b10; border:1px solid var(--border-gold); padding:8px; border-radius:4px; margin-bottom:8px; font-size:0.85rem; color:var(--hl-cyan);">• 尚未運轉任何心法</div>
             <div id="ui-kungfu-list"></div>
-            <h2 style="margin-top:10px;">⚔️ 術法招式庫 (容量上限 10 門 · 雜而不精懲罰)</h2>
+            <h2 style="margin-top:10px;">⚔️ 術法招式庫 (容量上限 10 門 · 指數級熟練度)</h2>
             <div id="ui-skills-list"></div>
         </div>
 
@@ -336,14 +337,7 @@
         "修為圓滿待突破": { wis: 2, desc: "悟性+2 (氣海充盈)" }
     };
 
-    function getRealmDef(lvl) {
-        const safeLvl = Math.max(0, Math.floor(Number(lvl) || 0));
-        if (safeLvl < REALMS.length) return REALMS[safeLvl];
-        return REALMS[REALMS.length - 1];
-    }
-
     const SKILL_STAGES = ["初窺門徑", "登堂入室", "融會貫通", "爐火純青", "大圓滿"];
-    const BASE_STAGE_EXP = [100, 400, 2000, 16000, 0];
     const FIVE_ELEMENTS = { '金': '木', '木': '土', '土': '水', '水': '火', '火': '金' };
 
     const DEFAULT_ORIGIN_CHOICES = [
@@ -356,7 +350,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.80",
+            version: "4.81",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -397,6 +391,17 @@
         return npcRegion === playerRegion;
     }
 
+    function getTechniqueMaxExp(item) {
+        const meta = getItemMeta(item.name || '');
+        let base = 100;
+        if (meta.rarity === '中品' || meta.rarity === '上品') base = 1000;
+        if (meta.rarity === '極品' || meta.rarity === '仙品') base = 10000;
+
+        const curIdx = Math.max(0, SKILL_STAGES.indexOf(item.realm || "初窺門徑"));
+        if (curIdx >= SKILL_STAGES.length - 1) return 0; // 大圓滿
+        return base * Math.pow(10, curIdx);
+    }
+
     function normalizeGameState(raw) {
         const def = getDefaultGameState();
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
@@ -405,7 +410,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.80",
+            version: "4.81",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -877,36 +882,42 @@
 
     function practiceTechnique(type, name) {
         if (gameState.isDead) return;
-        if ((gameState.practiceFatigue || 0) > 80) {
-            if (Math.random() < 0.8) {
-                const dmg = Math.floor(getMaxHp(gameState) * 0.4);
-                gameState.hp = Math.max(1, gameState.hp - dmg);
-                openGameModal("🔥 走火入魔！", `心神過度疲憊 (疲憊度 ${gameState.practiceFatigue}%)，強行參悟導致真元逆走經脈，吐血遭受重創 (HP -${dmg})！`);
-                renderUI(); saveGameState(); return;
-            }
-        }
-
         let list = type === 'kungfu' ? gameState.kungfu : gameState.skills;
         let item = list.find(x => x.name === name);
         if (!item) return;
 
-        const curIdx = SKILL_STAGES.indexOf(item.realm || "初窺門徑");
-        if (curIdx >= SKILL_STAGES.length - 1) {
-            openGameModal("✨ 已達大圓滿", `【${name}】已登峰造極達到大圓滿境界，無需繼續參悟！`);
-            return;
+        appendLogData("異世旅者", `【運轉真氣，全力參悟《${name}》】`, "player", false, true);
+
+        if ((gameState.practiceFatigue || 0) > 80) {
+            if (Math.random() < 0.8) {
+                const dmg = Math.floor(getMaxHp(gameState) * 0.4);
+                gameState.hp = Math.max(0, gameState.hp - dmg);
+                appendLogData("天道", `🔥 心神過度疲憊 (疲憊度 ${gameState.practiceFatigue}%)，強行參悟導致真元逆走經脈，吐血遭受重創 (HP -${dmg})！`, "system", false, true);
+                checkLifeStatus(gameState);
+                renderUI(); saveGameState(); return;
+            }
         }
 
-        const baseNeeded = BASE_STAGE_EXP[curIdx] || 100;
-        const penalty = gameState.skills.length > 5 ? 1.5 : 1.0;
-        const gainExp = Math.floor(50 / penalty);
+        const curIdx = SKILL_STAGES.indexOf(item.realm || "初窺門徑");
+        if (curIdx >= SKILL_STAGES.length - 1) {
+            appendLogData("天道", `✨ 【${name}】已登峰造極達到大圓滿境界，無需繼續參悟！`, "system", false, true);
+            renderUI(); return;
+        }
+
+        const neededExp = getTechniqueMaxExp(item);
+        const totalStats = getTotalStats(gameState);
+        let gainExp = Math.floor(50 * (1 + (totalStats.wis || 10) / 100));
+        if ((gameState.practiceFatigue || 0) > 80) gainExp = Math.floor(gainExp * 0.5);
 
         item.exp = (item.exp || 0) + gainExp;
         gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + 20);
 
-        if (item.exp >= baseNeeded) {
+        if (item.exp >= neededExp) {
             item.realm = SKILL_STAGES[curIdx + 1];
             item.exp = 0;
-            openGameModal("🎉 熟練度突破！", `經過庫心參悟，【${name}】成功突破至【${item.realm}】境界！`);
+            appendLogData("天道", `🎉 經過苦心參悟，對《${name}》福至心靈，成功突破至【${item.realm}】境界！`, "ai", false, true);
+        } else {
+            appendLogData("天道", `🧘 靜心參悟《${name}》，獲得 ${gainExp} 點熟練度！（當前進度：${item.exp} / ${neededExp} EXP）`, "ai", false, true);
         }
 
         renderUI(); saveGameState();
@@ -1111,7 +1122,11 @@
   "scenarioMode": "IDLE",
   "activeThreats": [],
   "hpChange": 0, "expReward": 20, "stoneChange": 0,
-  "gainedItems": [], "gainedKungfu": [], "gainedSkills": [], 
+  "gainedItems": [], 
+  "gainedTechniques": [
+    {"name": "太初噬靈訣", "type": "kungfu", "element": "無"},
+    {"name": "太乙劍訣", "type": "skill"}
+  ],
   "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
   "npcs": [{"name": "店小二", "location": "青石鎮 · 夜雨客棧", "favor": 50, "relation": "素昧平生"}], 
@@ -1120,9 +1135,11 @@
 }
 \`\`\`
 ⚠️ 天道劇情推演嚴格守則：
-1. 嚴禁在普通對話、探索或打坐中主動替玩家宣佈「突破等級」或「突破境界」！境界突破僅能由玩家點擊【衝擊境界突破】觸發。
-2. 境界雷劫規範：練氣期、築基期、金丹期（Lv.1~15）衝擊突破僅為「衝破瓶頸」，絕對禁止出現天劫、劫雲、雷劫！只有元嬰期（Lv.16）及以上突破時才會有天劫降臨。
-3. NPC 地點規範：傳回 npcs 陣列時，必須包含 location 欄位標明 NPC 所在具體地點（例：青石鎮 · 客棧）。`; 
+1. 功法招式分類 (gainedTechniques)：必須透過 type 標籤 100% 精準區分：
+   - type: "kungfu"（主修心法）：凡是用於吐納納氣、洗髓易筋、增加修為、運轉真氣的根本秘訣（即使名字帶「訣」，如《太初噬靈訣》）。
+   - type: "skill"（術法招式）：凡是用於攻伐、劍法、拳法、防禦、身法閃避的招式手段（如《太乙劍訣》）。
+2. 嚴禁在普通對話或打坐中主動替玩家宣佈「突破等級/境界」！突破僅能由玩家點擊【衝擊境界突破】觸發。
+3. 境界雷劫規範：練氣、築基、金丹期（Lv.1~15）衝擊突破僅為「衝破瓶頸」，絕對禁止出現雷劫/劫雲！只有元嬰期（Lv.16）及以上才有天劫降臨。`; 
     }
 
     function parseApiResponse(text) {
@@ -1217,6 +1234,24 @@
             rawState.gainedItems.forEach(item => {
                 let name = cleanNameStrict(item);
                 if (name && storyText.includes(name)) s.inventory.push(name);
+            });
+        }
+
+        if (Array.isArray(rawState.gainedTechniques)) {
+            rawState.gainedTechniques.forEach(t => {
+                let name = cleanNameStrict(typeof t === 'string' ? t : t.name);
+                let type = typeof t === 'object' && t.type ? t.type : (/(功|經|心法|吐納)/.test(name) ? 'kungfu' : 'skill');
+                if (name && storyText.includes(name)) {
+                    if (type === 'kungfu' && s.kungfu.length < 3) {
+                        if (!s.kungfu.some(ex => ex.name === name)) {
+                            s.kungfu.push({ name: name, realm: "初窺門徑", exp: 0, element: t.element || "無" });
+                        }
+                    } else if (type === 'skill' && s.skills.length < 10) {
+                        if (!s.skills.some(ex => ex.name === name)) {
+                            s.skills.push({ name: name, realm: "初窺門徑", exp: 0 });
+                        }
+                    }
+                }
             });
         }
 
@@ -1578,8 +1613,9 @@
             if (gameState.kungfu && gameState.kungfu.length > 0) {
                 gameState.kungfu.forEach(k => {
                     let row = document.createElement("div"); row.className = "item-row";
+                    let top = document.createElement("div"); top.className = "item-top";
                     let span = document.createElement("span"); span.textContent = `📖 ${k.name} [${k.realm}]`;
-                    let actions = document.createElement("div");
+                    let actions = document.createElement("div"); actions.className = "item-actions";
 
                     let btnRun = document.createElement("button"); btnRun.textContent = "運轉";
                     btnRun.onclick = () => setActiveKungfu(k.name);
@@ -1587,7 +1623,21 @@
                     btnPrac.onclick = () => practiceTechnique('kungfu', k.name);
 
                     actions.appendChild(btnRun); actions.appendChild(btnPrac);
-                    row.appendChild(span); row.appendChild(actions);
+                    top.appendChild(span); top.appendChild(actions);
+
+                    let needed = getTechniqueMaxExp(k);
+                    let expText = needed > 0 ? `${k.exp || 0} / ${needed} EXP` : "已達大圓滿";
+                    let pct = needed > 0 ? Math.min(100, Math.floor(((k.exp || 0) / needed) * 100)) : 100;
+
+                    let barInfo = document.createElement("div");
+                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#888";
+                    barInfo.textContent = `熟練進度: ${expText}`;
+
+                    let barCont = document.createElement("div"); barCont.className = "exp-container";
+                    let barFill = document.createElement("div"); barFill.className = "exp-fill"; barFill.style.width = `${pct}%`;
+                    barCont.appendChild(barFill);
+
+                    row.appendChild(top); row.appendChild(barInfo); row.appendChild(barCont);
                     kfListBox.appendChild(row);
                 });
             } else {
@@ -1602,8 +1652,9 @@
             if (gameState.skills && gameState.skills.length > 0) {
                 gameState.skills.forEach(s => {
                     let row = document.createElement("div"); row.className = "item-row";
+                    let top = document.createElement("div"); top.className = "item-top";
                     let span = document.createElement("span"); span.textContent = `⚔️ ${s.name} [${s.realm}]`;
-                    let actions = document.createElement("div");
+                    let actions = document.createElement("div"); actions.className = "item-actions";
 
                     let btnPrac = document.createElement("button"); btnPrac.textContent = "參悟";
                     btnPrac.onclick = () => practiceTechnique('skill', s.name);
@@ -1612,7 +1663,21 @@
                     btnForget.onclick = () => forgetSkill(s.name);
 
                     actions.appendChild(btnPrac); actions.appendChild(btnForget);
-                    row.appendChild(span); row.appendChild(actions);
+                    top.appendChild(span); top.appendChild(actions);
+
+                    let needed = getTechniqueMaxExp(s);
+                    let expText = needed > 0 ? `${s.exp || 0} / ${needed} EXP` : "已達大圓滿";
+                    let pct = needed > 0 ? Math.min(100, Math.floor(((s.exp || 0) / needed) * 100)) : 100;
+
+                    let barInfo = document.createElement("div");
+                    barInfo.style.fontSize = "0.72rem"; barInfo.style.color = "#888";
+                    barInfo.textContent = `熟練進度: ${expText}`;
+
+                    let barCont = document.createElement("div"); barCont.className = "exp-container";
+                    let barFill = document.createElement("div"); barFill.className = "exp-fill"; barFill.style.width = `${pct}%`;
+                    barCont.appendChild(barFill);
+
+                    row.appendChild(top); row.appendChild(barInfo); row.appendChild(barCont);
                     skillsListBox.appendChild(row);
                 });
             } else {
@@ -1629,6 +1694,7 @@
             Object.entries(counts).forEach(([name, qty]) => {
                 const meta = getItemMeta(name);
                 let row = document.createElement("div"); row.className = "item-row";
+                let top = document.createElement("div"); top.className = "item-top";
                 let span = document.createElement("span"); span.textContent = `📦 [${meta.rarity}] ${name} x${qty}`; span.style.color = meta.rarityColor;
                 let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
@@ -1644,7 +1710,7 @@
                     let b = document.createElement("button"); b.textContent = "分解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
                 }
 
-                row.appendChild(span); row.appendChild(actionGroup); invBox.appendChild(row);
+                top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
             });
         }
 
@@ -1696,10 +1762,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v480_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v481_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v480_save") || localStorage.getItem("blade_v479_save") || localStorage.getItem("blade_v478_save");
+        const saved = localStorage.getItem("blade_v481_save") || localStorage.getItem("blade_v480_save") || localStorage.getItem("blade_v479_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -1753,9 +1819,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v481_save");
             localStorage.removeItem("blade_v480_save");
             localStorage.removeItem("blade_v479_save");
-            localStorage.removeItem("blade_v478_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
