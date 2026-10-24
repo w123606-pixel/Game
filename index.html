@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V5.02 物品自動賣出扣除版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.00 交易提案與狀態引擎版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -156,7 +156,7 @@
             
             <div id="death-action-container" style="display:none; margin-bottom: 8px;">
                 <button class="choice-btn" style="width:100%; background:#4a1515; color:#fff; border:1px solid #ff5252; text-align:center; font-weight:bold; padding:12px; font-size:0.95rem; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="resetGame()">
-                    🔄 肉身已隕，神魂俱滅 — 點此立刻啟動輪迴重修
+                    🔄 肉身已隕，神魂俱滅 — 點此說明輪迴重修
                 </button>
             </div>
 
@@ -378,9 +378,172 @@
 
     const DEFAULT_WELCOME_MSG = "歡迎踏入九州世界！你目前只是一名肉身孱弱的【凡人 (Lv.0)】，靈根尚未顯化。請選擇上方預設身世或直接在下方輸入自訂身世開局！";
 
+    function safeNumber(value, fallback, min, max) {
+        const n = Number(value);
+        if (value === null || value === undefined || value === '' || !Number.isFinite(n)) return fallback;
+        return Math.min(max, Math.max(min, n));
+    }
+
+    function cleanNameStrict(rawName) {
+        if (!rawName) return "";
+        let str = String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName);
+        return str
+            .replace(/\[(凡品|下品|中品|上品|極品|仙品)\]/g, '')
+            .replace(/\s*x\d+$/gi, '')
+            .replace(/[《》『』【】"'‘“’”<>&]/g, '')
+            .trim();
+    }
+
+    /* ----------------------------------------------------
+       🚀 V6.0 背包資料結構與輔助工具（標準化物件陣列）
+       ---------------------------------------------------- */
+    function normalizeInventory(rawInv) {
+        if (!Array.isArray(rawInv)) return [];
+        const result = [];
+        rawInv.forEach(rawItem => {
+            let name = "";
+            let qty = 1;
+            let type = "misc";
+            let rarity = "下品";
+            let metadata = {};
+
+            if (typeof rawItem === 'string') {
+                name = cleanNameStrict(rawItem);
+            } else if (rawItem && typeof rawItem === 'object') {
+                name = cleanNameStrict(rawItem.name);
+                qty = safeNumber(rawItem.quantity, 1, 1, 9999);
+                type = rawItem.type || "misc";
+                rarity = rawItem.rarity || "下品";
+                metadata = rawItem.metadata || {};
+            }
+
+            if (!name) return;
+
+            const existing = result.find(i => cleanNameStrict(i.name) === name);
+            if (existing) {
+                existing.quantity += qty;
+            } else {
+                const meta = getItemMeta(name);
+                result.push({
+                    name: name,
+                    quantity: qty,
+                    type: (rawItem && typeof rawItem === 'object' && rawItem.type) || meta.type,
+                    rarity: (rawItem && typeof rawItem === 'object' && rawItem.rarity) || meta.rarity,
+                    metadata: metadata
+                });
+            }
+        });
+        return result;
+    }
+
+    function addItemToInventory(inv, itemObjOrName, qty = 1) {
+        let name = "";
+        let amount = qty;
+        let explicitType = null;
+        let explicitRarity = null;
+
+        if (typeof itemObjOrName === 'string') {
+            name = cleanNameStrict(itemObjOrName);
+        } else if (itemObjOrName && typeof itemObjOrName === 'object') {
+            name = cleanNameStrict(itemObjOrName.name);
+            amount = safeNumber(itemObjOrName.quantity, qty, 1, 9999);
+            explicitType = itemObjOrName.type;
+            explicitRarity = itemObjOrName.rarity;
+        }
+        if (!name) return;
+
+        const existing = inv.find(i => cleanNameStrict(i.name) === name);
+        if (existing) {
+            existing.quantity += amount;
+        } else {
+            const meta = getItemMeta(name);
+            inv.push({
+                name: name,
+                quantity: amount,
+                type: explicitType || meta.type,
+                rarity: explicitRarity || meta.rarity,
+                metadata: (typeof itemObjOrName === 'object' && itemObjOrName.metadata) ? itemObjOrName.metadata : {}
+            });
+        }
+    }
+
+    function removeItemFromInventory(inv, itemName, qty = 1) {
+        const clean = cleanNameStrict(itemName);
+        const idx = inv.findIndex(i => cleanNameStrict(i.name) === clean);
+        if (idx === -1) return false;
+
+        if (inv[idx].quantity > qty) {
+            inv[idx].quantity -= qty;
+        } else {
+            inv.splice(idx, 1);
+        }
+        return true;
+    }
+
+    /* ----------------------------------------------------
+       🛡️ V6.0 原子交易狀態管理器 (Transaction Engine)
+       ---------------------------------------------------- */
+    const TransactionEngine = {
+        isLocked: false,
+        processTransaction(proposal) {
+            if (this.isLocked) {
+                return { success: false, reason: "交易管理器繁忙，請勿重複連點！" };
+            }
+            this.isLocked = true;
+
+            try {
+                const deductStone = Math.max(0, Number(proposal.deduct?.spiritStone) || 0);
+                const grantStone = Math.max(0, Number(proposal.grant?.spiritStone) || 0);
+                const deductItems = proposal.deduct?.items || [];
+                const grantItems = proposal.grant?.items || [];
+
+                // 1. 靈石檢查
+                if (gameState.spiritStone < deductStone) {
+                    return { success: false, reason: `靈石餘額不足（需 ${deductStone} 顆下品靈石，當前僅有 ${gameState.spiritStone} 顆）` };
+                }
+
+                // 2. 合併同名扣除需求後驗證總量，避免重複項目繞過檢查。
+                const requiredItems = new Map();
+                for (const d of deductItems) {
+                    const name = cleanNameStrict(typeof d === 'string' ? d : d?.name);
+                    const qty = typeof d === 'object' && d !== null
+                        ? safeNumber(d.quantity, 1, 1, 9999)
+                        : 1;
+                    if (!name) return { success: false, reason: "交易包含無效的物品名稱" };
+                    requiredItems.set(name, (requiredItems.get(name) || 0) + qty);
+                }
+                for (const [name, qty] of requiredItems) {
+                    const invItem = gameState.inventory.find(i => cleanNameStrict(i.name) === name);
+                    if (!invItem || invItem.quantity < qty) {
+                        const curQty = invItem ? invItem.quantity : 0;
+                        return { success: false, reason: `缺少所需物品「${name}」（總共需 x${qty}，持有 x${curQty}）` };
+                    }
+                }
+
+                // 3. 所有檢查通過後才提交，維持交易原子性。
+                gameState.spiritStone -= deductStone;
+                for (const [name, qty] of requiredItems) {
+                    const removed = removeItemFromInventory(gameState.inventory, name, qty);
+                    if (!removed) throw new Error(`提交交易時找不到物品：${name}`);
+                }
+
+                gameState.spiritStone += grantStone;
+                for (let g of grantItems) {
+                    addItemToInventory(gameState.inventory, g);
+                }
+
+                return { success: true };
+            } catch (e) {
+                return { success: false, reason: `交易異常：${e.message}` };
+            } finally {
+                this.isLocked = false;
+            }
+        }
+    };
+
     function getDefaultGameState() {
         return {
-            version: "5.02",
+            version: "6.00",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -397,12 +560,6 @@
             quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
             choices: [...DEFAULT_ORIGIN_CHOICES]
         };
-    }
-
-    function safeNumber(value, fallback, min, max) {
-        const n = Number(value);
-        if (value === null || value === undefined || value === '' || !Number.isFinite(n)) return fallback;
-        return Math.min(max, Math.max(min, n));
     }
 
     function getNpcRelationText(favor) {
@@ -479,7 +636,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "5.02",
+            version: "6.00",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -522,7 +679,7 @@
             kungfu: Array.isArray(raw.kungfu) ? raw.kungfu : [],
             skills: Array.isArray(raw.skills) ? raw.skills : [],
             equipment: (raw.equipment && typeof raw.equipment === 'object') ? raw.equipment : { weapon: null, armor: null, accessory: null, treasure: null },
-            inventory: Array.isArray(raw.inventory) ? raw.inventory.map(cleanNameStrict).filter(Boolean) : [],
+            inventory: normalizeInventory(raw.inventory),
             npcs: Array.isArray(raw.npcs) ? raw.npcs.map(n => {
                 if (typeof n === 'string') return { name: cleanNameStrict(n), location: cleanNameStrict(raw.location) || "九州邊境", favor: -80, relation: "生死仇敵" };
                 const fav = safeNumber(n.favor, -80, -100, 100);
@@ -552,16 +709,6 @@
         '極品': { name: '極品', color: '#ffd700', mult: 3.0 },
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
-
-    function cleanNameStrict(rawName) {
-        if (!rawName) return "";
-        let str = String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName);
-        return str
-            .replace(/\[(凡品|下品|中品|上品|極品|仙品)\]/g, '')
-            .replace(/\s*x\d+$/gi, '')
-            .replace(/[《》『』【】"'‘“’”<>&]/g, '')
-            .trim();
-    }
 
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
@@ -880,17 +1027,14 @@
         }
         container.appendChild(titleText);
 
-        const counts = {};
-        gameState.inventory.forEach(i => counts[i] = (counts[i] || 0) + 1);
-
-        Object.entries(counts).forEach(([itemName, qty]) => {
+        gameState.inventory.forEach(item => {
             const btn = document.createElement("button");
             btn.className = "modal-btn";
             btn.style.textAlign = "left";
             btn.style.width = "100%";
-            btn.innerHTML = `📦 ${itemName} (持有 x${qty})`;
+            btn.innerHTML = `📦 ${item.name} (持有 x${item.quantity})`;
             btn.onclick = () => {
-                giveGiftToNpc(npcName, itemName, isNearby);
+                giveGiftToNpc(npcName, item.name, isNearby);
                 closeGameModal();
             };
             container.appendChild(btn);
@@ -900,10 +1044,11 @@
     }
 
     function giveGiftToNpc(npcName, itemName, isNearby) {
-        const idx = gameState.inventory.indexOf(itemName);
-        if (idx === -1) return;
+        const cleanItemName = cleanNameStrict(itemName);
+        const invItem = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanItemName);
+        if (!invItem) return;
 
-        const meta = getItemMeta(itemName);
+        const meta = getItemMeta(cleanItemName);
         let favorGain = 15;
         if (meta.rarity === '仙品') favorGain = 80;
         else if (meta.rarity === '極品') favorGain = 50;
@@ -912,7 +1057,17 @@
 
         if (meta.type === 'book' || meta.type === 'treasure') favorGain += 10;
 
-        gameState.inventory.splice(idx, 1);
+        const proposal = {
+            deduct: { spiritStone: isNearby ? 0 : 10, items: [{ name: cleanItemName, quantity: 1 }] },
+            grant: { spiritStone: 0, items: [] }
+        };
+
+        const txResult = TransactionEngine.processTransaction(proposal);
+        if (!txResult.success) {
+            openGameModal("⚠️ 贈禮失敗", txResult.reason);
+            return;
+        }
+
         const npc = gameState.npcs.find(n => n.name === npcName);
         if (npc) {
             const oldFav = npc.favor || -80;
@@ -920,15 +1075,14 @@
             npc.relation = getNpcRelationText(npc.favor);
 
             if (oldFav < 0 && npc.favor >= 0) {
-                appendLogData("天道", `✨ 利益動人心！「${npcName}」收下「${itemName}」後，態度大為轉變，恩怨冰釋，關係正式轉正！`, "system", false, true);
+                appendLogData("天道", `✨ 利益動人心！「${npcName}」收下「${cleanItemName}」後，態度大為轉變，恩怨冰釋，關係正式轉正！`, "system", false, true);
             }
         }
 
         if (isNearby) {
-            sendAction(`【當面將「${itemName}」贈予「${npcName}」，對方收下禮物，態度緩和，好感度 +${favorGain}】`);
+            sendAction(`【當面將「${cleanItemName}」贈予「${npcName}」，對方收下禮物，態度緩和，好感度 +${favorGain}】`);
         } else {
-            gameState.spiritStone = Math.max(0, gameState.spiritStone - 10);
-            sendAction(`【消耗 10 靈石，催動飛劍傳書陣將「${itemName}」跨空郵寄給「${npcName}」，好感度 +${favorGain}】`);
+            sendAction(`【消耗 10 靈石，催動飛劍傳書陣將「${cleanItemName}」跨空郵寄給「${npcName}」，好感度 +${favorGain}】`);
         }
     }
 
@@ -1036,7 +1190,6 @@
         }
     }
 
-    /* 🌀 絕學推演融合 modal 邏輯 */
     function openFusionModal() {
         if (gameState.isDead) return;
         
@@ -1045,7 +1198,6 @@
         container.style.flexDirection = "column";
         container.style.gap = "10px";
 
-        // 選擇類型
         const typeLabel = document.createElement("div");
         typeLabel.innerHTML = `<b>1. 選擇推演目標種類：</b>`;
         container.appendChild(typeLabel);
@@ -1065,7 +1217,6 @@
             listContainer.innerHTML = "";
             const isKungfu = typeSelect.value === 'kungfu';
             const pool = isKungfu ? gameState.kungfu : gameState.skills;
-            // 門檻：必須熟練度 >= 登堂入室 (index >= 1)
             const qualified = pool.filter(x => SKILL_STAGES.indexOf(x.realm || "初窺門徑") >= 1);
 
             if (qualified.length < 2) {
@@ -1080,7 +1231,7 @@
             const selB = document.createElement("select");
             selB.className = "fusion-select";
 
-            qualified.forEach((item, idx) => {
+            qualified.forEach((item) => {
                 const meta = getItemMeta(item.name);
                 const optA = document.createElement("option");
                 optA.value = item.name;
@@ -1184,12 +1335,18 @@
         const gap = Math.abs(rankA - rankB);
 
         const stoneCost = gap >= 2 ? 30 : 50;
-        if (gameState.spiritStone < stoneCost) {
-            openGameModal("⚠️ 靈石不足", `閉關推演需要支付 <b>${stoneCost} 顆靈石</b> 作為護法陣法材料！`);
+
+        const proposal = {
+            deduct: { spiritStone: stoneCost, items: [] },
+            grant: { spiritStone: 0, items: [] }
+        };
+
+        const txResult = TransactionEngine.processTransaction(proposal);
+        if (!txResult.success) {
+            openGameModal("⚠️ 靈石不足", txResult.reason);
             return;
         }
 
-        gameState.spiritStone -= stoneCost;
         const hpDmg = Math.floor(getMaxHp(gameState) * 0.20);
         gameState.hp = Math.max(1, gameState.hp - hpDmg);
         gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + 30);
@@ -1197,7 +1354,6 @@
         let list = isKungfu ? gameState.kungfu : gameState.skills;
 
         if (gap >= 2) {
-            // 高階吞噬
             const highName = rankA > rankB ? nameA : nameB;
             const lowName = rankA > rankB ? nameB : nameA;
 
@@ -1249,47 +1405,61 @@
 
     function interactInventoryItem(name, action) {
         if (gameState.isDead) return;
-        const idx = gameState.inventory.indexOf(name);
-        if (idx === -1) return;
+        const cleanName = cleanNameStrict(name);
+        const invItem = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
+        if (!invItem) return;
 
-        const meta = getItemMeta(name);
+        const meta = getItemMeta(cleanName);
 
         if (action === 'use') {
-            gameState.inventory.splice(idx, 1);
-            if (meta.hpGain) gameState.hp = Math.min(getMaxHp(gameState), gameState.hp + meta.hpGain);
-            if (meta.expGain) gameState.exp = Math.min(gameState.maxExp, gameState.exp + meta.expGain);
-        } else if (action === 'identify') {
-            gameState.inventory.splice(idx, 1);
-            const identifiedName = name.replace("[未鑑定]", "").replace("蒙塵", "") + "古寶";
-            gameState.inventory.push(cleanNameStrict(identifiedName));
-            openGameModal("✨ 鑑定成功", `擦去歲月塵埃，揭曉古物真實面貌：<b>${identifiedName}</b>！`);
-        } else if (action === 'fuse') {
-            let count = gameState.inventory.filter(x => x === name).length;
-            if (count < 3) { openGameModal("⚠️ 數量不足", "需要湊齊 3 個同名殘片方可【拼湊/熔煉】！"); return; }
-            for (let i = 0; i < 3; i++) {
-                let rIdx = gameState.inventory.indexOf(name);
-                if (rIdx !== -1) gameState.inventory.splice(rIdx, 1);
+            const proposal = { deduct: { spiritStone: 0, items: [{ name: cleanName, quantity: 1 }] }, grant: { spiritStone: 0, items: [] } };
+            const txResult = TransactionEngine.processTransaction(proposal);
+            if (txResult.success) {
+                if (meta.hpGain) gameState.hp = Math.min(getMaxHp(gameState), gameState.hp + meta.hpGain);
+                if (meta.expGain) gameState.exp = Math.min(gameState.maxExp, gameState.exp + meta.expGain);
+            } else {
+                openGameModal("⚠️ 使用失敗", txResult.reason);
             }
-            const fusedName = name.replace("殘片", "").replace("碎片", "") + "真寶";
-            gameState.inventory.push(cleanNameStrict(fusedName));
-            openGameModal("🔮 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
+        } else if (action === 'identify') {
+            const identifiedName = cleanName.replace("[未鑑定]", "").replace("蒙塵", "") + "古寶";
+            const proposal = {
+                deduct: { spiritStone: 0, items: [{ name: cleanName, quantity: 1 }] },
+                grant: { spiritStone: 0, items: [{ name: identifiedName, quantity: 1 }] }
+            };
+            const txResult = TransactionEngine.processTransaction(proposal);
+            if (txResult.success) {
+                openGameModal("✨ 鑑定成功", `擦去歲月塵埃，揭曉古物真實面貌：<b>${identifiedName}</b>！`);
+            } else {
+                openGameModal("⚠️ 鑑定失敗", txResult.reason);
+            }
+        } else if (action === 'fuse') {
+            const fusedName = cleanName.replace("殘片", "").replace("碎片", "") + "真寶";
+            const proposal = {
+                deduct: { spiritStone: 0, items: [{ name: cleanName, quantity: 3 }] },
+                grant: { spiritStone: 0, items: [{ name: fusedName, quantity: 1 }] }
+            };
+            const txResult = TransactionEngine.processTransaction(proposal);
+            if (txResult.success) {
+                openGameModal("🔮 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
+            } else {
+                openGameModal("⚠️ 熔煉失敗", txResult.reason);
+            }
         } else if (action === 'salvage') {
-            // 跳出二次確認對話框 (Modal)
             let resultStone = 3;
             let resultItem = "粗鐵胚料";
             if (meta.rarity === '下品' || meta.rarity === '凡品') {
                 resultStone = 3;
-                resultItem = /(血|牙|骨|草|藥|肉|皮)/.test(name) ? "妖獸骨角殘材" : "粗鐵胚料";
+                resultItem = /(血|牙|骨|草|藥|肉|皮)/.test(cleanName) ? "妖獸骨角殘材" : "粗鐵胚料";
             } else if (meta.rarity === '中品') {
                 resultStone = 10;
-                resultItem = /(血|牙|骨|草|藥|肉|皮)/.test(name) ? "中品妖獸精粹" : "精鋼材料";
+                resultItem = /(血|牙|骨|草|藥|肉|皮)/.test(cleanName) ? "中品妖獸精粹" : "精鋼材料";
             } else {
                 resultStone = 25;
                 resultItem = "靈金淬鍊石";
             }
 
             const bodyContainer = document.createElement("div");
-            bodyContainer.innerHTML = `確定要拆解分解<b>【[${meta.rarity}] ${name}】</b>嗎？<br><br>
+            bodyContainer.innerHTML = `確定要拆解分解<b>【[${meta.rarity}] ${cleanName}】</b>嗎？<br><br>
             🛠️ <b>預計獲得產出：</b><br>
             • 下品靈石 x${resultStone}<br>
             • [${meta.rarity}] ${resultItem} x1`;
@@ -1298,8 +1468,17 @@
             btnConfirm.className = "modal-btn primary";
             btnConfirm.textContent = "🔨 確定分解";
             btnConfirm.onclick = () => {
-                executeSalvageItem(name, resultStone, resultItem);
-                closeGameModal();
+                const proposal = {
+                    deduct: { spiritStone: 0, items: [{ name: cleanName, quantity: 1 }] },
+                    grant: { spiritStone: resultStone, items: [{ name: resultItem, quantity: 1 }] }
+                };
+                const txResult = TransactionEngine.processTransaction(proposal);
+                if (txResult.success) {
+                    closeGameModal();
+                    renderUI(); saveGameState();
+                } else {
+                    openGameModal("⚠️ 分解失敗", txResult.reason);
+                }
             };
 
             const btnCancel = document.createElement("button");
@@ -1310,35 +1489,36 @@
             openGameModal("🛠️ 物品分解確認", bodyContainer, [btnConfirm, btnCancel]);
             return;
         } else if (action === 'sell') {
-            gameState.inventory.splice(idx, 1);
-            gameState.spiritStone += 10;
-            openGameModal("💰 材料變賣", `將「${name}」賣給坊市商人，獲得 10 顆下品靈石！`);
-        }
-        renderUI(); saveGameState();
-    }
-
-    function executeSalvageItem(name, stoneGain, itemGain) {
-        const idx = gameState.inventory.indexOf(name);
-        if (idx === -1) return;
-
-        gameState.inventory.splice(idx, 1);
-        gameState.spiritStone += stoneGain;
-        if (itemGain) {
-            gameState.inventory.push(cleanNameStrict(itemGain));
+            const proposal = {
+                deduct: { spiritStone: 0, items: [{ name: cleanName, quantity: 1 }] },
+                grant: { spiritStone: 10, items: [] }
+            };
+            const txResult = TransactionEngine.processTransaction(proposal);
+            if (txResult.success) {
+                openGameModal("💰 材料變賣", `將「${cleanName}」賣給坊市商人，獲得 10 顆下品靈石！`);
+            } else {
+                openGameModal("⚠️ 變賣失敗", txResult.reason);
+            }
         }
         renderUI(); saveGameState();
     }
 
     function equipItem(itemName) {
-        const idx = gameState.inventory.indexOf(itemName);
-        if (idx === -1) return;
-        const meta = getItemMeta(itemName);
+        const cleanName = cleanNameStrict(itemName);
+        const invItem = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
+        if (!invItem) return;
+
+        const meta = getItemMeta(cleanName);
         if (!meta.slot) return;
 
-        gameState.inventory.splice(idx, 1);
+        const proposal = { deduct: { spiritStone: 0, items: [{ name: cleanName, quantity: 1 }] }, grant: { spiritStone: 0, items: [] } };
+        const txResult = TransactionEngine.processTransaction(proposal);
+        if (!txResult.success) return;
+
         if (gameState.equipment[meta.slot]) {
             const oldEq = gameState.equipment[meta.slot];
-            if (oldEq) gameState.inventory.push(cleanNameStrict(typeof oldEq === 'object' ? oldEq.name : oldEq));
+            const oldName = cleanNameStrict(typeof oldEq === 'object' ? oldEq.name : oldEq);
+            addItemToInventory(gameState.inventory, oldName, 1);
         }
         gameState.equipment[meta.slot] = meta;
         renderUI(); saveGameState();
@@ -1349,9 +1529,12 @@
         const itemObj = gameState.equipment[slot];
         const itemName = cleanNameStrict(typeof itemObj === 'object' ? itemObj.name : itemObj);
 
-        gameState.inventory.push(itemName);
-        gameState.equipment[slot] = null;
-        renderUI(); saveGameState();
+        const proposal = { deduct: { spiritStone: 0, items: [] }, grant: { spiritStone: 0, items: [{ name: itemName, quantity: 1 }] } };
+        const txResult = TransactionEngine.processTransaction(proposal);
+        if (txResult.success) {
+            gameState.equipment[slot] = null;
+            renderUI(); saveGameState();
+        }
     }
 
     function quickHeal(days) {
@@ -1453,47 +1636,43 @@
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
-            if (!gameState.inventory.includes("至尊骨殘片")) {
-                gameState.inventory.push("至尊骨殘片");
-            }
+            addItemToInventory(gameState.inventory, "至尊骨殘片", 1);
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
-            if (!gameState.inventory.includes("獄卒令牌")) {
-                gameState.inventory.push("獄卒令牌");
-            }
+            addItemToInventory(gameState.inventory, "獄卒令牌", 1);
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
             const hasRingInEquip = Object.values(gameState.equipment).some(eq => eq && cleanNameStrict(eq).includes("古戒"));
-            if (!gameState.inventory.includes("神祕古戒") && !hasRingInEquip) {
-                gameState.inventory.push("神祕古戒");
+            if (!hasRingInEquip) {
+                addItemToInventory(gameState.inventory, "神祕古戒", 1);
             }
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
             
             const text = String(choiceText || "");
-            if ((text.includes("劍") || text.includes("神劍") || text.includes("寶劍")) && !gameState.inventory.includes("青鋼長劍")) {
-                gameState.inventory.push("青鋼長劍");
-            } else if ((text.includes("刀") || text.includes("魔刀")) && !gameState.inventory.includes("烈風長刀")) {
-                gameState.inventory.push("烈風長刀");
+            if ((text.includes("劍") || text.includes("神劍") || text.includes("寶劍"))) {
+                addItemToInventory(gameState.inventory, "青鋼長劍", 1);
+            } else if ((text.includes("刀") || text.includes("魔刀"))) {
+                addItemToInventory(gameState.inventory, "烈風長刀", 1);
             }
-            if ((text.includes("丹") || text.includes("藥")) && !gameState.inventory.includes("聚氣丹")) {
-                gameState.inventory.push("聚氣丹");
+            if ((text.includes("丹") || text.includes("藥"))) {
+                addItemToInventory(gameState.inventory, "聚氣丹", 1);
             }
-            if ((text.includes("戒") || text.includes("戒指")) && !gameState.inventory.includes("古舊鐵戒")) {
-                gameState.inventory.push("古舊鐵戒");
+            if ((text.includes("戒") || text.includes("戒指"))) {
+                addItemToInventory(gameState.inventory, "古舊鐵戒", 1);
             }
-            if ((text.includes("鏡") || text.includes("鼎") || text.includes("塔")) && !gameState.inventory.includes("蒙塵古鏡")) {
-                gameState.inventory.push("蒙塵古鏡");
+            if ((text.includes("鏡") || text.includes("鼎") || text.includes("塔"))) {
+                addItemToInventory(gameState.inventory, "蒙塵古鏡", 1);
             }
         }
     }
 
     function getSystemPrompt() { 
         const invListStr = (gameState.inventory && gameState.inventory.length > 0) 
-            ? gameState.inventory.join('、') 
+            ? gameState.inventory.map(i => `${i.name}x${i.quantity}`).join('、') 
             : '無';
 
         return `你現在是修仙RPG《九州裂天錄》中冷酷、絕對客觀、遵循弱肉強食法則的「天道」。
@@ -1519,9 +1698,12 @@
   "location": "${gameState.location || '荒郊破廟'}",
   "scenarioMode": "IDLE",
   "activeThreats": [],
-  "hpChange": 0, "expReward": 20, "stoneChange": 0,
-  "gainedItems": [], 
-  "lostItems": [],
+  "hpChange": 0, "expReward": 20,
+  "inventoryDelta": {
+    "gained": [{"name": "物品名稱", "quantity": 1}],
+    "lost": [{"name": "物品名稱", "quantity": 1}],
+    "stoneChange": 0
+  },
   "usedTechniques": [],
   "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
@@ -1530,9 +1712,9 @@
   "choices": ["逃跑", "求饒", "智取"]
 }
 \`\`\`
-⚠️ 天道無情與降維打擊鐵律（絕對不可違背）：
+⚠️ 天道無情與交易變更鐵律（絕對不可違背）：
 1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界選擇正面硬剛高階修士時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須描繪其重傷或死亡。
-2. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"；賣出、消耗、贈送或失去物品時，務必將品名寫入 "lostItems"（物品名稱必須純淨，切勿帶有 [下品] 或 x1 等贅字）。故事內文提及物品時請統一用「...」標記。
+2. 提案驗證制 (Proposal Only)：AI 無權直接修改資產。凡玩家獲得物品寫入 "inventoryDelta.gained"；凡玩家賣出、消耗、贈送、交付、或交給鐵匠/店家/NPC 進行鍛造訂做的物品，寫入 "inventoryDelta.lost"（帶有精確數量 quantity）。靈石花費寫入負數 "inventoryDelta.stoneChange"（例如 -50）。若玩家資產不足以支付，不可在故事中擅自宣稱交易成功！
 3. 嚴禁無中生有：生成 choices 選項時，若玩家背包無某物品（如凝血草、丹藥），絕對不可產生使用該物品的選項！
 4. 世界紀事 (worldEvents) 嚴格過濾鐵律：嚴禁將「偷襲野豬、登高遠眺、練氣小層數突破、獵殺低階妖獸、撤離、調息」等小事寫入 worldEvents！worldEvents 只許記錄影響九州局勢的大事（例如：成功築基/結丹/元嬰大境界跨越、宗門滅門、斬殺要角、獲得太古傳承）。若無大事，worldEvents 必須回傳空陣列 []！
 5. 敘事與狀態一致性：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家升級！`; 
@@ -1590,8 +1772,68 @@
                 if (!s.status.includes("修為圓滿待突破")) s.status.push("修為圓滿待突破");
             }
         }
-        if (typeof rawState.stoneChange === 'number') {
-            s.spiritStone = Math.max(0, s.spiritStone + rawState.stoneChange);
+
+        /* 🚀 V6.0 交易提案結構解析與統一原子驗證提交 (無任何文字正則過濾) */
+        const proposal = {
+            deduct: { spiritStone: 0, items: [] },
+            grant: { spiritStone: 0, items: [] }
+        };
+
+        if (rawState.inventoryDelta && typeof rawState.inventoryDelta === 'object') {
+            const delta = rawState.inventoryDelta;
+            const stoneChg = Number(delta.stoneChange) || 0;
+            if (stoneChg < 0) proposal.deduct.spiritStone = Math.abs(stoneChg);
+            if (stoneChg > 0) proposal.grant.spiritStone = stoneChg;
+
+            if (Array.isArray(delta.lost)) {
+                proposal.deduct.items = delta.lost.map(item => {
+                    if (typeof item === 'string') return { name: cleanNameStrict(item), quantity: 1 };
+                    return { name: cleanNameStrict(item.name), quantity: safeNumber(item.quantity, 1, 1, 9999) };
+                });
+            }
+            if (Array.isArray(delta.gained)) {
+                proposal.grant.items = delta.gained.map(item => {
+                    if (typeof item === 'string') return { name: cleanNameStrict(item), quantity: 1 };
+                    return { name: cleanNameStrict(item.name), quantity: safeNumber(item.quantity, 1, 1, 9999) };
+                });
+            }
+        } else {
+            // 舊版 JSON 相容邏輯
+            const stoneChg = Number(rawState.stoneChange) || 0;
+            if (stoneChg < 0) proposal.deduct.spiritStone = Math.abs(stoneChg);
+            if (stoneChg > 0) proposal.grant.spiritStone = stoneChg;
+
+            if (Array.isArray(rawState.lostItems)) {
+                proposal.deduct.items = rawState.lostItems.map(item => {
+                    if (typeof item === 'string') return { name: cleanNameStrict(item), quantity: 1 };
+                    return { name: cleanNameStrict(item.name), quantity: safeNumber(item.quantity, 1, 1, 9999) };
+                });
+            }
+            if (Array.isArray(rawState.gainedItems)) {
+                proposal.grant.items = rawState.gainedItems.map(item => {
+                    if (typeof item === 'string') return { name: cleanNameStrict(item), quantity: 1 };
+                    return { name: cleanNameStrict(item.name), quantity: safeNumber(item.quantity, 1, 1, 9999) };
+                });
+            }
+        }
+
+        if (proposal.deduct.spiritStone > 0 || proposal.grant.spiritStone > 0 || proposal.deduct.items.length > 0 || proposal.grant.items.length > 0) {
+            // 臨時將 gameState 賦值供驗證引擎檢核
+            const prevInv = gameState.inventory;
+            const prevStone = gameState.spiritStone;
+            gameState.inventory = s.inventory;
+            gameState.spiritStone = s.spiritStone;
+
+            const txResult = TransactionEngine.processTransaction(proposal);
+
+            s.inventory = gameState.inventory;
+            s.spiritStone = gameState.spiritStone;
+            gameState.inventory = prevInv;
+            gameState.spiritStone = prevStone;
+
+            if (!txResult.success) {
+                appendLogData("天道", `[系統干預] 檢測到變更提案無效（${txResult.reason}），交易未能生效，資產保持原樣。`, "system", false, true);
+            }
         }
 
         if (Array.isArray(rawState.currentStatus)) {
@@ -1674,96 +1916,13 @@
             });
         }
 
-        /* 背包物品新增同步 */
-        if (Array.isArray(rawState.gainedItems)) {
-            rawState.gainedItems.forEach(item => {
-                let name = cleanNameStrict(item);
-                if (!name) return;
-
-                const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(typeof eq === 'object' ? eq.name : eq) === name);
-                const inInv = s.inventory.includes(name);
-
-                if (inEquip || inInv) {
-                    return; 
-                }
-                s.inventory.push(name);
-            });
-        }
-
-        /* 🆕 背包物品扣除同步 (lostItems) */
-        if (Array.isArray(rawState.lostItems)) {
-            rawState.lostItems.forEach(item => {
-                let name = cleanNameStrict(item);
-                if (!name) return;
-                const idx = s.inventory.findIndex(inv => cleanNameStrict(inv) === name);
-                if (idx !== -1) {
-                    s.inventory.splice(idx, 1);
-                }
-            });
-        }
-
-        /* 🆕 「...」 物品故事內文備份自動擷取與扣除補丁 */
-        const itemRegex = /「([^」]+)」/g;
-        let itemMatch;
-        const itemBlacklist = /^(當面伏擊|忍辱賠罪|黑市懸賞|飛劍利誘|當面交涉|當面贈禮|飛劍傳書|跨空郵寄|閉關|死關|求醫|宗門任務|藏經閣|衝擊境界突破|盤膝運功|逃跑|求饒|智取|選擇身世|身世問心|江湖探索|運轉|參悟|遺忘|裝備|服下|鑑定|熔煉|分解|變賣|確定分解|取消退回|御風術|火球術|引氣訣)/;
-
-        while ((itemMatch = itemRegex.exec(storyText)) !== null) {
-            let itemName = cleanNameStrict(itemMatch[1]);
-            if (itemName && itemName.length >= 2 && itemName.length <= 10 && !itemBlacklist.test(itemName)) {
-                const isNpc = s.npcs.some(n => n.name === itemName);
-                const isLoc = s.location && s.location.includes(itemName);
-                const isTech = s.kungfu.some(k => k.name === itemName) || s.skills.some(sk => sk.name === itemName);
-
-                if (!isNpc && !isLoc && !isTech) {
-                    const matchIdx = itemMatch.index;
-                    const contextSnippet = storyText.substring(Math.max(0, matchIdx - 30), Math.min(storyText.length, matchIdx + itemName.length + 30));
-                    
-                    // 判斷獲得語境
-                    if (/(獲得|收好|採集|發現|採摘|取走|納入|拿到|摘下|得到|尋獲|握著|妥善|戰利品|撿起)/.test(contextSnippet)) {
-                        const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(typeof eq === 'object' ? eq.name : eq) === itemName);
-                        const inInv = s.inventory.includes(itemName);
-                        if (!inEquip && !inInv) {
-                            s.inventory.push(itemName);
-                        }
-                    }
-                    // 判斷賣出/消耗語境
-                    else if (/(賣出|售出|賣掉|成交|變現|出手|交出|遞給|贈予|付|消耗|失去|收入自己的儲物袋|收入儲物袋|一掃而空|全數變現)/.test(contextSnippet)) {
-                        const idx = s.inventory.findIndex(inv => cleanNameStrict(inv) === itemName);
-                        if (idx !== -1) {
-                            s.inventory.splice(idx, 1);
-                        }
-                    }
-                }
-            }
-        }
-
-        /* 招式/功法防抓取系統公告優化 */
-        const techniqueRegex = /[《【]([^》】]+)[》】]/g;
-        let match;
-        const foundInText = [];
-        const actionBlacklist = /^(當面伏擊|忍辱賠罪|黑市懸賞|飛劍利誘|當面交涉|當面贈禮|飛劍傳書|跨空郵寄|閉關|死關|求醫|宗門任務|藏經閣|衝擊境界突破|盤膝運功|逃跑|求饒|智取|選擇身世|身世問心|江湖探索|運轉|參悟|遺忘|裝備|服下|鑑定|熔煉|分解|變賣|系統提示|恭喜|突破|全方位|提升|獲得|成功|失敗|氣血|修為|屬性)/;
-
-        while ((match = techniqueRegex.exec(storyText)) !== null) {
-            let techName = cleanNameStrict(match[1]);
-            if (techName && techName.length >= 2 && techName.length <= 8 && !actionBlacklist.test(techName)) {
-                if (!/(系統|提示|恭喜|突破|提升|全方位|宿主|層|Lv|HP|EXP|能力)/.test(techName)) {
-                    foundInText.push(techName);
-                }
-            }
-        }
-
+        /* 功法/招式只接受結構化的明確取得欄位；劇情提及名稱不代表已獲得。 */
         let allGainedTechs = [];
         if (Array.isArray(rawState.gainedTechniques)) {
             allGainedTechs = rawState.gainedTechniques.map(t => {
                 return typeof t === 'string' ? { name: cleanNameStrict(t) } : { name: cleanNameStrict(t.name), type: t.type, element: t.element };
             });
         }
-        
-        foundInText.forEach(name => {
-            if (!allGainedTechs.some(t => t.name === name)) {
-                allGainedTechs.push({ name: name });
-            }
-        });
 
         allGainedTechs.forEach(t => {
             let name = t.name;
@@ -1803,7 +1962,7 @@
             }
         });
 
-        /* 世界紀事瑣事嚴格黑名單過濾 */
+        /* 世界紀事瑣事過濾 */
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(we => {
                 let cleanWe = cleanNameStrict(we);
@@ -1872,14 +2031,16 @@
             promptToSend += `\n[系統絕對強制盲裁指令：玩家當前境界（Lv.${gameState.level}）與強敵或高階修士差距過大！此正面硬剛行為判定 100% 失敗。強制設定 isDead: true, hpChange: -999。請你作為冷酷天道，描繪其遭神識或護體罡氣直接秒殺的慘烈過程。]`;
         }
 
+        // 使用物品前只檢查持有狀態，不在 API 回應前扣除；避免請求失敗仍損失物品，
+        // 也避免 inventoryDelta 再扣一次。真正扣除由交易引擎在成功回應後處理。
         const consumeMatch = actionText.match(/(?:吞服|使用|服下|食用|吃掉|服用)\s*([^\s,，。!！]+)/);
         if (consumeMatch) {
             const targetItem = cleanNameStrict(consumeMatch[1]);
-            const invIdx = gameState.inventory.findIndex(item => cleanNameStrict(item) === targetItem);
-            if (invIdx !== -1) {
-                gameState.inventory.splice(invIdx, 1);
+            const invItem = gameState.inventory.find(item => cleanNameStrict(item.name) === targetItem && item.quantity > 0);
+            if (!invItem) {
+                promptToSend += `\n[系統絕對強制指令：玩家背包中並無「${targetItem}」（可能已被分解/消耗或根本未擁有）。請生動描繪玩家伸手摸索背包/懷中發現空無一物、無法使用該物品的窘境。絕對禁止在 inventoryDelta 中新增或補發該物品！]`;
             } else {
-                promptToSend += `\n[系統絕對強制指令：玩家背包中並無「${targetItem}」（可能已被分解/消耗或根本未擁有）。請生動描繪玩家伸手摸索背包/懷中發現空無一物、無法使用該物品的窘境。絕對禁止在 gainedItems 中新增或補發該物品！]`;
+                promptToSend += `\n[系統規則：玩家持有「${targetItem}」。只有在劇情明確成功使用/消耗時，才在 inventoryDelta.lost 中列出該物品一次；若使用失敗或 API 未回應，不得扣除。]`;
             }
         }
 
@@ -2346,38 +2507,41 @@
             }
         }
 
+        /* 🚀 V6.0 背包 UI 渲染邏輯 (按數量堆疊展現) */
         const invBox = document.getElementById("ui-inventory-list");
         if (invBox) {
             invBox.innerHTML = "";
-            let counts = {};
-            gameState.inventory.forEach(i => {
-                const cleaned = cleanNameStrict(i);
-                if (cleaned) counts[cleaned] = (counts[cleaned] || 0) + 1;
-            });
+            if (gameState.inventory && gameState.inventory.length > 0) {
+                gameState.inventory.forEach(item => {
+                    const name = cleanNameStrict(item.name);
+                    const qty = item.quantity || 1;
+                    const meta = getItemMeta(name);
 
-            Object.entries(counts).forEach(([name, qty]) => {
-                const meta = getItemMeta(name);
-                let row = document.createElement("div"); row.className = "item-row";
-                let top = document.createElement("div"); top.className = "item-top";
-                let span = document.createElement("span"); span.textContent = `📦 [${meta.rarity}] ${name} x${qty}`; span.style.color = meta.rarityColor;
-                let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
+                    let row = document.createElement("div"); row.className = "item-row";
+                    let top = document.createElement("div"); top.className = "item-top";
+                    let span = document.createElement("span"); span.textContent = `📦 [${meta.rarity}] ${name} x${qty}`; span.style.color = meta.rarityColor;
+                    let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
-                if (meta.slot) {
-                    let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(name); actionGroup.appendChild(b);
-                } else if (meta.type === 'consumable') {
-                    let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
-                } else if (meta.type === 'unidentified') {
-                    let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
-                } else if (meta.type === 'fragment') {
-                    let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(name, 'fuse'); actionGroup.appendChild(b);
-                } else if (meta.type === 'misc') {
-                    let b = document.createElement("button"); b.textContent = "分解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
-                } else if (meta.type === 'material') {
-                    let b = document.createElement("button"); b.textContent = "變賣(10石)"; b.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(b);
-                }
+                    if (meta.slot) {
+                        let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(name); actionGroup.appendChild(b);
+                    } else if (meta.type === 'consumable') {
+                        let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'unidentified') {
+                        let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'fragment') {
+                        let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(name, 'fuse'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'misc') {
+                        let b = document.createElement("button"); b.textContent = "分解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'material') {
+                        let b = document.createElement("button"); b.textContent = "變賣(10石)"; b.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(b);
+                    }
 
-                top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
-            });
+                    top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
+                });
+            } else {
+                let div = document.createElement("div"); div.style.color = "#888"; div.textContent = "背包為空";
+                invBox.appendChild(div);
+            }
         }
 
         const isEnabled = gameState.hasChosenOrigin && !gameState.isDead;
@@ -2428,29 +2592,143 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v502_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
-    function loadGameState() {
-        const saved = localStorage.getItem("blade_v502_save") || localStorage.getItem("blade_v501_save") || localStorage.getItem("blade_v500_save");
-        if (saved) {
-            try {
-                const pkg = JSON.parse(saved);
-                gameState = normalizeGameState(pkg.state);
-                storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
-                if (storyLogData.length > 100) storyLogData = storyLogData.slice(-100);
-                conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
-                if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
-            } catch (e) {
-                gameState = getDefaultGameState();
-                storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
-            }
-        } else {
-            gameState = getDefaultGameState();
-            storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
+function saveGameState() {
+    const payload = {
+        state: gameState,
+        logs: storyLogData,
+        history: conversationHistory
+    };
+
+    console.trace("[存檔追蹤] saveGameState() 被呼叫", {
+        inventoryCount: Array.isArray(gameState?.inventory)
+            ? gameState.inventory.length
+            : "非陣列",
+        itemNames: Array.isArray(gameState?.inventory)
+            ? gameState.inventory.map(item =>
+                typeof item === "string" ? item : item?.name
+            )
+            : [],
+        logsCount: Array.isArray(storyLogData)
+            ? storyLogData.length
+            : "非陣列",
+        historyCount: Array.isArray(conversationHistory)
+            ? conversationHistory.length
+            : "非陣列"
+    });
+
+    localStorage.setItem(
+        "blade_v600_save",
+        JSON.stringify(payload)
+    );
+}
+
+    
+    
+function loadGameState() {
+    const saveKey = [
+        "blade_v600_save",
+        "blade_v503_save",
+        "blade_v502_save"
+    ];
+
+    let saved = null;
+    let usedKey = null;
+
+    for (const key of saveKey) {
+        const value = localStorage.getItem(key);
+        if (value) {
+            saved = value;
+            usedKey = key;
+            break;
         }
+    }
+
+    if (!saved) {
+        console.info("[存檔診斷] 找不到既有存檔，初始化新遊戲。");
+        gameState = getDefaultGameState();
+        storyLogData = [{
+            role: "天道",
+            content: DEFAULT_WELCOME_MSG,
+            type: "ai"
+        }];
+        conversationHistory = [];
+    } else {
+        let step = "開始解析 JSON";
+
+        try {
+            console.info("[存檔診斷] 找到存檔：", usedKey);
+            const pkg = JSON.parse(saved);
+
+            if (!pkg || typeof pkg !== "object" || !pkg.state) {
+                throw new Error("存檔缺少有效的 state 欄位");
+            }
+
+            step = "normalizeGameState";
+console.info('[診斷 A] 原始存檔', {
+    version: pkg.state?.version,
+    inventory: pkg.state?.inventory,
+    logsCount: pkg.logs?.length,
+    historyCount: pkg.history?.length
+});
+
+            
+const loadedState = normalizeGameState(pkg.state);
+
+console.info('[診斷 B] 正規化後', {
+    version: loadedState.version,
+    inventory: loadedState.inventory,
+    maxHp: loadedState.maxHp,
+    maxAge: loadedState.maxAge
+});
+
+            step = "載入劇情紀錄";
+            const loadedLogs = Array.isArray(pkg.logs)
+                ? pkg.logs.slice(-100)
+                : [{
+                    role: "天道",
+                    content: DEFAULT_WELCOME_MSG,
+                    type: "ai"
+                }];
+
+            step = "載入對話歷史";
+            const loadedHistory = Array.isArray(pkg.history)
+                ? pkg.history.slice(-20)
+                : [];
+
+            // 所有資料成功處理後，才一次套用至遊戲狀態。
+            gameState = loadedState;
+            storyLogData = loadedLogs;
+            conversationHistory = loadedHistory;
+
+            console.info("[存檔診斷] 載入成功。", {
+                key: usedKey,
+                inventoryCount: gameState.inventory?.length,
+                logsCount: storyLogData.length,
+                historyCount: conversationHistory.length
+            });
+        } catch (e) {
+            console.error("[存檔載入失敗]", {
+                step,
+                key: usedKey,
+                error: e?.stack || e?.message || String(e),
+                savedLength: saved.length,
+                saveStillExists: localStorage.getItem(usedKey) !== null
+            });
+
+            // 不在此處重設遊戲，也不覆寫原始存檔。
+            // 保留錯誤資訊供診斷。
+            return;
+        }
+    }
+
+    try {
         renderUI();
         renderStoryLogs();
+    } catch (e) {
+        console.error("[存檔載入後畫面渲染失敗]", e?.stack || e);
     }
+}
 
     function exportSave() {
         try {
@@ -2500,9 +2778,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v600_save");
+            localStorage.removeItem("blade_v503_save");
             localStorage.removeItem("blade_v502_save");
-            localStorage.removeItem("blade_v501_save");
-            localStorage.removeItem("blade_v500_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
