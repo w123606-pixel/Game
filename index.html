@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.99 狀態同步修復版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V5.00 硬核融合與淨化版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -77,8 +77,8 @@
         .choice-btn:active:not(:disabled), .sys-btn:active:not(:disabled) { background: var(--border-gold); color: #000; }
         
         .input-group { display: flex; gap: 6px; }
-        input[type="text"] { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
-        input[type="text"]:focus { border-color: var(--border-gold); }
+        input[type="text"], select.fusion-select { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
+        input[type="text"]:focus, select.fusion-select:focus { border-color: var(--border-gold); }
         button.primary-btn { background: var(--border-gold); color: #000; min-width: 90px; border: none; font-weight: bold; border-radius: 4px; min-height: 44px; cursor: pointer;}
         button.primary-btn:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none; }
@@ -126,7 +126,7 @@
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .modal-card {
             background: #12141d; border: 1px solid var(--border-gold);
-            border-radius: 8px; width: 100%; max-width: 420px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px);
+            border-radius: 8px; width: 100%; max-width: 440px; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px);
             box-sizing: border-box; padding: 16px; min-height: 0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 10px;
             overflow-y: auto; overscroll-behavior: contain;
@@ -214,7 +214,10 @@
         </div>
 
         <div id="tab-skills" class="tab-content">
-            <h2>💫 狀態效果 (屬性連動 · 上限 5 項)</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h2 style="margin:0;">💫 狀態效果 (上限 5 項)</h2>
+                <button class="sys-btn" style="padding:4px 10px; min-height:32px; font-size:0.78rem;" onclick="openFusionModal()">🌀 絕學推演融合</button>
+            </div>
             <div id="ui-status" class="scroll-list"></div>
             <h2>📖 主修心法 (容量 3 門 · 運轉 1 門 · 五行相剋)</h2>
             <div id="ui-kungfu-active" style="background:#0a0b10; border:1px solid var(--border-gold); padding:8px; border-radius:4px; margin-bottom:8px; font-size:0.85rem; color:var(--hl-cyan);">• 尚未運轉任何心法</div>
@@ -264,7 +267,7 @@
             <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);"></div>
             <h2>👥 結識人物 (同區域當面 / 異地飛劍傳訊)</h2>
             <div id="ui-npcs-list" style="margin-bottom:10px;"></div>
-            <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (劇情錨點 · 50條上限)</h2>
+            <h2 style="margin-top:10px; color:#ffd700;">🌍 世界紀事 (世界大事錨點 · 50條上限)</h2>
             <div id="ui-world-events" class="scroll-list" style="color: #c5a059;"></div>
         </div>
 
@@ -355,6 +358,7 @@
         "修羅煞氣 (凶戾之氣)": { str: 8, con: 4, luk: -2, desc: "膂力+8, 根骨+4, 氣運-2" },
         "家族血脈殘脈": { wis: 5, int: 5, luk: 2, desc: "悟性+5, 神識+5, 氣運+2" },
         "經脈震盪": { str: -5, agi: -5, desc: "強行催動高階招式反噬，膂力/身法衰減" },
+        "走火入魔": { str: -10, con: -10, wis: -10, desc: "強行推演融合失敗反噬，全屬性受創" },
         "頓悟": { wis: 15, int: 10, desc: "悟性+15, 神識+10 (修為收益暴增)" },
         "氣血充沛": { str: 5, con: 5, desc: "膂力+5, 根骨+5" },
         "輕傷": { str: -2, con: -2, agi: -1, desc: "膂力-2, 根骨-2, 身法-1" },
@@ -376,7 +380,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.99",
+            version: "5.00",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -475,7 +479,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.99",
+            version: "5.00",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -568,14 +572,14 @@
         else if (/(極|天龍|紫金)/.test(clean)) tierKey = '極品';
         else if (/(上|玄|地|靈|赤)/.test(clean)) tierKey = '上品';
         else if (/(中|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
-        else if (/(黑|鐵|木|粗|劣|破|鏽|舊|下)/.test(clean)) tierKey = '下品';
+        else if (/(黑|鐵|木|粗|劣|破|鏽|舊|下|骨角|殘材)/.test(clean)) tierKey = '下品';
         else if (/(凡|普通)/.test(clean)) tierKey = '凡品';
 
         const rarity = RARITY_TIERS[tierKey];
 
         if (/未鑑定|蒙塵/.test(clean)) return { type: 'unidentified', name: clean, rarity: '凡品', rarityColor: '#888', desc: "蒙塵古物，點擊【鑑定】解鎖真面目" };
         if (/殘片|碎片|廢寶/.test(clean)) return { type: 'fragment', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "湊齊 3 個可【熔煉/拼湊】合成完整古寶" };
-        if (/材料|精金|靈鐵|礦石|草藥|粉末/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "煉器鍛造材料，可於坊市變賣換取靈石" };
+        if (/材料|精金|靈鐵|礦石|草藥|粉末|粗鐵胚料|精鋼材料|殘材|精粹/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "煉器鍛造材料，可於坊市變賣換取靈石" };
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
         if (/培元丹|療傷丹|回春丹|金創藥|凝血草/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
         if (/秘笈|殘篇|古籍|心法|功法/.test(clean)) return { type: 'book', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "點擊【參悟】學習對應功法招式" };
@@ -1015,11 +1019,232 @@
         renderUI(); saveGameState();
     }
 
+    function forgetKungfu(name) {
+        if (confirm(`確定要【遺忘】主修心法《${name}》嗎？將清出 1 個心法欄位，累積的熟練度與運轉效果將廢除！`)) {
+            if (gameState.activeKungfu && gameState.activeKungfu.name === name) {
+                gameState.activeKungfu = null;
+            }
+            gameState.kungfu = gameState.kungfu.filter(k => k.name !== name);
+            renderUI(); saveGameState();
+        }
+    }
+
     function forgetSkill(name) {
         if (confirm(`確定要【遺忘】招式《${name}》嗎？累積的熟練度將歸零，清出招式欄位！`)) {
             gameState.skills = gameState.skills.filter(s => s.name !== name);
             renderUI(); saveGameState();
         }
+    }
+
+    /* 🌀 絕學推演融合 modal 邏輯 */
+    function openFusionModal() {
+        if (gameState.isDead) return;
+        
+        const container = document.createElement("div");
+        container.style.display = "flex";
+        container.style.flexDirection = "column";
+        container.style.gap = "10px";
+
+        // 選擇類型
+        const typeLabel = document.createElement("div");
+        typeLabel.innerHTML = `<b>1. 選擇推演目標種類：</b>`;
+        container.appendChild(typeLabel);
+
+        const typeSelect = document.createElement("select");
+        typeSelect.className = "fusion-select";
+        typeSelect.innerHTML = `<option value="skill">⚔️ 術法招式</option><option value="kungfu">📖 主修心法</option>`;
+        container.appendChild(typeSelect);
+
+        const listContainer = document.createElement("div");
+        listContainer.style.display = "flex";
+        listContainer.style.flexDirection = "column";
+        listContainer.style.gap = "8px";
+        container.appendChild(listContainer);
+
+        function updateFusionList() {
+            listContainer.innerHTML = "";
+            const isKungfu = typeSelect.value === 'kungfu';
+            const pool = isKungfu ? gameState.kungfu : gameState.skills;
+            // 門檻：必須熟練度 >= 登堂入室 (index >= 1)
+            const qualified = pool.filter(x => SKILL_STAGES.indexOf(x.realm || "初窺門徑") >= 1);
+
+            if (qualified.length < 2) {
+                listContainer.innerHTML = `<div style="color:var(--accent-red); font-size:0.82rem; padding:8px; background:#2a1515; border-radius:4px;">
+                    ⚠️ 缺乏足夠熟練度的絕學！推演融合需要至少 2 門熟練度達到<b>【登堂入室】</b>以上的${isKungfu ? '心法' : '招式'}。請先對絕學點擊【參悟】進行修練！
+                </div>`;
+                return;
+            }
+
+            const selA = document.createElement("select");
+            selA.className = "fusion-select";
+            const selB = document.createElement("select");
+            selB.className = "fusion-select";
+
+            qualified.forEach((item, idx) => {
+                const meta = getItemMeta(item.name);
+                const optA = document.createElement("option");
+                optA.value = item.name;
+                optA.textContent = `絕學 A: [${meta.rarity}] ${item.name} (${item.realm})`;
+                selA.appendChild(optA);
+
+                const optB = document.createElement("option");
+                optB.value = item.name;
+                optB.textContent = `絕學 B: [${meta.rarity}] ${item.name} (${item.realm})`;
+                selB.appendChild(optB);
+            });
+
+            if (selB.options.length > 1) selB.selectedIndex = 1;
+
+            const previewBox = document.createElement("div");
+            previewBox.style.fontSize = "0.8rem";
+            previewBox.style.padding = "8px";
+            previewBox.style.background = "#0a0b10";
+            previewBox.style.border = "1px solid var(--ui-border)";
+            previewBox.style.borderRadius = "4px";
+
+            function calcFusionPreview() {
+                const nameA = selA.value;
+                const nameB = selB.value;
+                if (nameA === nameB) {
+                    previewBox.innerHTML = `<span style="color:var(--accent-red)">⚠️ 請選擇兩門不同的絕學進行融合！</span>`;
+                    return;
+                }
+                const metaA = getItemMeta(nameA);
+                const metaB = getItemMeta(nameB);
+                
+                const rarities = ['凡品', '下品', '中品', '上品', '極品', '仙品'];
+                const rankA = rarities.indexOf(metaA.rarity);
+                const rankB = rarities.indexOf(metaB.rarity);
+                const gap = Math.abs(rankA - rankB);
+
+                if (gap >= 2) {
+                    const highName = rankA > rankB ? nameA : nameB;
+                    const lowName = rankA > rankB ? nameB : nameA;
+                    previewBox.innerHTML = `<div style="color:var(--hl-gold)"><b>🔥 觸發 [高階吞噬] 模式</b></div>
+                    <div>高階絕學《${highName}》將吞噬低階絕學《${lowName}》的真氣。</div>
+                    <div>• 成功率：<b>100%</b> (無走火入魔風險)</div>
+                    <div>• 結果：低階絕學消失（騰出 1 欄位），高階絕學獲得大量 EXP。</div>
+                    <div>• 消耗：30 靈石, 20% 最大 HP</div>`;
+                } else {
+                    let rate = 70;
+                    let descText = "屬性互補，適合推演新複合絕學。";
+                    if (/(火|雷)/.test(nameA) && /(水|冰)/.test(nameB) || /(水|冰)/.test(nameA) && /(火|雷)/.test(nameB)) {
+                        rate = 35;
+                        descText = "🔥💧 水火劇烈相剋！推演極度危險，失敗將走火入魔！";
+                    } else if (/(風|火)/.test(nameA) && /(風|火)/.test(nameB)) {
+                        rate = 85;
+                        descText = "🌀🔥 風火相生！推演極易爆發威力。";
+                    }
+
+                    previewBox.innerHTML = `<div><b>推演預測：</b>${descText}</div>
+                    <div>• 預估成功率：<b>${rate}%</b></div>
+                    <div>• 成功產出：融合成更高階的全新雙屬性絕學 (並清出 1 個欄位)</div>
+                    <div>• 失敗反噬：扣除 40% HP，獲得【走火入魔】負面狀態</div>
+                    <div>• 消耗：50 靈石, 20% 最大 HP, 疲勞 +30</div>`;
+                }
+            }
+
+            selA.onchange = calcFusionPreview;
+            selB.onchange = calcFusionPreview;
+            calcFusionPreview();
+
+            listContainer.appendChild(document.createTextNode("選擇主絕學 A："));
+            listContainer.appendChild(selA);
+            listContainer.appendChild(document.createTextNode("選擇副絕學 B："));
+            listContainer.appendChild(selB);
+            listContainer.appendChild(previewBox);
+
+            const confirmBtn = document.createElement("button");
+            confirmBtn.className = "modal-btn primary";
+            confirmBtn.style.marginTop = "6px";
+            confirmBtn.textContent = "🔥 開始閉關推演融合";
+            confirmBtn.onclick = () => {
+                if (selA.value === selB.value) {
+                    alert("請選擇兩門不同的絕學！");
+                    return;
+                }
+                executeFusion(selA.value, selB.value, isKungfu);
+                closeGameModal();
+            };
+            listContainer.appendChild(confirmBtn);
+        }
+
+        typeSelect.onchange = updateFusionList;
+        updateFusionList();
+
+        openGameModal("🌀 絕學推演融合", container);
+    }
+
+    function executeFusion(nameA, nameB, isKungfu) {
+        const metaA = getItemMeta(nameA);
+        const metaB = getItemMeta(nameB);
+        const rarities = ['凡品', '下品', '中品', '上品', '極品', '仙品'];
+        const rankA = rarities.indexOf(metaA.rarity);
+        const rankB = rarities.indexOf(metaB.rarity);
+        const gap = Math.abs(rankA - rankB);
+
+        const stoneCost = gap >= 2 ? 30 : 50;
+        if (gameState.spiritStone < stoneCost) {
+            openGameModal("⚠️ 靈石不足", `閉關推演需要支付 <b>${stoneCost} 顆靈石</b> 作為護法陣法材料！`);
+            return;
+        }
+
+        gameState.spiritStone -= stoneCost;
+        const hpDmg = Math.floor(getMaxHp(gameState) * 0.20);
+        gameState.hp = Math.max(1, gameState.hp - hpDmg);
+        gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + 30);
+
+        let list = isKungfu ? gameState.kungfu : gameState.skills;
+
+        if (gap >= 2) {
+            // 高階吞噬
+            const highName = rankA > rankB ? nameA : nameB;
+            const lowName = rankA > rankB ? nameB : nameA;
+
+            let highItem = list.find(x => x.name === highName);
+            list = list.filter(x => x.name !== lowName);
+            if (isKungfu) gameState.kungfu = list; else gameState.skills = list;
+
+            if (highItem) {
+                highItem.exp = (highItem.exp || 0) + 1500;
+            }
+
+            appendLogData("天道", `✨ 【高階吞噬】你運轉真氣，將低階絕學《${lowName}》的真氣精粹徹底吞噬，併入高階絕學《${highName}》之中（獲得 1500 熟練度），並騰出了 1 個絕學欄位！`, "ai", false, true);
+        } else {
+            let successRate = 0.70;
+            if (/(火|雷)/.test(nameA) && /(水|冰)/.test(nameB) || /(水|冰)/.test(nameA) && /(火|雷)/.test(nameB)) {
+                successRate = 0.35;
+            } else if (/(風|火)/.test(nameA) && /(風|火)/.test(nameB)) {
+                successRate = 0.85;
+            }
+
+            const isSuccess = Math.random() < successRate;
+
+            if (isSuccess) {
+                list = list.filter(x => x.name !== nameA && x.name !== nameB);
+                
+                const targetRankIdx = Math.min(rarities.length - 1, Math.max(rankA, rankB) + 1);
+                const nextTierName = rarities[targetRankIdx];
+
+                const fusedName = `[${nextTierName}] ${nameA.slice(0, 2)}${nameB.slice(-2)}絕煞術`;
+                const newTech = { name: cleanNameStrict(fusedName), realm: "登堂入室", exp: 0 };
+
+                list.push(newTech);
+                if (isKungfu) gameState.kungfu = list; else gameState.skills = list;
+
+                appendLogData("天道", `🎉 【推演成功】福至心靈！你耗費無數真氣，將《${nameA}》與《${nameB}》融會貫通，自創出全新更高階絕學《${newTech.name}》！兩門舊絕學化作養分消散，騰出 1 個欄位！`, "ai", false, true);
+            } else {
+                const extraDmg = Math.floor(getMaxHp(gameState) * 0.20);
+                gameState.hp = Math.max(1, gameState.hp - extraDmg);
+                if (!gameState.status.includes("走火入魔")) {
+                    gameState.status.push("走火入魔");
+                }
+                appendLogData("天道", `🔥 【走火入魔】兩種強大真氣在體內劇烈衝撞，推演失敗！你吐血倒地（額外 HP -${extraDmg}），陷入【走火入魔】狀態！`, "system", false, true);
+            }
+        }
+
+        renderUI();
+        saveGameState();
     }
 
     function interactInventoryItem(name, action) {
@@ -1049,14 +1274,57 @@
             gameState.inventory.push(cleanNameStrict(fusedName));
             openGameModal("🔮 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
         } else if (action === 'salvage') {
-            gameState.inventory.splice(idx, 1);
-            gameState.spiritStone += 20;
-            gameState.inventory.push("精金靈鐵材料");
-            openGameModal("🔨 廢寶分解", `將淘汰廢寶分解，獲得 20 顆下品靈石與精金靈鐵材料！`);
+            // 跳出二次確認對話框 (Modal)
+            let resultStone = 3;
+            let resultItem = "粗鐵胚料";
+            if (meta.rarity === '下品' || meta.rarity === '凡品') {
+                resultStone = 3;
+                resultItem = /(血|牙|骨|草|藥|肉|皮)/.test(name) ? "妖獸骨角殘材" : "粗鐵胚料";
+            } else if (meta.rarity === '中品') {
+                resultStone = 10;
+                resultItem = /(血|牙|骨|草|藥|肉|皮)/.test(name) ? "中品妖獸精粹" : "精鋼材料";
+            } else {
+                resultStone = 25;
+                resultItem = "靈金淬鍊石";
+            }
+
+            const bodyContainer = document.createElement("div");
+            bodyContainer.innerHTML = `確定要拆解分解<b>【[${meta.rarity}] ${name}】</b>嗎？<br><br>
+            🛠️ <b>預計獲得產出：</b><br>
+            • 下品靈石 x${resultStone}<br>
+            • [${meta.rarity}] ${resultItem} x1`;
+
+            const btnConfirm = document.createElement("button");
+            btnConfirm.className = "modal-btn primary";
+            btnConfirm.textContent = "🔨 確定分解";
+            btnConfirm.onclick = () => {
+                executeSalvageItem(name, resultStone, resultItem);
+                closeGameModal();
+            };
+
+            const btnCancel = document.createElement("button");
+            btnCancel.className = "modal-btn";
+            btnCancel.textContent = "❌ 取消退回";
+            btnCancel.onclick = closeGameModal;
+
+            openGameModal("🛠️ 物品分解確認", bodyContainer, [btnConfirm, btnCancel]);
+            return;
         } else if (action === 'sell') {
             gameState.inventory.splice(idx, 1);
             gameState.spiritStone += 10;
             openGameModal("💰 材料變賣", `將「${name}」賣給坊市商人，獲得 10 顆下品靈石！`);
+        }
+        renderUI(); saveGameState();
+    }
+
+    function executeSalvageItem(name, stoneGain, itemGain) {
+        const idx = gameState.inventory.indexOf(name);
+        if (idx === -1) return;
+
+        gameState.inventory.splice(idx, 1);
+        gameState.spiritStone += stoneGain;
+        if (itemGain) {
+            gameState.inventory.push(cleanNameStrict(itemGain));
         }
         renderUI(); saveGameState();
     }
@@ -1262,11 +1530,11 @@
 }
 \`\`\`
 ⚠️ 天道無情與降維打擊鐵律（絕對不可違背）：
-1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界（如凡人或練氣期初期）選擇正面硬剛、盲目挑釁高階修士時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須描繪其重傷或死亡。但若玩家採取智取、躲藏、血脈引導、老祖殘魂護主或合理逃生謀略，請給予合情合理的生存/轉機劇情，切勿無腦秒殺！
-2. 降維打擊與神識護體：面對元嬰期以上老怪，凡人與低階修士正面攻擊無效。但允許透過環境盲區、法寶殘留氣息或高階因果（如老祖殘魂被動護主）實現智取逃生。
-3. 嚴禁無中生有：禁止讓玩家在絕境中突然爆發莫名其妙的功法反殺。沒有對應道具或修為就是死路一條。生成 choices 選項時，若玩家背包無某物品（如凝血草、丹藥），絕對不可產生使用該物品的選項！
-4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"（物品名稱必須純淨，切勿帶有 [下品] 或 x1 等贅字）。
-5. 敘事與狀態一致性（嚴格限制）：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家已經突破境界或升級，只能描述「感受到靈氣流動、修為圓滿、瓶頸鬆動」，必須將真正的突破與等級提升交給系統機制判定！`; 
+1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界選擇正面硬剛高階修士時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須描繪其重傷或死亡。
+2. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"（物品名稱必須純淨，切勿帶有 [下品] 或 x1 等贅字）。
+3. 嚴禁無中生有：生成 choices 選項時，若玩家背包無某物品（如凝血草、丹藥），絕對不可產生使用該物品的選項！
+4. 世界紀事 (worldEvents) 嚴格過濾鐵律：嚴禁將「偷襲野豬、登高遠眺、練氣小層數突破、獵殺低階妖獸、撤離、調息」等小事寫入 worldEvents！worldEvents 只許記錄影響九州局勢的大事（例如：成功築基/結丹/元嬰大境界跨越、宗門滅門、斬殺要角、獲得太古傳承）。若無大事，worldEvents 必須回傳空陣列 []！
+5. 敘事與狀態一致性：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家升級！`; 
     }
 
     function parseApiResponse(text) {
@@ -1420,15 +1688,19 @@
             });
         }
 
+        /* 招式/功法防抓取系統公告優化 */
         const techniqueRegex = /[《【]([^》】]+)[》】]/g;
         let match;
         const foundInText = [];
-        const actionBlacklist = /^(當面伏擊|忍辱賠罪|黑市懸賞|飛劍利誘|當面交涉|當面贈禮|飛劍傳書|跨空郵寄|閉關|死關|求醫|宗門任務|藏經閣|衝擊境界突破|盤膝運功|逃跑|求饒|智取|選擇身世|身世問心|江湖探索|運轉|參悟|遺忘|裝備|服下|鑑定|熔煉|分解|變賣)/;
+        const actionBlacklist = /^(當面伏擊|忍辱賠罪|黑市懸賞|飛劍利誘|當面交涉|當面贈禮|飛劍傳書|跨空郵寄|閉關|死關|求醫|宗門任務|藏經閣|衝擊境界突破|盤膝運功|逃跑|求饒|智取|選擇身世|身世問心|江湖探索|運轉|參悟|遺忘|裝備|服下|鑑定|熔煉|分解|變賣|系統提示|恭喜|突破|全方位|提升|獲得|成功|失敗|氣血|修為|屬性)/;
 
         while ((match = techniqueRegex.exec(storyText)) !== null) {
             let techName = cleanNameStrict(match[1]);
-            if (techName && !actionBlacklist.test(techName)) {
-                foundInText.push(techName);
+            // 名稱長度必須在 2 ~ 8 字之間，且不得包含系統提示關鍵字
+            if (techName && techName.length >= 2 && techName.length <= 8 && !actionBlacklist.test(techName)) {
+                if (!/(系統|提示|恭喜|突破|提升|全方位|宿主|層|Lv|HP|EXP|能力)/.test(techName)) {
+                    foundInText.push(techName);
+                }
             }
         }
 
@@ -1483,10 +1755,12 @@
             }
         });
 
+        /* 世界紀事瑣事嚴格黑名單過濾 */
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(we => {
                 let cleanWe = cleanNameStrict(we);
-                if (cleanWe && !/(吐納|打坐|恢復|受傷|微光|閃爍|慘案|滅門)/.test(cleanWe)) {
+                const trivialFilter = /(偷襲|登高|遠眺|練氣|擊殺|獵殺|撤離|微幅|掌握|踏入|成功|避開|轉移|調息|壓制|失敗|擺脫|搜查|洗髓|初現|第一波|穩固|沉澱|尋獲|降臨|獲得)/;
+                if (cleanWe && !trivialFilter.test(cleanWe)) {
                     if (!s.worldEvents.includes(cleanWe)) s.worldEvents.unshift(cleanWe);
                 }
             });
@@ -1940,8 +2214,11 @@
                     btnRun.onclick = () => setActiveKungfu(k.name);
                     let btnPrac = document.createElement("button"); btnPrac.textContent = "參悟";
                     btnPrac.onclick = () => practiceTechnique('kungfu', k.name);
+                    let btnForget = document.createElement("button"); btnForget.textContent = "遺忘";
+                    btnForget.style.background = "#4a1515";
+                    btnForget.onclick = () => forgetKungfu(k.name);
 
-                    actions.appendChild(btnRun); actions.appendChild(btnPrac);
+                    actions.appendChild(btnRun); actions.appendChild(btnPrac); actions.appendChild(btnForget);
                     top.appendChild(span); top.appendChild(actions);
 
                     let unsealDesc = document.createElement("div");
@@ -2103,10 +2380,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v499_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v500_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v499_save") || localStorage.getItem("blade_v498_save") || localStorage.getItem("blade_v497_save");
+        const saved = localStorage.getItem("blade_v500_save") || localStorage.getItem("blade_v499_save") || localStorage.getItem("blade_v498_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2175,9 +2452,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v500_save");
             localStorage.removeItem("blade_v499_save");
             localStorage.removeItem("blade_v498_save");
-            localStorage.removeItem("blade_v497_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
