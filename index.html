@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.97 突破死鎖與UI同步修復版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.98 經濟系統修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -255,7 +255,7 @@
                     <button id="btn-unequip-treasure" onclick="unequipItem('treasure')" style="font-size:0.7rem; padding:2px 4px;" disabled>卸下</button>
                 </div>
             </div>
-            <h2>🎒 道具背包 (互動/熔煉/鑑定/分解)</h2>
+            <h2>🎒 道具背包 (互動/熔煉/鑑定/分解/變賣)</h2>
             <div id="ui-inventory-list"></div>
         </div>
 
@@ -376,7 +376,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.97",
+            version: "4.98",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -475,7 +475,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.97",
+            version: "4.98",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -570,6 +570,7 @@
 
         if (/未鑑定|蒙塵/.test(clean)) return { type: 'unidentified', name: clean, rarity: '凡品', rarityColor: '#888', desc: "蒙塵古物，點擊【鑑定】解鎖真面目" };
         if (/殘片|碎片|廢寶/.test(clean)) return { type: 'fragment', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "湊齊 3 個可【熔煉/拼湊】合成完整古寶" };
+        if (/材料|精金|靈鐵|礦石|草藥|粉末/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "煉器鍛造材料，可於坊市變賣換取靈石" };
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
         if (/培元丹|療傷丹|回春丹|金創藥/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
         if (/秘笈|殘篇|古籍|心法|功法/.test(clean)) return { type: 'book', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "點擊【參悟】學習對應功法招式" };
@@ -600,7 +601,7 @@
             return { type: 'equipment', slot: 'treasure', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: hp, intBonus: intBonus, wisBonus: wis, desc: `HP +${hp}, 神識 +${intBonus}, 悟性 +${wis}` };
         }
 
-        return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: 0, desc: "普通修仙材料，可出售或分解" };
+        return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, hpBonus: 0, desc: "普通修仙雜物，可出售或分解" };
     }
 
     function getPhysiqueMeta(physiqueInput) {
@@ -791,7 +792,6 @@
         } catch (e) { console.error(e); }
     }
 
-    // 🌟【V4.97 重大修復】：優先尊重 AI 回傳的 scenarioMode 系統狀態，消除文字誤判死鎖
     function getEffectiveMode(s = gameState) {
         if (s.isDead) return "DEAD";
         if (s.activeThreats && s.activeThreats.length > 0) return "DANGER";
@@ -1048,6 +1048,10 @@
             gameState.spiritStone += 20;
             gameState.inventory.push("精金靈鐵材料");
             openGameModal("🔨 廢寶分解", `將淘汰廢寶分解，獲得 20 顆下品靈石與精金靈鐵材料！`);
+        } else if (action === 'sell') {
+            gameState.inventory.splice(idx, 1);
+            gameState.spiritStone += 10;
+            openGameModal("💰 材料變賣", `將「${name}」賣給坊市商人，獲得 10 顆下品靈石！`);
         }
         renderUI(); saveGameState();
     }
@@ -1136,7 +1140,6 @@
         else if (type === 'library') sendAction("【前往宗門藏經閣參悟功法】");
     }
 
-    // 🌟【V4.97 重大修復】：優化突破流程，避免與歷史戰鬥內文產生衝突死鎖
     function attemptBreakthrough() {
         if (gameState.isDead) return;
         if (gameState.level >= REALMS.length - 1) {
@@ -1632,7 +1635,6 @@
     function renderUI() {
         checkLifeStatus(gameState);
 
-        // 🌟【V4.97 重大修復】：畫面上方 scenarioMode 狀態標籤同步刷新
         const currentMode = getEffectiveMode(gameState);
         const modeBadge = document.getElementById("ui-scenario-mode");
         if (modeBadge) {
@@ -2010,6 +2012,8 @@
                     let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(name, 'fuse'); actionGroup.appendChild(b);
                 } else if (meta.type === 'misc') {
                     let b = document.createElement("button"); b.textContent = "分解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
+                } else if (meta.type === 'material') {
+                    let b = document.createElement("button"); b.textContent = "變賣(10石)"; b.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(b);
                 }
 
                 top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
@@ -2064,10 +2068,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v497_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v498_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v497_save") || localStorage.getItem("blade_v496_save") || localStorage.getItem("blade_v495_save");
+        const saved = localStorage.getItem("blade_v498_save") || localStorage.getItem("blade_v497_save") || localStorage.getItem("blade_v496_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2136,9 +2140,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v498_save");
             localStorage.removeItem("blade_v497_save");
             localStorage.removeItem("blade_v496_save");
-            localStorage.removeItem("blade_v495_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
