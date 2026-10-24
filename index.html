@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V4.98 經濟系統修復版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V4.99 狀態同步修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -376,7 +376,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "4.98",
+            version: "4.99",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -475,7 +475,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "4.98",
+            version: "4.99",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -518,7 +518,7 @@
             kungfu: Array.isArray(raw.kungfu) ? raw.kungfu : [],
             skills: Array.isArray(raw.skills) ? raw.skills : [],
             equipment: (raw.equipment && typeof raw.equipment === 'object') ? raw.equipment : { weapon: null, armor: null, accessory: null, treasure: null },
-            inventory: Array.isArray(raw.inventory) ? raw.inventory.map(cleanNameStrict) : [],
+            inventory: Array.isArray(raw.inventory) ? raw.inventory.map(cleanNameStrict).filter(Boolean) : [],
             npcs: Array.isArray(raw.npcs) ? raw.npcs.map(n => {
                 if (typeof n === 'string') return { name: cleanNameStrict(n), location: cleanNameStrict(raw.location) || "九州邊境", favor: -80, relation: "生死仇敵" };
                 const fav = safeNumber(n.favor, -80, -100, 100);
@@ -551,7 +551,12 @@
 
     function cleanNameStrict(rawName) {
         if (!rawName) return "";
-        return String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName).replace(/[《》『』【】"'‘“’”<>&]/g, '').trim();
+        let str = String(typeof rawName === 'object' ? (rawName.name || rawName.title || "") : rawName);
+        return str
+            .replace(/\[(凡品|下品|中品|上品|極品|仙品)\]/g, '')
+            .replace(/\s*x\d+$/gi, '')
+            .replace(/[《》『』【】"'‘“’”<>&]/g, '')
+            .trim();
     }
 
     function getItemMeta(itemInput) {
@@ -572,7 +577,7 @@
         if (/殘片|碎片|廢寶/.test(clean)) return { type: 'fragment', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "湊齊 3 個可【熔煉/拼湊】合成完整古寶" };
         if (/材料|精金|靈鐵|礦石|草藥|粉末/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "煉器鍛造材料，可於坊市變賣換取靈石" };
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: Math.floor(30 * rarity.mult), hpGain: 0, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
-        if (/培元丹|療傷丹|回春丹|金創藥/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
+        if (/培元丹|療傷丹|回春丹|金創藥|凝血草/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, expGain: 0, hpGain: Math.floor(50 * rarity.mult), desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
         if (/秘笈|殘篇|古籍|心法|功法/.test(clean)) return { type: 'book', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "點擊【參悟】學習對應功法招式" };
         if (/符/.test(clean)) return { type: 'talisman', name: clean, rarity: rarity.name, rarityColor: rarity.color, desc: "危急時【催動】保命/逃跑" };
         
@@ -1031,7 +1036,7 @@
         } else if (action === 'identify') {
             gameState.inventory.splice(idx, 1);
             const identifiedName = name.replace("[未鑑定]", "").replace("蒙塵", "") + "古寶";
-            gameState.inventory.push(identifiedName);
+            gameState.inventory.push(cleanNameStrict(identifiedName));
             openGameModal("✨ 鑑定成功", `擦去歲月塵埃，揭曉古物真實面貌：<b>${identifiedName}</b>！`);
         } else if (action === 'fuse') {
             let count = gameState.inventory.filter(x => x === name).length;
@@ -1041,7 +1046,7 @@
                 if (rIdx !== -1) gameState.inventory.splice(rIdx, 1);
             }
             const fusedName = name.replace("殘片", "").replace("碎片", "") + "真寶";
-            gameState.inventory.push(fusedName);
+            gameState.inventory.push(cleanNameStrict(fusedName));
             openGameModal("🔮 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
         } else if (action === 'salvage') {
             gameState.inventory.splice(idx, 1);
@@ -1065,7 +1070,7 @@
         gameState.inventory.splice(idx, 1);
         if (gameState.equipment[meta.slot]) {
             const oldEq = gameState.equipment[meta.slot];
-            if (oldEq) gameState.inventory.push(typeof oldEq === 'object' ? oldEq.name : oldEq);
+            if (oldEq) gameState.inventory.push(cleanNameStrict(typeof oldEq === 'object' ? oldEq.name : oldEq));
         }
         gameState.equipment[meta.slot] = meta;
         renderUI(); saveGameState();
@@ -1074,7 +1079,7 @@
     function unequipItem(slot) {
         if (!gameState.equipment[slot]) return;
         const itemObj = gameState.equipment[slot];
-        const itemName = typeof itemObj === 'object' ? itemObj.name : itemObj;
+        const itemName = cleanNameStrict(typeof itemObj === 'object' ? itemObj.name : itemObj);
 
         gameState.inventory.push(itemName);
         gameState.equipment[slot] = null;
@@ -1165,7 +1170,6 @@
         baseRate = Math.max(0.01, baseRate - (toxin * 0.06));
 
         const isSuccess = Math.random() < baseRate;
-        const isNascentOrHigher = gameState.level >= 31; 
         const displayText = `【盤膝運功，衝擊突破至「${nextDef.name}」境界！（成功率：${Math.floor(baseRate * 100)}%）】`;
         
         let promptText = isSuccess 
@@ -1220,8 +1224,19 @@
     }
 
     function getSystemPrompt() { 
+        const invListStr = (gameState.inventory && gameState.inventory.length > 0) 
+            ? gameState.inventory.join('、') 
+            : '無';
+
         return `你現在是修仙RPG《九州裂天錄》中冷酷、絕對客觀、遵循弱肉強食法則的「天道」。
 在輸出 story 之前，你必須先在內部的 combatAnalysis 中進行冷酷客觀的戰力與境界邏輯檢視。
+
+【玩家實時狀態與背包資訊】
+• 當前境界：${gameState.realm} (Lv.${gameState.level})
+• 當前生命值：${gameState.hp} / ${getMaxHp(gameState)}
+• 當前背包物品：[${invListStr}]
+• 當前靈石：${gameState.spiritStone} 顆
+
 請回傳標準 JSON 格式：
 \`\`\`json
 {
@@ -1249,8 +1264,8 @@
 ⚠️ 天道無情與降維打擊鐵律（絕對不可違背）：
 1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界（如凡人或練氣期初期）選擇正面硬剛、盲目挑釁高階修士時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須描繪其重傷或死亡。但若玩家採取智取、躲藏、血脈引導、老祖殘魂護主或合理逃生謀略，請給予合情合理的生存/轉機劇情，切勿無腦秒殺！
 2. 降維打擊與神識護體：面對元嬰期以上老怪，凡人與低階修士正面攻擊無效。但允許透過環境盲區、法寶殘留氣息或高階因果（如老祖殘魂被動護主）實現智取逃生。
-3. 嚴禁無中生有：禁止讓玩家在絕境中突然爆發莫名其妙的功法反殺。沒有對應道具或修為就是死路一條。
-4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"。
+3. 嚴禁無中生有：禁止讓玩家在絕境中突然爆發莫名其妙的功法反殺。沒有對應道具或修為就是死路一條。生成 choices 選項時，若玩家背包無某物品（如凝血草、丹藥），絕對不可產生使用該物品的選項！
+4. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"（物品名稱必須純淨，切勿帶有 [下品] 或 x1 等贅字）。
 5. 敘事與狀態一致性（嚴格限制）：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家已經突破境界或升級，只能描述「感受到靈氣流動、修為圓滿、瓶頸鬆動」，必須將真正的突破與等級提升交給系統機制判定！`; 
     }
 
@@ -1405,11 +1420,16 @@
             });
         }
 
-        const techniqueRegex = /《([^》]+)》/g;
+        const techniqueRegex = /[《【]([^》】]+)[》】]/g;
         let match;
         const foundInText = [];
+        const actionBlacklist = /^(當面伏擊|忍辱賠罪|黑市懸賞|飛劍利誘|當面交涉|當面贈禮|飛劍傳書|跨空郵寄|閉關|死關|求醫|宗門任務|藏經閣|衝擊境界突破|盤膝運功|逃跑|求饒|智取|選擇身世|身世問心|江湖探索|運轉|參悟|遺忘|裝備|服下|鑑定|熔煉|分解|變賣)/;
+
         while ((match = techniqueRegex.exec(storyText)) !== null) {
-            foundInText.push(cleanNameStrict(match[1]));
+            let techName = cleanNameStrict(match[1]);
+            if (techName && !actionBlacklist.test(techName)) {
+                foundInText.push(techName);
+            }
         }
 
         let allGainedTechs = [];
@@ -1437,7 +1457,7 @@
             } else if (explicitType === 'skill') {
                 isKungfu = false;
             } else {
-                if (/(劍|刀|槍|戟|拳|掌|指|腿|步|遁|印|斬|殺|刺|弓|鞭)/.test(name)) {
+                if (/(劍|刀|槍|戟|拳|掌|指|腿|步|遁|印|斬|殺|刺|弓|鞭|術|球)/.test(name)) {
                     isKungfu = false;
                 } 
                 else if (/(功|經|心法|真解|大法|吐納)/.test(name)) {
@@ -1528,6 +1548,17 @@
         
         if (gameState.level < 10 && isOverlevelDanger) {
             promptToSend += `\n[系統絕對強制盲裁指令：玩家當前境界（Lv.${gameState.level}）與強敵或高階修士差距過大！此正面硬剛行為判定 100% 失敗。強制設定 isDead: true, hpChange: -999。請你作為冷酷天道，描繪其遭神識或護體罡氣直接秒殺的慘烈過程。]`;
+        }
+
+        const consumeMatch = actionText.match(/(?:吞服|使用|服下|食用|吃掉|服用)\s*([^\s,，。!！]+)/);
+        if (consumeMatch) {
+            const targetItem = cleanNameStrict(consumeMatch[1]);
+            const invIdx = gameState.inventory.findIndex(item => cleanNameStrict(item) === targetItem);
+            if (invIdx !== -1) {
+                gameState.inventory.splice(invIdx, 1);
+            } else {
+                promptToSend += `\n[系統絕對強制指令：玩家背包中並無「${targetItem}」（可能已被分解/消耗或根本未擁有）。請生動描繪玩家伸手摸索背包/懷中發現空無一物、無法使用該物品的窘境。絕對禁止在 gainedItems 中新增或補發該物品！]`;
+            }
         }
 
         if (/(突破|衝擊|升級|破關|築基|結丹|化神)/.test(actionText) && !eventMeta) {
@@ -1994,7 +2025,11 @@
         if (invBox) {
             invBox.innerHTML = "";
             let counts = {};
-            gameState.inventory.forEach(i => counts[i] = (counts[i] || 0) + 1);
+            gameState.inventory.forEach(i => {
+                const cleaned = cleanNameStrict(i);
+                if (cleaned) counts[cleaned] = (counts[cleaned] || 0) + 1;
+            });
+
             Object.entries(counts).forEach(([name, qty]) => {
                 const meta = getItemMeta(name);
                 let row = document.createElement("div"); row.className = "item-row";
@@ -2068,10 +2103,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v498_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v499_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v498_save") || localStorage.getItem("blade_v497_save") || localStorage.getItem("blade_v496_save");
+        const saved = localStorage.getItem("blade_v499_save") || localStorage.getItem("blade_v498_save") || localStorage.getItem("blade_v497_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2140,9 +2175,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v499_save");
             localStorage.removeItem("blade_v498_save");
             localStorage.removeItem("blade_v497_save");
-            localStorage.removeItem("blade_v496_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
