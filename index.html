@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V5.01 物品自動辨識版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V5.02 物品自動賣出扣除版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -380,7 +380,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "5.01",
+            version: "5.02",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -479,7 +479,7 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
         return {
-            version: "5.01",
+            version: "5.02",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1521,6 +1521,7 @@
   "activeThreats": [],
   "hpChange": 0, "expReward": 20, "stoneChange": 0,
   "gainedItems": [], 
+  "lostItems": [],
   "usedTechniques": [],
   "currentStatus": ["氣血平穩"], 
   "sect": {"name": "無", "rank": "散修", "contribution": 0},
@@ -1531,7 +1532,7 @@
 \`\`\`
 ⚠️ 天道無情與降維打擊鐵律（絕對不可違背）：
 1. 嚴禁討好玩家（Sycophancy）：絕不給予任何主角光環。若玩家以低境界選擇正面硬剛高階修士時，combatAnalysis 必須判定 "isOverlevelBruteForce": true，且 story 必須描繪其重傷或死亡。
-2. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"，故事內文獲得一般物品時請統一用「...」標記（物品名稱必須純淨，切勿帶有 [下品] 或 x1 等贅字）。
+2. 實戰與物品同步：獲得物品須如實寫入 "gainedItems"；賣出、消耗、贈送或失去物品時，務必將品名寫入 "lostItems"（物品名稱必須純淨，切勿帶有 [下品] 或 x1 等贅字）。故事內文提及物品時請統一用「...」標記。
 3. 嚴禁無中生有：生成 choices 選項時，若玩家背包無某物品（如凝血草、丹藥），絕對不可產生使用該物品的選項！
 4. 世界紀事 (worldEvents) 嚴格過濾鐵律：嚴禁將「偷襲野豬、登高遠眺、練氣小層數突破、獵殺低階妖獸、撤離、調息」等小事寫入 worldEvents！worldEvents 只許記錄影響九州局勢的大事（例如：成功築基/結丹/元嬰大境界跨越、宗門滅門、斬殺要角、獲得太古傳承）。若無大事，worldEvents 必須回傳空陣列 []！
 5. 敘事與狀態一致性：在玩家尚未透過系統介面點擊「衝擊境界突破」並成功之前，故事文本（story）中絕對禁止擅自宣告玩家升級！`; 
@@ -1689,7 +1690,19 @@
             });
         }
 
-        /* 🆕 「...」 物品故事內文備份自動擷取補丁 */
+        /* 🆕 背包物品扣除同步 (lostItems) */
+        if (Array.isArray(rawState.lostItems)) {
+            rawState.lostItems.forEach(item => {
+                let name = cleanNameStrict(item);
+                if (!name) return;
+                const idx = s.inventory.findIndex(inv => cleanNameStrict(inv) === name);
+                if (idx !== -1) {
+                    s.inventory.splice(idx, 1);
+                }
+            });
+        }
+
+        /* 🆕 「...」 物品故事內文備份自動擷取與扣除補丁 */
         const itemRegex = /「([^」]+)」/g;
         let itemMatch;
         const itemBlacklist = /^(當面伏擊|忍辱賠罪|黑市懸賞|飛劍利誘|當面交涉|當面贈禮|飛劍傳書|跨空郵寄|閉關|死關|求醫|宗門任務|藏經閣|衝擊境界突破|盤膝運功|逃跑|求饒|智取|選擇身世|身世問心|江湖探索|運轉|參悟|遺忘|裝備|服下|鑑定|熔煉|分解|變賣|確定分解|取消退回|御風術|火球術|引氣訣)/;
@@ -1703,12 +1716,21 @@
 
                 if (!isNpc && !isLoc && !isTech) {
                     const matchIdx = itemMatch.index;
-                    const contextSnippet = storyText.substring(Math.max(0, matchIdx - 15), Math.min(storyText.length, matchIdx + itemName.length + 15));
-                    if (/(獲得|收好|採集|發現|採摘|取走|納入|收入|拿到|摘下|得到|尋獲|握著|妥善|戰利品|收起)/.test(contextSnippet)) {
+                    const contextSnippet = storyText.substring(Math.max(0, matchIdx - 30), Math.min(storyText.length, matchIdx + itemName.length + 30));
+                    
+                    // 判斷獲得語境
+                    if (/(獲得|收好|採集|發現|採摘|取走|納入|拿到|摘下|得到|尋獲|握著|妥善|戰利品|撿起)/.test(contextSnippet)) {
                         const inEquip = Object.values(s.equipment).some(eq => eq && cleanNameStrict(typeof eq === 'object' ? eq.name : eq) === itemName);
                         const inInv = s.inventory.includes(itemName);
                         if (!inEquip && !inInv) {
                             s.inventory.push(itemName);
+                        }
+                    }
+                    // 判斷賣出/消耗語境
+                    else if (/(賣出|售出|賣掉|成交|變現|出手|交出|遞給|贈予|付|消耗|失去|收入自己的儲物袋|收入儲物袋|一掃而空|全數變現)/.test(contextSnippet)) {
+                        const idx = s.inventory.findIndex(inv => cleanNameStrict(inv) === itemName);
+                        if (idx !== -1) {
+                            s.inventory.splice(idx, 1);
                         }
                     }
                 }
@@ -2406,10 +2428,10 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    function saveGameState() { localStorage.setItem("blade_v501_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
+    function saveGameState() { localStorage.setItem("blade_v502_save", JSON.stringify({ state: gameState, logs: storyLogData, history: conversationHistory })); }
     
     function loadGameState() {
-        const saved = localStorage.getItem("blade_v501_save") || localStorage.getItem("blade_v500_save") || localStorage.getItem("blade_v499_save");
+        const saved = localStorage.getItem("blade_v502_save") || localStorage.getItem("blade_v501_save") || localStorage.getItem("blade_v500_save");
         if (saved) {
             try {
                 const pkg = JSON.parse(saved);
@@ -2478,9 +2500,9 @@
 
     function resetGame() {
         if(confirm("確定要進行輪迴重置嗎？所有進度與存檔將被清空。")) {
+            localStorage.removeItem("blade_v502_save");
             localStorage.removeItem("blade_v501_save");
             localStorage.removeItem("blade_v500_save");
-            localStorage.removeItem("blade_v499_save");
             
             gameState = getDefaultGameState(); 
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }]; 
