@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.04 煉金防刷與防誤判修復版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.06 核心狀態一致性修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -342,7 +342,7 @@
                 
                 let baseHp = Math.floor(80 * Math.pow(1.4, currentLvl));
                 let baseExp = Math.floor(150 * Math.pow(1.5, currentLvl));
-                let maxAge = 110 + Math.floor(currentLvl * 1500);
+                let maxAge = Math.min(1000000, 100 + Math.floor(160 * Math.pow(1.12, currentLvl)));
                 let rate = Math.max(0.00001, 0.90 - currentLvl * 0.0075);
                 let riskText = isNascentOrHigher ? `⚡ 諸天雷劫 + 心魔反噬 (大境界突破)` : `氣血震盪與經脈負荷`;
 
@@ -418,15 +418,12 @@
             .trim();
     }
 
-    /* ----------------------------------------------------
-       🏆 資質階級演算法（用於「身世保底 vs 天道覺醒取孰高」比較）
-       ---------------------------------------------------- */
     function getLinggenRank(name) {
         const clean = cleanNameStrict(name);
         if (/(混沌|天靈根|無上)/.test(clean)) return 4;
         if (/(風|雷|冰|異)/.test(clean)) return 3;
         if (/(真靈根|雙靈根|三靈根)/.test(clean)) return 2;
-        return 1; // 偽靈根 / 待顯化
+        return 1;
     }
 
     function getPhysiqueRank(name) {
@@ -434,12 +431,9 @@
         if (/(混沌|鴻蒙|先天|道胎)/.test(clean)) return 4;
         if (/(聖體|王體|霸體|神體)/.test(clean)) return 3;
         if (/(靈體|寶體|琉璃)/.test(clean)) return 2;
-        return 1; // 凡體
+        return 1;
     }
 
-    /* ----------------------------------------------------
-       🚀 MECE 背包資料結構與標籤 (SSOT)
-       ---------------------------------------------------- */
     function normalizeInventory(rawInv) {
         if (!Array.isArray(rawInv)) return [];
         const result = [];
@@ -464,7 +458,7 @@
 
             if (!name) return;
 
-            const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥/.test(name);
+            const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥|粗麵餅|百草露/.test(name);
 
             const existing = result.find(i => cleanNameStrict(i.name) === name);
             if (existing) {
@@ -497,11 +491,17 @@
         }
         if (!name) return;
 
-        const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥/.test(name);
+        const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥|粗麵餅|百草露/.test(name);
 
         const existing = inv.find(i => cleanNameStrict(i.name) === name);
         if (existing) {
-            existing.quantity += amount;
+            existing.quantity = Math.min(9999, (Number(existing.quantity) || 0) + amount);
+            if (typeof itemObjOrName === 'object' && itemObjOrName) {
+                if (itemObjOrName.type) existing.type = itemObjOrName.type;
+                if (itemObjOrName.tier || itemObjOrName.rarity) existing.tier = itemObjOrName.tier || itemObjOrName.rarity;
+                if (itemObjOrName.isQuestItem) existing.isQuestItem = true;
+                if (itemObjOrName.canDisassemble === false) existing.canDisassemble = false;
+            }
         } else {
             const meta = getItemMeta(name);
             inv.push({
@@ -529,16 +529,12 @@
         return true;
     }
 
-    /* ----------------------------------------------------
-       🛡️ 本地原子交易引擎 (TransactionEngine)
-       ---------------------------------------------------- */
     const TransactionEngine = {
         isLocked: false,
         
         processDisassembly(targetItem) {
             const cleanName = cleanNameStrict(targetItem.name);
 
-            // 嚴格攔截關鍵道具、貨幣（靈石）與不可拆解物品
             if (targetItem.isQuestItem || !targetItem.canDisassemble || /靈石/.test(cleanName)) {
                 return { success: false, reason: "⚠️ 此物品為貨幣、關鍵劇情道具或無法拆解！" };
             }
@@ -553,17 +549,16 @@
                 inv.splice(idx, 1);
             }
 
-            const itemTier = targetItem.tier || "上品";
-            const baseVal = targetItem.value || 100;
-            const yieldVal = Math.floor(baseVal * 0.35);
-
-            const gainedItems = [];
-            if (itemTier === "上品" || itemTier === "極品" || itemTier === "仙品") {
-                gainedItems.push({ name: "中品靈石", quantity: Math.max(1, Math.floor(yieldVal / 10)), type: "consumable", tier: "中品" });
-                gainedItems.push({ name: "靈金碎屑", quantity: 1, type: "material", tier: "中品" });
-            } else {
-                gainedItems.push({ name: "下品靈石", quantity: Math.max(1, yieldVal), type: "consumable", tier: "下品" });
-            }
+            const itemTier = targetItem.tier || "下品";
+            const baseVal = Math.max(1, Number(targetItem.value) || 10);
+            const yieldVal = Math.max(1, Math.floor(baseVal * 0.35));
+            const tierRank = { "凡品": 0, "下品": 1, "中品": 2, "上品": 3, "極品": 4, "仙品": 5 };
+            const rank = tierRank[itemTier] ?? 1;
+            // 拆解只能回收材料，不再憑空產生靈石；回收價值受原物品價值與品階限制。
+            const gainedItems = [{
+                name: rank >= 4 ? "上品靈材碎屑" : rank >= 2 ? "中品靈材碎屑" : "下品靈材碎屑",
+                quantity: 1, type: "material", tier: rank >= 4 ? "上品" : rank >= 2 ? "中品" : "下品", value: yieldVal
+            }];
 
             const sanitizedGained = gainedItems.filter(g => cleanNameStrict(g.name) !== cleanName);
             sanitizedGained.forEach(g => addItemToInventory(gameState.inventory, g));
@@ -573,12 +568,18 @@
         },
 
         executeTradeSettlement(tradeOffer) {
-            const txNonce = tradeOffer.tx_nonce;
-            if (gameState.processedTxIds.includes(txNonce)) {
+            if (!tradeOffer || !["BUY", "SELL"].includes(tradeOffer.type) || !cleanNameStrict(tradeOffer.item_name)) {
+                return { success: false, reason: "⚠️ 交易提案資料不完整，未執行任何變更。" };
+            }
+            const txNonce = String(tradeOffer.tx_nonce || "");
+            if (!txNonce || gameState.processedTxIds.includes(txNonce)) {
                 return { success: false, reason: "⚠️ 檢測到重複交易單號，已攔截發放！" };
             }
 
-            const totalPrice = tradeOffer.total_gold || 0;
+            const totalPrice = safeNumber(tradeOffer.total_gold, -1, -1, 1e12);
+            const quantity = Math.floor(safeNumber(tradeOffer.quantity, 1, 1, 9999));
+            if (!Number.isFinite(totalPrice) || totalPrice < 0 || !Number.isInteger(quantity) || quantity < 1) return { success: false, reason: "⚠️ 交易價格或數量無效，未執行任何變更。" };
+            if (totalPrice === 0 && tradeOffer.allow_free !== true) return { success: false, reason: "⚠️ 交易金額為零且未經明確授權，未執行任何變更。" };
             if (tradeOffer.type === "BUY" && gameState.spiritStone < totalPrice) {
                 return { success: false, reason: `⚠️ 靈石餘額不足（需 ${totalPrice} 顆，當前僅有 ${gameState.spiritStone} 顆）！` };
             }
@@ -587,17 +588,20 @@
                 gameState.spiritStone -= totalPrice;
                 addItemToInventory(gameState.inventory, {
                     name: tradeOffer.item_name,
-                    quantity: tradeOffer.quantity || 1,
+                    quantity,
                     type: tradeOffer.item_type || "consumable",
                     tier: tradeOffer.tier || "下品"
                 });
             } else if (tradeOffer.type === "SELL") {
-                const removed = removeItemFromInventory(gameState.inventory, tradeOffer.item_name, tradeOffer.quantity || 1);
+                const owned = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanNameStrict(tradeOffer.item_name));
+                if (!owned || owned.quantity < quantity) return { success: false, reason: "⚠️ 背包中該物品數量不足，無法完成出售！" };
+                const removed = removeItemFromInventory(gameState.inventory, tradeOffer.item_name, quantity);
                 if (!removed) return { success: false, reason: "⚠️ 背包中該物品數量不足，無法完成出售！" };
                 gameState.spiritStone += totalPrice;
             }
 
             gameState.processedTxIds.push(txNonce);
+            if (gameState.processedTxIds.length > 500) gameState.processedTxIds = gameState.processedTxIds.slice(-500);
             gameState.pendingTradeOffer = null;
             return { success: true, message: `✅ 交易成功結算！金額：${totalPrice} 靈石。` };
         },
@@ -607,19 +611,19 @@
             const item = gameState.inventory.find(i => cleanNameStrict(i.name) === clean);
             if (!item) return { success: false, reason: `⚠️ 背包中沒有【${clean}】！` };
 
-            const meta = getItemMeta(clean);
+            const meta = getItemMeta(item);
+            if (meta.type !== 'consumable') return { success: false, reason: `⚠️【${clean}】不是可直接使用的消耗品。` };
+            if (meta.hpGain && gameState.hp >= getMaxHp(gameState)) return { success: false, reason: "⚠️ 生命值已滿，無需使用療傷物品。" };
+            if (meta.expGain && gameState.exp >= gameState.maxExp) return { success: false, reason: "⚠️ 修為已滿，請先突破後再使用修為丹。" };
             removeItemFromInventory(gameState.inventory, clean, 1);
 
             if (meta.hpGain) gameState.hp = Math.min(getMaxHp(gameState), gameState.hp + meta.hpGain);
             if (meta.expGain) gameState.exp = Math.min(gameState.maxExp, gameState.exp + meta.expGain);
 
-            return { success: true, message: `已使用了【${clean}】。` };
+            return { success: true, message: `已使用【${clean}】，生命值/修為已依物品效果更新。` };
         }
     };
 
-    /* ----------------------------------------------------
-       👥 NPC 實體與多維關係引擎 (NPCManager)
-       ---------------------------------------------------- */
     const NPCManager = {
         getOrCreateNpc(npcData) {
             const npcId = npcData.id || `npc_${cleanNameStrict(npcData.name)}`;
@@ -630,7 +634,8 @@
             }
 
             const archetype = npcData.archetype || "平民";
-            const baseFav = { "商家": 20, "平民": 0, "警惕者": -20, "仇敵": -80 }[archetype] || 0;
+            const baseFavMap = { "商家": 10, "平民": 0, "警惕者": -15, "仇敵": -80, "友善": 20, "宗門同門": 5 };
+            const baseFav = Object.prototype.hasOwnProperty.call(baseFavMap, archetype) ? baseFavMap[archetype] : 0;
 
             const newNpc = {
                 id: npcId,
@@ -680,9 +685,6 @@
         }
     };
 
-    /* ----------------------------------------------------
-       📖 功法指數型成長引擎 (KungfuManager)
-       ---------------------------------------------------- */
     const KungfuManager = {
         getRequiredExp(tier, currentStage) {
             const base = TIER_BASE_EXP[tier] || 50;
@@ -711,9 +713,14 @@
         }
     };
 
-    /* ----------------------------------------------------
-       🏛️ 宗門與藏經閣雙重權限引擎
-       ---------------------------------------------------- */
+    function isWithinOwnSectTerritory(location = gameState.location) {
+        const sect = gameState.sect;
+        if (!sect || !sect.joined || !sect.name || sect.name === "無" || !location) return false;
+        const loc = String(location);
+        // Require explicit sect territory marker; a coincidental substring elsewhere is insufficient.
+        return loc.includes(sect.name) && /(宗門|山門|內門|外門|主峰|大殿|執事堂|藏經閣|演武場|靈田|弟子居所)/.test(loc);
+    }
+
     const SectAndLocationEngine = {
         checkSutraPavilionAccess(targetFloor = 1) {
             const sect = gameState.sect;
@@ -723,7 +730,7 @@
                 return { success: false, reason: "⚠️ 你目前為【散修】身分，無權進入宗門藏經閣！" };
             }
 
-            if (!loc.includes(sect.name) || !loc.includes("藏經閣")) {
+            if (!isWithinOwnSectTerritory(loc) || !loc.includes("藏經閣")) {
                 return { success: false, reason: `⚠️ 萬里之遙！你目前位於【${loc}】，請先返回【${sect.name}藏經閣】。` };
             }
 
@@ -746,7 +753,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.04",
+            version: "6.07",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -754,6 +761,8 @@
             isDead: false,
             location: "九州邊境 · 荒郊破廟", scenarioMode: "IDLE", activeThreats: [],
             hasChosenOrigin: false, originType: "未明", turn_count: 1,
+            originLinggenBonus: "真靈根",
+            originPhysiqueBonus: "靈體",
             
             sect: { joined: false, id: null, name: "無", rank: "散修", contribution: 0, totalContribution: 0, position: "無" },
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
@@ -851,7 +860,7 @@
         }
 
         return {
-            version: "6.04",
+            version: "6.06",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -876,6 +885,8 @@
             hasChosenOrigin: Boolean(raw.hasChosenOrigin),
             originType: cleanNameStrict(raw.originType) || def.originType,
             turn_count: safeNumber(raw.turn_count, 1, 1, 1e9),
+            originLinggenBonus: cleanNameStrict(raw.originLinggenBonus) || def.originLinggenBonus,
+            originPhysiqueBonus: cleanNameStrict(raw.originPhysiqueBonus) || def.originPhysiqueBonus,
 
             sect: (raw.sect && typeof raw.sect === 'object') ? {
                 joined: Boolean(raw.sect.joined),
@@ -918,7 +929,11 @@
             npcRegistry: npcsMap,
             sceneCacheNpcs: Array.isArray(raw.sceneCacheNpcs) ? raw.sceneCacheNpcs : [],
             worldEvents: Array.isArray(raw.worldEvents) ? raw.worldEvents.map(cleanNameStrict) : [],
-            quests: Array.isArray(raw.quests) ? raw.quests : [...def.quests],
+            quests: Array.isArray(raw.quests) ? raw.quests.map(q => {
+                if (typeof q === 'string') return cleanNameStrict(q) || "探索修仙界";
+                if (!q || typeof q !== 'object') return { name: "探索修仙界", progress: "等待推進", status: "進行中" };
+                return { ...q, name: cleanNameStrict(q.name || q.title || "探索修仙界"), progress: cleanNameStrict(q.progress || q.desc || "等待推進"), status: cleanNameStrict(q.status || "進行中") };
+            }).filter(q => typeof q === 'string' ? q !== 'undefined' : q.name !== 'undefined') : [...def.quests],
             choices: Array.isArray(raw.choices) ? raw.choices : [...def.choices],
             processedTxIds: Array.isArray(raw.processedTxIds) ? raw.processedTxIds : [],
             pendingTradeOffer: raw.pendingTradeOffer || null,
@@ -940,7 +955,7 @@
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
 
-    // Item MECE Metadata Helper (精準匹配品階關鍵字，防止「靈石」之「靈」字誤判為上品)
+    // Item MECE Metadata Helper (包含食物、露水等消耗品正則擴充)
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
@@ -959,13 +974,28 @@
         if (/未鑑定|蒙塵/.test(clean)) return { type: 'unidentified', name: clean, rarity: '凡品', rarityColor: '#888', value: 20, isQuestItem: false, desc: "蒙塵古物，可【鑑定】解鎖真面目" };
         if (/殘片|碎片|廢寶/.test(clean)) return { type: 'fragment', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 15, isQuestItem: false, desc: "湊齊 3 個可【熔煉】合成完整古寶" };
         if (/材料|精金|靈鐵|礦石|草藥|粉末|粗鐵胚料|精鋼材料|殘材|精粹/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, isQuestItem: false, desc: "鍛造材料，可於坊市變賣換取靈石" };
-        if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 15, expGain: Math.floor(30 * rarity.mult), hpGain: 0, isQuestItem: false, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
-        if (/培元丹|療傷丹|回春丹|金創藥|凝血草/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, expGain: 0, hpGain: Math.floor(50 * rarity.mult), isQuestItem: false, desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
         
-        if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經|心得|筆記)/.test(clean)) {
+        // 典籍辨識優先於「草、藥、丹」等泛用字，避免玉簡/手札被誤判為消耗品。
+        if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經|心得|筆記|散修手札|功法玉簡|破損玉簡|殘缺玉簡)/.test(clean)) {
             return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之絕學載體，可【參悟】研讀學習對應絕學" };
         }
 
+        // 消耗品辨識採用較明確的食物/丹藥詞彙，避免所有含「草」字物品都能直接服用。
+        if (/(聚氣丹|修為丹|療傷丹|回春丹|辟穀丹|餅|肉|饅頭|乾糧|清水|靈泉|露水|湯|膏|散|丸|劑|丹|藥)/.test(clean)) {
+            const isExpType = /聚氣丹|修為丹/.test(clean);
+            return { 
+                type: 'consumable', 
+                name: clean, 
+                rarity: rarity.name, 
+                rarityColor: rarity.color, 
+                value: 15, 
+                expGain: isExpType ? Math.floor(30 * rarity.mult) : 0, 
+                hpGain: isExpType ? 0 : Math.floor(40 * rarity.mult), 
+                isQuestItem: false, 
+                desc: isExpType ? `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` : `服下可恢復 ${Math.floor(40 * rarity.mult)} 點 HP` 
+            };
+        }
+        
         if (/(劍|刀|槍|戟|弓|刃|杖|斧|鞭)/.test(clean)) {
             const hp = Math.floor(25 * rarity.mult);
             const str = Math.floor(6 * rarity.mult);
@@ -998,10 +1028,10 @@
         else name = String(physiqueInput || "凡體");
         const clean = cleanNameStrict(name);
 
-        if (/(混沌|鴻蒙|先天|道胎)/.test(clean)) return { name: clean, hpMult: 1.60, cpBonus: 600, str: 15, con: 15, agi: 15, int: 15, wis: 15, luk: 15, color: "#ff6d00", desc: "🌟 [混沌階] 肉身成聖，萬劫不朽。" };
-        if (/(聖體|王體|霸體|神體)/.test(clean)) return { name: clean, hpMult: 1.35, cpBonus: 300, str: 10, con: 10, agi: 0, int: 0, wis: 0, luk: 0, color: "#ffd700", desc: "✨ [聖體階] 氣血如虹，威壓萬界。" };
-        if (/(靈體|寶體|琉璃)/.test(clean)) return { name: clean, hpMult: 1.15, cpBonus: 100, str: 3, con: 3, agi: 3, int: 3, wis: 3, luk: 3, color: "#ab47bc", desc: "🔮 [靈體階] 氣血優於凡人。" };
-        return { name: clean, hpMult: 1.0, cpBonus: 0, color: "#888888", desc: "🧍 [凡體] 普通凡人肉身。" };
+        if (/(混沌|鴻蒙|先天|道胎)/.test(clean)) return { name: clean, hpMult: 1.60, cpBonus: 600, str: 15, con: 15, agi: 15, int: 15, wis: 15, luk: 15, color: "#ff6d00", desc: "🌟 [混沌階] 肉身成聖，萬劫不朽。\n• 生命上限 (HP)：x1.60 倍\n• 戰力 (CP)：+600 點\n• 六維屬性：全屬性 +15" };
+        if (/(聖體|王體|霸體|神體)/.test(clean)) return { name: clean, hpMult: 1.35, cpBonus: 300, str: 10, con: 10, agi: 0, int: 0, wis: 0, luk: 0, color: "#ffd700", desc: "✨ [聖體階] 氣血如虹，威壓萬界。\n• 生命上限 (HP)：x1.35 倍\n• 戰力 (CP)：+300 點\n• 六維屬性：膂力 +10, 根骨 +10" };
+        if (/(靈體|寶體|琉璃)/.test(clean)) return { name: clean, hpMult: 1.15, cpBonus: 100, str: 3, con: 3, agi: 3, int: 3, wis: 3, luk: 3, color: "#ab47bc", desc: "🔮 [靈體階] 氣血與潛能優於凡人。\n• 生命上限 (HP)：x1.15 倍\n• 戰力 (CP)：+100 點\n• 六維屬性：全屬性 +3" };
+        return { name: clean, hpMult: 1.0, cpBonus: 0, color: "#888888", desc: "🧍 [凡體] 普通凡人肉身。\n• 無額外加成" };
     }
 
     function getLinggenMeta(linggenInput) {
@@ -1010,10 +1040,10 @@
         else name = String(linggenInput || "待顯化");
         const clean = cleanNameStrict(name);
 
-        if (/(混沌|天靈根|無上靈根)/.test(clean)) return { name: clean, expRate: 2.0, breakBonus: 0.05, color: "#ffd700", desc: "⚡ [天靈根/混沌/無上] 吐納一日千里。" };
-        if (/(風|雷|冰|異)/.test(clean)) return { name: clean, expRate: 1.4, breakBonus: 0.03, color: "#ab47bc", desc: "🌀 [變異靈根] 戰力與修練俱佳。" };
-        if (clean === "待顯化" || /(未顯化|^無$)/.test(clean)) return { name: clean, expRate: 1.0, breakBonus: 0.0, color: "#888888", desc: "🔒 [未顯化] 無額外修練加成。" };
-        return { name: clean, expRate: 1.1, breakBonus: 0.01, color: "#43a047", desc: "🍂 [真靈根] 穩健修練。" };
+        if (/(混沌|天靈根|無上靈根)/.test(clean)) return { name: clean, expRate: 2.0, breakBonus: 0.05, color: "#ffd700", desc: "⚡ [天靈根/混沌/無上] 吐納一日千里。\n• 修練經驗倍率：2.0x (修為 +100%)\n• 衝擊突破成功率：+5%" };
+        if (/(風|雷|冰|異)/.test(clean)) return { name: clean, expRate: 1.4, breakBonus: 0.03, color: "#ab47bc", desc: "🌀 [變異靈根] 戰力與修練俱佳。\n• 修練經驗倍率：1.4x (修為 +40%)\n• 衝擊突破成功率：+3%" };
+        if (clean === "待顯化" || /(未顯化|^無$)/.test(clean)) return { name: clean, expRate: 1.0, breakBonus: 0.0, color: "#888888", desc: "🔒 [待顯化] 靈根尚未覺醒，突破練氣一層時由天道揭曉。" };
+        return { name: clean, expRate: 1.1, breakBonus: 0.01, color: "#43a047", desc: "🍂 [真靈根] 穩健修練。\n• 修練經驗倍率：1.1x (修為 +10%)\n• 衝擊突破成功率：+1%" };
     }
 
     function getLocationModifier(locStr) {
@@ -1223,16 +1253,16 @@
 
     function showLinggenModal() {
         const meta = getLinggenMeta(gameState.linggen);
-        openGameModal("📜 靈根資質解析", `<div style="color:${meta.color}">${meta.name}</div><div>${meta.desc}</div>`);
+        openGameModal("📜 靈根資質解析", `<div style="color:${meta.color}; font-weight:bold; margin-bottom:6px;">${meta.name}</div><div style="white-space:pre-line;">${meta.desc}</div>`);
     }
 
     function showPhysiqueModal() {
         const meta = getPhysiqueMeta(gameState.physique);
-        openGameModal("🔥 體質天賦解析", `<div style="color:${meta.color}">${meta.name}</div><div>${meta.desc}</div>`);
+        openGameModal("🔥 體質天賦解析", `<div style="color:${meta.color}; font-weight:bold; margin-bottom:6px;">${meta.name}</div><div style="white-space:pre-line;">${meta.desc}</div>`);
     }
 
     function showGiftModal(npcName, isNearby) {
-        const npcList = Object.values(gameState.npcRegistry);
+        const npcList = Object.values(gameState.npcRegistry).filter(n => n && n.is_alive !== false && n.status !== "DEAD");
         const npc = npcList.find(n => n.name === npcName);
         if (!npc) return;
 
@@ -1330,46 +1360,61 @@
         renderUI(); saveGameState();
     }
 
+    // 方案 B：點擊參悟時觸發 AI 故事判定與階級成功率/反噬機制
     function practiceTechnique(type, name) {
         if (gameState.isDead) return;
         let list = type === 'kungfu' ? gameState.kungfu : gameState.skills;
         let item = list.find(x => x.name === name);
         if (!item) return;
 
-        appendLogData("異世旅者", `【運轉真氣，全力參悟《${name}》】`, "player", false, true);
+        const tierWeights = { "黃階": 1, "玄階": 2, "地階": 3, "天階": 4, "仙階": 5 };
+        const itemTierVal = tierWeights[item.tier || "黃階"] || 1;
+        const playerMajor = Math.floor((gameState.level || 0) / 10);
 
-        if (type === 'skill') {
-            const decay = getSkillDecayInfo(item, gameState.level);
-            if (decay.isDangerous) {
-                const fatigueAdd = 35;
-                const hpRecoil = Math.floor(getMaxHp(gameState) * 0.20);
-                gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + fatigueAdd);
-                gameState.hp = Math.max(0, gameState.hp - hpRecoil);
+        let successRate = 0.90 - Math.max(0, (itemTierVal - 1 - playerMajor) * 0.25);
+        successRate = Math.max(0.15, Math.min(0.95, successRate));
 
-                if (!gameState.status.includes("經脈震盪")) {
-                    gameState.status.push("經脈震盪");
-                }
+        // 疲勞過高會降低成功率；所有實際結果由遊戲核心擲骰決定。
+        successRate = Math.max(0.05, successRate - (gameState.practiceFatigue || 0) / 250);
+        const isSuccess = Math.random() < successRate;
 
-                appendLogData("天道", `⚠️ 強行參悟超階絕學《${name}》！龐大靈壓反衝經脈 (HP -${hpRecoil}，疲勞度 +${fatigueAdd}%)，陷入【經脈震盪】！`, "system", false, true);
-                checkLifeStatus(gameState);
-                renderUI(); saveGameState();
-                if (gameState.isDead) return;
-            }
+        if (!isSuccess) {
+            const fatigueAdd = 25;
+            const hpLoss = Math.floor(getMaxHp(gameState) * 0.15);
+            gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + fatigueAdd);
+            gameState.hp = Math.max(0, gameState.hp - hpLoss);
+            if (!gameState.status.includes("走火入魔")) gameState.status.push("走火入魔");
+
+            sendAction(`【閉關嘗試參悟《${name}》（品階：${item.tier || '黃階'}），因境界與功法差距過大，真元逆流，參悟失敗！(HP -${hpLoss}, 疲勞 +${fatigueAdd}%)】`, {
+                isPresetEvent: true, addDays: 2
+            }, `【玩家嘗試參悟超階絕學《${name}》，因境界不足導致走火入魔反噬，請描繪經脈受創與真元失控的驚險過程。】`);
+            return;
         }
 
-        if (item.stage === "圓滿") {
-            appendLogData("天道", `✨ 【${name}】已登峰造極達到【圓滿】境界，無需繼續參悟！`, "system", false, true);
-            renderUI(); return;
-        }
+        sendAction(`【閉關打坐，全力參悟《${name}》（品階：${item.tier || '黃階'}）】`, {
+            isPresetEvent: true, addDays: 3, addFatigue: 12, techniqueName: name, techniqueType: type, techniqueSuccess: true
+        }, `【玩家已由遊戲核心判定本次參悟成功（成功率 ${Math.round(successRate*100)}%）。請根據角色悟性、境界、功法品階與殘缺程度描繪參悟過程；不要改寫遊戲數值。】`);
+    }
 
-        const totalStats = getTotalStats(gameState);
-        let gainExp = Math.floor(40 * (1 + (totalStats.wis || 10) / 100));
-        
-        const res = KungfuManager.addSkillProficiency(item, gainExp);
-        gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue || 0) + 15);
-
-        appendLogData("天道", res.message, "ai", false, true);
-        renderUI(); saveGameState();
+    function comprehendKnowledgeItem(name) {
+        if (gameState.isDead || isTyping) return;
+        const item = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanNameStrict(name));
+        if (!item) { openGameModal("⚠️ 找不到典籍", "該物品已不在背包中，無法參悟。"); return; }
+        const meta = getItemMeta(name);
+        if (meta.type !== "knowledge") { openGameModal("⚠️ 無法參悟", "此物品不是可研讀的典籍或功法載體。"); return; }
+        const wisdom = (gameState.stats && gameState.stats.wis) || 10;
+        const rank = { "凡品": 0, "下品": 1, "中品": 2, "上品": 3, "極品": 4, "仙品": 5 };
+        const tier = item.tier || meta.rarity || "下品";
+        const difficulty = rank[tier] ?? 1;
+        const chance = Math.max(0.10, Math.min(0.90, 0.70 + (wisdom - 10) * 0.01 - difficulty * 0.10));
+        const success = Math.random() < chance;
+        const prompt = success
+            ? `【研讀典籍《${name}》並嘗試領悟。遊戲核心已判定成功率 ${Math.round(chance*100)}% 且本次成功。請依角色悟性 ${wisdom}、境界 ${gameState.realm}、典籍品階 ${tier} 描寫過程；若確實領悟功法，回傳 techniqueDelta，禁止修改其他核心數值。】`
+            : `【研讀典籍《${name}》但未能領悟。遊戲核心已判定成功率 ${Math.round(chance*100)}% 且本次失敗。請描寫未能理解其要義的過程，不得聲稱已學會。】`;
+        sendAction(`【研讀背包典籍《${name}》：${success ? "核心判定參悟成功" : "核心判定參悟失敗"}】`, {
+            isPresetEvent: true, addDays: 1, addFatigue: success ? 5 : 12,
+            techniqueSuccess: success, techniqueName: name, techniqueType: "knowledge"
+        }, prompt);
     }
 
     function forgetKungfu(name) {
@@ -1634,8 +1679,8 @@
         }
 
         if (type === 'quest') {
-            if (!gameState.location.includes(gameState.sect.name)) {
-                openGameModal("⚠️ 萬里之遙", `請先返回【${gameState.sect.name}】宗門大殿接取任務！`);
+            if (!isWithinOwnSectTerritory(gameState.location)) {
+                openGameModal("⚠️ 萬里之遙", `你必須身在【${gameState.sect.name}】宗門領地內，才能接取本門任務！`);
                 return;
             }
             sendAction("【前往宗門執事堂接取宗門任務】");
@@ -1664,40 +1709,39 @@
         sendAction(`【盤膝運功，衝擊突破至「${nextDef.name}」境界！】`, { isBreakthrough: true, breakthroughSuccess: isSuccess });
     }
 
-    /* ----------------------------------------------------
-       🛡️ 身世開局初始化（含出身資質保底）
-       ---------------------------------------------------- */
+    // 身世初始化（不提前顯化資質，改為記錄保底背景，並由前端鎖定防古戒重複發放）
     function applyOriginInitialization(choiceText) {
+        if (gameState.hasChosenOrigin) return;
         gameState.hasChosenOrigin = true;
         
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
-            gameState.linggen = "真靈根";
-            gameState.physique = "涅槃靈體";
+            gameState.originLinggenBonus = "真靈根";
+            gameState.originPhysiqueBonus = "涅槃靈體";
             addItemToInventory(gameState.inventory, "至尊骨殘片", 1);
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
-            gameState.linggen = "修羅異靈根";
-            gameState.physique = "修羅霸體";
+            gameState.originLinggenBonus = "修羅異靈根";
+            gameState.originPhysiqueBonus = "修羅霸體";
             addItemToInventory(gameState.inventory, "獄卒令牌", 1);
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
-            gameState.linggen = "風雷雙靈根";
-            gameState.physique = "家族血脈靈體";
+            gameState.originLinggenBonus = "風雷雙靈根";
+            gameState.originPhysiqueBonus = "家族血脈靈體";
             addItemToInventory(gameState.inventory, "神祕古戒", 1);
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
-            if (!gameState.linggen || gameState.linggen === "待顯化") gameState.linggen = "真靈根";
-            if (!gameState.physique || gameState.physique === "凡體") gameState.physique = "凡骨靈體";
+            gameState.originLinggenBonus = "真靈根";
+            gameState.originPhysiqueBonus = "凡骨靈體";
             addItemToInventory(gameState.inventory, "粗鐵長劍", 1);
         }
     }
 
-    // 核心 System Prompt
+    // 核心 System Prompt（加入禁止首輪重複發放古戒與自訂身世保底規範）
     function getSystemPrompt() { 
         const aliveNpcs = Object.values(gameState.npcRegistry)
             .filter(n => n.is_alive)
@@ -1720,13 +1764,13 @@
 
 ⚠️ AI 必須嚴格遵守的【八大鐵律】：
 1. [修為/天數/物品結算]：玩家在故事中戰鬥、探索或遭遇事件時，你【必須】在 JSON 注入 expDelta（修為增加量）、daysPassedDelta（消耗天數，通常1~3天）與 inventoryDelta（獲得之物品陣列）！
-2. [物品與交易硬鎖]：背包快照中有物品才可使用！若玩家買賣，你【嚴禁】在 JSON 輸出 inventoryDelta，只需回傳 tradeOffer 物件等待玩家點擊 UI 確認！
+2. [物品與交易硬鎖]：背包快照中有物品才可使用！若玩家買賣，你【嚴禁】在 JSON 輸出 inventoryDelta，只需回傳 tradeOffer 物件等待玩家點擊 UI 確認！特別注意：開局身世初始裝備已由系統前端發放，首輪 JSON 嚴禁重複回傳 inventoryDelta 避免古戒重複發放！
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
 4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
 5. [NPC 去重與別名]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。
 6. [功法獲得與修練法則]：當玩家在故事中領悟/獲得新功法或術法招式時，必須在 techniqueDelta 回傳 [{"name": "青元劍訣", "type": "skill", "tier": "黃階"}]！若為增加熟練度則回傳 [{"name": "青元劍訣", "proficiencyAdd": 20}]。
 7. [空間與宗門權限]：若玩家不在宗門領地卻嘗試使用藏經閣，請描繪「萬里之遙難以存取」並拒絕！
-8. [自訂身世與資質保底]：若玩家輸入自訂身世開局，你可以根據劇情設定在 linggen 與 physique 回傳相應靈根與體質（保底由你決定，不強制為最低階）！
+8. [自訂身世與資質保底]：若玩家輸入自訂身世開局，你可以根據劇情設定在 originLinggenBonus 與 originPhysiqueBonus 賦予相應保底潛能。
 
 JSON 輸出格式範例：
 \`\`\`json
@@ -1777,37 +1821,45 @@ JSON 輸出格式範例：
 
         if (rawState.location) s.location = cleanNameStrict(rawState.location);
         if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
-        if (rawState.linggen) s.linggen = cleanNameStrict(rawState.linggen);
-        if (rawState.physique) s.physique = cleanNameStrict(rawState.physique);
+        if (rawState.originLinggenBonus) s.originLinggenBonus = cleanNameStrict(rawState.originLinggenBonus);
+        if (rawState.originPhysiqueBonus) s.originPhysiqueBonus = cleanNameStrict(rawState.originPhysiqueBonus);
 
-        if (rawState.expDelta) {
+        if (rawState.expDelta !== undefined) {
             s.exp = Math.min(s.maxExp, s.exp + safeNumber(rawState.expDelta, 0, 0, 1e9));
-        } else if (rawState.exp !== undefined) {
-            s.exp = Math.min(s.maxExp, safeNumber(rawState.exp, s.exp, 0, 1e9));
         }
-        if (rawState.spiritStoneDelta) {
-            s.spiritStone = Math.max(0, s.spiritStone + safeNumber(rawState.spiritStoneDelta, 0, -1e9, 1e9));
-        }
+        // 靈石是核心經濟狀態：忽略 AI 回傳的 spiritStoneDelta。
+        // 靈石只能由經驗證的遊戲核心流程修改，例如交易結算、系統服務費或明確的核心獎勵。
+        // 即使 AI 回傳正數、負數、極大值或非數字，也不得改變靈石餘額。
+        // 保留目前 s.spiritStone，不在 applyStateDelta 中套用任何 AI 靈石差額。
 
+        let elapsedDays = 0;
         if (rawState.daysPassedDelta) {
-            s.daysPassed += safeNumber(rawState.daysPassedDelta, 0, 0, 1e5);
+            elapsedDays = safeNumber(rawState.daysPassedDelta, 0, 0, 1e5);
+            s.daysPassed += elapsedDays;
         } else if (rawState.daysPassed && rawState.daysPassed > s.daysPassed) {
+            elapsedDays = Math.min(1e5, rawState.daysPassed - s.daysPassed);
             s.daysPassed = rawState.daysPassed;
         }
+        if (elapsedDays > 0) s.practiceFatigue = Math.max(0, (s.practiceFatigue || 0) - Math.floor(elapsedDays * 2));
 
         if (Array.isArray(rawState.inventoryDelta)) {
-            rawState.inventoryDelta.forEach(item => {
+            rawState.inventoryDelta.slice(0, 12).forEach(item => {
+                const itemName = typeof item === 'string' ? item : item && item.name;
+                if (!itemName || !String(itemName).trim() || String(itemName).toLowerCase() === 'undefined') return;
                 addItemToInventory(s.inventory, item);
             });
         }
 
         if (rawState.tradeOffer) {
-            rawState.tradeOffer.tx_nonce = `tx_${Date.now()}`;
+            rawState.tradeOffer.tx_nonce = `tx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
             s.pendingTradeOffer = rawState.tradeOffer;
         }
 
-        if (rawState.npcDelta && rawState.npcDelta.killed) {
-            rawState.npcDelta.killed.forEach(kId => NPCManager.processNpcDeath(kId));
+        if (rawState.npcDelta && Array.isArray(rawState.npcDelta.killed)) {
+            rawState.npcDelta.killed.forEach(kId => {
+                const npc = s.npcRegistry && s.npcRegistry[kId];
+                if (npc) { npc.is_alive = false; npc.status = "DEAD"; npc.deathDay = s.daysPassed; }
+            });
         }
 
         if (rawState.techniqueDelta && Array.isArray(rawState.techniqueDelta)) {
@@ -1829,10 +1881,11 @@ JSON 輸出格式範例：
                     } else if (tech.type === 'skill' || tech.isSkill) {
                         isKungfu = false;
                     } else {
-                        const isCombatSkill = /(劍|刀|槍|戟|拳|掌|指|腿|身法|步法|術|法|刺|斬|破|印)/.test(cleanTechName);
-                        const isMindLaw = /(心法|吐納|冥想|功|經|典)/.test(cleanTechName);
+                        // 修正：將「引氣、導引、吐納、心法」優先歸類為心法，避免引氣術被誤判為招式
+                        const isMindLaw = /(引氣|導引|吐納|心法|冥想|功|經|典|訣)/.test(cleanTechName);
+                        const isCombatSkill = /(劍|刀|槍|戟|拳|掌|指|腿|身法|步法|術|法|刺|斬|破|印)/.test(cleanTechName) && !isMindLaw;
 
-                        isKungfu = isMindLaw && !isCombatSkill;
+                        isKungfu = isMindLaw;
                     }
 
                     if (isKungfu) {
@@ -1865,13 +1918,21 @@ JSON 輸出格式範例：
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(ev => {
                 const cleanEv = cleanNameStrict(ev);
-                if (cleanEv && !s.worldEvents.includes(cleanEv)) s.worldEvents.push(cleanEv);
+                const majorEventPattern = /(突破至|大境界|宗門覆滅|滅門|身死|隕落|天階|仙品|古寶|天劫|渡劫|戰爭|城池淪陷|秘境崩塌)/;
+                if (cleanEv && majorEventPattern.test(cleanEv) && !s.worldEvents.includes(cleanEv)) s.worldEvents.push(cleanEv);
             });
             if (s.worldEvents.length > 50) s.worldEvents = s.worldEvents.slice(-50);
         }
 
         if (Array.isArray(rawState.quests) && rawState.quests.length > 0) {
-            s.quests = rawState.quests;
+            s.quests = rawState.quests
+                .filter(q => q && typeof q === 'object')
+                .map(q => ({
+                    name: cleanNameStrict(q.name) || "未命名任務",
+                    progress: cleanNameStrict(q.progress) || "尚無進度說明",
+                    status: ["進行中", "已完成", "已失敗", "已放棄"].includes(q.status) ? q.status : "進行中"
+                }))
+                .slice(0, 30);
         }
 
         if (Array.isArray(rawState.choices) && rawState.choices.length > 0) s.choices = rawState.choices;
@@ -1921,6 +1982,7 @@ JSON 輸出格式範例：
             if (eventMeta) {
                 if (eventMeta.addDays) gameState.daysPassed += eventMeta.addDays;
                 if (eventMeta.addExp) gameState.exp = Math.min(gameState.maxExp, gameState.exp + eventMeta.addExp);
+                if (eventMeta.addFatigue) gameState.practiceFatigue = Math.min(100, gameState.practiceFatigue + safeNumber(eventMeta.addFatigue, 0, 0, 100));
                 if (eventMeta.clearFatigue) gameState.practiceFatigue = 0;
                 if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
                 if (eventMeta.deductStone) gameState.spiritStone = Math.max(0, gameState.spiritStone - eventMeta.deductStone);
@@ -1941,24 +2003,24 @@ JSON 輸出格式範例：
                         gameState.realm = rDef.name; gameState.maxExp = rDef.maxExp; gameState.exp = 0;
                         gameState.hp = getMaxHp(gameState);
 
+                        // 首次突破練氣一層：觸發天道抽卡與身世保底獨立比對取孰高
                         if (isFirstBreakthrough) {
-                            let drawnLinggen = "偽靈根";
+                            let drawnLinggen = "真靈根";
                             const rL = Math.random();
                             if (rL < 0.05) drawnLinggen = "天靈根";
                             else if (rL < 0.20) drawnLinggen = "雷靈根";
                             else if (rL < 0.70) drawnLinggen = "真靈根";
 
-                            let drawnPhysique = "凡體";
+                            let drawnPhysique = "靈體";
                             const rP = Math.random();
                             if (rP < 0.05) drawnPhysique = "先天道胎";
                             else if (rP < 0.25) drawnPhysique = "琉璃寶體";
 
-                            if (getLinggenRank(drawnLinggen) > getLinggenRank(gameState.linggen)) {
-                                gameState.linggen = drawnLinggen;
-                            }
-                            if (getPhysiqueRank(drawnPhysique) > getPhysiqueRank(gameState.physique)) {
-                                gameState.physique = drawnPhysique;
-                            }
+                            const finalLinggen = getLinggenRank(drawnLinggen) >= getLinggenRank(gameState.originLinggenBonus) ? drawnLinggen : gameState.originLinggenBonus;
+                            const finalPhysique = getPhysiqueRank(drawnPhysique) >= getPhysiqueRank(gameState.originPhysiqueBonus) ? drawnPhysique : gameState.originPhysiqueBonus;
+
+                            gameState.linggen = finalLinggen;
+                            gameState.physique = finalPhysique;
 
                             appendLogData("天道", `✨ 引氣入體成功！天地靈氣洗髓伐骨，靈根與體質正式顯化為：【${gameState.linggen}】與【${gameState.physique}】！（已套用出身保底與天道機緣「取孰高」機制）`, "system", false, true);
                         }
@@ -1969,7 +2031,30 @@ JSON 輸出格式範例：
             }
 
             if (parsedState) {
+                const authoritativeBeforeAI = {
+                    level: gameState.level, realm: gameState.realm, maxExp: gameState.maxExp,
+                    maxHp: gameState.maxHp, hp: gameState.hp,
+                    isDead: gameState.isDead,
+                    linggen: gameState.linggen, physique: gameState.physique,
+                    daysPassed: gameState.daysPassed, practiceFatigue: gameState.practiceFatigue,
+                    spiritStone: gameState.spiritStone, isDead: gameState.isDead
+                };
                 gameState = applyStateDelta(gameState, parsedState, eventMeta);
+                // AI is not permitted to overwrite authoritative outcomes or claim a death that the core did not apply.
+                for (const [k, v] of Object.entries(authoritativeBeforeAI)) gameState[k] = v;
+            }
+            if (eventMeta && eventMeta.techniqueSuccess && eventMeta.techniqueName) {
+                const targetList = eventMeta.techniqueType === "kungfu" ? gameState.kungfu : gameState.skills;
+                const learned = targetList.find(x => cleanNameStrict(x.name) === cleanNameStrict(eventMeta.techniqueName));
+                if (learned) {
+                    const progressResult = KungfuManager.addSkillProficiency(learned, 40);
+                    if (progressResult.message) appendLogData("天道", progressResult.message, "system", false, true);
+                }
+            }
+            if (eventMeta && eventMeta.isBreakthrough) {
+                appendLogData("天道", eventMeta.breakthroughSuccess
+                    ? `✅ 突破判定成功：已進入【${gameState.realm}】(Lv.${gameState.level})。`
+                    : `❌ 突破判定失敗：境界維持【${gameState.realm}】(Lv.${gameState.level})，氣血受損。`, "system", false, true);
             }
             appendLogData("天道", storyText, "ai", false, true);
             checkLifeStatus(gameState);
@@ -1991,9 +2076,6 @@ JSON 輸出格式範例：
         return `${baseVal}`;
     }
 
-    /* ----------------------------------------------------
-       🖥️ 全功能整合 UI 渲染引擎 (renderUI)
-       ---------------------------------------------------- */
     function renderUI() {
         checkLifeStatus(gameState);
 
@@ -2072,8 +2154,9 @@ JSON 輸出格式範例：
         document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue} / 100`;
         document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone} 顆`;
 
-        const yearsPassed = Math.floor((gameState.daysPassed || 0) / 365);
-        const monthsPassed = Math.floor(((gameState.daysPassed || 0) % 365) / 30);
+        const totalDays = Math.max(0, Number(gameState.daysPassed) || 0);
+        const yearsPassed = Math.floor(totalDays / 365);
+        const monthsPassed = Math.floor((totalDays % 365) / 30);
         const currentAge = (gameState.ageBase || 18) + yearsPassed;
         document.getElementById("ui-age").textContent = `${currentAge}歲${monthsPassed}月 / ${gameState.maxAge || 100}歲`;
 
@@ -2257,7 +2340,7 @@ JSON 輸出格式範例：
                     } else if (meta.type === 'consumable') {
                         let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
                     } else if (meta.type === 'knowledge') {
-                        let b = document.createElement("button"); b.textContent = "參悟"; b.onclick = () => sendAction(`【研讀並參悟背包中的「${name}」】`); actionGroup.appendChild(b);
+                        let b = document.createElement("button"); b.textContent = "參悟"; b.onclick = () => comprehendKnowledgeItem(name); actionGroup.appendChild(b);
                     } else if (meta.type === 'unidentified') {
                         let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
                     } else if (meta.type === 'fragment') {
@@ -2404,8 +2487,9 @@ JSON 輸出格式範例：
         document.getElementById("btn-heal").disabled = !isEnabled;
         document.getElementById("btn-long-heal").disabled = !isEnabled;
         document.getElementById("btn-hospital").disabled = !isEnabled;
-        document.getElementById("btn-sect-quest").disabled = !isEnabled;
-        document.getElementById("btn-sect-lib").disabled = !isEnabled;
+        const sectReady = isEnabled && gameState.sect && gameState.sect.joined && isWithinOwnSectTerritory(gameState.location);
+        document.getElementById("btn-sect-quest").disabled = !sectReady;
+        document.getElementById("btn-sect-lib").disabled = !sectReady || !String(gameState.location || "").includes("藏經閣");
 
         drawRadarChart(breakdown.total);
     }
@@ -2455,14 +2539,12 @@ JSON 輸出格式範例：
 
     function saveGameState() {
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
-        console.info("[存檔診斷] saveGameState() 執行", { invCount: gameState.inventory?.length });
         localStorage.setItem("blade_v600_save", JSON.stringify(payload));
     }
 
     function loadGameState() {
         const saved = localStorage.getItem("blade_v600_save") || localStorage.getItem("blade_v503_save");
         if (!saved) {
-            console.info("[存檔診斷] 初始化新遊戲。");
             gameState = getDefaultGameState();
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
             conversationHistory = [];
@@ -2472,9 +2554,7 @@ JSON 輸出格式範例：
                 gameState = normalizeGameState(pkg.state);
                 storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
                 conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
-                console.info("[存檔診斷] 載入成功。", { invCount: gameState.inventory?.length });
             } catch (e) {
-                console.error("[存檔診斷] 載入失敗，恢復預設值", e);
                 gameState = getDefaultGameState();
             }
         }
