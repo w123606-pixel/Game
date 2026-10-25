@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.00 完整權威狀態與全功能渲染版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.00 完整權威狀態與全功能版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -1723,6 +1723,8 @@
   "npcDelta": null,
   "techniqueDelta": null,
   "inventoryDelta": null,
+  "worldEvents": [],
+  "quests": [],
   "choices": ["選擇1", "選擇2"]
 }
 \`\`\``; 
@@ -1754,7 +1756,7 @@
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // [Q11~Q23] Delta 狀態套用器 (含心法與招式雙軌經驗搜尋)
+    // [Q11~Q23] Delta 狀態套用器 (含完整世界紀事與任務同步)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -1781,6 +1783,19 @@
                     KungfuManager.addSkillProficiency(skill, tech.proficiencyAdd);
                 }
             });
+        }
+
+        // 世界紀事與任務動態同步
+        if (Array.isArray(rawState.worldEvents)) {
+            rawState.worldEvents.forEach(ev => {
+                const cleanEv = cleanNameStrict(ev);
+                if (cleanEv && !s.worldEvents.includes(cleanEv)) s.worldEvents.push(cleanEv);
+            });
+            if (s.worldEvents.length > 50) s.worldEvents = s.worldEvents.slice(-50);
+        }
+
+        if (Array.isArray(rawState.quests) && rawState.quests.length > 0) {
+            s.quests = rawState.quests;
         }
 
         if (Array.isArray(rawState.choices) && rawState.choices.length > 0) s.choices = rawState.choices;
@@ -1998,7 +2013,7 @@
             }
         }
 
-        // 5. [Q12, Q13, Q14] 補齊：Tab 2 (功法與招式) 動態卡片渲染與按鈕綁定
+        // 5. [Q12, Q13, Q14] Tab 2 (功法與招式) 動態卡片渲染與按鈕綁定
         const activeKfEl = document.getElementById("ui-kungfu-active");
         if (activeKfEl) {
             if (gameState.activeKungfu) {
@@ -2098,7 +2113,7 @@
             }
         }
 
-        // 6. [Q11] 補齊：Tab 3 (裝備面板) 動態插槽連動
+        // 6. [Q11] Tab 3 (裝備面板) 動態插槽連動
         const slots = ['weapon', 'armor', 'accessory', 'treasure'];
         slots.forEach(slot => {
             const eqItem = gameState.equipment[slot];
@@ -2247,7 +2262,7 @@
             if (deadCount === 0) deadNpcsBox.textContent = "故人錄中尚無記錄。";
         }
 
-        // 補齊：當前任務與世界紀事列表繪製
+        // 當前任務與世界紀事列表繪製
         const questsEl = document.getElementById("ui-quests");
         if (questsEl) {
             questsEl.innerHTML = "";
