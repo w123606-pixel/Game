@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.03 身世保底與天道覺醒版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.04 煉金防刷與防誤判修復版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -464,6 +464,8 @@
 
             if (!name) return;
 
+            const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥/.test(name);
+
             const existing = result.find(i => cleanNameStrict(i.name) === name);
             if (existing) {
                 existing.quantity += qty;
@@ -473,10 +475,10 @@
                     name: name,
                     quantity: qty,
                     type: (rawItem && typeof rawItem === 'object' && rawItem.type) || meta.type,
-                    tier: (rawItem && typeof rawItem === 'object' && rawItem.tier) || meta.rarity,
+                    tier: (rawItem && typeof rawItem === 'object' && (rawItem.tier || rawItem.rarity)) || meta.rarity,
                     value: meta.value || 10,
                     isQuestItem: isQuestItem || meta.isQuestItem,
-                    canDisassemble: canDisassemble && !meta.isQuestItem && meta.type !== 'consumable'
+                    canDisassemble: canDisassemble && !meta.isQuestItem && meta.type !== 'consumable' && !isCurrencyOrConsumable
                 });
             }
         });
@@ -495,6 +497,8 @@
         }
         if (!name) return;
 
+        const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥/.test(name);
+
         const existing = inv.find(i => cleanNameStrict(i.name) === name);
         if (existing) {
             existing.quantity += amount;
@@ -507,7 +511,7 @@
                 tier: (typeof itemObjOrName === 'object' && (itemObjOrName.tier || itemObjOrName.rarity)) || meta.rarity,
                 value: meta.value || 10,
                 isQuestItem: meta.isQuestItem,
-                canDisassemble: !meta.isQuestItem && meta.type !== 'consumable'
+                canDisassemble: !meta.isQuestItem && meta.type !== 'consumable' && !isCurrencyOrConsumable
             });
         }
     }
@@ -532,12 +536,14 @@
         isLocked: false,
         
         processDisassembly(targetItem) {
-            if (targetItem.isQuestItem || !targetItem.canDisassemble) {
-                return { success: false, reason: "⚠️ 此物品為關鍵劇情道具或無法拆解！" };
+            const cleanName = cleanNameStrict(targetItem.name);
+
+            // 嚴格攔截關鍵道具、貨幣（靈石）與不可拆解物品
+            if (targetItem.isQuestItem || !targetItem.canDisassemble || /靈石/.test(cleanName)) {
+                return { success: false, reason: "⚠️ 此物品為貨幣、關鍵劇情道具或無法拆解！" };
             }
 
             const inv = gameState.inventory;
-            const cleanName = cleanNameStrict(targetItem.name);
             const idx = inv.findIndex(i => cleanNameStrict(i.name) === cleanName);
             if (idx === -1) return { success: false, reason: "⚠️ 背包中無此物品！" };
 
@@ -740,7 +746,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.03",
+            version: "6.04",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -845,7 +851,7 @@
         }
 
         return {
-            version: "6.03",
+            version: "6.04",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -934,17 +940,18 @@
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
 
+    // Item MECE Metadata Helper (精準匹配品階關鍵字，防止「靈石」之「靈」字誤判為上品)
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
 
         let tierKey = '下品';
-        if (/(仙|神|聖)/.test(clean)) tierKey = '仙品';
-        else if (/(極|天龍|紫金)/.test(clean)) tierKey = '極品';
-        else if (/(上|玄|地|靈|赤)/.test(clean)) tierKey = '上品';
-        else if (/(中|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
-        else if (/(黑|鐵|木|粗|劣|破|鏽|舊|下|骨角|殘材)/.test(clean)) tierKey = '下品';
-        else if (/(凡|普通)/.test(clean)) tierKey = '凡品';
+        if (/(仙品|仙階|神階|聖階)/.test(clean)) tierKey = '仙品';
+        else if (/(極品|天龍|紫金)/.test(clean)) tierKey = '極品';
+        else if (/(上品|玄階|地階|靈寶|赤金)/.test(clean)) tierKey = '上品';
+        else if (/(中品|中階|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
+        else if (/(下品|下階|黑鐵|木|粗|劣|破|鏽|舊|骨角|殘材)/.test(clean)) tierKey = '下品';
+        else if (/(凡品|凡階|普通)/.test(clean)) tierKey = '凡品';
 
         const rarity = RARITY_TIERS[tierKey];
 
@@ -1666,32 +1673,31 @@
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
-            gameState.linggen = "真靈根"; // 身世保底
-            gameState.physique = "涅槃靈體"; // 身世保底
+            gameState.linggen = "真靈根";
+            gameState.physique = "涅槃靈體";
             addItemToInventory(gameState.inventory, "至尊骨殘片", 1);
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
-            gameState.linggen = "修羅異靈根"; // 身世保底
-            gameState.physique = "修羅霸體"; // 身世保底
+            gameState.linggen = "修羅異靈根";
+            gameState.physique = "修羅霸體";
             addItemToInventory(gameState.inventory, "獄卒令牌", 1);
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
-            gameState.linggen = "風雷雙靈根"; // 身世保底
-            gameState.physique = "家族血脈靈體"; // 身世保底
+            gameState.linggen = "風雷雙靈根";
+            gameState.physique = "家族血脈靈體";
             addItemToInventory(gameState.inventory, "神祕古戒", 1);
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
-            // 自訂身世：若 AI 故事解析未指定，預設給予基礎保底（不強制為最低階）
             if (!gameState.linggen || gameState.linggen === "待顯化") gameState.linggen = "真靈根";
             if (!gameState.physique || gameState.physique === "凡體") gameState.physique = "凡骨靈體";
             addItemToInventory(gameState.inventory, "粗鐵長劍", 1);
         }
     }
 
-    // 核心 System Prompt (含自訂身世保底規範)
+    // 核心 System Prompt
     function getSystemPrompt() { 
         const aliveNpcs = Object.values(gameState.npcRegistry)
             .filter(n => n.is_alive)
@@ -1765,7 +1771,6 @@ JSON 輸出格式範例：
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // Delta 狀態套用器 (含靈根與體質動態寫入)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -1936,11 +1941,7 @@ JSON 輸出格式範例：
                         gameState.realm = rDef.name; gameState.maxExp = rDef.maxExp; gameState.exp = 0;
                         gameState.hp = getMaxHp(gameState);
 
-                        /* ----------------------------------------------------
-                           ⚡ 突破練氣一層天道覺醒（方案 A 抽卡 + 保底取孰高）
-                           ---------------------------------------------------- */
                         if (isFirstBreakthrough) {
-                            // 1. 方案 A 天道機緣抽卡
                             let drawnLinggen = "偽靈根";
                             const rL = Math.random();
                             if (rL < 0.05) drawnLinggen = "天靈根";
@@ -1952,7 +1953,6 @@ JSON 輸出格式範例：
                             if (rP < 0.05) drawnPhysique = "先天道胎";
                             else if (rP < 0.25) drawnPhysique = "琉璃寶體";
 
-                            // 2. 獨立比對：取出身保底與天道抽卡中更高者
                             if (getLinggenRank(drawnLinggen) > getLinggenRank(gameState.linggen)) {
                                 gameState.linggen = drawnLinggen;
                             }
