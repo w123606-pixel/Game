@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.01 完整權威狀態與全功能版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.02 權威完整版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -267,7 +267,7 @@
                     <button id="btn-unequip-treasure" onclick="unequipItem('treasure')" style="font-size:0.7rem; padding:2px 4px;" disabled>卸下</button>
                 </div>
             </div>
-            <h2>🎒 MECE 背包 (服下/鑑定/熔煉/35%損耗降階拆解/變賣)</h2>
+            <h2>🎒 MECE 背包 (服下/參悟/鑑定/熔煉/35%損耗降階拆解/變賣)</h2>
             <div id="ui-inventory-list"></div>
         </div>
 
@@ -721,7 +721,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.00",
+            version: "6.02",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -826,7 +826,7 @@
         }
 
         return {
-            version: "6.00",
+            version: "6.02",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -915,7 +915,7 @@
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
 
-    // Item MECE Metadata Helper (包含修仙絕學全載體自動識別)
+    // Item MECE Metadata Helper (精準修復「玉簡」與典籍被誤判為飾品的BUG)
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
@@ -937,8 +937,8 @@
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 15, expGain: Math.floor(30 * rarity.mult), hpGain: 0, isQuestItem: false, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
         if (/培元丹|療傷丹|回春丹|金創藥|凝血草/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, expGain: 0, hpGain: Math.floor(50 * rarity.mult), isQuestItem: false, desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
         
-        // 全載體識別擴充 (秘笈, 玉簡, 獸皮卷, 帛書, 手札, 拓本, 傳承石, 殘頁等)
-        if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經)/.test(clean)) {
+        // 全載體識別擴充 (優先於裝備判定，確保「玉簡/心得/筆記/獸皮卷」不會因帶有「玉」字被判為飾品)
+        if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經|心得|筆記)/.test(clean)) {
             return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之絕學載體，可【參悟】研讀學習對應絕學" };
         }
 
@@ -952,7 +952,8 @@
             const con = Math.floor(5 * rarity.mult);
             return { type: 'equipment', slot: 'armor', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 80, hpBonus: hp, conBonus: con, isQuestItem: false, desc: `HP +${hp}, 根骨 +${con}` };
         }
-        if (/(戒|墜|佩|玉|項鏈|鐲)/.test(clean)) {
+        // 將飾品匹配精準化為具體詞彙，防止單字「玉」過度抓取
+        if (/(戒|墜|佩|項鏈|鐲|玉佩|玉戒|玉墜|玉鐲|戒指)/.test(clean)) {
             const hp = Math.floor(15 * rarity.mult);
             const luk = Math.floor(5 * rarity.mult);
             const agi = Math.floor(5 * rarity.mult);
@@ -1662,7 +1663,7 @@
         }
     }
 
-    // 核心 System Prompt (擴充功法獲得規範與世界紀事鐵律)
+    // 核心 System Prompt
     function getSystemPrompt() { 
         const aliveNpcs = Object.values(gameState.npcRegistry)
             .filter(n => n.is_alive)
@@ -1688,7 +1689,7 @@
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
 4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
 5. [NPC 去重與別名]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。
-6. [功法獲得與修練法則]：當玩家在故事中領悟/獲得新功法時，必須在 techniqueDelta 回傳 [{"name": "太上裂天訣", "type": "kungfu", "tier": "黃階"}]！若為增加熟練度則回傳 [{"name": "太上裂天訣", "proficiencyAdd": 20}]。
+6. [功法獲得與修練法則]：當玩家在故事中領悟/獲得新功法或術法招式時，必須在 techniqueDelta 回傳 [{"name": "青元劍訣", "type": "skill", "tier": "黃階"}]！若為增加熟練度則回傳 [{"name": "青元劍訣", "proficiencyAdd": 20}]。
 7. [空間與宗門權限]：若玩家不在宗門領地卻嘗試使用藏經閣，請描繪「萬里之遙難以存取」並拒絕！
 
 JSON 輸出格式範例：
@@ -1700,7 +1701,7 @@ JSON 輸出格式範例：
   "inventoryDelta": ["聚氣丹"],
   "tradeOffer": null,
   "npcDelta": null,
-  "techniqueDelta": [{"name": "太上裂天訣", "type": "kungfu", "tier": "黃階"}],
+  "techniqueDelta": [{"name": "青元劍訣", "type": "skill", "tier": "黃階"}],
   "worldEvents": [],
   "quests": [{"name": "探索破廟", "progress": "尋找機緣", "status": "進行中"}],
   "choices": ["選擇1", "選擇2"]
@@ -1734,7 +1735,7 @@ JSON 輸出格式範例：
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // Delta 狀態套用器 (含修為/天數/背包/全新功法解鎖與容量檢定)
+    // Delta 狀態套用器 (含招式與心法正準識別)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -1742,7 +1743,6 @@ JSON 輸出格式範例：
         if (rawState.location) s.location = cleanNameStrict(rawState.location);
         if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
 
-        // 修為經驗值與靈石相對/絕對增量寫入
         if (rawState.expDelta) {
             s.exp = Math.min(s.maxExp, s.exp + safeNumber(rawState.expDelta, 0, 0, 1e9));
         } else if (rawState.exp !== undefined) {
@@ -1752,32 +1752,28 @@ JSON 輸出格式範例：
             s.spiritStone = Math.max(0, s.spiritStone + safeNumber(rawState.spiritStoneDelta, 0, -1e9, 1e9));
         }
 
-        // 天數與年齡自然流逝推進
         if (rawState.daysPassedDelta) {
             s.daysPassed += safeNumber(rawState.daysPassedDelta, 0, 0, 1e5);
         } else if (rawState.daysPassed && rawState.daysPassed > s.daysPassed) {
             s.daysPassed = rawState.daysPassed;
         }
 
-        // AI 故事/對話中獲得物品自動寫入 MECE 背包
         if (Array.isArray(rawState.inventoryDelta)) {
             rawState.inventoryDelta.forEach(item => {
                 addItemToInventory(s.inventory, item);
             });
         }
 
-        // 二階段交易提案
         if (rawState.tradeOffer) {
             rawState.tradeOffer.tx_nonce = `tx_${Date.now()}`;
             s.pendingTradeOffer = rawState.tradeOffer;
         }
 
-        // NPC 死亡 Delta
         if (rawState.npcDelta && rawState.npcDelta.killed) {
             rawState.npcDelta.killed.forEach(kId => NPCManager.processNpcDeath(kId));
         }
 
-        // 功法與招式 Delta (支援熟練度增加與全新功法學習)
+        // 功法與招式 Delta 分流修正
         if (rawState.techniqueDelta && Array.isArray(rawState.techniqueDelta)) {
             rawState.techniqueDelta.forEach(tech => {
                 const cleanTechName = cleanNameStrict(tech.name);
@@ -1791,7 +1787,19 @@ JSON 輸出格式範例：
                         KungfuManager.addSkillProficiency(skill, tech.proficiencyAdd);
                     }
                 } else {
-                    const isKungfu = tech.type === 'kungfu' || tech.isKungfu || /(心法|訣|經|功|典|錄)/.test(cleanTechName);
+                    let isKungfu = false;
+                    if (tech.type === 'kungfu' || tech.isKungfu) {
+                        isKungfu = true;
+                    } else if (tech.type === 'skill' || tech.isSkill) {
+                        isKungfu = false;
+                    } else {
+                        // 優先識別武功/招式關鍵字（如：劍法、劍訣、刀術、掌法、指法）
+                        const isCombatSkill = /(劍|刀|槍|戟|拳|掌|指|腿|身法|步法|術|法|刺|斬|破|印)/.test(cleanTechName);
+                        const isMindLaw = /(心法|吐納|冥想|功|經|典)/.test(cleanTechName);
+
+                        isKungfu = isMindLaw && !isCombatSkill;
+                    }
+
                     if (isKungfu) {
                         if (s.kungfu.length < 3) {
                             s.kungfu.push({
@@ -1819,7 +1827,6 @@ JSON 輸出格式範例：
             });
         }
 
-        // 世界紀事過濾與限制
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(ev => {
                 const cleanEv = cleanNameStrict(ev);
@@ -1932,7 +1939,6 @@ JSON 輸出格式範例：
     function renderUI() {
         checkLifeStatus(gameState);
 
-        // 1. 情勢 Badge 動態樣式更新
         const modeBadgeEl = document.getElementById("ui-scenario-mode");
         const effectiveMode = getEffectiveMode(gameState);
         if (modeBadgeEl) {
@@ -1948,7 +1954,6 @@ JSON 輸出格式範例：
             modeBadgeEl.className = mInfo.class;
         }
 
-        // 2. 渲染二階段交易確信 Bar
         const offerContainer = document.getElementById("trade-offer-container");
         if (offerContainer) {
             if (gameState.pendingTradeOffer) {
@@ -1967,7 +1972,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 3. 按鈕與開局輸入區控制
         const choiceCont = document.getElementById("dynamic-choices-container");
         const deathActionCont = document.getElementById("death-action-container");
         const normalInputGroup = document.getElementById("normal-input-group");
@@ -1992,7 +1996,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 突破按鈕動態文字與解鎖條件控制
         const deduceBtn = document.getElementById("btn-deduce");
         if (deduceBtn) {
             if (!gameState.hasChosenOrigin) {
@@ -2004,7 +2007,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 4. 頂層與 Tab 1 (基礎狀態) 數據更新
         document.getElementById("ui-location-top").textContent = `📜 九州史詩 - ${gameState.location || "九州邊境 · 荒郊破廟"}`;
         document.getElementById("ui-realm").innerText = `${gameState.realm} (Lv.${gameState.level})`;
         document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
@@ -2017,7 +2019,6 @@ JSON 輸出格式範例：
         const currentAge = (gameState.ageBase || 18) + yearsPassed;
         document.getElementById("ui-age").textContent = `${currentAge}歲${monthsPassed}月 / ${gameState.maxAge || 100}歲`;
 
-        // 宗門貢獻與狀態欄
         const sectInfoEl = document.getElementById("ui-sect-info");
         const sectBadgeEl = document.getElementById("ui-sect-top");
         if (sectInfoEl) {
@@ -2038,7 +2039,6 @@ JSON 輸出格式範例：
         document.getElementById("ui-exp-text").innerText = `${gameState.exp} / ${gameState.maxExp} (${expPct}%)`;
         document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
 
-        // 六維屬性拆解顯示 (基礎 + 外力加成)
         const breakdown = getStatBreakdown(gameState);
         document.getElementById("st-str").innerHTML = formatStatDisplay(breakdown.base.str, breakdown.bonus.str);
         document.getElementById("st-con").innerHTML = formatStatDisplay(breakdown.base.con, breakdown.bonus.con);
@@ -2059,7 +2059,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 5. Tab 2 (功法與招式) 動態卡片渲染與按鈕綁定
         const activeKfEl = document.getElementById("ui-kungfu-active");
         if (activeKfEl) {
             if (gameState.activeKungfu) {
@@ -2159,7 +2158,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 6. Tab 3 (裝備面板) 動態插槽連動
         const slots = ['weapon', 'armor', 'accessory', 'treasure'];
         slots.forEach(slot => {
             const eqItem = gameState.equipment[slot];
@@ -2179,7 +2177,6 @@ JSON 輸出格式範例：
             }
         });
 
-        // MECE 背包欄位渲染 (含關鍵道具變賣鎖、絕學載體【參悟】與多維按鈕)
         const invBox = document.getElementById("ui-inventory-list");
         if (invBox) {
             invBox.innerHTML = "";
@@ -2202,7 +2199,6 @@ JSON 輸出格式範例：
                     } else if (meta.type === 'consumable') {
                         let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
                     } else if (meta.type === 'knowledge') {
-                        // 絕學載體【參悟】按鈕（自動對話研讀）
                         let b = document.createElement("button"); b.textContent = "參悟"; b.onclick = () => sendAction(`【研讀並參悟背包中的「${name}」】`); actionGroup.appendChild(b);
                     } else if (meta.type === 'unidentified') {
                         let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
@@ -2225,7 +2221,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 7. Tab 4 (社交、故人錄與任務) 完整動態卡片渲染
         const npcsBox = document.getElementById("ui-npcs-list");
         const deadNpcsBox = document.getElementById("ui-dead-npcs-list");
         if (npcsBox && deadNpcsBox) {
@@ -2310,7 +2305,6 @@ JSON 輸出格式範例：
             if (deadCount === 0) deadNpcsBox.textContent = "故人錄中尚無記錄。";
         }
 
-        // 當前任務與世界紀事列表繪製 (雙向相容字串與物件格式)
         const questsEl = document.getElementById("ui-quests");
         if (questsEl) {
             questsEl.innerHTML = "";
@@ -2348,7 +2342,6 @@ JSON 輸出格式範例：
             }
         }
 
-        // 8. 快選按鈕啟動狀態綁定
         const isEnabled = gameState.hasChosenOrigin && !gameState.isDead;
         document.getElementById("btn-heal").disabled = !isEnabled;
         document.getElementById("btn-long-heal").disabled = !isEnabled;
