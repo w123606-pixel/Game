@@ -474,7 +474,7 @@
             name = cleanNameStrict(itemObjOrName);
         } else if (itemObjOrName && typeof itemObjOrName === 'object') {
             name = cleanNameStrict(itemObjOrName.name);
-            amount = safeNumber(itemObjOrName.quantity, qty, 1, 9999);
+            amount = safeNumber(itemObjOrName.quantity || itemObjOrName.qty, qty, 1, 9999);
         }
         if (!name) return;
 
@@ -1689,7 +1689,7 @@
         }
     }
 
-    // [Q11~Q23] 核心 System Prompt
+    // [Q11~Q23 & Q6 強化] 核心 System Prompt (具備數值 Delta 與世界紀事嚴格規範)
     function getSystemPrompt() { 
         const aliveNpcs = Object.values(gameState.npcRegistry)
             .filter(n => n.is_alive)
@@ -1709,22 +1709,27 @@
 • 當前場景可互動 NPC：[${aliveNpcs || '無'}]
 • 當前背包物品：[${invListStr}]
 
-⚠️ AI 必須嚴格遵守的【六大鐵律】：
-1. [物品與交易硬鎖]：背包快照中有物品才可使用！嚴禁宣稱「物品先前已吃掉」。若玩家詢價/買賣，你【嚴禁】在 JSON 輸出 inventoryDelta，只需回傳 tradeOffer 物件等待玩家點擊 UI 確認！
-2. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
-3. [NPC 去重與別名]：同一場合出現的掌櫃/長老必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。
-4. [功法修練法則]：功法突破（入門->小成->圓滿）嚴禁在故事中宣稱完成，必須透過 JSON 回傳 techniqueDelta 提報。
-5. [空間與宗門權限]：若玩家不在宗門領地卻嘗試使用藏經閣，請描繪「萬里之遙難以存取」並拒絕！
-6. [JSON 輸出格式]：你產出的 JSON 格式如下：
+⚠️ AI 必須嚴格遵守的【七大鐵律】：
+1. [修為/天數/物品結算]：玩家在故事中戰鬥、探索或遭遇事件時，你【必須】在 JSON 注入 expDelta（修為增加量）、daysPassedDelta（消耗天數，通常1~3天）與 inventoryDelta（獲得之物品陣列）！
+2. [物品與交易硬鎖]：背包快照中有物品才可使用！若玩家買賣，你【嚴禁】在 JSON 輸出 inventoryDelta，只需回傳 tradeOffer 物件等待玩家點擊 UI 確認！
+3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
+4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
+5. [NPC 去重與別名]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。
+6. [功法修練法則]：功法突破（入門->小成->圓滿）嚴禁在故事中宣稱完成，必須透過 JSON 回傳 techniqueDelta 提報。
+7. [空間與宗門權限]：若玩家不在宗門領地卻嘗試使用藏經閣，請描繪「萬里之遙難以存取」並拒絕！
+
+JSON 輸出格式範例：
 \`\`\`json
 {
   "story": "故事描繪文字...",
+  "expDelta": 20,
+  "daysPassedDelta": 1,
+  "inventoryDelta": ["聚氣丹"],
   "tradeOffer": null,
   "npcDelta": null,
   "techniqueDelta": null,
-  "inventoryDelta": null,
   "worldEvents": [],
-  "quests": [],
+  "quests": [{"name": "探索破廟", "progress": "尋找機緣", "status": "進行中"}],
   "choices": ["選擇1", "選擇2"]
 }
 \`\`\``; 
@@ -1756,13 +1761,37 @@
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // [Q11~Q23] Delta 狀態套用器 (含完整世界紀事與任務同步)
+    // [Q11~Q23 & Q1, Q2, Q3 修正版] Delta 狀態套用器 (含全自動經驗、天數、物品欄寫入、世界紀事與任務同步)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
 
         if (rawState.location) s.location = cleanNameStrict(rawState.location);
         if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
+
+        // [Q1 修正] 修為經驗值與靈石相對/絕對增量寫入
+        if (rawState.expDelta) {
+            s.exp = Math.min(s.maxExp, s.exp + safeNumber(rawState.expDelta, 0, 0, 1e9));
+        } else if (rawState.exp !== undefined) {
+            s.exp = Math.min(s.maxExp, safeNumber(rawState.exp, s.exp, 0, 1e9));
+        }
+        if (rawState.spiritStoneDelta) {
+            s.spiritStone = Math.max(0, s.spiritStone + safeNumber(rawState.spiritStoneDelta, 0, -1e9, 1e9));
+        }
+
+        // [Q3 修正] 天數與年齡自然流逝推進
+        if (rawState.daysPassedDelta) {
+            s.daysPassed += safeNumber(rawState.daysPassedDelta, 0, 0, 1e5);
+        } else if (rawState.daysPassed && rawState.daysPassed > s.daysPassed) {
+            s.daysPassed = rawState.daysPassed;
+        }
+
+        // [Q2 修正] AI 故事/對話中獲得物品自動原子化存入 MECE 背包
+        if (Array.isArray(rawState.inventoryDelta)) {
+            rawState.inventoryDelta.forEach(item => {
+                addItemToInventory(s.inventory, item);
+            });
+        }
 
         // [Q18] 二階段交易提案
         if (rawState.tradeOffer) {
@@ -1785,7 +1814,7 @@
             });
         }
 
-        // 世界紀事與任務動態同步
+        // [Q6 修正] 世界紀事過濾與限制
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(ev => {
                 const cleanEv = cleanNameStrict(ev);
@@ -1893,7 +1922,7 @@
     }
 
     /* ----------------------------------------------------
-       🖥️ 完整重構：全功能整合 UI 渲染引擎 (renderUI)
+       🖥️ 全功能整合 UI 渲染引擎 (renderUI) - 修正版
        ---------------------------------------------------- */
     function renderUI() {
         checkLifeStatus(gameState);
@@ -1955,6 +1984,18 @@
                     b.onclick = () => sendAction(c);
                     choiceCont.appendChild(b);
                 });
+            }
+        }
+
+        // [Q4 修正] 突破按鈕動態文字與解鎖條件控制
+        const deduceBtn = document.getElementById("btn-deduce");
+        if (deduceBtn) {
+            if (!gameState.hasChosenOrigin) {
+                deduceBtn.textContent = "✨ 需先設定身世開局";
+                deduceBtn.disabled = true;
+            } else {
+                deduceBtn.textContent = `✨ 衝擊突破 (${gameState.realm})`;
+                deduceBtn.disabled = gameState.isDead || (gameState.exp < gameState.maxExp);
             }
         }
 
@@ -2262,7 +2303,7 @@
             if (deadCount === 0) deadNpcsBox.textContent = "故人錄中尚無記錄。";
         }
 
-        // 當前任務與世界紀事列表繪製
+        // [Q5 修正] 當前任務與世界紀事列表繪製 (雙向相容字串與物件格式)
         const questsEl = document.getElementById("ui-quests");
         if (questsEl) {
             questsEl.innerHTML = "";
@@ -2270,7 +2311,14 @@
                 gameState.quests.forEach(q => {
                     const div = document.createElement("div");
                     div.style.marginBottom = "4px";
-                    div.innerHTML = `📜 <b>${q.name}</b>：${q.progress} <span style="color:#888;">[${q.status || '進行中'}]</span>`;
+                    if (typeof q === 'string') {
+                        div.innerHTML = `📜 ${q}`;
+                    } else if (q && typeof q === 'object') {
+                        const qName = q.name || q.title || "未知任務";
+                        const qProg = q.progress || q.desc || "進行中";
+                        const qStatus = q.status || "進行中";
+                        div.innerHTML = `📜 <b>${qName}</b>：${qProg} <span style="color:#888;">[${qStatus}]</span>`;
+                    }
                     questsEl.appendChild(div);
                 });
             } else {
@@ -2298,7 +2346,8 @@
         document.getElementById("btn-heal").disabled = !isEnabled;
         document.getElementById("btn-long-heal").disabled = !isEnabled;
         document.getElementById("btn-hospital").disabled = !isEnabled;
-        document.getElementById("btn-deduce").disabled = !isEnabled;
+        document.getElementById("btn-sect-quest").disabled = !isEnabled;
+        document.getElementById("btn-sect-lib").disabled = !isEnabled;
 
         drawRadarChart(breakdown.total);
     }
