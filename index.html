@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.00 完整權威狀態與全功能版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.01 完整權威狀態與全功能版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -383,9 +383,7 @@
         "修為圓滿待突破": { wis: 2, desc: "悟性+2 (氣海充盈)" }
     };
 
-    // [Q12] 功法 4 階段生命週期定義
     const SKILL_STAGES = ["入門", "小成", "大成", "圓滿"];
-    // [Q14] 5 大品級 Base 指數矩陣
     const TIER_BASE_EXP = {
         "黃階": 50,
         "玄階": 150,
@@ -421,7 +419,7 @@
     }
 
     /* ----------------------------------------------------
-       🚀 [Q11] MECE 背包資料結構與標籤 (SSOT)
+       🚀 MECE 背包資料結構與標籤 (SSOT)
        ---------------------------------------------------- */
     function normalizeInventory(rawInv) {
         if (!Array.isArray(rawInv)) return [];
@@ -509,12 +507,11 @@
     }
 
     /* ----------------------------------------------------
-       🛡️ [Q15, Q16, Q17, Q18] 本地原子交易引擎 (TransactionEngine)
+       🛡️ 本地原子交易引擎 (TransactionEngine)
        ---------------------------------------------------- */
     const TransactionEngine = {
         isLocked: false,
         
-        // [Q16] 35% 損耗降階拆解
         processDisassembly(targetItem) {
             if (targetItem.isQuestItem || !targetItem.canDisassemble) {
                 return { success: false, reason: "⚠️ 此物品為關鍵劇情道具或無法拆解！" };
@@ -525,14 +522,12 @@
             const idx = inv.findIndex(i => cleanNameStrict(i.name) === cleanName);
             if (idx === -1) return { success: false, reason: "⚠️ 背包中無此物品！" };
 
-            // 1. 本地原子預扣除
             if (inv[idx].quantity > 1) {
                 inv[idx].quantity -= 1;
             } else {
                 inv.splice(idx, 1);
             }
 
-            // 2. 品級降階 (Tier N - 1) 與 35% 價值收斂計算
             const itemTier = targetItem.tier || "上品";
             const baseVal = targetItem.value || 100;
             const yieldVal = Math.floor(baseVal * 0.35);
@@ -545,16 +540,13 @@
                 gainedItems.push({ name: "下品靈石", quantity: Math.max(1, yieldVal), type: "consumable", tier: "下品" });
             }
 
-            // 3. 淨值過濾：產物絕對不可包含被拆解目標本身 (Anti-Duplication)
             const sanitizedGained = gainedItems.filter(g => cleanNameStrict(g.name) !== cleanName);
-
             sanitizedGained.forEach(g => addItemToInventory(gameState.inventory, g));
 
             const yieldNames = sanitizedGained.map(i => `${i.name}x${i.quantity}`).join('、');
             return { success: true, message: `成功拆解【${cleanName}】，獲得：${yieldNames}` };
         },
 
-        // [Q17, Q18] 冪等單號與二階段交易提交
         executeTradeSettlement(tradeOffer) {
             const txNonce = tradeOffer.tx_nonce;
             if (gameState.processedTxIds.includes(txNonce)) {
@@ -585,7 +577,6 @@
             return { success: true, message: `✅ 交易成功結算！金額：${totalPrice} 靈石。` };
         },
 
-        // [Q15] SSOT 本地預扣除
         useItemOptimistic(itemName) {
             const clean = cleanNameStrict(itemName);
             const item = gameState.inventory.find(i => cleanNameStrict(i.name) === clean);
@@ -602,10 +593,9 @@
     };
 
     /* ----------------------------------------------------
-       👥 [Q19, Q20, Q21, Q22] NPC 實體與多維關係引擎 (NPCManager)
+       👥 NPC 實體與多維關係引擎 (NPCManager)
        ---------------------------------------------------- */
     const NPCManager = {
-        // [Q19, Q22] 3 級作用域、去重與初始關係矩陣
         getOrCreateNpc(npcData) {
             const npcId = npcData.id || `npc_${cleanNameStrict(npcData.name)}`;
             const registry = gameState.npcRegistry;
@@ -637,7 +627,6 @@
             return newNpc;
         },
 
-        // [Q20] 對話好感度邊際遞減公式
         calculateChatFavorability(npcId, isTopicMatched) {
             const todayKey = `${npcId}_turn_${Math.floor((gameState.turn_count || 1) / 10)}`;
             const chatsToday = gameState.dailyChatCounts[todayKey] || 0;
@@ -652,7 +641,6 @@
             return Math.max(1, gainedFav);
         },
 
-        // [Q21] 擊殺一鍵原子連動
         processNpcDeath(npcId, killer = "PLAYER") {
             const registry = gameState.npcRegistry;
             if (registry[npcId]) {
@@ -668,10 +656,9 @@
     };
 
     /* ----------------------------------------------------
-       📖 [Q12, Q13, Q14] 功法指數型成長引擎 (KungfuManager)
+       📖 功法指數型成長引擎 (KungfuManager)
        ---------------------------------------------------- */
     const KungfuManager = {
-        // [Q14] 指數升級公式: Base * 2.5^(S - 1)
         getRequiredExp(tier, currentStage) {
             const base = TIER_BASE_EXP[tier] || 50;
             const stageIdx = SKILL_STAGES.indexOf(currentStage);
@@ -700,25 +687,21 @@
     };
 
     /* ----------------------------------------------------
-       🏛️ [Q22, Q23] 宗門與藏經閣雙重權限引擎
+       🏛️ 宗門與藏經閣雙重權限引擎
        ---------------------------------------------------- */
     const SectAndLocationEngine = {
-        // [Q23] 藏經閣 7 重管道檢定
         checkSutraPavilionAccess(targetFloor = 1) {
             const sect = gameState.sect;
             const loc = gameState.location;
 
-            // 1. 歸屬宗門檢定
             if (!sect.joined) {
                 return { success: false, reason: "⚠️ 你目前為【散修】身分，無權進入宗門藏經閣！" };
             }
 
-            // 2. 空間座標檢定
             if (!loc.includes(sect.name) || !loc.includes("藏經閣")) {
                 return { success: false, reason: `⚠️ 萬里之遙！你目前位於【${loc}】，請先返回【${sect.name}藏經閣】。` };
             }
 
-            // 3. 樓層貢獻與職位檢定
             const floorReqs = {
                 1: { rank: "外門弟子", contrib: 10 },
                 2: { rank: "內門弟子", contrib: 50 },
@@ -731,7 +714,6 @@
                 return { success: false, reason: `⚠️ 宗門貢獻點不足！進入 ${targetFloor} 樓需要 ${req.contrib} 點貢獻（當前：${sect.contribution || 0} 點）。` };
             }
 
-            // 扣除進入貢獻點
             sect.contribution -= req.contrib;
             return { success: true, message: `✅ 通過驗證！已消耗 ${req.contrib} 點貢獻進入藏經閣第 ${targetFloor} 層。` };
         }
@@ -748,25 +730,17 @@
             location: "九州邊境 · 荒郊破廟", scenarioMode: "IDLE", activeThreats: [],
             hasChosenOrigin: false, originType: "未明", turn_count: 1,
             
-            // [Q23] 宗門 SSOT 狀態
             sect: { joined: false, id: null, name: "無", rank: "散修", contribution: 0, totalContribution: 0, position: "無" },
-            
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], 
             activeKungfu: null, kungfu: [], skills: [],
             equipment: { weapon: null, armor: null, accessory: null, treasure: null },
-            
-            // [Q11] MECE 背包
             inventory: [], 
-            
-            // [Q19] NPC 實體冊
             npcRegistry: {},
             sceneCacheNpcs: [],
             worldEvents: [],
             quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
             choices: [...DEFAULT_ORIGIN_CHOICES],
-            
-            // [Q17, Q18] 交易單號與確信提案
             processedTxIds: [],
             pendingTradeOffer: null,
             dailyChatCounts: {}
@@ -831,7 +805,6 @@
         const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
 
-        // 升級或修復 NPC 註冊表
         const npcsMap = (raw.npcRegistry && typeof raw.npcRegistry === 'object') ? raw.npcRegistry : {};
         if (Array.isArray(raw.npcs)) {
             raw.npcs.forEach(n => {
@@ -942,7 +915,7 @@
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
 
-    // [Q11] Item MECE Metadata Helper
+    // Item MECE Metadata Helper (包含修仙絕學全載體自動識別)
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
@@ -963,7 +936,11 @@
         if (/材料|精金|靈鐵|礦石|草藥|粉末|粗鐵胚料|精鋼材料|殘材|精粹/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, isQuestItem: false, desc: "鍛造材料，可於坊市變賣換取靈石" };
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 15, expGain: Math.floor(30 * rarity.mult), hpGain: 0, isQuestItem: false, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
         if (/培元丹|療傷丹|回春丹|金創藥|凝血草/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, expGain: 0, hpGain: Math.floor(50 * rarity.mult), isQuestItem: false, desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
-        if (/秘笈|殘篇|古籍|心法|功法/.test(clean)) return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "可【參悟】研讀學習對應絕學" };
+        
+        // 全載體識別擴充 (秘笈, 玉簡, 獸皮卷, 帛書, 手札, 拓本, 傳承石, 殘頁等)
+        if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經)/.test(clean)) {
+            return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之絕學載體，可【參悟】研讀學習對應絕學" };
+        }
 
         if (/(劍|刀|槍|戟|弓|刃|杖|斧|鞭)/.test(clean)) {
             const hp = Math.floor(25 * rarity.mult);
@@ -1329,7 +1306,6 @@
         renderUI(); saveGameState();
     }
 
-    // [Q12, Q13, Q14] 功法參悟修練與跨階風險檢定
     function practiceTechnique(type, name) {
         if (gameState.isDead) return;
         let list = type === 'kungfu' ? gameState.kungfu : gameState.skills;
@@ -1486,7 +1462,6 @@
         renderUI(); saveGameState();
     }
 
-    // [Q11, Q16] 背包互動（服下/鑑定/熔煉/35%損耗降階拆解/變賣）
     function interactInventoryItem(name, action) {
         if (gameState.isDead) return;
         const cleanName = cleanNameStrict(name);
@@ -1517,7 +1492,6 @@
             addItemToInventory(gameState.inventory, fusedName, 1);
             openGameModal("🔮 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
         } else if (action === 'salvage') {
-            // [Q16] 35% 損耗降階拆解二次確認
             const bodyContainer = document.createElement("div");
             bodyContainer.innerHTML = `確定要拆解<b>【[${invItem.tier || meta.rarity}] ${cleanName}】</b>嗎？<br><br>
             🛠️ <b>降階提煉（35% 殘值收斂）：</b><br>
@@ -1629,7 +1603,6 @@
         }, `【前往醫館支付 ${cost} 靈石求醫。雖治癒傷勢，但體內殘留藥石丹毒，最大生命值受損！】`);
     }
 
-    // [Q23] 宗門功能入口檢定
     function sectAction(type) {
         if (!gameState.sect || !gameState.sect.joined) { 
             openGameModal("⚠️ 散修無宗門", "請先拜入宗門再使用宗門設施！"); 
@@ -1689,7 +1662,7 @@
         }
     }
 
-    // [Q11~Q23 & Q6 強化] 核心 System Prompt (具備數值 Delta 與世界紀事嚴格規範)
+    // 核心 System Prompt (擴充功法獲得規範與世界紀事鐵律)
     function getSystemPrompt() { 
         const aliveNpcs = Object.values(gameState.npcRegistry)
             .filter(n => n.is_alive)
@@ -1715,7 +1688,7 @@
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
 4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
 5. [NPC 去重與別名]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。
-6. [功法修練法則]：功法突破（入門->小成->圓滿）嚴禁在故事中宣稱完成，必須透過 JSON 回傳 techniqueDelta 提報。
+6. [功法獲得與修練法則]：當玩家在故事中領悟/獲得新功法時，必須在 techniqueDelta 回傳 [{"name": "太上裂天訣", "type": "kungfu", "tier": "黃階"}]！若為增加熟練度則回傳 [{"name": "太上裂天訣", "proficiencyAdd": 20}]。
 7. [空間與宗門權限]：若玩家不在宗門領地卻嘗試使用藏經閣，請描繪「萬里之遙難以存取」並拒絕！
 
 JSON 輸出格式範例：
@@ -1727,7 +1700,7 @@ JSON 輸出格式範例：
   "inventoryDelta": ["聚氣丹"],
   "tradeOffer": null,
   "npcDelta": null,
-  "techniqueDelta": null,
+  "techniqueDelta": [{"name": "太上裂天訣", "type": "kungfu", "tier": "黃階"}],
   "worldEvents": [],
   "quests": [{"name": "探索破廟", "progress": "尋找機緣", "status": "進行中"}],
   "choices": ["選擇1", "選擇2"]
@@ -1761,7 +1734,7 @@ JSON 輸出格式範例：
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // [Q11~Q23 & Q1, Q2, Q3 修正版] Delta 狀態套用器 (含全自動經驗、天數、物品欄寫入、世界紀事與任務同步)
+    // Delta 狀態套用器 (含修為/天數/背包/全新功法解鎖與容量檢定)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
@@ -1769,7 +1742,7 @@ JSON 輸出格式範例：
         if (rawState.location) s.location = cleanNameStrict(rawState.location);
         if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
 
-        // [Q1 修正] 修為經驗值與靈石相對/絕對增量寫入
+        // 修為經驗值與靈石相對/絕對增量寫入
         if (rawState.expDelta) {
             s.exp = Math.min(s.maxExp, s.exp + safeNumber(rawState.expDelta, 0, 0, 1e9));
         } else if (rawState.exp !== undefined) {
@@ -1779,42 +1752,74 @@ JSON 輸出格式範例：
             s.spiritStone = Math.max(0, s.spiritStone + safeNumber(rawState.spiritStoneDelta, 0, -1e9, 1e9));
         }
 
-        // [Q3 修正] 天數與年齡自然流逝推進
+        // 天數與年齡自然流逝推進
         if (rawState.daysPassedDelta) {
             s.daysPassed += safeNumber(rawState.daysPassedDelta, 0, 0, 1e5);
         } else if (rawState.daysPassed && rawState.daysPassed > s.daysPassed) {
             s.daysPassed = rawState.daysPassed;
         }
 
-        // [Q2 修正] AI 故事/對話中獲得物品自動原子化存入 MECE 背包
+        // AI 故事/對話中獲得物品自動寫入 MECE 背包
         if (Array.isArray(rawState.inventoryDelta)) {
             rawState.inventoryDelta.forEach(item => {
                 addItemToInventory(s.inventory, item);
             });
         }
 
-        // [Q18] 二階段交易提案
+        // 二階段交易提案
         if (rawState.tradeOffer) {
             rawState.tradeOffer.tx_nonce = `tx_${Date.now()}`;
             s.pendingTradeOffer = rawState.tradeOffer;
         }
 
-        // [Q21] NPC 死亡 Delta
+        // NPC 死亡 Delta
         if (rawState.npcDelta && rawState.npcDelta.killed) {
             rawState.npcDelta.killed.forEach(kId => NPCManager.processNpcDeath(kId));
         }
 
-        // [Q13 修復] 功法與招式經驗 Delta 雙軌搜尋
+        // 功法與招式 Delta (支援熟練度增加與全新功法學習)
         if (rawState.techniqueDelta && Array.isArray(rawState.techniqueDelta)) {
             rawState.techniqueDelta.forEach(tech => {
-                let skill = s.skills.find(sk => sk.name === tech.name) || s.kungfu.find(kf => kf.name === tech.name);
-                if (skill && tech.proficiencyAdd) {
-                    KungfuManager.addSkillProficiency(skill, tech.proficiencyAdd);
+                const cleanTechName = cleanNameStrict(tech.name);
+                if (!cleanTechName) return;
+
+                let skill = s.skills.find(sk => cleanNameStrict(sk.name) === cleanTechName) || 
+                            s.kungfu.find(kf => cleanNameStrict(kf.name) === cleanTechName);
+
+                if (skill) {
+                    if (tech.proficiencyAdd) {
+                        KungfuManager.addSkillProficiency(skill, tech.proficiencyAdd);
+                    }
+                } else {
+                    const isKungfu = tech.type === 'kungfu' || tech.isKungfu || /(心法|訣|經|功|典|錄)/.test(cleanTechName);
+                    if (isKungfu) {
+                        if (s.kungfu.length < 3) {
+                            s.kungfu.push({
+                                name: cleanTechName,
+                                tier: tech.tier || "黃階",
+                                stage: "入門",
+                                proficiency: 0,
+                                element: tech.element || "無",
+                                description: tech.description || ""
+                            });
+                        }
+                    } else {
+                        if (s.skills.length < 10) {
+                            s.skills.push({
+                                name: cleanTechName,
+                                tier: tech.tier || "黃階",
+                                stage: "入門",
+                                proficiency: 0,
+                                element: tech.element || "無",
+                                description: tech.description || ""
+                            });
+                        }
+                    }
                 }
             });
         }
 
-        // [Q6 修正] 世界紀事過濾與限制
+        // 世界紀事過濾與限制
         if (Array.isArray(rawState.worldEvents)) {
             rawState.worldEvents.forEach(ev => {
                 const cleanEv = cleanNameStrict(ev);
@@ -1922,12 +1927,12 @@ JSON 輸出格式範例：
     }
 
     /* ----------------------------------------------------
-       🖥️ 全功能整合 UI 渲染引擎 (renderUI) - 修正版
+       🖥️ 全功能整合 UI 渲染引擎 (renderUI)
        ---------------------------------------------------- */
     function renderUI() {
         checkLifeStatus(gameState);
 
-        // 1. [Q10] 情勢 Badge 動態樣式更新
+        // 1. 情勢 Badge 動態樣式更新
         const modeBadgeEl = document.getElementById("ui-scenario-mode");
         const effectiveMode = getEffectiveMode(gameState);
         if (modeBadgeEl) {
@@ -1943,7 +1948,7 @@ JSON 輸出格式範例：
             modeBadgeEl.className = mInfo.class;
         }
 
-        // 2. [Q18] 渲染二階段交易確信 Bar
+        // 2. 渲染二階段交易確信 Bar
         const offerContainer = document.getElementById("trade-offer-container");
         if (offerContainer) {
             if (gameState.pendingTradeOffer) {
@@ -1987,7 +1992,7 @@ JSON 輸出格式範例：
             }
         }
 
-        // [Q4 修正] 突破按鈕動態文字與解鎖條件控制
+        // 突破按鈕動態文字與解鎖條件控制
         const deduceBtn = document.getElementById("btn-deduce");
         if (deduceBtn) {
             if (!gameState.hasChosenOrigin) {
@@ -2012,7 +2017,7 @@ JSON 輸出格式範例：
         const currentAge = (gameState.ageBase || 18) + yearsPassed;
         document.getElementById("ui-age").textContent = `${currentAge}歲${monthsPassed}月 / ${gameState.maxAge || 100}歲`;
 
-        // [Q23] 宗門貢獻與狀態欄
+        // 宗門貢獻與狀態欄
         const sectInfoEl = document.getElementById("ui-sect-info");
         const sectBadgeEl = document.getElementById("ui-sect-top");
         if (sectInfoEl) {
@@ -2054,7 +2059,7 @@ JSON 輸出格式範例：
             }
         }
 
-        // 5. [Q12, Q13, Q14] Tab 2 (功法與招式) 動態卡片渲染與按鈕綁定
+        // 5. Tab 2 (功法與招式) 動態卡片渲染與按鈕綁定
         const activeKfEl = document.getElementById("ui-kungfu-active");
         if (activeKfEl) {
             if (gameState.activeKungfu) {
@@ -2154,7 +2159,7 @@ JSON 輸出格式範例：
             }
         }
 
-        // 6. [Q11] Tab 3 (裝備面板) 動態插槽連動
+        // 6. Tab 3 (裝備面板) 動態插槽連動
         const slots = ['weapon', 'armor', 'accessory', 'treasure'];
         slots.forEach(slot => {
             const eqItem = gameState.equipment[slot];
@@ -2174,7 +2179,7 @@ JSON 輸出格式範例：
             }
         });
 
-        // MECE 背包欄位渲染 (含關鍵道具變賣鎖與多維按鈕)
+        // MECE 背包欄位渲染 (含關鍵道具變賣鎖、絕學載體【參悟】與多維按鈕)
         const invBox = document.getElementById("ui-inventory-list");
         if (invBox) {
             invBox.innerHTML = "";
@@ -2196,6 +2201,9 @@ JSON 輸出格式範例：
                         let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(name); actionGroup.appendChild(b);
                     } else if (meta.type === 'consumable') {
                         let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'knowledge') {
+                        // 絕學載體【參悟】按鈕（自動對話研讀）
+                        let b = document.createElement("button"); b.textContent = "參悟"; b.onclick = () => sendAction(`【研讀並參悟背包中的「${name}」】`); actionGroup.appendChild(b);
                     } else if (meta.type === 'unidentified') {
                         let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
                     } else if (meta.type === 'fragment') {
@@ -2206,7 +2214,6 @@ JSON 輸出格式範例：
                         let b = document.createElement("button"); b.textContent = "拆解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
                     }
 
-                    // [Q11 修復] 關鍵劇情信物鎖死變賣
                     if (!item.isQuestItem) {
                         let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(bSell);
                     }
@@ -2218,7 +2225,7 @@ JSON 輸出格式範例：
             }
         }
 
-        // 7. [Q19, Q21, Q22] Tab 4 (社交、故人錄與任務) 完整動態卡片渲染
+        // 7. Tab 4 (社交、故人錄與任務) 完整動態卡片渲染
         const npcsBox = document.getElementById("ui-npcs-list");
         const deadNpcsBox = document.getElementById("ui-dead-npcs-list");
         if (npcsBox && deadNpcsBox) {
@@ -2303,7 +2310,7 @@ JSON 輸出格式範例：
             if (deadCount === 0) deadNpcsBox.textContent = "故人錄中尚無記錄。";
         }
 
-        // [Q5 修正] 當前任務與世界紀事列表繪製 (雙向相容字串與物件格式)
+        // 當前任務與世界紀事列表繪製 (雙向相容字串與物件格式)
         const questsEl = document.getElementById("ui-quests");
         if (questsEl) {
             questsEl.innerHTML = "";
