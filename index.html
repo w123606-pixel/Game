@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.07_靈石權限修正版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.08 天數與宗門權限修正版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -741,19 +741,31 @@
                 4: { rank: "長老", contrib: 1000 }
             };
 
-            const req = floorReqs[targetFloor] || floorReqs[1];
-            if ((sect.contribution || 0) < req.contrib) {
-                return { success: false, reason: `⚠️ 宗門貢獻點不足！進入 ${targetFloor} 樓需要 ${req.contrib} 點貢獻（當前：${sect.contribution || 0} 點）。` };
+            const floor = Number(targetFloor);
+            const req = floorReqs[floor];
+            if (!req) {
+                return { success: false, reason: `⚠️ 藏經閣樓層設定無效：${targetFloor}。` };
             }
 
-            sect.contribution -= req.contrib;
-            return { success: true, message: `✅ 通過驗證！已消耗 ${req.contrib} 點貢獻進入藏經閣第 ${targetFloor} 層。` };
+            const rankOrder = ["外門弟子", "內門弟子", "核心弟子", "長老", "宗主"];
+            const actualRank = String(sect.rank || "");
+            const actualRankIndex = rankOrder.indexOf(actualRank);
+            const requiredRankIndex = rankOrder.indexOf(req.rank);
+            if (actualRankIndex < 0 || actualRankIndex < requiredRankIndex) {
+                return { success: false, reason: `⚠️ 身分不足！藏經閣第 ${floor} 層要求【${req.rank}】以上身分（目前：${actualRank || "未設定"}）。` };
+            }
+            if (safeNumber(sect.contribution, 0, 0, 1e9) < req.contrib) {
+                return { success: false, reason: `⚠️ 宗門貢獻點不足！進入 ${floor} 樓需要 ${req.contrib} 點貢獻（當前：${sect.contribution || 0} 點）。` };
+            }
+
+            // 驗證函式只檢查資格，不在 AI 行動開始前扣款；實際扣款延後至 API 成功後提交。
+            return { success: true, floor, cost: req.contrib, message: `✅ 權限驗證通過：可進入藏經閣第 ${floor} 層，研讀成功後將消耗 ${req.contrib} 點貢獻。` };
         }
     };
 
     function getDefaultGameState() {
         return {
-            version: "6.07",
+            version: "6.08",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -1687,8 +1699,12 @@
         } else if (type === 'library') {
             const res = SectAndLocationEngine.checkSutraPavilionAccess(1);
             if (res.success) {
-                appendLogData("天道", res.message, "system", false, true);
-                sendAction("【進入宗門藏經閣一層，研讀經典秘笈】");
+                sendAction("【進入宗門藏經閣一層，研讀經典秘笈】", {
+                    deductSectContribution: res.cost,
+                    sectContributionExpected: safeNumber(gameState.sect.contribution, 0, 0, 1e9),
+                    sectNameExpected: gameState.sect.name,
+                    sectLibraryFloor: res.floor
+                });
             } else {
                 openGameModal("⚠️ 權限不符", res.reason);
             }
@@ -1978,6 +1994,11 @@ JSON 輸出格式範例：
 
             conversationHistory.push({ role: "assistant", content: aiResponseText });
             const { storyText, parsedState } = parseApiResponse(aiResponseText);
+            // 預設事件已由核心明確推進時間時，忽略同一回合 AI 的天數欄位，避免重複計算。
+            if (parsedState && eventMeta && Number(eventMeta.addDays) > 0) {
+                delete parsedState.daysPassedDelta;
+                delete parsedState.daysPassed;
+            }
             
             if (eventMeta) {
                 if (eventMeta.addDays) gameState.daysPassed += eventMeta.addDays;
@@ -2036,12 +2057,24 @@ JSON 輸出格式範例：
                     maxHp: gameState.maxHp, hp: gameState.hp,
                     isDead: gameState.isDead,
                     linggen: gameState.linggen, physique: gameState.physique,
-                    daysPassed: gameState.daysPassed, practiceFatigue: gameState.practiceFatigue,
-                    spiritStone: gameState.spiritStone, isDead: gameState.isDead
+                    spiritStone: gameState.spiritStone
                 };
                 gameState = applyStateDelta(gameState, parsedState, eventMeta);
-                // AI is not permitted to overwrite authoritative outcomes or claim a death that the core did not apply.
+                // AI 不能覆寫核心權威狀態；天數與疲勞則保留經驗證的核心結算結果。
                 for (const [k, v] of Object.entries(authoritativeBeforeAI)) gameState[k] = v;
+            }
+            // 藏經閣貢獻在 API 成功並完成解析後才扣除；再確認宗門及餘額，避免過程中狀態改變造成負數。
+            if (eventMeta && eventMeta.deductSectContribution) {
+                const cost = safeNumber(eventMeta.deductSectContribution, 0, 0, 1e6);
+                const sect = gameState.sect;
+                const expectedBalance = safeNumber(eventMeta.sectContributionExpected, -1, -1, 1e9);
+                if (sect && sect.joined && sect.name === eventMeta.sectNameExpected &&
+                    safeNumber(sect.contribution, 0, 0, 1e9) === expectedBalance && expectedBalance >= cost) {
+                    sect.contribution = expectedBalance - cost;
+                    appendLogData("天道", `✅ 藏經閣研讀流程完成，已扣除 ${cost} 點宗門貢獻。`, "system", false, true);
+                } else {
+                    appendLogData("天道", "⚠️ 宗門或貢獻狀態已變更，本次未扣除藏經閣貢獻。", "system", false, true);
+                }
             }
             if (eventMeta && eventMeta.techniqueSuccess && eventMeta.techniqueName) {
                 const targetList = eventMeta.techniqueType === "kungfu" ? gameState.kungfu : gameState.skills;
