@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.00 完整權威狀態與原子引擎版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.00 完整權威狀態與全功能渲染版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -1023,7 +1023,6 @@
         return { name: "尋常之地", hpMult: 1.0, expPerDay: 1, fatigueCost: 15 };
     }
 
-    // 完整重構：計算基礎 + 裝備 + 體質 + 心法 + 狀態加成
     function getStatBreakdown(s = gameState) {
         const base = s.stats || { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
         const bonus = { str: 0, con: 0, agi: 0, int: 0, wis: 0, luk: 0 };
@@ -1487,7 +1486,7 @@
         renderUI(); saveGameState();
     }
 
-    // [Q11, Q16] 完整背包互動（服下/鑑定/熔煉/35%損耗降階拆解/變賣）
+    // [Q11, Q16] 背包互動（服下/鑑定/熔煉/35%損耗降階拆解/變賣）
     function interactInventoryItem(name, action) {
         if (gameState.isDead) return;
         const cleanName = cleanNameStrict(name);
@@ -1601,7 +1600,6 @@
         });
     }
 
-    // 求醫費用動態遞增與丹毒累積
     function hospitalHeal() {
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
@@ -1879,10 +1877,29 @@
         return `${baseVal}`;
     }
 
+    /* ----------------------------------------------------
+       🖥️ 完整重構：全功能整合 UI 渲染引擎 (renderUI)
+       ---------------------------------------------------- */
     function renderUI() {
         checkLifeStatus(gameState);
 
-        // [Q18] 渲染二階段交易確信 Bar
+        // 1. [Q10] 情勢 Badge 動態樣式更新
+        const modeBadgeEl = document.getElementById("ui-scenario-mode");
+        const effectiveMode = getEffectiveMode(gameState);
+        if (modeBadgeEl) {
+            const modeMap = {
+                "IDLE": { text: "🟢 平靜遊歷", class: "mode-badge mode-idle" },
+                "DIALOGUE": { text: "💬 交涉中", class: "mode-badge mode-dialogue" },
+                "HAZARD": { text: "⚠️ 險地探索", class: "mode-badge mode-hazard" },
+                "DANGER": { text: "⚔️ 生死危機", class: "mode-badge mode-danger" },
+                "DEAD": { text: "💀 已身死", class: "mode-badge mode-danger" }
+            };
+            const mInfo = modeMap[effectiveMode] || modeMap["IDLE"];
+            modeBadgeEl.textContent = mInfo.text;
+            modeBadgeEl.className = mInfo.class;
+        }
+
+        // 2. [Q18] 渲染二階段交易確信 Bar
         const offerContainer = document.getElementById("trade-offer-container");
         if (offerContainer) {
             if (gameState.pendingTradeOffer) {
@@ -1901,6 +1918,7 @@
             }
         }
 
+        // 3. 按鈕與開局輸入區控制
         const choiceCont = document.getElementById("dynamic-choices-container");
         const deathActionCont = document.getElementById("death-action-container");
         const normalInputGroup = document.getElementById("normal-input-group");
@@ -1925,6 +1943,7 @@
             }
         }
 
+        // 4. 頂層與 Tab 1 (基礎狀態) 數據更新
         document.getElementById("ui-location-top").textContent = `📜 九州史詩 - ${gameState.location || "九州邊境 · 荒郊破廟"}`;
         document.getElementById("ui-realm").innerText = `${gameState.realm} (Lv.${gameState.level})`;
         document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
@@ -1932,12 +1951,20 @@
         document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue} / 100`;
         document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone} 顆`;
 
+        const yearsPassed = Math.floor((gameState.daysPassed || 0) / 365);
+        const monthsPassed = Math.floor(((gameState.daysPassed || 0) % 365) / 30);
+        const currentAge = (gameState.ageBase || 18) + yearsPassed;
+        document.getElementById("ui-age").textContent = `${currentAge}歲${monthsPassed}月 / ${gameState.maxAge || 100}歲`;
+
         // [Q23] 宗門貢獻與狀態欄
         const sectInfoEl = document.getElementById("ui-sect-info");
+        const sectBadgeEl = document.getElementById("ui-sect-top");
         if (sectInfoEl) {
-            sectInfoEl.textContent = gameState.sect && gameState.sect.joined
+            const hasSect = gameState.sect && gameState.sect.joined;
+            sectInfoEl.textContent = hasSect
                 ? `${gameState.sect.name} (${gameState.sect.rank}) | 貢獻: ${gameState.sect.contribution}`
                 : "散修 (無門派)";
+            if (sectBadgeEl) sectBadgeEl.textContent = hasSect ? gameState.sect.name : "無宗門 (散修)";
         }
 
         const lgMeta = getLinggenMeta(gameState.linggen);
@@ -1950,7 +1977,7 @@
         document.getElementById("ui-exp-text").innerText = `${gameState.exp} / ${gameState.maxExp} (${expPct}%)`;
         document.getElementById("ui-exp-fill").style.width = `${expPct}%`;
 
-        // 六維屬性拆解顯示 (基礎 + 裝備/體質/狀態加成)
+        // 六維屬性拆解顯示 (基礎 + 外力加成)
         const breakdown = getStatBreakdown(gameState);
         document.getElementById("st-str").innerHTML = formatStatDisplay(breakdown.base.str, breakdown.bonus.str);
         document.getElementById("st-con").innerHTML = formatStatDisplay(breakdown.base.con, breakdown.bonus.con);
@@ -1971,7 +1998,171 @@
             }
         }
 
-        // 完整 NPC 當前/異地與黑市懸賞按鈕渲染
+        // 5. [Q12, Q13, Q14] 補齊：Tab 2 (功法與招式) 動態卡片渲染與按鈕綁定
+        const activeKfEl = document.getElementById("ui-kungfu-active");
+        if (activeKfEl) {
+            if (gameState.activeKungfu) {
+                const akf = gameState.activeKungfu;
+                const unseal = getKungfuUnsealInfo(akf.name, gameState.level);
+                activeKfEl.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <b>運轉中：[${akf.tier || '黃階'}] ${akf.name}</b> (${akf.stage || '入門'})
+                            <div style="font-size:0.75rem; color:${unseal.color}; margin-top:2px;">${unseal.desc}</div>
+                        </div>
+                        <button class="modal-btn" style="padding:2px 6px; font-size:0.75rem; min-height:28px;" onclick="unequipActiveKungfu()">卸下運轉</button>
+                    </div>`;
+            } else {
+                activeKfEl.innerHTML = `• 尚未運轉任何心法（點擊下方心法【運轉】即可套用加成）`;
+            }
+        }
+
+        const kfListEl = document.getElementById("ui-kungfu-list");
+        if (kfListEl) {
+            kfListEl.innerHTML = "";
+            if (gameState.kungfu && gameState.kungfu.length > 0) {
+                gameState.kungfu.forEach(kf => {
+                    const reqExp = KungfuManager.getRequiredExp(kf.tier || '黃階', kf.stage || '入門');
+                    const curExp = kf.proficiency || 0;
+                    const pct = kf.stage === '圓滿' ? 100 : Math.min(100, Math.floor((curExp / reqExp) * 100));
+                    const unseal = getKungfuUnsealInfo(kf.name, gameState.level);
+                    const isActive = gameState.activeKungfu && gameState.activeKungfu.name === kf.name;
+
+                    const card = document.createElement("div");
+                    card.className = "item-row";
+                    card.style.borderLeft = isActive ? "3px solid var(--hl-cyan)" : "1px solid #2a2d3d";
+                    card.innerHTML = `
+                        <div class="item-top">
+                            <div>
+                                <span style="font-weight:bold; color:var(--border-gold);">[${kf.tier || '黃階'}] ${kf.name}</span>
+                                <span style="font-size:0.75rem; color:var(--hl-cyan); margin-left:6px;">${kf.stage || '入門'}</span>
+                                ${isActive ? '<span class="mode-badge mode-idle">運轉中</span>' : ''}
+                            </div>
+                            <div class="item-actions">
+                                ${!isActive ? `<button onclick="setActiveKungfu('${kf.name}')">運轉</button>` : ''}
+                                <button onclick="practiceTechnique('kungfu', '${kf.name}')">參悟</button>
+                                <button style="background:#4a1515;" onclick="forgetKungfu('${kf.name}')">遺忘</button>
+                            </div>
+                        </div>
+                        <div style="font-size:0.75rem; color:#aaa;">${unseal.desc}</div>
+                        <div style="font-size:0.72rem; color:#888; display:flex; justify-content:space-between; margin-top:2px;">
+                            <span>熟練度: ${kf.stage === '圓滿' ? '圓滿極致' : curExp + '/' + reqExp}</span>
+                            <span>${pct}%</span>
+                        </div>
+                        <div class="exp-container"><div class="exp-fill" style="width:${pct}%;"></div></div>
+                    `;
+                    kfListEl.appendChild(card);
+                });
+            } else {
+                kfListEl.textContent = "尚未習得任何主修心法";
+            }
+        }
+
+        const skillsListEl = document.getElementById("ui-skills-list");
+        if (skillsListEl) {
+            skillsListEl.innerHTML = "";
+            if (gameState.skills && gameState.skills.length > 0) {
+                gameState.skills.forEach(sk => {
+                    const reqExp = KungfuManager.getRequiredExp(sk.tier || '黃階', sk.stage || '入門');
+                    const curExp = sk.proficiency || 0;
+                    const pct = sk.stage === '圓滿' ? 100 : Math.min(100, Math.floor((curExp / reqExp) * 100));
+                    const decay = getSkillDecayInfo(sk, gameState.level);
+
+                    const card = document.createElement("div");
+                    card.className = "item-row";
+                    card.innerHTML = `
+                        <div class="item-top">
+                            <div>
+                                <span style="font-weight:bold; color:var(--hl-cyan);">[${sk.tier || '黃階'}] ${sk.name}</span>
+                                <span style="font-size:0.75rem; color:var(--border-gold); margin-left:6px;">${sk.stage || '入門'}</span>
+                                <span style="font-size:0.7rem; color:#888; margin-left:4px;">(屬性: ${sk.element || '無'})</span>
+                            </div>
+                            <div class="item-actions">
+                                <button onclick="practiceTechnique('skill', '${sk.name}')">參悟</button>
+                                <button style="background:#4a1515;" onclick="forgetSkill('${sk.name}')">遺忘</button>
+                            </div>
+                        </div>
+                        <div style="font-size:0.75rem; color:${decay.isDangerous ? 'var(--accent-red)' : '#888'};">
+                            ⚡ ${decay.text}
+                        </div>
+                        <div style="font-size:0.72rem; color:#888; display:flex; justify-content:space-between; margin-top:2px;">
+                            <span>熟練度: ${sk.stage === '圓滿' ? '圓滿極致' : curExp + '/' + reqExp}</span>
+                            <span>${pct}%</span>
+                        </div>
+                        <div class="exp-container"><div class="exp-fill" style="width:${pct}%;"></div></div>
+                    `;
+                    skillsListEl.appendChild(card);
+                });
+            } else {
+                skillsListEl.textContent = "尚未習得任何術法招式";
+            }
+        }
+
+        // 6. [Q11] 補齊：Tab 3 (裝備面板) 動態插槽連動
+        const slots = ['weapon', 'armor', 'accessory', 'treasure'];
+        slots.forEach(slot => {
+            const eqItem = gameState.equipment[slot];
+            const nameEl = document.getElementById(`eq-${slot}`);
+            const descEl = document.getElementById(`eq-${slot}-desc`);
+            const btnEl = document.getElementById(`btn-unequip-${slot}`);
+            if (eqItem) {
+                const name = cleanNameStrict(typeof eqItem === 'object' ? eqItem.name : eqItem);
+                const meta = getItemMeta(name);
+                if (nameEl) { nameEl.textContent = `[${meta.rarity}] ${name}`; nameEl.style.color = meta.rarityColor; }
+                if (descEl) descEl.textContent = meta.desc || "無屬性加成";
+                if (btnEl) btnEl.disabled = false;
+            } else {
+                if (nameEl) { nameEl.textContent = "無"; nameEl.style.color = "#888"; }
+                if (descEl) descEl.textContent = "無屬性加成";
+                if (btnEl) btnEl.disabled = true;
+            }
+        });
+
+        // MECE 背包欄位渲染 (含關鍵道具變賣鎖與多維按鈕)
+        const invBox = document.getElementById("ui-inventory-list");
+        if (invBox) {
+            invBox.innerHTML = "";
+            if (gameState.inventory && gameState.inventory.length > 0) {
+                gameState.inventory.forEach(item => {
+                    const name = cleanNameStrict(item.name);
+                    const qty = item.quantity || 1;
+                    const meta = getItemMeta(name);
+
+                    let row = document.createElement("div"); row.className = "item-row";
+                    let top = document.createElement("div"); top.className = "item-top";
+                    let span = document.createElement("span"); 
+                    span.textContent = `📦 [${item.tier || meta.rarity}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
+                    span.style.color = meta.rarityColor;
+                    
+                    let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
+
+                    if (meta.slot) {
+                        let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(name); actionGroup.appendChild(b);
+                    } else if (meta.type === 'consumable') {
+                        let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'unidentified') {
+                        let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
+                    } else if (meta.type === 'fragment') {
+                        let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(name, 'fuse'); actionGroup.appendChild(b);
+                    }
+
+                    if (item.canDisassemble) {
+                        let b = document.createElement("button"); b.textContent = "拆解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
+                    }
+
+                    // [Q11 修復] 關鍵劇情信物鎖死變賣
+                    if (!item.isQuestItem) {
+                        let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(bSell);
+                    }
+
+                    top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
+                });
+            } else {
+                invBox.textContent = "背包為空";
+            }
+        }
+
+        // 7. [Q19, Q21, Q22] Tab 4 (社交、故人錄與任務) 完整動態卡片渲染
         const npcsBox = document.getElementById("ui-npcs-list");
         const deadNpcsBox = document.getElementById("ui-dead-npcs-list");
         if (npcsBox && deadNpcsBox) {
@@ -2056,50 +2247,38 @@
             if (deadCount === 0) deadNpcsBox.textContent = "故人錄中尚無記錄。";
         }
 
-        // [Q11] MECE 背包欄位完整渲染 (含關鍵道具變賣鎖)
-        const invBox = document.getElementById("ui-inventory-list");
-        if (invBox) {
-            invBox.innerHTML = "";
-            if (gameState.inventory && gameState.inventory.length > 0) {
-                gameState.inventory.forEach(item => {
-                    const name = cleanNameStrict(item.name);
-                    const qty = item.quantity || 1;
-                    const meta = getItemMeta(name);
-
-                    let row = document.createElement("div"); row.className = "item-row";
-                    let top = document.createElement("div"); top.className = "item-top";
-                    let span = document.createElement("span"); 
-                    span.textContent = `📦 [${item.tier || meta.rarity}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
-                    span.style.color = meta.rarityColor;
-                    
-                    let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
-
-                    if (meta.slot) {
-                        let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(name); actionGroup.appendChild(b);
-                    } else if (meta.type === 'consumable') {
-                        let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
-                    } else if (meta.type === 'unidentified') {
-                        let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
-                    } else if (meta.type === 'fragment') {
-                        let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(name, 'fuse'); actionGroup.appendChild(b);
-                    }
-
-                    if (item.canDisassemble) {
-                        let b = document.createElement("button"); b.textContent = "拆解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
-                    }
-
-                    // [Q11 修復] 關鍵劇情信物鎖死變賣
-                    if (!item.isQuestItem) {
-                        let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(bSell);
-                    }
-
-                    top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
+        // 補齊：當前任務與世界紀事列表繪製
+        const questsEl = document.getElementById("ui-quests");
+        if (questsEl) {
+            questsEl.innerHTML = "";
+            if (gameState.quests && gameState.quests.length > 0) {
+                gameState.quests.forEach(q => {
+                    const div = document.createElement("div");
+                    div.style.marginBottom = "4px";
+                    div.innerHTML = `📜 <b>${q.name}</b>：${q.progress} <span style="color:#888;">[${q.status || '進行中'}]</span>`;
+                    questsEl.appendChild(div);
                 });
             } else {
-                invBox.textContent = "背包為空";
+                questsEl.textContent = "暫無主線或支線任務";
             }
         }
 
+        const eventsEl = document.getElementById("ui-world-events");
+        if (eventsEl) {
+            eventsEl.innerHTML = "";
+            if (gameState.worldEvents && gameState.worldEvents.length > 0) {
+                gameState.worldEvents.slice(-20).reverse().forEach(ev => {
+                    const div = document.createElement("div");
+                    div.style.marginBottom = "4px";
+                    div.textContent = `🌍 ${ev}`;
+                    eventsEl.appendChild(div);
+                });
+            } else {
+                eventsEl.textContent = "九州大地風平浪靜，尚無重大世界事件記錄。";
+            }
+        }
+
+        // 8. 快選按鈕啟動狀態綁定
         const isEnabled = gameState.hasChosenOrigin && !gameState.isDead;
         document.getElementById("btn-heal").disabled = !isEnabled;
         document.getElementById("btn-long-heal").disabled = !isEnabled;
