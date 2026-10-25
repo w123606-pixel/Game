@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.02 權威完整版)</title>
+    <title>九州裂天錄 - 凡人崛起傳奇 (V6.03 身世保底與天道覺醒版)</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -419,6 +419,25 @@
     }
 
     /* ----------------------------------------------------
+       🏆 資質階級演算法（用於「身世保底 vs 天道覺醒取孰高」比較）
+       ---------------------------------------------------- */
+    function getLinggenRank(name) {
+        const clean = cleanNameStrict(name);
+        if (/(混沌|天靈根|無上)/.test(clean)) return 4;
+        if (/(風|雷|冰|異)/.test(clean)) return 3;
+        if (/(真靈根|雙靈根|三靈根)/.test(clean)) return 2;
+        return 1; // 偽靈根 / 待顯化
+    }
+
+    function getPhysiqueRank(name) {
+        const clean = cleanNameStrict(name);
+        if (/(混沌|鴻蒙|先天|道胎)/.test(clean)) return 4;
+        if (/(聖體|王體|霸體|神體)/.test(clean)) return 3;
+        if (/(靈體|寶體|琉璃)/.test(clean)) return 2;
+        return 1; // 凡體
+    }
+
+    /* ----------------------------------------------------
        🚀 MECE 背包資料結構與標籤 (SSOT)
        ---------------------------------------------------- */
     function normalizeInventory(rawInv) {
@@ -721,7 +740,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.02",
+            version: "6.03",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
@@ -826,7 +845,7 @@
         }
 
         return {
-            version: "6.02",
+            version: "6.03",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -915,7 +934,6 @@
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
 
-    // Item MECE Metadata Helper (精準修復「玉簡」與典籍被誤判為飾品的BUG)
     function getItemMeta(itemInput) {
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
@@ -937,7 +955,6 @@
         if (/聚氣丹|修為丹/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 15, expGain: Math.floor(30 * rarity.mult), hpGain: 0, isQuestItem: false, desc: `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` };
         if (/培元丹|療傷丹|回春丹|金創藥|凝血草/.test(clean)) return { type: 'consumable', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, expGain: 0, hpGain: Math.floor(50 * rarity.mult), isQuestItem: false, desc: `服下可恢復 ${Math.floor(50 * rarity.mult)} 點 HP` };
         
-        // 全載體識別擴充 (優先於裝備判定，確保「玉簡/心得/筆記/獸皮卷」不會因帶有「玉」字被判為飾品)
         if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經|心得|筆記)/.test(clean)) {
             return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之絕學載體，可【參悟】研讀學習對應絕學" };
         }
@@ -952,7 +969,6 @@
             const con = Math.floor(5 * rarity.mult);
             return { type: 'equipment', slot: 'armor', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 80, hpBonus: hp, conBonus: con, isQuestItem: false, desc: `HP +${hp}, 根骨 +${con}` };
         }
-        // 將飾品匹配精準化為具體詞彙，防止單字「玉」過度抓取
         if (/(戒|墜|佩|項鏈|鐲|玉佩|玉戒|玉墜|玉鐲|戒指)/.test(clean)) {
             const hp = Math.floor(15 * rarity.mult);
             const luk = Math.floor(5 * rarity.mult);
@@ -1641,29 +1657,41 @@
         sendAction(`【盤膝運功，衝擊突破至「${nextDef.name}」境界！】`, { isBreakthrough: true, breakthroughSuccess: isSuccess });
     }
 
+    /* ----------------------------------------------------
+       🛡️ 身世開局初始化（含出身資質保底）
+       ---------------------------------------------------- */
     function applyOriginInitialization(choiceText) {
         gameState.hasChosenOrigin = true;
         
         if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
+            gameState.linggen = "真靈根"; // 身世保底
+            gameState.physique = "涅槃靈體"; // 身世保底
             addItemToInventory(gameState.inventory, "至尊骨殘片", 1);
         } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
+            gameState.linggen = "修羅異靈根"; // 身世保底
+            gameState.physique = "修羅霸體"; // 身世保底
             addItemToInventory(gameState.inventory, "獄卒令牌", 1);
         } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
+            gameState.linggen = "風雷雙靈根"; // 身世保底
+            gameState.physique = "家族血脈靈體"; // 身世保底
             addItemToInventory(gameState.inventory, "神祕古戒", 1);
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
+            // 自訂身世：若 AI 故事解析未指定，預設給予基礎保底（不強制為最低階）
+            if (!gameState.linggen || gameState.linggen === "待顯化") gameState.linggen = "真靈根";
+            if (!gameState.physique || gameState.physique === "凡體") gameState.physique = "凡骨靈體";
             addItemToInventory(gameState.inventory, "粗鐵長劍", 1);
         }
     }
 
-    // 核心 System Prompt
+    // 核心 System Prompt (含自訂身世保底規範)
     function getSystemPrompt() { 
         const aliveNpcs = Object.values(gameState.npcRegistry)
             .filter(n => n.is_alive)
@@ -1678,12 +1706,13 @@
 
 【當前唯一真理源 (SSOT) 快照】
 • 角色境界：${gameState.realm} (Lv.${gameState.level}) | 修為: ${gameState.exp}/${gameState.maxExp}
+• 靈根資質：${gameState.linggen} | 體質天賦: ${gameState.physique}
 • 靈石餘額：${gameState.spiritStone} 顆 | 宗門: ${gameState.sect.name} (${gameState.sect.rank}, 貢獻: ${gameState.sect.contribution})
 • 當前位置：${gameState.location}
 • 當前場景可互動 NPC：[${aliveNpcs || '無'}]
 • 當前背包物品：[${invListStr}]
 
-⚠️ AI 必須嚴格遵守的【七大鐵律】：
+⚠️ AI 必須嚴格遵守的【八大鐵律】：
 1. [修為/天數/物品結算]：玩家在故事中戰鬥、探索或遭遇事件時，你【必須】在 JSON 注入 expDelta（修為增加量）、daysPassedDelta（消耗天數，通常1~3天）與 inventoryDelta（獲得之物品陣列）！
 2. [物品與交易硬鎖]：背包快照中有物品才可使用！若玩家買賣，你【嚴禁】在 JSON 輸出 inventoryDelta，只需回傳 tradeOffer 物件等待玩家點擊 UI 確認！
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
@@ -1691,6 +1720,7 @@
 5. [NPC 去重與別名]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。
 6. [功法獲得與修練法則]：當玩家在故事中領悟/獲得新功法或術法招式時，必須在 techniqueDelta 回傳 [{"name": "青元劍訣", "type": "skill", "tier": "黃階"}]！若為增加熟練度則回傳 [{"name": "青元劍訣", "proficiencyAdd": 20}]。
 7. [空間與宗門權限]：若玩家不在宗門領地卻嘗試使用藏經閣，請描繪「萬里之遙難以存取」並拒絕！
+8. [自訂身世與資質保底]：若玩家輸入自訂身世開局，你可以根據劇情設定在 linggen 與 physique 回傳相應靈根與體質（保底由你決定，不強制為最低階）！
 
 JSON 輸出格式範例：
 \`\`\`json
@@ -1735,13 +1765,15 @@ JSON 輸出格式範例：
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // Delta 狀態套用器 (含招式與心法正準識別)
+    // Delta 狀態套用器 (含靈根與體質動態寫入)
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
 
         if (rawState.location) s.location = cleanNameStrict(rawState.location);
         if (rawState.scenarioMode) s.scenarioMode = rawState.scenarioMode;
+        if (rawState.linggen) s.linggen = cleanNameStrict(rawState.linggen);
+        if (rawState.physique) s.physique = cleanNameStrict(rawState.physique);
 
         if (rawState.expDelta) {
             s.exp = Math.min(s.maxExp, s.exp + safeNumber(rawState.expDelta, 0, 0, 1e9));
@@ -1773,7 +1805,6 @@ JSON 輸出格式範例：
             rawState.npcDelta.killed.forEach(kId => NPCManager.processNpcDeath(kId));
         }
 
-        // 功法與招式 Delta 分流修正
         if (rawState.techniqueDelta && Array.isArray(rawState.techniqueDelta)) {
             rawState.techniqueDelta.forEach(tech => {
                 const cleanTechName = cleanNameStrict(tech.name);
@@ -1793,7 +1824,6 @@ JSON 輸出格式範例：
                     } else if (tech.type === 'skill' || tech.isSkill) {
                         isKungfu = false;
                     } else {
-                        // 優先識別武功/招式關鍵字（如：劍法、劍訣、刀術、掌法、指法）
                         const isCombatSkill = /(劍|刀|槍|戟|拳|掌|指|腿|身法|步法|術|法|刺|斬|破|印)/.test(cleanTechName);
                         const isMindLaw = /(心法|吐納|冥想|功|經|典)/.test(cleanTechName);
 
@@ -1900,10 +1930,38 @@ JSON 輸出格式範例：
                 }
                 if (eventMeta.isBreakthrough) {
                     if (eventMeta.breakthroughSuccess) {
+                        const isFirstBreakthrough = (gameState.level === 0);
                         gameState.level += 1;
                         const rDef = getRealmDef(gameState.level);
                         gameState.realm = rDef.name; gameState.maxExp = rDef.maxExp; gameState.exp = 0;
                         gameState.hp = getMaxHp(gameState);
+
+                        /* ----------------------------------------------------
+                           ⚡ 突破練氣一層天道覺醒（方案 A 抽卡 + 保底取孰高）
+                           ---------------------------------------------------- */
+                        if (isFirstBreakthrough) {
+                            // 1. 方案 A 天道機緣抽卡
+                            let drawnLinggen = "偽靈根";
+                            const rL = Math.random();
+                            if (rL < 0.05) drawnLinggen = "天靈根";
+                            else if (rL < 0.20) drawnLinggen = "雷靈根";
+                            else if (rL < 0.70) drawnLinggen = "真靈根";
+
+                            let drawnPhysique = "凡體";
+                            const rP = Math.random();
+                            if (rP < 0.05) drawnPhysique = "先天道胎";
+                            else if (rP < 0.25) drawnPhysique = "琉璃寶體";
+
+                            // 2. 獨立比對：取出身保底與天道抽卡中更高者
+                            if (getLinggenRank(drawnLinggen) > getLinggenRank(gameState.linggen)) {
+                                gameState.linggen = drawnLinggen;
+                            }
+                            if (getPhysiqueRank(drawnPhysique) > getPhysiqueRank(gameState.physique)) {
+                                gameState.physique = drawnPhysique;
+                            }
+
+                            appendLogData("天道", `✨ 引氣入體成功！天地靈氣洗髓伐骨，靈根與體質正式顯化為：【${gameState.linggen}】與【${gameState.physique}】！（已套用出身保底與天道機緣「取孰高」機制）`, "system", false, true);
+                        }
                     } else {
                         gameState.hp = Math.max(1, Math.floor(gameState.hp * 0.5));
                     }
