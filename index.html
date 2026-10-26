@@ -875,7 +875,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.21",
+            version: "6.23",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0, breakthroughInsight: 0,
@@ -2212,89 +2212,134 @@ JSON 輸出格式範例：
         if (Array.isArray(s.skills) && source === "battle") s.skills.forEach(k => { if (k) k.proficiency = Math.min(100, Math.max(0, Number(k.proficiency)||0) + 2); });
     }
 
-    // V6.20 勢力互動：只依已登記勢力、既有事件與 NPC 目標建立有限影響，不憑空改變勢力存亡。
+    // V6.22 整合測試版：NPC自主決策與勢力關係採用可追蹤、可重播的狀態結算。
+    function autonomyHash(text) {
+        let h = 2166136261;
+        for (const ch of String(text || "")) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+        return (h >>> 0) / 4294967295;
+    }
+
+    function ensureFactionRecord(engine, name, alignment, day) {
+        let f = engine.factions.find(x => x && x.name === name);
+        if (!f) {
+            f = { id:`FAC-${name}`, name, alignment:alignment || "未明", influence:50, resources:50, stability:50, lastUpdatedDay:day, history:[] };
+            engine.factions.push(f);
+        }
+        if (!Array.isArray(f.history)) f.history = [];
+        return f;
+    }
+
     function resolveFactionInteractions(s, day) {
         if (!s) return;
         ensureWorldMemory(s);
-        const wm = s.worldMemory, engine = wm.engine;
-        const factions = Array.isArray(engine.factions) ? engine.factions : (engine.factions = []);
-        const relationList = Array.isArray(wm.factionRelations) ? wm.factionRelations : (wm.factionRelations = []);
-        const seen = new Set();
-        relationList.forEach(r => { if (r && r.a && r.b) seen.add([r.a,r.b].sort().join("::")); });
-        const alive = Object.values(s.npcRegistry || {}).filter(n => n && n.is_alive !== false && n.status !== "DEAD");
-        const byFaction = new Map();
-        alive.forEach(n => {
-            const f = cleanNameStrict(n.faction || n.sectName || n.organization || "");
-            if (!f) return;
-            if (!byFaction.has(f)) byFaction.set(f, []);
-            byFaction.get(f).push(n);
-            if (!factions.some(x => x && x.name === f)) factions.push({id:`FAC-${f}`,name:f,alignment:n.alignment||"未明",influence:50,resources:50,stability:50,lastUpdatedDay:day,history:[]});
+        const wm=s.worldMemory, engine=wm.engine;
+        const factions=engine.factions, relations=wm.factionRelations;
+        const alive=Object.entries(s.npcRegistry||{}).filter(([id,n]) => n && n.is_alive !== false && n.status !== "DEAD");
+        const byFaction=new Map();
+        alive.forEach(([id,n]) => {
+            const name=cleanNameStrict(n.faction || n.sectName || n.organization || (n.sect && n.sect.name) || "");
+            if (!name) return;
+            if (!byFaction.has(name)) byFaction.set(name, []);
+            byFaction.get(name).push({id,n});
+            ensureFactionRecord(engine,name,n.alignment || "未明",day);
         });
-        const names = [...byFaction.keys()].sort();
-        // 僅在兩個已登記勢力的 NPC 存在明確合作/競爭目標時建立關係紀錄。
-        for (let i=0; i<names.length; i++) for (let j=i+1; j<names.length; j++) {
-            const a=names[i], b=names[j], key=[a,b].sort().join("::");
+        const names=[...byFaction.keys()].sort();
+        for (let i=0;i<names.length;i++) for (let j=i+1;j<names.length;j++) {
+            const a=names[i], b=names[j], key=[a,b].join("::");
             const members=[...(byFaction.get(a)||[]),...(byFaction.get(b)||[])];
-            const motives=members.flatMap(n => [...(Array.isArray(n.goals)?n.goals:[]),...(Array.isArray(n.currentPlan)?[n.currentPlan]:[n.currentPlan||""])]).join(" ");
-            const contested=/(競爭|爭奪|敵對|報仇|追殺|爭奪|搶奪|結盟|合作|交涉|談判|貿易|資源)/.test(motives);
-            if (!contested || seen.has(key)) continue;
-            const hostile=/(敵對|報仇|追殺|爭奪|搶奪)/.test(motives);
-            relationList.push({a,b,score:hostile?-10:5,status:hostile?"緊張":"接觸中",updatedDay:day,source:"npc-goals",history:[{day,change:hostile?-10:5,reason:"NPC既有目標出現勢力交集"}]});
-            seen.add(key);
-            engine.actionLog.push({id:`FACTION-INTERACTION:${day}:${key}`,day,type:"faction-interaction",summary:`${a}與${b}因既有NPC目標產生${hostile?"緊張關係":"初步接觸"}，尚未造成重大格局變動。`});
+            const motive=members.map(({n}) => `${(n.goals||[]).join(" ")} ${n.currentPlan||""} ${(n.fears||[]).join(" ")}`).join(" ");
+            const hostile=/(敵對|報仇|追殺|爭奪|搶奪|刺殺|攻打|復仇)/.test(motive);
+            const cooperative=/(結盟|合作|交涉|談判|貿易|互助|護送)/.test(motive);
+            if (!hostile && !cooperative) continue;
+            let r=relations.find(x=>x && [x.a,x.b].sort().join("::")===key);
+            const delta=hostile ? -Math.min(5, 1 + Math.floor(autonomyHash(`${key}:${day}:hostile`)*3)) : Math.min(3,1+Math.floor(autonomyHash(`${key}:${day}:cooperate`)*2));
+            if (!r) {
+                r={a,b,score:0,status:"中立",updatedDay:day,source:"npc-autonomy",history:[]};
+                relations.push(r);
+            }
+            const old=Math.max(-100,Math.min(100,Number(r.score)||0));
+            // 每個勢力組合每七日最多調整一次，避免大幅跳動與同日重複結算。
+            const lastAppliedDay = Number.isFinite(Number(r.lastAppliedDay)) ? Number(r.lastAppliedDay) : -Infinity;
+            if (day - lastAppliedDay >= 7) {
+                r.score=Math.max(-100,Math.min(100,old+delta));
+                r.updatedDay=day; r.lastAppliedDay=day;
+                r.status=r.score<=-50?"敵對":r.score<=-15?"緊張":r.score>=50?"盟好":r.score>=15?"合作": "接觸中";
+                r.history=Array.isArray(r.history)?r.history:[];
+                r.history.push({day,change:delta,score:r.score,reason:hostile?"NPC目標涉及敵對或競爭":"NPC目標涉及合作或交涉"});
+                r.history=r.history.slice(-20);
+                engine.actionLog.push({id:`FACTION-REL:${key}:${day}`,day,type:"faction-relation-change",summary:`${a}與${b}的關係調整 ${delta>0?"+":""}${delta}，目前為「${r.status}」。`,score:r.score});
+                const fa=ensureFactionRecord(engine,a,"未明",day), fb=ensureFactionRecord(engine,b,"未明",day);
+                if (hostile) { fa.stability=Math.max(0,fa.stability-0.2); fb.stability=Math.max(0,fb.stability-0.2); }
+                else { fa.resources=Math.min(100,fa.resources+0.1); fb.resources=Math.min(100,fb.resources+0.1); }
+            }
         }
-        relationList.splice(0, Math.max(0, relationList.length-60));
-        factions.forEach(f => { if (f && f.name) { f.lastUpdatedDay=day; f.influence=Math.max(0,Math.min(100,Number(f.influence)||50)); f.resources=Math.max(0,Math.min(100,Number(f.resources)||50)); f.stability=Math.max(0,Math.min(100,Number(f.stability)||50)); } });
-        engine.factions = factions.slice(-60);
+        factions.forEach(f=>{ if(f&&f.name){f.lastUpdatedDay=day;f.influence=Math.max(0,Math.min(100,Number(f.influence)||50));f.resources=Math.max(0,Math.min(100,Number(f.resources)||50));f.stability=Math.max(0,Math.min(100,Number(f.stability)||50));f.history=(Array.isArray(f.history)?f.history:[]).slice(-20);} });
+        wm.factionRelations=relations.slice(-60); engine.factions=factions.slice(-60);
     }
 
-    // V6.20 NPC行動結果與勢力互動引擎：以遊戲時間排程NPC的可追溯行動，不讓AI直接改寫重大世界事實。
+    // NPC決策：依目標、恐懼、傷勢、能力與資源評分；結果由程式結算，AI敘事不能覆寫。
     function advanceNpcAutonomy(s, startDay, endDay) {
         if (!s || !s.npcRegistry || endDay <= startDay) return;
         ensureWorldMemory(s);
-        const engine = s.worldMemory.engine;
-        const alive = Object.entries(s.npcRegistry).filter(([id,n]) => n && n.is_alive !== false && n.status !== "DEAD").slice(0,80);
-        const actions = [
-            {key:"cultivate", label:"閉關修練", needs:["修練","變強","突破","修為","功法"]},
-            {key:"gather_info", label:"搜集情報", needs:["情報","調查","秘密","追查","尋找"]},
-            {key:"gather_resources", label:"尋找資源", needs:["資源","靈石","藥材","靈礦","材料"]},
-            {key:"build_relation", label:"經營人脈", needs:["結盟","交涉","人脈","宗門","合作"]},
-            {key:"recover", label:"休整療傷", needs:["療傷","恢復","避風頭","保命"]}
+        const engine=s.worldMemory.engine;
+        const alive=Object.entries(s.npcRegistry).filter(([id,n])=>n&&n.is_alive!==false&&n.status!=="DEAD"&&(Number(n.nextAutonomyDay)||0)<=endDay).slice(0,80);
+        const actionDefs=[
+            {key:"cultivate",label:"閉關修練",match:/修練|變強|突破|修為|功法|境界/,base:3},
+            {key:"gather_info",label:"搜集情報",match:/情報|調查|秘密|追查|尋找|查明/,base:3},
+            {key:"gather_resources",label:"尋找資源",match:/資源|靈石|藥材|靈礦|材料|財富/,base:3},
+            {key:"build_relation",label:"經營人脈",match:/結盟|交涉|人脈|宗門|合作|交易|勢力/,base:2},
+            {key:"recover",label:"休整療傷",match:/療傷|恢復|避風頭|保命|養傷/,base:2}
         ];
         for (const [id,npc] of alive) {
-            const nextDay = Number(npc.nextAutonomyDay);
-            if (Number.isFinite(nextDay) && nextDay > endDay) continue;
-            const goals = Array.isArray(npc.goals) ? npc.goals.map(x=>cleanNameStrict(x)).filter(Boolean) : [];
-            const fears = Array.isArray(npc.fears) ? npc.fears.map(x=>cleanNameStrict(x)).filter(Boolean) : [];
-            const profile = `${goals.join("；")}；${fears.join("；")}；${cleanNameStrict(npc.currentPlan||"")}`;
-            let selected = actions.find(a => a.needs.some(k => profile.includes(k)));
-            // 目標資訊不足時採取低風險維持行動，不憑空生成重大目的或戰果。
-            if (!selected) selected = actions[(String(id).split("").reduce((v,c)=>v+c.charCodeAt(0),0) + Math.floor(endDay/7)) % actions.length];
-            const planId = `NPCPLAN:${id}:${endDay}`;
-            if (engine.processedIds.includes(planId)) { npc.nextAutonomyDay = endDay + 7; continue; }
+            if (Number(npc.nextAutonomyDay)>endDay) continue;
+            const planId=`NPCPLAN:${id}:${endDay}`;
+            if (engine.processedIds.includes(planId)) { npc.nextAutonomyDay=Math.max(Number(npc.nextAutonomyDay)||0,endDay+7); continue; }
+            const goals=Array.isArray(npc.goals)?npc.goals.map(cleanNameStrict):[];
+            const fears=Array.isArray(npc.fears)?npc.fears.map(cleanNameStrict):[];
+            const profile=`${goals.join("；")}；${fears.join("；")}；${cleanNameStrict(npc.currentPlan||"")}`;
+            const hp=Number(npc.hp)||100, wisdom=Number((npc.stats||{}).wis)||Number(npc.wisdom)||10;
+            const resources=Number(npc.resourceLevel)||0, info=Number(npc.information)||0, network=Number(npc.network)||0;
+            let ranked=actionDefs.map(a=>{
+                let score=a.base+(a.match.test(profile)?8:0);
+                if(a.key==="recover" && hp<70) score+=20;
+                if(a.key==="cultivate" && resources<10) score-=3;
+                if(a.key==="gather_info" && info<20) score+=2;
+                if(a.key==="build_relation" && network<20) score+=2;
+                if(fears.length && /危險|追殺|仇敵|死亡|受傷/.test(fears.join(" ")) && a.key==="recover") score+=4;
+                score += autonomyHash(`${id}:${endDay}:${a.key}`)*2;
+                return {...a,score};
+            }).sort((a,b)=>b.score-a.score);
+            const selected=ranked[0];
+            const roll=autonomyHash(`${planId}:success`);
+            const successChance=Math.max(0.35,Math.min(0.95,0.62+(wisdom-10)*0.012+(hp-60)*0.003-(resources<5?0.08:0)));
+            const success=roll<successChance;
+            let result=success?"success":"failure", cost="耗費時間", consequence="行動完成，但未必達成全部目標";
+            if(selected.key==="cultivate"){
+                npc.cultivationProgress=Math.max(0,Math.min(100,(Number(npc.cultivationProgress)||0)+(success?2+(wisdom>=15?1:0):0)));
+                npc.resourceLevel=Math.max(0,resources-(success?1:2)); cost="耗費時間與修煉資源"; consequence=success?"修煉進度增加，尚未自動視為突破":"修煉受阻，消耗部分資源";
+            } else if(selected.key==="gather_info"){
+                npc.information=Math.max(0,Math.min(100,info+(success?3:1))); cost="消耗時間與人脈"; consequence=success?"取得一項待驗證線索":"只取得零碎或不可靠的消息"; result=success?"success":"partial";
+            } else if(selected.key==="gather_resources"){
+                npc.resourceLevel=Math.max(0,Math.min(100,resources+(success?2:0))); cost="消耗時間，可能支出資源"; consequence=success?"資源儲備略有增加，未憑空生成物品":"尋找未果，未取得額外資源"; result=success?"success":"failure";
+            } else if(selected.key==="build_relation"){
+                npc.network=Math.max(0,Math.min(100,network+(success?2:0))); cost="耗費時間與交涉成本"; consequence=success?"人脈略有進展，尚不等於正式結盟":"交涉未有實質進展"; result=success?"partial":"failure";
+            } else {
+                npc.hp=Math.min(100,Math.max(hp,45)+(success?8:2)); cost="暫停其他行動"; consequence=success?"傷勢逐步恢復":"休整效果有限"; result=success?"success":"partial";
+            }
+            const summary=`${cleanNameStrict(npc.name||id)}自主採取「${selected.label}」；判定${success?"成功":"未完全成功"}：${consequence}（${cost}）。`;
+            npc.currentPlan=selected.label; npc.lastAutonomyDay=endDay; npc.nextAutonomyDay=endDay+7;
+            npc.lastActionOutcome={day:endDay,action:selected.key,result,cost,consequence,successChance:Math.round(successChance*100),roll:Math.round(roll*100)};
+            if(!Array.isArray(npc.actionHistory))npc.actionHistory=[];
+            npc.actionHistory.push({day:endDay,action:selected.key,result,cost,consequence,summary}); npc.actionHistory=npc.actionHistory.slice(-12);
             engine.processedIds.push(planId);
-            const before = { hp: Number(npc.hp)||0, resources: Number(npc.resourceLevel)||0, info: Number(npc.information)||0, relations: Number(npc.network)||0, cultivation: Number(npc.cultivationProgress)||0 };
-            let result = "neutral", cost = "無明顯消耗", consequence = "目標仍在進行";
-            // 行動只產生小幅、可追溯的內部進度；不直接宣告突破、殺人、奪寶或勢力覆滅。
-            if (selected.key === "cultivate") { npc.cultivationProgress = Math.min(100, before.cultivation + 2 + ((Number(npc.wisdom)||10)>=15?1:0)); result="success"; consequence="修煉進度小幅增加"; cost="耗費數日與精力"; }
-            else if (selected.key === "gather_info") { npc.information = Math.min(100, before.info + 3); result="partial"; consequence="情報網略有進展，內容仍需後續驗證"; cost="消耗時間與人脈"; }
-            else if (selected.key === "gather_resources") { npc.resourceLevel = Math.min(100, before.resources + 2); result="partial"; consequence="資源儲備略有增加，未生成具體物品"; cost="消耗時間與少量資源"; }
-            else if (selected.key === "build_relation") { npc.network = Math.min(100, before.relations + 2); result="partial"; consequence="人脈略有進展，尚未視為正式結盟"; cost="耗費時間與交涉成本"; }
-            else if (selected.key === "recover") { npc.hp = Math.min(100, Math.max(before.hp, 60) + 3); result="success"; consequence="狀態逐步恢復"; cost="暫停其他行動"; }
-            const summary = `${cleanNameStrict(npc.name||id)}自主採取「${selected.label}」；結果：${result}；${consequence}（${cost}）。`;
-            npc.currentPlan = selected.label;
-            npc.lastAutonomyDay = endDay;
-            npc.nextAutonomyDay = endDay + 7;
-            npc.lastActionOutcome = {day:endDay,action:selected.key,result,cost,consequence};
-            if (!Array.isArray(npc.actionHistory)) npc.actionHistory = [];
-            npc.actionHistory.push({day:endDay, action:selected.key, result, cost, consequence, summary});
-            npc.actionHistory = npc.actionHistory.slice(-12);
-            engine.npcPlans.push({id:planId,npcId:id,npcName:cleanNameStrict(npc.name||id),day:endDay,action:selected.key,summary,status:"resolved",result,cost,consequence});
+            engine.npcPlans.push({id:planId,npcId:id,npcName:cleanNameStrict(npc.name||id),day:endDay,action:selected.key,summary,status:"resolved",result,cost,consequence,successChance:Math.round(successChance*100)});
             engine.actionLog.push({id:planId,day:endDay,type:"npc-autonomy",summary,result,cost,consequence});
+            // 行動引發的世界事件只記錄可支持的後果，不直接捏造死亡、突破或戰爭勝負。
+            if(selected.key==="gather_info"&&success){
+                engine.events.push({id:`NPC-CLUE:${id}:${endDay}`,title:`${cleanNameStrict(npc.name||id)}取得線索`,summary:"NPC取得一項尚待驗證的情報線索。",status:"active",stage:"待驗證",actors:[id],createdDay:endDay,updatedDay:endDay,nextCheckDay:endDay+7,source:"npc-autonomy",history:[{day:endDay,type:"created",note:"由自主情報行動產生"}]});
+            }
         }
-        engine.npcPlans = engine.npcPlans.slice(-100);
-        engine.actionLog = engine.actionLog.slice(-200);
-        engine.processedIds = engine.processedIds.slice(-300);
+        engine.npcPlans=engine.npcPlans.slice(-100); engine.actionLog=engine.actionLog.slice(-200); engine.processedIds=engine.processedIds.slice(-300); engine.events=engine.events.slice(-100);
     }
 
     function advanceWorldState(s, elapsedDays, aiChanges = []) {
@@ -2755,6 +2800,16 @@ JSON 輸出格式範例：
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
 
+        // V6.25：新手首次引氣入體必須走核心結算，不能只靠 AI 在故事中宣告突破。
+        // 只在已選身世、仍是凡人 Lv.0、且玩家明確嘗試引氣入體時觸發；首次引氣作為新手開局保底成功。
+        const isFirstQiEntryAttempt = !gameState.isDead && gameState.hasChosenOrigin === true &&
+            Number(gameState.level) === 0 && String(gameState.realm || "凡人") === "凡人" &&
+            /(引氣入體|引氣|感應天地靈氣|開始修仙|吸納靈氣入體)/.test(String(actionText));
+        if (isFirstQiEntryAttempt) {
+            eventMeta = { ...(eventMeta || {}), isBreakthrough: true, breakthroughSuccess: true,
+                breakthroughRate: 1, actionType: "breakthrough", firstQiEntry: true };
+            customPromptText = `【遊戲核心已判定：這是角色首次引氣入體，教學階段保底成功。請描寫靈氣入體、開拓氣海並正式進入「${getRealmDef(1).name}」的過程。不得聲稱仍是凡人、不得宣告其他境界或額外突破；不要自行改寫數值。】`;
+        }
         let promptToSend = customPromptText || actionText;
         const isDoingOrigin = !gameState.hasChosenOrigin;
 
@@ -2838,14 +2893,17 @@ JSON 輸出格式範例：
                     level: gameState.level, realm: gameState.realm, maxExp: gameState.maxExp,
                     maxHp: gameState.maxHp, hp: gameState.hp,
                     isDead: gameState.isDead,
-                    linggen: gameState.linggen, physique: gameState.physique,
-                    spiritStone: gameState.spiritStone
+                    linggen: gameState.linggen, physique: gameState.physique
                 };
+                const spiritStoneBeforeAI = Number(gameState.spiritStone) || 0;
                 const inferredMeta = { ...(eventMeta || {}) };
                 if (!inferredMeta.actionType && /(戰鬥|攻擊|伏擊|迎戰|出手|交手|對決|斬殺|反擊)/.test(String(actionText || ""))) inferredMeta.actionType = "combat";
                 gameState = applyStateDelta(gameState, parsedState, inferredMeta);
-                // AI 不能覆寫核心權威狀態；天數與疲勞則保留經驗證的核心結算結果。
+                // AI 不得直接改寫境界、生命等權威狀態；靈石則由 applyStateDelta 的結構化獎勵結算。
+                // 重要：不可在此把 spiritStone 還原成舊值，否則剛由 inventoryDelta 入帳的靈石會被覆蓋。
                 for (const [k, v] of Object.entries(authoritativeBeforeAI)) gameState[k] = v;
+                // 防禦性處理：若結算流程未明確變更靈石，保留原餘額；合法 inventoryDelta 入帳則保留新餘額。
+                if (!Number.isFinite(Number(gameState.spiritStone))) gameState.spiritStone = spiritStoneBeforeAI;
             }
             // 藏經閣貢獻在 API 成功並完成解析後才扣除；再確認宗門及餘額，避免過程中狀態改變造成負數。
             if (eventMeta && eventMeta.deductSectContribution && parsedState) {
@@ -2869,8 +2927,9 @@ JSON 輸出格式範例：
                 }
             }
             if (eventMeta && eventMeta.isBreakthrough) {
+                const successLabel = eventMeta.firstQiEntry ? "✨ 首次引氣入體成功" : "✅ 突破判定成功";
                 appendLogData("天道", eventMeta.breakthroughSuccess
-                    ? `✅ 突破判定成功：已進入【${gameState.realm}】(Lv.${gameState.level})。`
+                    ? `${successLabel}：已進入【${gameState.realm}】(Lv.${gameState.level})。`
                     : `❌ 突破判定失敗：境界維持【${gameState.realm}】(Lv.${gameState.level})，氣血受損。`, "system", false, true);
             }
             appendLogData("天道", storyText, "ai", false, true);
