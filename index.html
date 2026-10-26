@@ -620,7 +620,7 @@
             removeItemFromInventory(gameState.inventory, clean, 1);
 
             if (meta.hpGain) gameState.hp = Math.min(getMaxHp(gameState), gameState.hp + meta.hpGain);
-            if (meta.expGain) gameState.exp = Math.min(gameState.maxExp, gameState.exp + meta.expGain);
+            if (meta.expGain) applyCultivationExp(meta.expGain, gameState);
 
             return { success: true, message: `已使用【${clean}】，生命值/修為已依物品效果更新。` };
         }
@@ -812,6 +812,21 @@
     }
 
     // 心法品階決定潛力，角色境界決定解封階段，熟練度階段決定掌握效率。
+    // 心法的修為效率以「額外加成」計算：expRate=0.10 代表基礎修為 +10%。
+    function applyCultivationExp(baseAmount, s = gameState) {
+        const amount = Math.max(0, safeNumber(baseAmount, 0, 0, 1e9));
+        if (!amount || !s) return 0;
+        let multiplier = 1;
+        if (s.activeKungfu) {
+            const info = getKungfuUnsealInfo(s.activeKungfu.name, s.level || 0, s.activeKungfu);
+            multiplier += Math.max(0, Number(info.expRate) || 0);
+        }
+        const gained = Math.floor(amount * multiplier);
+        const before = Number(s.exp) || 0;
+        s.exp = Math.min(Number(s.maxExp) || 0, before + gained);
+        return s.exp - before;
+    }
+
     function getKungfuUnsealInfo(kungfuName, playerLevel, kungfuObj = null) {
         const majorRealmIdx = Math.floor(Math.max(0, Number(playerLevel) || 0) / 10);
         const realmRows = [
@@ -830,8 +845,8 @@
         const hpBonus = Math.floor(row.hpBonus * mult);
         const statBonus = Math.max(1, Math.floor(row.statBonus * mult));
         const expRate = row.expRate * mult;
-        const desc = `${row.tierName}｜品階倍率 ${tierMult.toFixed(2)}×、熟練倍率 ${stageMult.toFixed(2)}×：氣血 +${hpBonus}，膂力/根骨/悟性 +${statBonus}，修為效率 +${Math.round(expRate*100)}%`;
-        return { ...row, hpBonus, statBonus, expRate, tierMult, stageMult, desc };
+        const desc = `心法品階：${tier}｜解封階段：${row.tierName}｜品階倍率 ${tierMult.toFixed(2)}×、熟練倍率 ${stageMult.toFixed(2)}×：氣血 +${hpBonus}，膂力/根骨/悟性 +${statBonus}，修為效率 +${Math.round(expRate*100)}%`;
+        return { ...row, hpBonus, statBonus, expRate, tierMult, stageMult, techniqueTier: tier, stage, desc };
     }
 
     function getTechniqueArchetype(technique, isKungfu = false) {
@@ -1631,14 +1646,20 @@
             openGameModal("🛠️ 物品拆解確認", bodyContainer, [btnConfirm, btnCancel]);
             return;
         } else if (action === 'sell') {
-            if (invItem.isQuestItem) {
+            const itemMeta = getItemMeta(invItem);
+            if (invItem.isQuestItem || itemMeta.isQuestItem || itemMeta.type === 'special') {
                 openGameModal("⚠️ 變賣失敗", "關鍵劇情信物/令牌嚴禁變賣！");
                 return;
             }
+            // 依物品基礎價值與品階倍率計價；坊市回收價採估值的 50%，最低 1 顆下品靈石。
+            // 不再把所有物品硬編碼成 10 顆靈石。
+            const rarityTier = RARITY_TIERS[itemMeta.rarity] || RARITY_TIERS['凡品'];
+            const baseValue = Number.isFinite(Number(itemMeta.value)) ? Math.max(1, Number(itemMeta.value)) : 10;
+            const sellPrice = Math.max(1, Math.floor(baseValue * rarityTier.mult * 0.5));
             const removed = removeItemFromInventory(gameState.inventory, cleanName, 1);
             if (removed) {
-                gameState.spiritStone += 10;
-                appendLogData("天道", `將「${cleanName}」變賣，獲得 10 顆下品靈石。`, "system", false, true);
+                gameState.spiritStone += sellPrice;
+                appendLogData("天道", `將「${cleanName}」變賣，獲得 ${sellPrice} 顆下品靈石（${itemMeta.rarity || '凡品'}，回收估值）。`, "system", false, true);
             }
         }
         renderUI(); saveGameState();
@@ -1890,7 +1911,7 @@ JSON 輸出格式範例：
         if (rawState.originPhysiqueBonus) s.originPhysiqueBonus = cleanNameStrict(rawState.originPhysiqueBonus);
 
         if (rawState.expDelta !== undefined) {
-            s.exp = Math.min(s.maxExp, s.exp + safeNumber(rawState.expDelta, 0, 0, 1e9));
+            applyCultivationExp(rawState.expDelta, s);
         }
         // 靈石是核心經濟狀態：忽略 AI 回傳的 spiritStoneDelta。
         // 靈石只能由經驗證的遊戲核心流程修改，例如交易結算、系統服務費或明確的核心獎勵。
@@ -2134,7 +2155,7 @@ JSON 輸出格式範例：
             
             if (eventMeta) {
                 if (eventMeta.addDays) gameState.daysPassed += eventMeta.addDays;
-                if (eventMeta.addExp) gameState.exp = Math.min(gameState.maxExp, gameState.exp + eventMeta.addExp);
+                if (eventMeta.addExp) applyCultivationExp(eventMeta.addExp, gameState);
                 if (eventMeta.addFatigue) gameState.practiceFatigue = Math.min(100, gameState.practiceFatigue + safeNumber(eventMeta.addFatigue, 0, 0, 100));
                 if (eventMeta.clearFatigue) gameState.practiceFatigue = 0;
                 if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
