@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 世界自主推進引擎 V6.19</title>
+    <title>九州裂天錄 - 交易情境與黑市懸賞平衡修正版 V6.21</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -469,17 +469,18 @@
 
             const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥|粗麵餅|百草露/.test(name);
 
-            const existing = result.find(i => cleanNameStrict(i.name) === name);
+            const requestedTier = (rawItem && typeof rawItem === 'object' && (rawItem.tier || rawItem.rarity)) || getItemMeta(name).rarity;
+            const existing = result.find(i => cleanNameStrict(i.name) === name && (i.tier || getItemMeta(i).rarity) === requestedTier);
             if (existing) {
                 existing.quantity += qty;
             } else {
-                const meta = getItemMeta(name);
+                const meta = getItemMeta(rawItem && typeof rawItem === 'object' ? rawItem : name);
                 result.push({
                     name: name,
                     quantity: qty,
                     type: (rawItem && typeof rawItem === 'object' && rawItem.type) || meta.type,
                     tier: (rawItem && typeof rawItem === 'object' && (rawItem.tier || rawItem.rarity)) || meta.rarity,
-                    value: meta.value || 10,
+                    rarityColor: meta.rarityColor, value: (rawItem && typeof rawItem === 'object' && Number.isFinite(Number(rawItem.value))) ? Number(rawItem.value) : (meta.value || 10),
                     isQuestItem: isQuestItem || meta.isQuestItem,
                     canDisassemble: canDisassemble && !meta.isQuestItem && meta.type !== 'consumable' && !isCurrencyOrConsumable
                 });
@@ -502,7 +503,8 @@
 
         const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥|粗麵餅|百草露/.test(name);
 
-        const existing = inv.find(i => cleanNameStrict(i.name) === name);
+        const incomingTier = (typeof itemObjOrName === 'object' && itemObjOrName && (itemObjOrName.tier || itemObjOrName.rarity)) || getItemMeta(name).rarity;
+        const existing = inv.find(i => cleanNameStrict(i.name) === name && (i.tier || getItemMeta(i).rarity) === incomingTier);
         if (existing) {
             existing.quantity = Math.min(9999, (Number(existing.quantity) || 0) + amount);
             if (typeof itemObjOrName === 'object' && itemObjOrName) {
@@ -512,22 +514,22 @@
                 if (itemObjOrName.canDisassemble === false) existing.canDisassemble = false;
             }
         } else {
-            const meta = getItemMeta(name);
+            const meta = getItemMeta(typeof itemObjOrName === 'object' && itemObjOrName ? itemObjOrName : name);
             inv.push({
                 name: name,
                 quantity: amount,
                 type: (typeof itemObjOrName === 'object' && itemObjOrName.type) || meta.type,
                 tier: (typeof itemObjOrName === 'object' && (itemObjOrName.tier || itemObjOrName.rarity)) || meta.rarity,
-                value: meta.value || 10,
+                rarityColor: meta.rarityColor, value: (typeof itemObjOrName === 'object' && Number.isFinite(Number(itemObjOrName.value))) ? Number(itemObjOrName.value) : (meta.value || 10),
                 isQuestItem: meta.isQuestItem,
                 canDisassemble: !meta.isQuestItem && meta.type !== 'consumable' && !isCurrencyOrConsumable
             });
         }
     }
 
-    function removeItemFromInventory(inv, itemName, qty = 1) {
+    function removeItemFromInventory(inv, itemName, qty = 1, tier = null) {
         const clean = cleanNameStrict(itemName);
-        const idx = inv.findIndex(i => cleanNameStrict(i.name) === clean);
+        const idx = inv.findIndex(i => cleanNameStrict(i.name) === clean && (!tier || (i.tier || getItemMeta(i).rarity) === tier));
         if (idx === -1) return false;
 
         if (inv[idx].quantity > qty) {
@@ -577,6 +579,9 @@
         },
 
         executeTradeSettlement(tradeOffer) {
+            if (!tradeOffer || tradeOffer.authorized !== true) {
+                return { success: false, reason: "⚠️ 交易尚未經玩家明確確認，未執行任何變更。" };
+            }
             if (!tradeOffer || !["BUY", "SELL"].includes(tradeOffer.type) || !cleanNameStrict(tradeOffer.item_name)) {
                 return { success: false, reason: "⚠️ 交易提案資料不完整，未執行任何變更。" };
             }
@@ -604,7 +609,7 @@
             } else if (tradeOffer.type === "SELL") {
                 const owned = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanNameStrict(tradeOffer.item_name));
                 if (!owned || owned.quantity < quantity) return { success: false, reason: "⚠️ 背包中該物品數量不足，無法完成出售！" };
-                const removed = removeItemFromInventory(gameState.inventory, tradeOffer.item_name, quantity);
+                const removed = removeItemFromInventory(gameState.inventory, tradeOffer.item_name, quantity, tradeOffer.tier || null);
                 if (!removed) return { success: false, reason: "⚠️ 背包中該物品數量不足，無法完成出售！" };
                 gameState.spiritStone += totalPrice;
             }
@@ -655,8 +660,8 @@
                 is_alive: true,
                 relationship: {
                     favorability: baseFav,
-                    awe: npcData.base_awe || 0,
-                    profit: npcData.base_profit || 0
+                    awe: Math.max(0, Math.min(100, Number(npcData.base_awe) || 0)),
+                    profit: Math.max(-100, Math.min(100, Number(npcData.base_profit) || 0))
                 },
                 location: npcData.location || gameState.location,
                 memory_tags: []
@@ -870,7 +875,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.19",
+            version: "6.21",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
             spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0, breakthroughInsight: 0,
@@ -895,6 +900,8 @@
             choices: [...DEFAULT_ORIGIN_CHOICES],
             processedTxIds: [],
             pendingTradeOffer: null,
+            tradeContext: null,
+            bountyContracts: [],
             dailyChatCounts: {}
         };
     }
@@ -1025,8 +1032,19 @@
             });
         }
 
+        const normalizedHp = safeNumber(raw.hp, def.hp, 0, maxHp);
+        const normalizedDead = Boolean(raw.isDead) || normalizedHp <= 0 || String(raw.scenarioMode || "").toUpperCase() === "DEAD";
+        Object.entries(npcsMap).forEach(([id, npc]) => {
+            if (!npc || typeof npc !== "object") { delete npcsMap[id]; return; }
+            if (!npc.relationship || typeof npc.relationship !== "object") npc.relationship = {};
+            npc.relationship.favorability = Math.max(-100, Math.min(100, Number(npc.relationship.favorability ?? npc.favor ?? 0) || 0));
+            npc.relationship.awe = Math.max(0, Math.min(100, Number(npc.relationship.awe) || 0));
+            npc.relationship.profit = Math.max(-100, Math.min(100, Number(npc.relationship.profit) || 0));
+            if (npc.is_alive === false || npc.status === "DEAD") { npc.is_alive = false; npc.status = "DEAD"; }
+            else { npc.is_alive = true; npc.status = npc.status || "ALIVE"; }
+        });
         return {
-            version: "6.18",
+            version: "6.21",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -1035,7 +1053,7 @@
             ageBase: safeNumber(raw.ageBase, def.ageBase, 1, 1e5),
             maxAge: safeNumber(raw.maxAge, realmDef.maxAge, 1, 1e6),
             maxHp,
-            hp: safeNumber(raw.hp, def.hp, 0, maxHp),
+            hp: normalizedDead ? 0 : normalizedHp,
             exp: safeNumber(migratedExp, def.exp, 0, maxExp),
             maxExp,
             spiritStone: safeNumber(raw.spiritStone, def.spiritStone, 0, 1e12),
@@ -1045,9 +1063,9 @@
             danToxin: safeNumber(raw.danToxin, def.danToxin, 0, 1e6),
             hospitalVisitCount: safeNumber(raw.hospitalVisitCount, def.hospitalVisitCount, 0, 1e6),
             lastHospitalDay: safeNumber(raw.lastHospitalDay, def.lastHospitalDay, -1e9, 1e9),
-            isDead: Boolean(raw.isDead),
+            isDead: normalizedDead,
             location: cleanNameStrict(raw.location) || def.location,
-            scenarioMode: raw.scenarioMode || def.scenarioMode,
+            scenarioMode: normalizedDead ? "DEAD" : (raw.scenarioMode || def.scenarioMode),
             activeThreats: Array.isArray(raw.activeThreats) ? raw.activeThreats : [],
             hasChosenOrigin: Boolean(raw.hasChosenOrigin),
             originType: cleanNameStrict(raw.originType) || def.originType,
@@ -1056,7 +1074,7 @@
             originPhysiqueBonus: cleanNameStrict(raw.originPhysiqueBonus) || def.originPhysiqueBonus,
 
             sect: (raw.sect && typeof raw.sect === 'object') ? {
-                joined: Boolean(raw.sect.joined),
+                joined: Boolean(raw.sect.joined || (raw.sect.name && !["無", "無宗門", "散修"].includes(cleanNameStrict(raw.sect.name)) && cleanNameStrict(raw.sect.rank || "") !== "散修")),
                 id: raw.sect.id || null,
                 name: cleanNameStrict(raw.sect.name) || "無",
                 rank: cleanNameStrict(raw.sect.rank) || "散修",
@@ -1105,6 +1123,8 @@
             choices: Array.isArray(raw.choices) ? raw.choices : [...def.choices],
             processedTxIds: Array.isArray(raw.processedTxIds) ? raw.processedTxIds : [],
             pendingTradeOffer: raw.pendingTradeOffer || null,
+            tradeContext: raw.tradeContext || null,
+            bountyContracts: Array.isArray(raw.bountyContracts) ? raw.bountyContracts.slice(-100) : [],
             dailyChatCounts: raw.dailyChatCounts || {}
         };
     }
@@ -1128,15 +1148,19 @@
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
 
-        let tierKey = '下品';
-        if (/(仙品|仙階|神階|聖階)/.test(clean)) tierKey = '仙品';
-        else if (/(極品|天龍|紫金)/.test(clean)) tierKey = '極品';
-        else if (/(上品|玄階|地階|靈寶|赤金)/.test(clean)) tierKey = '上品';
-        else if (/(中品|中階|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
-        else if (/(下品|下階|黑鐵|木|粗|劣|破|鏽|舊|骨角|殘材)/.test(clean)) tierKey = '下品';
-        else if (/(凡品|凡階|普通)/.test(clean)) tierKey = '凡品';
+        const explicitTier = itemInput && typeof itemInput === 'object' ? (itemInput.tier || itemInput.rarity) : '';
+        const validTiers = Object.keys(RARITY_TIERS);
+        let tierKey = validTiers.includes(explicitTier) ? explicitTier : '下品';
+        if (!validTiers.includes(explicitTier)) {
+            if (/(仙品|仙階|神階|聖階)/.test(clean)) tierKey = '仙品';
+            else if (/(極品|天龍|紫金)/.test(clean)) tierKey = '極品';
+            else if (/(上品|玄階|地階|靈寶|赤金)/.test(clean)) tierKey = '上品';
+            else if (/(中品|中階|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
+            else if (/(凡品|凡階|普通)/.test(clean)) tierKey = '凡品';
+            else if (/(下品|下階|黑鐵|木|粗|劣|破|鏽|舊|骨角|殘材)/.test(clean)) tierKey = '下品';
+        }
 
-        const rarity = RARITY_TIERS[tierKey];
+        const rarity = RARITY_TIERS[tierKey] || RARITY_TIERS['下品'];
 
         if (/信物|鑰匙|密卷|血書|令牌/.test(clean)) return { type: 'special', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 50, isQuestItem: true, desc: "🔒 [關鍵劇情憑證] 嚴禁隨意丟棄與變賣" };
         if (/未鑑定|蒙塵/.test(clean)) return { type: 'unidentified', name: clean, rarity: '凡品', rarityColor: '#888', value: 20, isQuestItem: false, desc: "蒙塵古物，可【鑑定】解鎖真面目" };
@@ -1144,8 +1168,12 @@
         if (/材料|精金|靈鐵|礦石|草藥|粉末|粗鐵胚料|精鋼材料|殘材|精粹/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, isQuestItem: false, desc: "鍛造材料，可於坊市變賣換取靈石" };
         
         // 典籍辨識優先於「草、藥、丹」等泛用字，避免玉簡/手札被誤判為消耗品。
-        if (/(秘笈|殘篇|殘頁|古籍|心法|功法|玉簡|獸皮卷|帛書|手札|拓本|傳承|圖錄|真經|心得|筆記|散修手札|功法玉簡|破損玉簡|殘缺玉簡)/.test(clean)) {
-            return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之絕學載體，可【參悟】研讀學習對應絕學" };
+        const isPureInformationItem = /(座標|地圖|路線|方位|位置|地點|洞府位置|秘境位置|情報|名單|通行路引|地形圖)/.test(clean);
+        if (!isPureInformationItem && /(功法|心法|秘笈|殘篇|殘頁|古籍|修煉法門|身法|神通|術法|劍訣|刀訣|真經|傳承玉簡|功法玉簡|破損玉簡|殘缺玉簡|獸皮卷|帛書|手札|拓本|心得|筆記)/.test(clean)) {
+            return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之修煉典籍，可依內容參悟對應法門" };
+        }
+        if (isPureInformationItem && /(玉簡|卷|圖|令|書|冊)/.test(clean)) {
+            return { type: 'special', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 20, isQuestItem: false, desc: "記錄座標、地圖或情報的資訊物品，不可直接參悟功法" };
         }
 
         // 消耗品辨識採用較明確的食物/丹藥詞彙，避免所有含「草」字物品都能直接服用。
@@ -1684,19 +1712,120 @@
             return;
         }
 
+        const list = isKungfu ? gameState.kungfu : gameState.skills;
+        const techA = list.find(x => x.name === nameA), techB = list.find(x => x.name === nameB);
+        if (!techA || !techB || techA === techB) { openGameModal("⚠️ 融合失敗", "找不到兩門不同的有效絕學，未扣除靈石或消耗功法。"); return; }
+        const stageRank = {"入門":0,"小成":1,"大成":2,"圓滿":3};
+        const tierRank = {"黃階":0,"玄階":1,"地階":2,"天階":3,"仙階":4};
+        const avgStage = ((stageRank[techA.stage||"入門"]||0) + (stageRank[techB.stage||"入門"]||0)) / 2;
+        const tierGap = Math.abs((tierRank[techA.tier||"黃階"]||0) - (tierRank[techB.tier||"黃階"]||0));
+        const wisdom = Number(gameState.stats && gameState.stats.wis) || 10;
+        const successRate = Math.max(0.20, Math.min(0.85, 0.50 + (wisdom-10)*0.008 + avgStage*0.07 - tierGap*0.08 - (gameState.practiceFatigue||0)*0.002));
         gameState.spiritStone -= 50;
-        let list = isKungfu ? gameState.kungfu : gameState.skills;
-
-        list = list.filter(x => x.name !== nameA && x.name !== nameB);
+        if (Math.random() >= successRate) {
+            gameState.practiceFatigue = Math.min(100, (gameState.practiceFatigue||0) + 15);
+            const backlash = Math.max(1, Math.floor(getMaxHp(gameState) * 0.08));
+            gameState.hp = Math.max(1, gameState.hp - backlash);
+            appendLogData("天道", `⚠️ 【推演融合失敗】兩門絕學的運行路線互相衝突，融合未能完成。成功率 ${Math.round(successRate*100)}%；消耗 50 靈石，兩門原有絕學保留，反噬 HP -${backlash}、疲勞 +15。`, "system", false, true);
+            renderUI(); saveGameState(); return;
+        }
         const fusedName = `[玄階] ${nameA.slice(0, 2)}${nameB.slice(-2)}絕煞術`;
-        const newTech = { name: cleanNameStrict(fusedName), tier: "玄階", stage: "小成", proficiency: 0 };
-
-        list.push(newTech);
-        if (isKungfu) gameState.kungfu = list; else gameState.skills = list;
-
-        appendLogData("天道", `🎉 【推演成功】福至心靈！你將《${nameA}》與《${nameB}》融會貫通，自創出全新更高階絕學《${newTech.name}》！`, "ai", false, true);
-
+        const newTech = { name: cleanNameStrict(fusedName), tier: "玄階", stage: "入門", proficiency: 0 };
+        const nextList = list.filter(x => x.name !== nameA && x.name !== nameB);
+        nextList.push(newTech);
+        if (isKungfu) gameState.kungfu = nextList; else gameState.skills = nextList;
+        appendLogData("天道", `🎉 【推演成功】你將《${nameA}》與《${nameB}》融會貫通，自創出全新絕學《${newTech.name}》！成功率 ${Math.round(successRate*100)}%，兩門原有絕學已融合。`, "ai", false, true);
         renderUI(); saveGameState();
+    }
+
+    // 交易情境門控：不可在野外或戰鬥中直接出售。可辨識坊市/商店地點，或近期明確的商人交易對話。
+    function getSellTradeContext() {
+        if (gameState.isDead || ["BATTLE", "DANGER", "HAZARD"].includes(String(gameState.scenarioMode || "").toUpperCase())) return null;
+        const location = String(gameState.location || "");
+        const placeMatch = /(商店|商鋪|店鋪|坊市|市集|地攤|攤位|黑市|商行|交易行|拍賣行|集市)/.test(location);
+        const recentText = conversationHistory.slice(-6).map(m => String(m.content || "")).join(" ");
+        const dialogueMatch = /(商人|掌櫃|攤主|店家|收購|買賣|交易|報價|出售物品)/.test(recentText)
+            && String(gameState.scenarioMode || "").toUpperCase() === "DIALOGUE";
+        if (!placeMatch && !dialogueMatch) return null;
+        return { kind: placeMatch ? "market" : "merchant_dialogue", location, startedAt: Date.now() };
+    }
+
+    function beginSellDialogue(itemName) {
+        const context = getSellTradeContext();
+        if (!context) {
+            openGameModal("🔒 暫不可變賣", "變賣必須在商店、坊市、地攤等交易場所，或正在與具備收購能力的商人對話時進行。請先前往交易場所，再從背包選擇變賣。物品與靈石均未變動。");
+            return;
+        }
+        const item = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanNameStrict(itemName));
+        if (!item) { openGameModal("⚠️ 變賣失敗", "背包中已找不到該物品。"); return; }
+        const meta = getItemMeta(item);
+        if (/靈石/.test(cleanNameStrict(item.name)) || item.isQuestItem || meta.isQuestItem || meta.type === "special") {
+            openGameModal("⚠️ 變賣失敗", /靈石/.test(cleanNameStrict(item.name)) ? "靈石是貨幣餘額，不是一般背包商品。" : "關鍵劇情信物或令牌不可變賣。");
+            return;
+        }
+        const tier = RARITY_TIERS[item.tier || item.rarity || meta.rarity] || RARITY_TIERS["凡品"];
+        const base = Number.isFinite(Number(item.value ?? meta.value)) ? Math.max(1, Number(item.value ?? meta.value)) : 10;
+        const unitPrice = Math.max(1, Math.floor(base * tier.mult * 0.5));
+        const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        gameState.tradeContext = { ...context, itemName: cleanNameStrict(item.name) };
+        const offer = {
+            type: "SELL", item_name: cleanNameStrict(item.name), quantity: 1,
+            total_gold: unitPrice, item_type: item.type || meta.type || "misc",
+            tier: item.tier || item.rarity || meta.rarity || "凡品",
+            tx_nonce: `local_sell_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,
+            authorized: false, contextRequired: true
+        };
+        gameState.pendingTradeOffer = offer;
+        openGameModal("🤝 與商人議價", `你將「${offer.item_name}」交給對方估價。<br><br>商人查看片刻後表示：<br>「此物我願以 <b>${unitPrice} 枚下品靈石</b> 收購。」<br><br>出售數量：1（背包目前 ${quantity} 件）<br>出售前不會扣除物品，也不會增加靈石。請確認是否成交。`, [
+            Object.assign(document.createElement("button"), { className: "modal-btn primary", textContent: "✅ 確認出售", onclick: () => { closeGameModal(); confirmTradeOffer(); } }),
+            Object.assign(document.createElement("button"), { className: "modal-btn", textContent: "❌ 取消", onclick: () => { closeGameModal(); cancelTradeOffer(); } })
+        ]);
+        renderUI(); saveGameState();
+    }
+
+    function getBountyQuote(npc) {
+        const realmRank = { "凡人":0,"凡體":0,"練氣":1,"築基":2,"金丹":3,"元嬰":4,"化神":5,"煉虛":6,"合體":7,"大乘":8,"渡劫":9,"真仙":10,"仙人":10 };
+        const realmText = String(npc.realm || npc.cultivation || npc.levelName || "練氣");
+        let rank = 1;
+        for (const [name, value] of Object.entries(realmRank)) if (realmText.includes(name)) rank = Math.max(rank, value);
+        const level = Math.max(1, Number(npc.level) || 1);
+        const notoriety = Math.max(0, Number(npc.notoriety) || 0);
+        const protection = Math.max(0, Number(npc.guardCount) || 0);
+        // 基礎 50 僅是最低情報/委託費，不再代表保證刺殺成功。
+        const cost = Math.min(1e9, Math.max(50, Math.round(50 * Math.pow(3, rank) * (1 + Math.min(level,100)/20) * (1 + Math.min(notoriety,100)/100) * (1 + Math.min(protection,20)*0.25))));
+        const playerRankText = String(gameState.realm || "凡人");
+        let playerRank = 0;
+        for (const [name, value] of Object.entries(realmRank)) if (playerRankText.includes(name)) playerRank = Math.max(playerRank, value);
+        const gap = rank - playerRank;
+        const successChance = Math.max(0.01, Math.min(0.8, 0.58 - gap * 0.12 - protection * 0.025 + Math.min(Number(gameState.stats?.luk)||10,100)*0.001));
+        return { cost, rank, gap, successChance, realmText };
+    }
+
+    function requestBlackMarketBounty(npc) {
+        if (!npc || npc.is_alive === false || npc.status === "DEAD") { openGameModal("懸賞無效", "目標已死亡，無法建立新懸賞。"); return; }
+        const quote = getBountyQuote(npc);
+        if ((Number(gameState.spiritStone)||0) < quote.cost) { openGameModal("⚠️ 靈石不足", `黑市對「${npc.name}」的估價為 ${quote.cost.toLocaleString()} 枚下品靈石，你目前只有 ${Number(gameState.spiritStone)||0} 枚。`); return; }
+        const chancePct = Math.round(quote.successChance * 100);
+        openGameModal("💀 黑市懸賞評估", `目標：<b>${npc.name}</b><br>估計境界：${quote.realmText}<br>委託費：<b>${quote.cost.toLocaleString()} 枚下品靈石</b><br>估計成功率：${chancePct}%（非保證；情報、護衛及勢力介入可能改變結果）<br><br>確認後才會扣除委託費並建立任務；失敗可能造成線索暴露、刺客折損或對方勢力報復。`, [
+            Object.assign(document.createElement("button"), { className: "modal-btn primary", textContent: "確認發布懸賞", onclick: () => {
+                closeGameModal();
+                if (gameState.spiritStone < quote.cost || npc.is_alive === false || npc.status === "DEAD") { openGameModal("懸賞未成立", "目標狀態或靈石餘額已改變，未扣款。"); return; }
+                gameState.spiritStone -= quote.cost;
+                const contract = { id: `bounty_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, targetName: npc.name, targetId: npc.id || null, targetRealm: quote.realmText, cost: quote.cost, successChance: quote.successChance, status: "委託中", createdDay: Number(gameState.daysPassed)||0 };
+                gameState.bountyContracts = Array.isArray(gameState.bountyContracts) ? gameState.bountyContracts : [];
+                gameState.bountyContracts.push(contract); gameState.bountyContracts = gameState.bountyContracts.slice(-100);
+                const roll = Math.random();
+                contract.outcome = roll < quote.successChance ? "成功" : "失敗";
+                contract.status = contract.outcome;
+                const resultText = contract.outcome === "成功"
+                    ? `黑市刺客回報：對「${npc.name}」的刺殺行動成功，但目標死亡與世界狀態仍須依後續事件驗證；不得直接跳過戰鬥/護衛邏輯。`
+                    : `黑市刺客回報：刺殺「${npc.name}」失敗。已支付的委託費不退還，並可能留下線索或引來報復。`;
+                appendLogData("黑市", `已支付 ${quote.cost} 枚下品靈石建立懸賞。${resultText}`, "system", false, true);
+                sendAction(`【黑市懸賞任務結果】目標「${npc.name}」，目標估計境界：${quote.realmText}，委託費 ${quote.cost} 枚下品靈石。程式判定結果為「${contract.outcome}」。${contract.outcome === "成功" ? "請描述刺客如何在符合目標實力、護衛及勢力防護的前提下完成任務；不得無視境界差距直接宣告死亡，需先驗證目標可被刺殺。" : "請描述刺殺失敗、線索暴露或勢力反應；不得宣告目標死亡。"}`, { bountyContractId: contract.id });
+                renderUI(); saveGameState();
+            }}),
+            Object.assign(document.createElement("button"), { className: "modal-btn", textContent: "取消", onclick: closeGameModal })
+        ]);
     }
 
     function interactInventoryItem(name, action) {
@@ -1756,21 +1885,8 @@
             openGameModal("🛠️ 物品拆解確認", bodyContainer, [btnConfirm, btnCancel]);
             return;
         } else if (action === 'sell') {
-            const itemMeta = getItemMeta(invItem);
-            if (invItem.isQuestItem || itemMeta.isQuestItem || itemMeta.type === 'special') {
-                openGameModal("⚠️ 變賣失敗", "關鍵劇情信物/令牌嚴禁變賣！");
-                return;
-            }
-            // 依物品基礎價值與品階倍率計價；坊市回收價採估值的 50%，最低 1 顆下品靈石。
-            // 不再把所有物品硬編碼成 10 顆靈石。
-            const rarityTier = RARITY_TIERS[itemMeta.rarity] || RARITY_TIERS['凡品'];
-            const baseValue = Number.isFinite(Number(itemMeta.value)) ? Math.max(1, Number(itemMeta.value)) : 10;
-            const sellPrice = Math.max(1, Math.floor(baseValue * rarityTier.mult * 0.5));
-            const removed = removeItemFromInventory(gameState.inventory, cleanName, 1);
-            if (removed) {
-                gameState.spiritStone += sellPrice;
-                appendLogData("天道", `將「${cleanName}」變賣，獲得 ${sellPrice} 顆下品靈石（${itemMeta.rarity || '凡品'}，回收估值）。`, "system", false, true);
-            }
+            beginSellDialogue(cleanName);
+            return;
         }
         renderUI(); saveGameState();
     }
@@ -2020,9 +2136,14 @@ ${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subjec
 9. [位置與場景同步]：每次場景切換必須在 JSON 回傳 location；若進入/離開對話、險地或戰鬥，必須同步回傳 scenarioMode（IDLE/DIALOGUE/HAZARD/DANGER）與 activeThreats 陣列。危機解除時回傳 activeThreats: []，不得讓場景標籤長期停留在舊狀態。
 10. [突破權限]：突破只由前端核心在玩家明確點擊突破按鈕且不在 DANGER/戰鬥時結算。故事中不可直接宣告角色已突破；若玩家尚未觸發突破流程，只能描述感悟或衝關準備，不得更改境界。
 11. [世界記憶]：只把本回合確實發生、在故事中已明確確認且會影響後續的事實寫入 memoryDelta。玩家猜測、傳聞、NPC 的謊言必須標示為「未證實／傳聞／某 NPC 聲稱」，不得寫成客觀真相。不要重複新增相同事件。
-12. [NPC 自主性]：重要 NPC 必須有可持續的目標、利益、恐懼、忠誠或秘密；其行動依自身動機與已知資訊，不會自動幫助玩家。背叛、陰謀、救助或合作都必須有具體動機，不可為了戲劇效果隨機發生。
+12. [NPC 自主性與結果結算]：重要 NPC 必須有可持續的目標、利益、恐懼、忠誠或秘密；其行動依自身動機與已知資訊，不會自動幫助玩家。NPC自主行動必須記錄行動、成本、結果與後果；不得只寫「採取行動」而永遠沒有結果。背叛、陰謀、救助或合作都必須有具體動機，不可為了戲劇效果隨機發生。
 13. [世界連續性]：世界時間推進時，可推動已登記的未結事件，但必須沿用事件既有參與者、目標與狀態。不可憑空宣布宗門覆滅、角色死亡或勢力翻轉；此類重大結果需有因果鋪墊並回傳相應正式紀錄。
 14. [新增設定登記]：首次正式登場且對後續有影響的人物，除回傳 npcDelta 外，應補上 goals、knownFacts、secrets、trust 等可確認資料。新增勢力或持續事件需在 memoryDelta 中登記，且不能與固定世界設定衝突。
+15. [勢力互動因果]：勢力關係只能由已知人物、既有目標、資源競爭、正式交涉或已登記事件推進；必須記錄關係變化原因與日期。不得因一天經過就無因翻轉同盟、滅門或奪權。
+16. [敘事與實際狀態一致]：只有在核心已結算物品、靈石、傷害、突破、宗門身分與戰鬥結果後，才可敘述其已完成。不得只以故事文字宣告取得戰利品、擊敗高階敵人或加入宗門。
+17. [傷勢敘事與HP一致]：必須以 SSOT 的實際 HP / 最大 HP 決定傷勢描述。HP 高於 50% 時不得描述「瀕死、命懸一線、快要死掉」，除非明確指出是非生命值類的心魔/經脈危機；HP 低於 25% 才可使用重傷垂危等措辭。
+18. [戰力差距]：描述戰鬥勝負前，必須比較雙方境界、戰力、裝備、狀態與戰術條件。低境界角色不得無條件擊敗高階長老；若越級取勝，必須指出可驗證的特殊優勢與代價。
+19. [敘事完整度]：除簡單確認、錯誤提示或短問答外，主要劇情回覆應有完整的場景、行動、結果與後果，不要只用一句話帶過；篇幅應服從事件重要性，不可為湊字數重複敘述。
 
 JSON 輸出格式範例：
 \`\`\`json
@@ -2071,7 +2192,63 @@ JSON 輸出格式範例：
         return { storyText: text.trim(), parsedState: null };
     }
 
-    // V6.19 NPC自主行動引擎：以遊戲時間排程NPC的可追溯行動，不讓AI直接改寫重大世界事實。
+    // V6.20 心法成長：將參悟、突破、實際戰鬥等正式事件轉為有限的熟練度，不接受純敘事直接加成。
+    function grantTechniqueExperience(s, source, amount = 1) {
+        if (!s) return;
+        const base = Math.max(1, Math.min(30, Math.floor(Number(amount) || 1)));
+        const activeName = s.activeKungfu && cleanNameStrict(s.activeKungfu.name);
+        const candidates = (Array.isArray(s.kungfu) ? s.kungfu : []).filter(k => k && k.name);
+        candidates.forEach(k => {
+            const isActive = activeName && cleanNameStrict(k.name) === activeName;
+            const gain = source === "battle" ? (isActive ? base * 2 : 1) : source === "breakthrough" ? (isActive ? base * 3 : 2) : source === "comprehend" ? base : (isActive ? base : 0);
+            if (gain > 0) {
+                const old = Math.max(0, Number(k.proficiency) || 0);
+                k.proficiency = Math.min(100, old + gain);
+                if (typeof KungfuManager !== "undefined" && KungfuManager && typeof KungfuManager.updateStage === "function") {
+                    try { KungfuManager.updateStage(k); } catch (_) {}
+                }
+            }
+        });
+        if (Array.isArray(s.skills) && source === "battle") s.skills.forEach(k => { if (k) k.proficiency = Math.min(100, Math.max(0, Number(k.proficiency)||0) + 2); });
+    }
+
+    // V6.20 勢力互動：只依已登記勢力、既有事件與 NPC 目標建立有限影響，不憑空改變勢力存亡。
+    function resolveFactionInteractions(s, day) {
+        if (!s) return;
+        ensureWorldMemory(s);
+        const wm = s.worldMemory, engine = wm.engine;
+        const factions = Array.isArray(engine.factions) ? engine.factions : (engine.factions = []);
+        const relationList = Array.isArray(wm.factionRelations) ? wm.factionRelations : (wm.factionRelations = []);
+        const seen = new Set();
+        relationList.forEach(r => { if (r && r.a && r.b) seen.add([r.a,r.b].sort().join("::")); });
+        const alive = Object.values(s.npcRegistry || {}).filter(n => n && n.is_alive !== false && n.status !== "DEAD");
+        const byFaction = new Map();
+        alive.forEach(n => {
+            const f = cleanNameStrict(n.faction || n.sectName || n.organization || "");
+            if (!f) return;
+            if (!byFaction.has(f)) byFaction.set(f, []);
+            byFaction.get(f).push(n);
+            if (!factions.some(x => x && x.name === f)) factions.push({id:`FAC-${f}`,name:f,alignment:n.alignment||"未明",influence:50,resources:50,stability:50,lastUpdatedDay:day,history:[]});
+        });
+        const names = [...byFaction.keys()].sort();
+        // 僅在兩個已登記勢力的 NPC 存在明確合作/競爭目標時建立關係紀錄。
+        for (let i=0; i<names.length; i++) for (let j=i+1; j<names.length; j++) {
+            const a=names[i], b=names[j], key=[a,b].sort().join("::");
+            const members=[...(byFaction.get(a)||[]),...(byFaction.get(b)||[])];
+            const motives=members.flatMap(n => [...(Array.isArray(n.goals)?n.goals:[]),...(Array.isArray(n.currentPlan)?[n.currentPlan]:[n.currentPlan||""])]).join(" ");
+            const contested=/(競爭|爭奪|敵對|報仇|追殺|爭奪|搶奪|結盟|合作|交涉|談判|貿易|資源)/.test(motives);
+            if (!contested || seen.has(key)) continue;
+            const hostile=/(敵對|報仇|追殺|爭奪|搶奪)/.test(motives);
+            relationList.push({a,b,score:hostile?-10:5,status:hostile?"緊張":"接觸中",updatedDay:day,source:"npc-goals",history:[{day,change:hostile?-10:5,reason:"NPC既有目標出現勢力交集"}]});
+            seen.add(key);
+            engine.actionLog.push({id:`FACTION-INTERACTION:${day}:${key}`,day,type:"faction-interaction",summary:`${a}與${b}因既有NPC目標產生${hostile?"緊張關係":"初步接觸"}，尚未造成重大格局變動。`});
+        }
+        relationList.splice(0, Math.max(0, relationList.length-60));
+        factions.forEach(f => { if (f && f.name) { f.lastUpdatedDay=day; f.influence=Math.max(0,Math.min(100,Number(f.influence)||50)); f.resources=Math.max(0,Math.min(100,Number(f.resources)||50)); f.stability=Math.max(0,Math.min(100,Number(f.stability)||50)); } });
+        engine.factions = factions.slice(-60);
+    }
+
+    // V6.20 NPC行動結果與勢力互動引擎：以遊戲時間排程NPC的可追溯行動，不讓AI直接改寫重大世界事實。
     function advanceNpcAutonomy(s, startDay, endDay) {
         if (!s || !s.npcRegistry || endDay <= startDay) return;
         ensureWorldMemory(s);
@@ -2096,15 +2273,24 @@ JSON 輸出格式範例：
             const planId = `NPCPLAN:${id}:${endDay}`;
             if (engine.processedIds.includes(planId)) { npc.nextAutonomyDay = endDay + 7; continue; }
             engine.processedIds.push(planId);
-            const summary = `${cleanNameStrict(npc.name||id)}自主採取「${selected.label}」；依既有目標排定，未直接宣告重大成敗。`;
+            const before = { hp: Number(npc.hp)||0, resources: Number(npc.resourceLevel)||0, info: Number(npc.information)||0, relations: Number(npc.network)||0, cultivation: Number(npc.cultivationProgress)||0 };
+            let result = "neutral", cost = "無明顯消耗", consequence = "目標仍在進行";
+            // 行動只產生小幅、可追溯的內部進度；不直接宣告突破、殺人、奪寶或勢力覆滅。
+            if (selected.key === "cultivate") { npc.cultivationProgress = Math.min(100, before.cultivation + 2 + ((Number(npc.wisdom)||10)>=15?1:0)); result="success"; consequence="修煉進度小幅增加"; cost="耗費數日與精力"; }
+            else if (selected.key === "gather_info") { npc.information = Math.min(100, before.info + 3); result="partial"; consequence="情報網略有進展，內容仍需後續驗證"; cost="消耗時間與人脈"; }
+            else if (selected.key === "gather_resources") { npc.resourceLevel = Math.min(100, before.resources + 2); result="partial"; consequence="資源儲備略有增加，未生成具體物品"; cost="消耗時間與少量資源"; }
+            else if (selected.key === "build_relation") { npc.network = Math.min(100, before.relations + 2); result="partial"; consequence="人脈略有進展，尚未視為正式結盟"; cost="耗費時間與交涉成本"; }
+            else if (selected.key === "recover") { npc.hp = Math.min(100, Math.max(before.hp, 60) + 3); result="success"; consequence="狀態逐步恢復"; cost="暫停其他行動"; }
+            const summary = `${cleanNameStrict(npc.name||id)}自主採取「${selected.label}」；結果：${result}；${consequence}（${cost}）。`;
             npc.currentPlan = selected.label;
             npc.lastAutonomyDay = endDay;
             npc.nextAutonomyDay = endDay + 7;
+            npc.lastActionOutcome = {day:endDay,action:selected.key,result,cost,consequence};
             if (!Array.isArray(npc.actionHistory)) npc.actionHistory = [];
-            npc.actionHistory.push({day:endDay, action:selected.key, summary});
+            npc.actionHistory.push({day:endDay, action:selected.key, result, cost, consequence, summary});
             npc.actionHistory = npc.actionHistory.slice(-12);
-            engine.npcPlans.push({id:planId,npcId:id,npcName:cleanNameStrict(npc.name||id),day:endDay,action:selected.key,summary,status:"recorded"});
-            engine.actionLog.push({id:planId,day:endDay,type:"npc-autonomy",summary});
+            engine.npcPlans.push({id:planId,npcId:id,npcName:cleanNameStrict(npc.name||id),day:endDay,action:selected.key,summary,status:"resolved",result,cost,consequence});
+            engine.actionLog.push({id:planId,day:endDay,type:"npc-autonomy",summary,result,cost,consequence});
         }
         engine.npcPlans = engine.npcPlans.slice(-100);
         engine.actionLog = engine.actionLog.slice(-200);
@@ -2124,6 +2310,7 @@ JSON 輸出格式範例：
 
         // NPC依世界時間自主採取可追溯的日常行動；重大戰果仍需事件條件或明確結算。
         advanceNpcAutonomy(s, startDay, endDay);
+        resolveFactionInteractions(s, endDay);
 
         // 把舊版未結事件同步成結構化事件；只遷移已有資料，不憑空創造劇情事實。
         wm.openThreads.forEach(thread => {
@@ -2227,7 +2414,19 @@ JSON 輸出格式範例：
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
         applyActionOutcome(s, rawState);
+        const outcomeResult = rawState.actionOutcome && rawState.actionOutcome.result;
+        if (eventMeta && eventMeta.actionType === "combat" && outcomeResult !== "failure") grantTechniqueExperience(s, "battle", 3);
+        if (eventMeta && eventMeta.actionType === "breakthrough" && outcomeResult === "success") grantTechniqueExperience(s, "breakthrough", 5);
 
+        if (rawState.sectDelta && typeof rawState.sectDelta === "object") {
+            const sd = rawState.sectDelta;
+            const storyForSect = String(rawState.story || "");
+            const sectName = cleanNameStrict(sd.name || sd.sectName || "");
+            const confirmsJoin = sd.joined === true && sectName && !["無", "無宗門", "散修"].includes(sectName) && /(加入|拜入|正式成為|通過.*試煉|收為.*弟子|收入門下)/.test(storyForSect);
+            if (confirmsJoin) {
+                s.sect = { ...(s.sect || {}), joined:true, id:sd.id || (s.sect && s.sect.id) || `sect_${sectName}`, name:sectName, rank:cleanNameStrict(sd.rank || "外門弟子"), position:cleanNameStrict(sd.position || "弟子"), contribution:Math.max(0, Number(sd.contribution ?? (s.sect && s.sect.contribution) ?? 0)||0), totalContribution:Math.max(0, Number(sd.totalContribution ?? (s.sect && s.sect.totalContribution) ?? 0)||0) };
+            }
+        }
         if (rawState.location) {
             const nextLocation = cleanNameStrict(rawState.location);
             if (nextLocation) s.location = nextLocation;
@@ -2243,7 +2442,8 @@ JSON 輸出格式範例：
         if (rawState.originLinggenBonus) s.originLinggenBonus = cleanNameStrict(rawState.originLinggenBonus);
         if (rawState.originPhysiqueBonus) s.originPhysiqueBonus = cleanNameStrict(rawState.originPhysiqueBonus);
 
-        if (rawState.expDelta !== undefined) {
+        const actionFailed = !!(rawState.actionOutcome && rawState.actionOutcome.result === "failure");
+        if (rawState.expDelta !== undefined && !(actionFailed && Number(rawState.expDelta) > 0)) {
             applyCultivationExp(rawState.expDelta, s);
         }
         // 靈石是核心經濟狀態：忽略 AI 回傳的 spiritStoneDelta。
@@ -2288,15 +2488,25 @@ JSON 輸出格式範例：
         }
         if (inventoryTransferValid) {
             removals.forEach(r => removeItemFromInventory(s.inventory, r.name, r.quantity));
-            if (Array.isArray(rawState.inventoryDelta)) {
+            if (!actionFailed && Array.isArray(rawState.inventoryDelta)) {
                 rawState.inventoryDelta.slice(0, 12).forEach(item => {
                     const itemName = typeof item === 'string' ? item : item && item.name;
                     if (!itemName || !String(itemName).trim() || String(itemName).toLowerCase() === 'undefined') return;
+                    if (/靈石/.test(cleanNameStrict(itemName))) {
+                        const qty = Math.floor(safeNumber(typeof item === 'object' ? (item.quantity ?? item.qty ?? 1) : 1, 1, 1, 9999));
+                        s.spiritStone = Math.min(1e12, (Number(s.spiritStone) || 0) + qty);
+                        return;
+                    }
                     addItemToInventory(s.inventory, item);
                 });
             }
         } else {
             console.warn("Rejected inventory transfer: invalid item or insufficient quantity. No items were moved.", rawRemovals);
+        }
+        if (inventoryTransferValid && (removals.length || (Array.isArray(rawState.inventoryDelta) && rawState.inventoryDelta.length))) {
+            const removedText = removals.map(r => `${r.name}×${r.quantity}`).join("、");
+            const addedText = (Array.isArray(rawState.inventoryDelta) ? rawState.inventoryDelta : []).map(i => `${cleanNameStrict(typeof i === "string" ? i : i && i.name)}×${Math.max(1, Number(i && typeof i === "object" ? (i.quantity || i.qty || 1) : 1))}`).filter(x => !x.startsWith("×")).join("、");
+            s.lastInventoryTransferNotice = { day: Number(s.daysPassed)||0, removed: removedText, added: addedText };
         }
 
         if (rawState.tradeOffer) {
@@ -2319,6 +2529,7 @@ JSON 輸出格式範例：
                     item_name: itemName,
                     quantity,
                     total_gold: totalPrice,
+                    authorized: false,
                     tx_nonce: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
                 };
             } else {
@@ -2353,7 +2564,12 @@ JSON 輸出格式範例：
                     location: cleanNameStrict(entry.location || prev.location || s.location),
                     is_alive: isDead ? false : entry.is_alive !== false && entry.status !== "DEAD",
                     status: isDead ? "DEAD" : (entry.status || prev.status || "ALIVE"),
-                    relationship: { ...(prev.relationship || {}), ...(entry.relationship || {}) },
+                    relationship: {
+                        ...(prev.relationship || {}), ...(entry.relationship || {}),
+                        favorability: Math.max(-100, Math.min(100, Number((entry.relationship && entry.relationship.favorability) ?? (prev.relationship && prev.relationship.favorability) ?? 0) || 0)),
+                        awe: Math.max(0, Math.min(100, Number((entry.relationship && entry.relationship.awe) ?? (prev.relationship && prev.relationship.awe) ?? 0) || 0)),
+                        profit: Math.max(-100, Math.min(100, Number((entry.relationship && entry.relationship.profit) ?? (prev.relationship && prev.relationship.profit) ?? 0) || 0))
+                    },
                     trust: Math.max(-100, Math.min(100, Number(entry.trust ?? prev.trust ?? 0) || 0)),
                     goals: Array.isArray(entry.goals) ? entry.goals.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,8) : (Array.isArray(prev.goals) ? prev.goals : []),
                     fears: Array.isArray(entry.fears) ? entry.fears.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,8) : (Array.isArray(prev.fears) ? prev.fears : []),
@@ -2371,7 +2587,26 @@ JSON 輸出格式範例：
             }
         }
 
-        if (rawState.techniqueDelta && Array.isArray(rawState.techniqueDelta)) {
+        if (eventMeta && eventMeta.techniqueSuccess === true) grantTechniqueExperience(s, "comprehend", 5);
+        if (eventMeta && eventMeta.isBreakthrough === true && eventMeta.breakthroughSuccess === true && !(eventMeta.actionType === "breakthrough")) grantTechniqueExperience(s, "breakthrough", 5);
+        if (eventMeta && eventMeta.isCombat === true && !(eventMeta.actionType === "combat")) grantTechniqueExperience(s, "battle", 3);
+
+        // 關係值以事件變化為主，並強制限制範圍；不再讓敬畏/利益永久停在初始值。
+        const storySignal = String(rawState.story || rawState.narrative || "");
+        Object.values(s.npcRegistry || {}).forEach(n => {
+            if (!n || n.is_alive === false || n.status === "DEAD") return;
+            if (!n.relationship || typeof n.relationship !== "object") n.relationship = {favorability:0,awe:0,profit:0};
+            const rel = n.relationship;
+            const named = storySignal.includes(cleanNameStrict(n.name || ""));
+            if (named && /(威壓|震懾|展現實力|擊敗|碾壓|畏懼|敬畏)/.test(storySignal)) rel.awe = Math.min(100, (Number(rel.awe)||0) + 3);
+            if (named && /(交易成功|公平交易|提供報酬|利益交換|獲利|分潤|合作獲利)/.test(storySignal)) rel.profit = Math.min(100, (Number(rel.profit)||0) + 3);
+            if (named && /(欺騙|剝削|欠款不還|損害利益|背信)/.test(storySignal)) rel.profit = Math.max(-100, (Number(rel.profit)||0) - 5);
+            rel.favorability = Math.max(-100, Math.min(100, Number(rel.favorability)||0));
+            rel.awe = Math.max(0, Math.min(100, Number(rel.awe)||0));
+            rel.profit = Math.max(-100, Math.min(100, Number(rel.profit)||0));
+        });
+
+        if (!actionFailed && rawState.techniqueDelta && Array.isArray(rawState.techniqueDelta)) {
             rawState.techniqueDelta.forEach(tech => {
                 const cleanTechName = cleanNameStrict(tech.name);
                 if (!cleanTechName) return;
@@ -2606,7 +2841,9 @@ JSON 輸出格式範例：
                     linggen: gameState.linggen, physique: gameState.physique,
                     spiritStone: gameState.spiritStone
                 };
-                gameState = applyStateDelta(gameState, parsedState, eventMeta);
+                const inferredMeta = { ...(eventMeta || {}) };
+                if (!inferredMeta.actionType && /(戰鬥|攻擊|伏擊|迎戰|出手|交手|對決|斬殺|反擊)/.test(String(actionText || ""))) inferredMeta.actionType = "combat";
+                gameState = applyStateDelta(gameState, parsedState, inferredMeta);
                 // AI 不能覆寫核心權威狀態；天數與疲勞則保留經驗證的核心結算結果。
                 for (const [k, v] of Object.entries(authoritativeBeforeAI)) gameState[k] = v;
             }
@@ -2900,7 +3137,7 @@ JSON 輸出格式範例：
             const btnEl = document.getElementById(`btn-unequip-${slot}`);
             if (eqItem) {
                 const name = cleanNameStrict(typeof eqItem === 'object' ? eqItem.name : eqItem);
-                const meta = getItemMeta(name);
+                const meta = getItemMeta(eqItem || name);
                 if (nameEl) { nameEl.textContent = `[${meta.rarity}] ${name}`; nameEl.style.color = meta.rarityColor; }
                 if (descEl) descEl.textContent = meta.desc || "無屬性加成";
                 if (btnEl) btnEl.disabled = false;
@@ -2918,7 +3155,7 @@ JSON 輸出格式範例：
                 gameState.inventory.forEach(item => {
                     const name = cleanNameStrict(item.name);
                     const qty = item.quantity || 1;
-                    const meta = getItemMeta(name);
+                    const meta = getItemMeta(item);
 
                     let row = document.createElement("div"); row.className = "item-row";
                     let top = document.createElement("div"); top.className = "item-top";
@@ -2945,7 +3182,7 @@ JSON 輸出格式範例：
                     }
 
                     if (!item.isQuestItem) {
-                        let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(bSell);
+                        let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.disabled = !getSellTradeContext(); bSell.title = bSell.disabled ? "請先前往商店、坊市或與商人進入交易對話" : "與商人議價後出售"; bSell.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(bSell);
                     }
 
                     top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
@@ -2961,13 +3198,14 @@ JSON 輸出格式範例：
             npcsBox.innerHTML = "";
             deadNpcsBox.innerHTML = "";
             
-            const registry = Object.values(gameState.npcRegistry);
+            const registry = Object.values(gameState.npcRegistry).filter(n => n && (n.is_alive === false || n.status === "DEAD" || n.is_alive === true));
             let aliveCount = 0;
             let deadCount = 0;
 
             registry.forEach(n => {
                 const card = document.createElement("div");
-                card.className = n.is_alive ? "npc-card" : "npc-card dead";
+                const npcAlive = n.is_alive !== false && n.status !== "DEAD";
+                card.className = npcAlive ? "npc-card" : "npc-card dead";
 
                 const top = document.createElement("div"); top.className = "npc-top";
                 const info = document.createElement("div"); info.className = "npc-info";
@@ -2977,7 +3215,7 @@ JSON 輸出格式範例：
                 const locTag = nearby ? `<span class="mode-badge mode-idle">📍 當前區域</span>` : `<span class="mode-badge mode-dialogue">🗺️ 異地</span>`;
 
                 const nameEl = document.createElement("div"); nameEl.className = "npc-name";
-                nameEl.innerHTML = `• ${n.name} (${n.title || '修士'}) ${locTag} ${n.is_alive ? '' : '🪦 [已身死]'}`;
+                nameEl.innerHTML = `• ${n.name} (${n.title || '修士'}) ${locTag} ${(n.is_alive !== false && n.status !== 'DEAD') ? '' : '🪦 [已身死]'}`;
 
                 const locEl = document.createElement("div"); locEl.className = "npc-loc";
                 locEl.textContent = `位置: ${n.location || "未知"}`;
@@ -2988,7 +3226,7 @@ JSON 輸出格式範例：
                 info.appendChild(nameEl); info.appendChild(locEl); info.appendChild(favorEl);
                 top.appendChild(info); card.appendChild(top);
 
-                if (n.is_alive) {
+                if (n.is_alive !== false && n.status !== "DEAD") {
                     aliveCount++;
                     const actions = document.createElement("div"); actions.className = "item-actions";
                     
@@ -3000,11 +3238,8 @@ JSON 輸出格式範例：
                             payBtn.onclick = () => showGiftModal(n.name, true);
                             actions.appendChild(ambBtn); actions.appendChild(payBtn);
                         } else {
-                            const huntBtn = document.createElement("button"); huntBtn.style.background = "#4a1515"; huntBtn.textContent = "💀 黑市懸賞 (50石)";
-                            huntBtn.onclick = () => {
-                                if (gameState.spiritStone < 50) { openGameModal("⚠️ 靈石不足", "發布懸賞需要 50 顆靈石！"); return; }
-                                sendAction(`【消耗 50 靈石，黑市發布懸賞追殺仇敵「${n.name}」！】`, { deductStone: 50 });
-                            };
+                            const huntBtn = document.createElement("button"); huntBtn.style.background = "#4a1515"; huntBtn.textContent = "💀 黑市懸賞（風險估價）";
+                            huntBtn.onclick = () => requestBlackMarketBounty(n);
                             const sendBtn = document.createElement("button"); sendBtn.textContent = "📦 飛劍利誘";
                             sendBtn.onclick = () => showGiftModal(n.name, false);
                             actions.appendChild(huntBtn); actions.appendChild(sendBtn);
@@ -3091,12 +3326,18 @@ JSON 輸出格式範例：
     function confirmTradeOffer() {
         if (!gameState.pendingTradeOffer) return;
         const offer = gameState.pendingTradeOffer;
+        if (offer.contextRequired && !getSellTradeContext()) {
+            gameState.pendingTradeOffer = null;
+            openGameModal("⚠️ 交易情境已失效", "你已離開交易場所或交易對話已結束，出售未執行，物品與靈石均未變動。");
+            renderUI(); saveGameState(); return;
+        }
         if (!offer.item_name || !Number.isFinite(Number(offer.total_gold)) || Number(offer.total_gold) < 0) {
             gameState.pendingTradeOffer = null;
             openGameModal("⚠️ 交易取消", "交易提案缺少有效物品名稱或總價，系統未扣除物品，也未發放靈石。請重新要求 NPC 報價。");
             renderUI(); saveGameState();
             return;
         }
+        offer.authorized = true;
         const res = TransactionEngine.executeTradeSettlement(offer);
         if (res.success) {
             appendLogData("天道", res.message, "system", false, true);
@@ -3139,7 +3380,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.18";
+        ensureWorldMemory(gameState); gameState.version = "6.20";
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         localStorage.setItem("blade_v600_save", JSON.stringify(payload));
     }
@@ -3164,7 +3405,7 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.18";
+        ensureWorldMemory(gameState); gameState.version = "6.20";
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
