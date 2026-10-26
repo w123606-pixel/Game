@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 凡人崛起傳奇 (V6.11 心法招式系統修正版)</title>
+    <title>九州裂天錄 - 世界自主推進引擎 V6.19</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -173,9 +173,9 @@
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
             <div class="quick-actions" id="quick-actions-container">
-                <button id="btn-heal" class="quick-btn" onclick="quickHeal(10)" disabled>🧘 閉關(10天)</button>
-                <button id="btn-long-heal" class="quick-btn" onclick="quickHeal(30)" disabled>⛰️ 死關(30天)</button>
-                <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;" disabled>🏥 求醫(50石)</button>
+                <button id="btn-heal" class="quick-btn" onclick="openCultivationModal()" disabled>🧘 閉關修練</button>
+                <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;" disabled>🏥 求醫</button>
+                <button id="btn-detox" class="quick-btn" onclick="detoxHeal()" style="color:#80cbc4; border-color:#176b64;" disabled>🌿 清除丹毒</button>
                 <button id="btn-sect-quest" class="quick-btn" onclick="sectAction('quest')" style="color:#ffd700; border-color:#c5a059;" disabled>📜 宗門任務</button>
                 <button id="btn-sect-lib" class="quick-btn" onclick="sectAction('library')" style="color:#ffd700; border-color:#c5a059;" disabled>📚 藏經閣</button>
                 <button id="btn-deduce" class="quick-btn" style="color:var(--accent-purple); border-color:var(--accent-purple); grid-column: span 2;" onclick="attemptBreakthrough()" disabled>✨ 需先設定身世開局</button>
@@ -341,9 +341,16 @@
                 const fullName = isNascentOrHigher ? `${baseName}${subName} (天劫)` : `${baseName}${subName}`;
                 
                 let baseHp = Math.floor(80 * Math.pow(1.4, currentLvl));
-                let baseExp = Math.floor(150 * Math.pow(1.5, currentLvl));
+                // 分段式成長：前期升級較快，中後期持續增加但不再指數爆炸。
+                const expGrowth = currentLvl <= 20
+                    ? 90 + currentLvl * 22
+                    : currentLvl <= 60
+                        ? 530 + (currentLvl - 20) * 85 + Math.pow(currentLvl - 20, 2) * 8
+                        : 16730 + (currentLvl - 60) * 420 + Math.pow(currentLvl - 60, 2) * 18;
+                let baseExp = Math.floor(expGrowth * (1 + currentLvl * 0.035));
                 let maxAge = Math.min(1000000, 100 + Math.floor(160 * Math.pow(1.12, currentLvl)));
-                let rate = Math.max(0.00001, 0.90 - currentLvl * 0.0075);
+                // 高境界突破仍困難，但基礎成功率不會跌至近乎不可能。
+                let rate = Math.max(0.12, 0.78 - currentLvl * 0.0055);
                 let riskText = isNascentOrHigher ? `⚡ 諸天雷劫 + 心魔反噬 (大境界突破)` : `氣血震盪與經脈負荷`;
 
                 list.push({
@@ -765,12 +772,108 @@
         }
     };
 
+    // V6.17：固定世界聖經。這是遊戲設定基底，不依賴對話歷史維持。
+    const WORLD_BIBLE = {
+        version: "1.0",
+        name: "九州修仙界",
+        canonRules: [
+            "已確認的世界事實、角色生死、物品持有、任務狀態與歷史事件不可被敘事任意覆寫。",
+            "新人物、新地點、新勢力可以新增，但必須符合既有設定並登記；不可把臨時創作冒充既有正史。",
+            "正道不等於善良，魔道不等於人人邪惡，中立勢力通常以利益、契約與風險衡量行動。",
+            "NPC 有獨立目標、資訊範圍與資源限制；不會因玩家是主角就自動信任、讓利或失去判斷力。",
+            "重大事件必須有前因、執行者、資源條件與可追蹤後果；世界不會無因果地突然改變。",
+            "尚未證實的猜測必須標示為傳聞、懷疑或未知，不可升格為已確認事實。"
+        ],
+        history: [
+            { id:"HIST-01", name:"太初紀元", summary:"天地靈機初盛，早期修行傳承與古老遺跡逐漸形成。", status:"固定背景；具體細節可由探索揭露" },
+            { id:"HIST-02", name:"上古道魔之爭", summary:"多方勢力因修行理念、靈脈與傳承爆發長期衝突，留下禁地、仇怨與失傳傳承。", status:"固定背景；不可擅自指定所有責任歸屬" },
+            { id:"HIST-03", name:"破界之亂", summary:"古代強者爭奪飛升機緣，部分傳承斷絕，仙階之上的真相成為修仙界謎團。", status:"固定背景；真相可分階段揭露" },
+            { id:"HIST-04", name:"群雄割據", summary:"大戰後各宗門、家族與商會重新瓜分九州資源，形成當代勢力格局。", status:"固定背景" },
+            { id:"HIST-05", name:"當世暗流", summary:"表面秩序尚存，各方持續爭奪靈脈、遺跡、人才、情報與突破機緣。", status:"持續背景；具體事件由遊戲狀態推進" }
+        ],
+        geography: [
+            { id:"REGION-CENTRAL", name:"中州", traits:"九州交通與宗門議事樞紐，古城、拍賣會與大型宗門交錯。" },
+            { id:"REGION-EAST", name:"東靈州", traits:"水脈、靈植與丹道資源豐富，家族與丹師勢力林立。" },
+            { id:"REGION-WEST", name:"西荒州", traits:"古戰場、荒漠遺跡與稀有礦脈眾多，探索風險高。" },
+            { id:"REGION-SOUTH", name:"南炎州", traits:"火山地脈、煉器窯與火系修行傳承集中。" },
+            { id:"REGION-NORTH", name:"北寒州", traits:"冰原、寒潭與封存古遺跡分布，補給與氣候是主要考驗。" },
+            { id:"REGION-SOUTHEAST", name:"東南雲州", traits:"群島、海市與航運商路交錯，消息傳遞快但真假難辨。" },
+            { id:"REGION-SOUTHWEST", name:"西南萬嶺州", traits:"山林、毒瘴、妖獸與採藥路線密集。" },
+            { id:"REGION-NORTHWEST", name:"西北戈壁州", traits:"商道、邊城與古代軍陣遺址分布。" },
+            { id:"REGION-NORTHEAST", name:"東北雷澤州", traits:"雷澤、風暴與特殊靈根修士較常出沒。" }
+        ],
+        historicalEvents: [
+            { id:"CANON-EVT-01", name:"上古道魔大戰", era:"上古", fact:"多方勢力因靈脈、傳承與修行理念爆發長期戰爭，留下禁地與延續至今的仇怨。", consequence:"古戰場與失傳傳承存在，但具體責任歸屬仍須依可靠線索確認。" },
+            { id:"CANON-EVT-02", name:"破界之亂", era:"上古末期", fact:"古代強者爭奪飛升機緣，部分傳承中斷，仙階之上的真相未有公認定論。", consequence:"高階傳承稀缺，相關遺跡可能包含互相矛盾的記載。" },
+            { id:"CANON-EVT-03", name:"九州盟約", era:"群雄割據初期", fact:"多方勢力為維持主要商道與靈脈秩序，曾建立有限度的盟約。", consequence:"盟約不是世界政府，不能阻止所有戰爭、暗殺與私下交易。" }
+        ],
+        factions: [
+            { id:"ORTHO-01", name:"天衡劍宗", group:"正道九大名門", alignment:"正道", region:"中州", traits:"重視劍道、門規與公開名分；內部長老派系競逐傳承。", relations:{"玄冥魔宗":"歷史敵對；局部時期可能秘密交易"} },
+            { id:"ORTHO-02", name:"太微道宮", group:"正道九大名門", alignment:"正道", region:"中州", traits:"擅長符籙、推演與陣法；重視秩序，也擅長以規則限制競爭者。" },
+            { id:"ORTHO-03", name:"青蓮丹谷", group:"正道九大名門", alignment:"正道", region:"東靈州", traits:"丹道傳承與靈植園地；藥材配額常引發內部利益衝突。" },
+            { id:"ORTHO-04", name:"赤霄器宗", group:"正道九大名門", alignment:"正道", region:"南炎州", traits:"煉器與火脈傳承；重視材料來源與師承。" },
+            { id:"ORTHO-05", name:"萬法書院", group:"正道九大名門", alignment:"正道", region:"中州", traits:"典籍、術法與學派辯論興盛，對外來修士審核嚴格。" },
+            { id:"ORTHO-06", name:"北辰玄宗", group:"正道九大名門", alignment:"正道", region:"北寒州", traits:"寒系功法與守境傳承；資源稀少，對外來者戒心重。" },
+            { id:"ORTHO-07", name:"御獸山庭", group:"正道九大名門", alignment:"正道", region:"西南萬嶺州", traits:"靈獸契約與山域控制；對獵殺靈獸的行為立場複雜。" },
+            { id:"ORTHO-08", name:"雷音禪院", group:"正道九大名門", alignment:"正道", region:"東北雷澤州", traits:"護身、鎮邪與雷法傳承；戒律森嚴但派系並非一致。" },
+            { id:"ORTHO-09", name:"滄溟劍府", group:"正道九大名門", alignment:"正道", region:"東南雲州", traits:"海上劍修與航路守護；對海域利益有強烈主張。" },
+            { id:"DEMON-01", name:"玄冥魔宗", group:"四大魔宗", alignment:"魔道", region:"北寒州與西北邊境", traits:"神魂、幻術與情報滲透；宗內以功績與力量競逐，並非所有弟子都嗜殺。", relations:{"天衡劍宗":"歷史敵對；局部時期可能秘密交易"} },
+            { id:"DEMON-02", name:"血河殿", group:"四大魔宗", alignment:"魔道", region:"西荒州", traits:"血煉與高風險秘術；內部派系常因資源與修煉代價相爭。" },
+            { id:"DEMON-03", name:"萬蠱窟", group:"四大魔宗", alignment:"魔道", region:"西南萬嶺州", traits:"蠱術、毒瘴與控制手段；擅長交易情報，也容易招致地方仇怨。" },
+            { id:"DEMON-04", name:"噬月樓", group:"四大魔宗", alignment:"魔道", region:"東南雲州暗面", traits:"暗殺、潛伏與情報買賣；契約與報酬比道德標籤更重要。" },
+            { id:"NEUTRAL-01", name:"萬寶商盟", group:"中立五大巨頭", alignment:"中立／商業", region:"九州主要商道", traits:"拍賣、運輸與信用帳簿；不會無條件資助任何一方。" },
+            { id:"NEUTRAL-02", name:"天機閣", group:"中立五大巨頭", alignment:"中立／情報", region:"中州及各大城", traits:"販售情報與推演服務；資訊可能過期，也可能刻意分級出售。" },
+            { id:"NEUTRAL-03", name:"百草會", group:"中立五大巨頭", alignment:"中立／藥材", region:"東靈州", traits:"藥材供應與靈植契約；優先維持供應鏈與商業信用。" },
+            { id:"NEUTRAL-04", name:"神工坊", group:"中立五大巨頭", alignment:"中立／器作", region:"南炎州及中州", traits:"承接煉器訂單，重視材料、訂金、工期與委託風險。" },
+            { id:"NEUTRAL-05", name:"渡海行", group:"中立五大巨頭", alignment:"中立／運輸", region:"東南雲州與沿海", traits:"控制部分航運與跨州貨路，對安全、保密與運費極為敏感。" },
+            { id:"LOCAL_FORCES", name:"地方家族與小宗門", group:"地方勢力", alignment:"因地區與利益而異", region:"九州各地", traits:"依附、結盟或暗中倒向大勢力，立場可能隨資源與風險改變。" },
+            { id:"ROGUE_NETWORKS", name:"散修與地下網絡", group:"非統一組織", alignment:"個別判斷", region:"九州各地", traits:"提供情報、黑市交易與雇傭服務；信用取決於個人、契約、報酬與風險。" }
+        ]
+    };
+
+    function ensureWorldMemory(s) {
+        if (!s || typeof s !== "object") return s;
+        if (!s.worldMemory || typeof s.worldMemory !== "object") s.worldMemory = {};
+        const m = s.worldMemory;
+        if (!Array.isArray(m.chronicle)) m.chronicle = [];
+        if (!Array.isArray(m.openThreads)) m.openThreads = [];
+        if (!Array.isArray(m.revealedSecrets)) m.revealedSecrets = [];
+        if (!Array.isArray(m.factionRelations)) m.factionRelations = [];
+        if (!Array.isArray(m.worldStateChanges)) m.worldStateChanges = [];
+        if (!Number.isFinite(Number(m.lastWorldTickDay))) m.lastWorldTickDay = Number(s.daysPassed) || 0;
+        if (!m.recentSummary || typeof m.recentSummary !== "string") m.recentSummary = "開局初期，尚無足夠劇情可摘要。";
+        if (!Number.isFinite(Number(m.nextEventId))) m.nextEventId = 1;
+        // V6.18 世界自主推進引擎：結構化時鐘、排程、事件與可追溯操作紀錄。
+        if (!m.engine || typeof m.engine !== "object") m.engine = {};
+        const we = m.engine;
+        if (!Number.isFinite(Number(we.schemaVersion))) we.schemaVersion = 1;
+        if (!Number.isFinite(Number(we.lastProcessedDay))) we.lastProcessedDay = Number(s.daysPassed) || 0;
+        if (!Array.isArray(we.events)) we.events = [];
+        if (!Array.isArray(we.scheduler)) we.scheduler = [];
+        if (!Array.isArray(we.actionLog)) we.actionLog = [];
+        if (!Array.isArray(we.factions)) we.factions = [];
+        if (!Array.isArray(we.npcPlans)) we.npcPlans = [];
+        if (!Array.isArray(we.processedIds)) we.processedIds = [];
+        we.events = we.events.slice(-100);
+        we.scheduler = we.scheduler.slice(-200);
+        we.actionLog = we.actionLog.slice(-200);
+        we.npcPlans = we.npcPlans.slice(-100);
+        we.processedIds = we.processedIds.slice(-300);
+        // 記憶上限避免存檔無限制膨脹；保留最近的正式紀事與未結事件。
+        m.chronicle = m.chronicle.slice(-200);
+        m.openThreads = m.openThreads.slice(-80);
+        m.revealedSecrets = m.revealedSecrets.slice(-100);
+        m.factionRelations = m.factionRelations.slice(-60);
+        m.worldStateChanges = m.worldStateChanges.slice(-100);
+        return s;
+    }
+
     function getDefaultGameState() {
         return {
-            version: "6.08",
+            version: "6.19",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, hp: 50, exp: 0, maxExp: 100,
-            spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0,
+            spiritStone: 0, breakthroughCdDays: 0, practiceFatigue: 0, breakthroughInsight: 0,
             danToxin: 0, hospitalVisitCount: 0, lastHospitalDay: -999,
             isDead: false,
             location: "九州邊境 · 荒郊破廟", scenarioMode: "IDLE", activeThreats: [],
@@ -787,6 +890,7 @@
             npcRegistry: {},
             sceneCacheNpcs: [],
             worldEvents: [],
+            worldMemory: { chronicle: [], openThreads: [], revealedSecrets: [], factionRelations: [], recentSummary: "開局初期，尚無足夠劇情可摘要。", nextEventId: 1 },
             quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
             choices: [...DEFAULT_ORIGIN_CHOICES],
             processedTxIds: [],
@@ -894,7 +998,11 @@
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
         const level = Math.floor(safeNumber(raw.level, def.level, 0, REALMS.length - 1));
         const realmDef = REALMS[level] || REALMS[0];
-        const maxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e18);
+        const rawMaxExp = safeNumber(raw.maxExp, realmDef.maxExp, 1, 1e30);
+        const maxExp = Math.max(1, Math.floor(realmDef.maxExp));
+        const rawExpValue = safeNumber(raw.exp, 0, 0, 1e30);
+        // 舊版使用 1.5^等級的指數需求；載入舊存檔時按原進度比例遷移，避免卡在舊版天文數字。
+        const migratedExp = rawMaxExp > maxExp * 3 ? Math.floor((rawExpValue / rawMaxExp) * maxExp) : rawExpValue;
         const maxHp = safeNumber(raw.maxHp, realmDef.maxHp, 1, 1e18);
 
         const npcsMap = (raw.npcRegistry && typeof raw.npcRegistry === 'object') ? raw.npcRegistry : {};
@@ -918,7 +1026,7 @@
         }
 
         return {
-            version: "6.08",
+            version: "6.18",
             level,
             realm: cleanNameStrict(raw.realm) || def.realm,
             linggen: cleanNameStrict(raw.linggen) || def.linggen,
@@ -928,10 +1036,11 @@
             maxAge: safeNumber(raw.maxAge, realmDef.maxAge, 1, 1e6),
             maxHp,
             hp: safeNumber(raw.hp, def.hp, 0, maxHp),
-            exp: safeNumber(raw.exp, def.exp, 0, maxExp),
+            exp: safeNumber(migratedExp, def.exp, 0, maxExp),
             maxExp,
             spiritStone: safeNumber(raw.spiritStone, def.spiritStone, 0, 1e12),
             breakthroughCdDays: safeNumber(raw.breakthroughCdDays, def.breakthroughCdDays, 0, 1e7),
+            breakthroughInsight: safeNumber(raw.breakthroughInsight, def.breakthroughInsight || 0, 0, 0.5),
             practiceFatigue: safeNumber(raw.practiceFatigue, def.practiceFatigue, 0, 100),
             danToxin: safeNumber(raw.danToxin, def.danToxin, 0, 1e6),
             hospitalVisitCount: safeNumber(raw.hospitalVisitCount, def.hospitalVisitCount, 0, 1e6),
@@ -987,6 +1096,7 @@
             npcRegistry: npcsMap,
             sceneCacheNpcs: Array.isArray(raw.sceneCacheNpcs) ? raw.sceneCacheNpcs : [],
             worldEvents: Array.isArray(raw.worldEvents) ? raw.worldEvents.map(cleanNameStrict) : [],
+            worldMemory: (raw.worldMemory && typeof raw.worldMemory === "object") ? { ...raw.worldMemory, chronicle: Array.isArray(raw.worldMemory.chronicle) ? raw.worldMemory.chronicle : [], openThreads: Array.isArray(raw.worldMemory.openThreads) ? raw.worldMemory.openThreads : [], revealedSecrets: Array.isArray(raw.worldMemory.revealedSecrets) ? raw.worldMemory.revealedSecrets : [], factionRelations: Array.isArray(raw.worldMemory.factionRelations) ? raw.worldMemory.factionRelations : [], worldStateChanges: Array.isArray(raw.worldMemory.worldStateChanges) ? raw.worldMemory.worldStateChanges : [], recentSummary: typeof raw.worldMemory.recentSummary === "string" ? raw.worldMemory.recentSummary : "已從舊版存檔遷移；近期摘要待建立。", nextEventId: Number(raw.worldMemory.nextEventId) || 1, lastWorldTickDay: Number(raw.worldMemory.lastWorldTickDay) || Number(raw.daysPassed) || 0 } : { chronicle: [], openThreads: [], revealedSecrets: [], factionRelations: [], worldStateChanges: [], recentSummary: "已從舊版存檔遷移；近期摘要待建立。", nextEventId: 1, lastWorldTickDay: Number(raw.daysPassed) || 0 },
             quests: Array.isArray(raw.quests) ? raw.quests.map(q => {
                 if (typeof q === 'string') return cleanNameStrict(q) || "探索修仙界";
                 if (!q || typeof q !== 'object') return { name: "探索修仙界", progress: "等待推進", status: "進行中" };
@@ -1191,7 +1301,7 @@
         const phyMeta = getPhysiqueMeta(s.physique);
         let rawHp = Math.floor((realmDef.maxHp + kfHp + eqHp) * (phyMeta.hpMult || 1.0));
         
-        const toxin = s.danToxin || 0;
+        const toxin = Math.min(10, Math.max(0, Number(s.danToxin) || 0));
         const toxinPenalty = Math.floor(rawHp * (toxin * 0.04));
         return Math.max(10, rawHp - toxinPenalty);
     }
@@ -1694,16 +1804,29 @@
         renderUI(); saveGameState();
     }
 
-    function quickHeal(days) {
+    function openCultivationModal() {
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
         if (mode === "DIALOGUE" || mode === "DANGER" || mode === "HAZARD") {
             openGameModal("⚠️ 無法閉關", "當前情勢不允許分心閉關！"); return;
         }
+        openGameModal("🧘 閉關修練", `選擇修練方式。當前修為：${Math.floor(gameState.exp).toLocaleString()} / ${Math.floor(gameState.maxExp).toLocaleString()}。<br><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(10,'short')">短期閉關｜10天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'long')">長期閉關｜30天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'death')">突破死關｜30天</button>`);
+    }
 
+    function quickHeal(days, cultivationMode = 'short') {
+        if (gameState.isDead) return;
+        const mode = getEffectiveMode(gameState);
+        if (mode === "DIALOGUE" || mode === "DANGER" || mode === "HAZARD") {
+            openGameModal("⚠️ 無法閉關", "當前情勢不允許分心閉關！"); return;
+        }
         const locMod = getLocationModifier(gameState.location);
-        sendAction(`【在「${gameState.location}」閉關打坐 ${days} 天】`, { 
-            isPresetEvent: true, addDays: days, addExp: locMod.expPerDay * days, addFatigue: locMod.fatigueCost
+        const isDeathSeclusion = cultivationMode === 'death';
+        const expBase = locMod.expPerDay * days * (isDeathSeclusion ? 1.15 : 1);
+        const fatigue = isDeathSeclusion ? Math.min(100, locMod.fatigueCost + 15) : locMod.fatigueCost;
+        const insightGain = isDeathSeclusion ? 0.05 : 0;
+        sendAction(`【在「${gameState.location}」${isDeathSeclusion ? '閉死關衝擊瓶頸' : '閉關打坐'} ${days} 天】`, {
+            isPresetEvent: true, addDays: days, addExp: expBase, addFatigue: fatigue,
+            isDeathSeclusion, breakthroughInsightGain: insightGain
         });
     }
 
@@ -1734,6 +1857,23 @@
             hospitalVisitCountAfter: visitCount,
             hospitalLastDayAfter: gameState.daysPassed
         }, `【前往醫館支付 ${cost} 靈石求醫。雖治癒傷勢，但體內殘留藥石丹毒，最大生命值受損！】`);
+    }
+
+
+    function detoxHeal() {
+        if (gameState.isDead) return;
+        const toxin = Math.max(0, Number(gameState.danToxin) || 0);
+        if (!toxin) { openGameModal("🌿 無須清毒", "目前沒有藥石丹毒。"); return; }
+        const cost = 100 + toxin * 50;
+        if (gameState.spiritStone < cost) {
+            openGameModal("⚠️ 靈石不足", `清毒療養需要 ${cost} 顆靈石，目前不足。`); return;
+        }
+        if (["DIALOGUE", "DANGER", "HAZARD"].includes(getEffectiveMode(gameState))) {
+            openGameModal("⚠️ 無法清毒", "目前情勢危急，無法安心療養。"); return;
+        }
+        sendAction(`【前往醫館進行清毒療養，支付 ${cost} 靈石，花費三日清除藥石丹毒】`, {
+            isPresetEvent: true, addDays: 3, deductStone: cost, isDetox: true, clearFatigue: true
+        }, `【醫師以靈藥與靈泉為你清除體內藥石丹毒。療養三日後，丹毒盡除。】`);
     }
 
     function sectAction(type) {
@@ -1775,10 +1915,11 @@
         }
 
         const nextDef = getRealmDef(gameState.level + 1);
-        let baseRate = nextDef.baseRate || 0.5;
+        const linggenMeta = getLinggenMeta(gameState.linggen || "真靈根");
+        const insightBonus = Math.min(0.35, Math.max(0, Number(gameState.breakthroughInsight) || 0));
+        const baseRate = Math.max(0.12, Math.min(0.88, (Number(nextDef.baseRate) || 0.5) + (Number(linggenMeta.breakBonus) || 0) + insightBonus));
         const isSuccess = Math.random() < baseRate;
-        
-        sendAction(`【盤膝運功，衝擊突破至「${nextDef.name}」境界！】`, { isBreakthrough: true, breakthroughSuccess: isSuccess });
+        sendAction(`【盤膝運功，衝擊突破至「${nextDef.name}」境界！成功率 ${Math.round(baseRate * 100)}%，突破感悟加成 ${Math.round(insightBonus * 100)}%】`, { isBreakthrough: true, breakthroughSuccess: isSuccess, breakthroughRate: baseRate });
     }
 
     // 身世初始化（不提前顯化資質，改為記錄保底背景，並由前端鎖定防古戒重複發放）
@@ -1823,8 +1964,41 @@
         const invListStr = (gameState.inventory && gameState.inventory.length > 0) 
             ? gameState.inventory.map(i => `${i.name}x${i.quantity}`).join('、') 
             : '無';
+        ensureWorldMemory(gameState);
+        const wm = gameState.worldMemory;
+        const worldCanon = JSON.stringify(WORLD_BIBLE);
+        const chronicleText = wm.chronicle.slice(-30).map(e => `[${e.id || "EVT"}] ${e.day ?? "?"}日｜${e.title || "未命名事件"}：${e.fact || e.summary || ""}（${e.status || "已記錄"}）`).join("\n") || "尚無正式紀事";
+        const openThreadsText = wm.openThreads.slice(-20).map(e => `- ${e.title || e.name}：${e.summary || e.status || "持續中"}（進度:${e.progressStage || "未指定"}；上次推進:${e.updatedDay ?? "未知"}日）`).join("\n") || "目前沒有已登記的未結事件";
+        const factionStateText = WORLD_BIBLE.factions.map(f => `- ${f.name}【${f.group || "勢力"}】區域:${f.region || "九州各地"}；立場:${f.alignment}；特色:${f.traits}`).join("\n");
+        const worldChangesText = wm.worldStateChanges.slice(-15).map(e => `- 第${e.day}日：${e.text}`).join("\n") || "尚無自主推進紀錄";
+        const npcMemoryText = Object.values(gameState.npcRegistry).filter(n => n && n.is_alive !== false && n.status !== "DEAD").slice(0, 35).map(n => {
+            const rel = n.relationship || {};
+            const goals = Array.isArray(n.goals) ? n.goals.join("、") : (n.goals || "未設定");
+            const known = Array.isArray(n.knownFacts) ? n.knownFacts.slice(-6).join("；") : "";
+            const fears = Array.isArray(n.fears) ? n.fears.join("、") : "";
+            const plan = n.currentPlan || "未登記";
+            return `${n.name}（${n.title || "修士"}；位置:${n.location || "未知"}；好感:${rel.favorability ?? 0}；信任:${n.trust ?? 0}；目標:${goals}；恐懼:${fears || "未登記"}；當前計畫:${plan}；已知:${known || "未登記"}）`;
+        }).join("\n") || "尚無正式登記的重要 NPC";
 
-        return `你現在是修仙 RPG《九州裂天錄》的專業敘事 AI。你【僅負責故事描繪與人物演繹】，【無權決定資料庫事實】。
+        return `你現在是修仙 RPG《九州裂天錄》的專業敘事 AI。你【負責故事描繪、人物演繹與提出合理的事件結果】；程式狀態與既有紀錄優先於你的即興創作。你不是討好玩家的願望實現器。
+
+【固定世界設定（不得任意改寫；新設定須與其相容）】
+${worldCanon}
+
+【正式世界記憶】
+近期劇情摘要：${wm.recentSummary}
+已確認事件紀事（最新 30 筆）：
+${chronicleText}
+持續中的未結事件：
+${openThreadsText}
+固定勢力名錄：
+${factionStateText}
+重要 NPC 的持續資料：
+${npcMemoryText}
+世界自主推進紀錄：
+${worldChangesText}
+已揭露秘密：
+${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subject || "未知對象"}：${x.fact || x.summary || ""}`).join("\n") || "尚無"}
 
 【當前唯一真理源 (SSOT) 快照】
 • 角色境界：${gameState.realm} (Lv.${gameState.level}) | 修為: ${gameState.exp}/${gameState.maxExp}
@@ -1835,7 +2009,7 @@
 • 當前背包物品：[${invListStr}]
 
 ⚠️ AI 必須嚴格遵守的【八大鐵律】：
-1. [修為/天數/物品結算]：玩家在故事中戰鬥、探索或遭遇事件時，你【必須】在 JSON 注入 expDelta（修為增加量）、daysPassedDelta（消耗天數，通常1~3天）與 inventoryDelta（獲得之物品陣列）！
+1. [結算與因果]：每回合必須回傳 expDelta、daysPassedDelta、inventoryDelta，但允許 expDelta=0、daysPassedDelta=0、inventoryDelta=[]。不得為了讓玩家開心而保證成功、送出獎勵或憑空增加物品；高風險行動可成功、部分成功、失敗，必須符合能力、情報、準備與代價。失敗也要推進合理後果，不可無故懲罰。
 2. [物品與交易硬鎖]：背包快照中有物品才可使用！一般買賣靈石仍須回傳完整 tradeOffer 等待玩家點擊 UI 確認，不得直接修改靈石。若玩家要求交付材料給煉器師/煉丹師打造、以物易物、交任務物品或任何背包物品移轉，必須同時回傳 inventoryRemoveDelta（例如 [{"name":"粗鐵","quantity":3}]）與 inventoryDelta（實際交付的成品/換得物品）；核心會先驗證全部材料及數量，材料不足或格式錯誤時整筆物品移轉都不會執行。不得只在 story 宣稱已交付、打造或交換而漏掉 inventoryRemoveDelta，也不得在未實際扣除材料時發放成品。若玩家買賣靈石，你【嚴禁】在 JSON 輸出 inventoryDelta，只能回傳完整 tradeOffer 等待玩家點擊 UI 確認。tradeOffer 必須使用以下欄位：{"type":"SELL" 或 "BUY", "item_name":"背包中物品的完整名稱", "quantity":1, "total_gold":10, "item_type":"material", "tier":"下品"}。total_gold 必須是整筆交易的總價，必須是非負數字；不得省略、不得用 undefined/null/文字代替。若無法確定價格，tradeOffer 回傳 null，先向玩家詢問，不可敘述交易已完成。特別注意：開局身世初始裝備已由系統前端發放，首輪 JSON 嚴禁重複回傳 inventoryDelta 避免古戒重複發放！
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
 4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
@@ -1845,12 +2019,17 @@
 8. [自訂身世與資質保底]：若玩家輸入自訂身世開局，你可以根據劇情設定在 originLinggenBonus 與 originPhysiqueBonus 賦予相應保底潛能。
 9. [位置與場景同步]：每次場景切換必須在 JSON 回傳 location；若進入/離開對話、險地或戰鬥，必須同步回傳 scenarioMode（IDLE/DIALOGUE/HAZARD/DANGER）與 activeThreats 陣列。危機解除時回傳 activeThreats: []，不得讓場景標籤長期停留在舊狀態。
 10. [突破權限]：突破只由前端核心在玩家明確點擊突破按鈕且不在 DANGER/戰鬥時結算。故事中不可直接宣告角色已突破；若玩家尚未觸發突破流程，只能描述感悟或衝關準備，不得更改境界。
+11. [世界記憶]：只把本回合確實發生、在故事中已明確確認且會影響後續的事實寫入 memoryDelta。玩家猜測、傳聞、NPC 的謊言必須標示為「未證實／傳聞／某 NPC 聲稱」，不得寫成客觀真相。不要重複新增相同事件。
+12. [NPC 自主性]：重要 NPC 必須有可持續的目標、利益、恐懼、忠誠或秘密；其行動依自身動機與已知資訊，不會自動幫助玩家。背叛、陰謀、救助或合作都必須有具體動機，不可為了戲劇效果隨機發生。
+13. [世界連續性]：世界時間推進時，可推動已登記的未結事件，但必須沿用事件既有參與者、目標與狀態。不可憑空宣布宗門覆滅、角色死亡或勢力翻轉；此類重大結果需有因果鋪墊並回傳相應正式紀錄。
+14. [新增設定登記]：首次正式登場且對後續有影響的人物，除回傳 npcDelta 外，應補上 goals、knownFacts、secrets、trust 等可確認資料。新增勢力或持續事件需在 memoryDelta 中登記，且不能與固定世界設定衝突。
 
 JSON 輸出格式範例：
 \`\`\`json
 {
   "story": "故事描繪文字...",
-  "expDelta": 20,
+  "actionOutcome": {"result":"partial","risk":"medium","reason":"情報不足但準備尚可","costs":["耗費半日搜尋"],"consequences":["商會提高戒心"]},
+  "expDelta": 0,
   "daysPassedDelta": 1,
   "inventoryRemoveDelta": [],
   "inventoryDelta": ["聚氣丹"],
@@ -1858,6 +2037,7 @@ JSON 輸出格式範例：
   "npcDelta": {"created": [], "updated": [], "killed": []},
   "techniqueDelta": [{"name": "青元劍訣", "type": "skill", "tier": "黃階"}],
   "worldEvents": [],
+  "memoryDelta": {"chronicle": [], "openThreads": [], "resolvedThreads": [], "revealedSecrets": [], "worldStateChanges": [], "recentSummary": "更新後的近期劇情摘要"},
   "quests": [{"name": "探索破廟", "progress": "尋找機緣", "status": "進行中"}],
   "choices": ["選擇1", "選擇2"]
 }
@@ -1891,9 +2071,162 @@ JSON 輸出格式範例：
         return { storyText: text.trim(), parsedState: null };
     }
 
+    // V6.19 NPC自主行動引擎：以遊戲時間排程NPC的可追溯行動，不讓AI直接改寫重大世界事實。
+    function advanceNpcAutonomy(s, startDay, endDay) {
+        if (!s || !s.npcRegistry || endDay <= startDay) return;
+        ensureWorldMemory(s);
+        const engine = s.worldMemory.engine;
+        const alive = Object.entries(s.npcRegistry).filter(([id,n]) => n && n.is_alive !== false && n.status !== "DEAD").slice(0,80);
+        const actions = [
+            {key:"cultivate", label:"閉關修練", needs:["修練","變強","突破","修為","功法"]},
+            {key:"gather_info", label:"搜集情報", needs:["情報","調查","秘密","追查","尋找"]},
+            {key:"gather_resources", label:"尋找資源", needs:["資源","靈石","藥材","靈礦","材料"]},
+            {key:"build_relation", label:"經營人脈", needs:["結盟","交涉","人脈","宗門","合作"]},
+            {key:"recover", label:"休整療傷", needs:["療傷","恢復","避風頭","保命"]}
+        ];
+        for (const [id,npc] of alive) {
+            const nextDay = Number(npc.nextAutonomyDay);
+            if (Number.isFinite(nextDay) && nextDay > endDay) continue;
+            const goals = Array.isArray(npc.goals) ? npc.goals.map(x=>cleanNameStrict(x)).filter(Boolean) : [];
+            const fears = Array.isArray(npc.fears) ? npc.fears.map(x=>cleanNameStrict(x)).filter(Boolean) : [];
+            const profile = `${goals.join("；")}；${fears.join("；")}；${cleanNameStrict(npc.currentPlan||"")}`;
+            let selected = actions.find(a => a.needs.some(k => profile.includes(k)));
+            // 目標資訊不足時採取低風險維持行動，不憑空生成重大目的或戰果。
+            if (!selected) selected = actions[(String(id).split("").reduce((v,c)=>v+c.charCodeAt(0),0) + Math.floor(endDay/7)) % actions.length];
+            const planId = `NPCPLAN:${id}:${endDay}`;
+            if (engine.processedIds.includes(planId)) { npc.nextAutonomyDay = endDay + 7; continue; }
+            engine.processedIds.push(planId);
+            const summary = `${cleanNameStrict(npc.name||id)}自主採取「${selected.label}」；依既有目標排定，未直接宣告重大成敗。`;
+            npc.currentPlan = selected.label;
+            npc.lastAutonomyDay = endDay;
+            npc.nextAutonomyDay = endDay + 7;
+            if (!Array.isArray(npc.actionHistory)) npc.actionHistory = [];
+            npc.actionHistory.push({day:endDay, action:selected.key, summary});
+            npc.actionHistory = npc.actionHistory.slice(-12);
+            engine.npcPlans.push({id:planId,npcId:id,npcName:cleanNameStrict(npc.name||id),day:endDay,action:selected.key,summary,status:"recorded"});
+            engine.actionLog.push({id:planId,day:endDay,type:"npc-autonomy",summary});
+        }
+        engine.npcPlans = engine.npcPlans.slice(-100);
+        engine.actionLog = engine.actionLog.slice(-200);
+        engine.processedIds = engine.processedIds.slice(-300);
+    }
+
+    function advanceWorldState(s, elapsedDays, aiChanges = []) {
+        if (!s || elapsedDays <= 0) return;
+        ensureWorldMemory(s);
+        const wm = s.worldMemory;
+        const engine = wm.engine;
+        const startDay = Math.max(0, Number(engine.lastProcessedDay ?? wm.lastWorldTickDay) || 0);
+        const endDay = Math.max(0, Number(s.daysPassed) || 0);
+        // 同一遊戲日不可重複結算；舊存檔以目前天數為起點，不補造過去事件。
+        if (endDay <= startDay) return;
+        const changes = Array.isArray(aiChanges) ? aiChanges.slice(0, 5) : [];
+
+        // NPC依世界時間自主採取可追溯的日常行動；重大戰果仍需事件條件或明確結算。
+        advanceNpcAutonomy(s, startDay, endDay);
+
+        // 把舊版未結事件同步成結構化事件；只遷移已有資料，不憑空創造劇情事實。
+        wm.openThreads.forEach(thread => {
+            if (!thread || !thread.title) return;
+            const id = cleanNameStrict(thread.id || `THREAD-${String(thread.title).replace(/[^\w\u4e00-\u9fff]/g, "_")}`).slice(0,100);
+            thread.id = id;
+            if (!engine.events.some(e => e.id === id)) engine.events.push({
+                id, title: String(thread.title).slice(0,100), summary: String(thread.summary || "").slice(0,500),
+                status: "active", stage: String(thread.progressStage || "已登記"), actors: Array.isArray(thread.actors) ? thread.actors.slice(0,10) : [],
+                createdDay: Number(thread.createdDay ?? thread.updatedDay ?? startDay) || 0,
+                updatedDay: Number(thread.updatedDay ?? startDay) || 0, nextCheckDay: (Number(thread.updatedDay ?? startDay) || 0) + 7,
+                source: "legacy-thread", history: []
+            });
+        });
+
+        // 排程只執行已登記且到期的任務；以 ID 去重，避免重複扣資源或重複套用事件。
+        const due = engine.scheduler.filter(job => job && job.id && !engine.processedIds.includes(job.id) && Number(job.dueDay) <= endDay)
+            .sort((a,b) => Number(a.dueDay)-Number(b.dueDay)).slice(0,30);
+        due.forEach(job => {
+            engine.processedIds.push(job.id);
+            job.status = "processed";
+            job.processedDay = endDay;
+            engine.actionLog.push({ id: job.id, day: endDay, type: job.type || "scheduled", summary: String(job.summary || job.title || "排程已處理").slice(0,300) });
+            // 排程本身不直接宣告死亡、戰爭勝負或勢力覆滅；必須由具體事件條件處理。
+        });
+        engine.scheduler = engine.scheduler.filter(job => job && job.status !== "processed" && job.status !== "cancelled").slice(-200);
+
+        // 未結事件每七日只產生一次「檢查點」。若沒有明確條件，不自動輪轉階段或宣告結果。
+        engine.events.forEach(ev => {
+            if (!ev || !ev.id || ["resolved", "failed", "cancelled", "suspended"].includes(ev.status)) return;
+            const dueDay = Number(ev.nextCheckDay ?? ((Number(ev.updatedDay) || 0) + 7));
+            if (endDay < dueDay) return;
+            const checkId = `CHECK:${ev.id}:${dueDay}`;
+            if (engine.processedIds.includes(checkId)) return;
+            engine.processedIds.push(checkId);
+            ev.lastCheckedDay = endDay;
+            ev.nextCheckDay = endDay + 7;
+            ev.history = Array.isArray(ev.history) ? ev.history : [];
+            ev.history.push({ day: endDay, type: "scheduled-check", note: "到達自主世界檢查點；因缺乏可驗證的觸發條件，未擅自改寫事件結局。" });
+            ev.history = ev.history.slice(-20);
+        });
+
+        changes.forEach(c => {
+            if (!c || typeof c !== "object") return;
+            const text = cleanNameStrict(c.text || "").slice(0,300);
+            if (!text) return;
+            const relatedThreadId = cleanNameStrict(c.relatedThreadId || "").slice(0,100);
+            const key = `${endDay}|${text}`;
+            if (!wm.worldStateChanges.some(x => `${x.day}|${x.text}` === key)) {
+                wm.worldStateChanges.push({ day: endDay, text, relatedThreadId });
+                engine.actionLog.push({ id: `AI-CHANGE:${endDay}:${key}`.slice(0,180), day: endDay, type: "world-state-change", summary: text });
+            }
+            if (relatedThreadId) {
+                const thread = wm.openThreads.find(x => x.id === relatedThreadId || x.title === relatedThreadId);
+                if (thread) {
+                    thread.updatedDay = endDay;
+                    thread.progressStage = cleanNameStrict(c.progressStage || thread.progressStage || "持續發展").slice(0,80);
+                    if (c.summary) thread.summary = cleanNameStrict(c.summary).slice(0,500);
+                    const ev = engine.events.find(x => x.id === relatedThreadId || x.title === relatedThreadId);
+                    if (ev) { ev.updatedDay = endDay; ev.stage = thread.progressStage; ev.summary = thread.summary; ev.history = Array.isArray(ev.history) ? ev.history : []; ev.history.push({day:endDay,type:"reported-change",note:text}); ev.history=ev.history.slice(-20); }
+                }
+            }
+        });
+        engine.lastProcessedDay = endDay;
+        engine.processedIds = engine.processedIds.slice(-300);
+        engine.actionLog = engine.actionLog.slice(-200);
+        engine.events = engine.events.slice(-100);
+        wm.lastWorldTickDay = endDay;
+        wm.worldStateChanges = wm.worldStateChanges.slice(-100);
+    }
+
+    function scheduleWorldTask(task) {
+        ensureWorldMemory(gameState);
+        if (!task || typeof task !== "object") return false;
+        const title = cleanNameStrict(task.title || task.summary || "").slice(0,200);
+        const dueDay = Number(task.dueDay);
+        if (!title || !Number.isFinite(dueDay) || dueDay < (Number(gameState.daysPassed) || 0)) return false;
+        const engine = gameState.worldMemory.engine;
+        const id = cleanNameStrict(task.id || `JOB-${(Number(gameState.daysPassed)||0)}-${title}`).slice(0,180);
+        if (engine.scheduler.some(x => x.id === id) || engine.processedIds.includes(id)) return false;
+        engine.scheduler.push({ id, title, summary: cleanNameStrict(task.summary || title).slice(0,300), type: cleanNameStrict(task.type || "world-event").slice(0,60), dueDay, status: "pending", createdDay: Number(gameState.daysPassed)||0 });
+        engine.scheduler = engine.scheduler.slice(-200);
+        return true;
+    }
+
+    function applyActionOutcome(s, rawState) {
+        if (!s || !rawState || !rawState.actionOutcome || typeof rawState.actionOutcome !== "object") return;
+        const a = rawState.actionOutcome;
+        const result = ["success", "partial", "failure", "neutral"].includes(a.result) ? a.result : "neutral";
+        const risk = ["low", "medium", "high"].includes(a.risk) ? a.risk : "medium";
+        s.lastActionOutcome = {
+            result, risk,
+            reason: cleanNameStrict(a.reason || "未提供判定依據").slice(0, 300),
+            costs: Array.isArray(a.costs) ? a.costs.map(x => cleanNameStrict(x)).filter(Boolean).slice(0, 5) : [],
+            consequences: Array.isArray(a.consequences) ? a.consequences.map(x => cleanNameStrict(x)).filter(Boolean).slice(0, 5) : [],
+            day: Number(s.daysPassed) || 0
+        };
+    }
+
     function applyStateDelta(currentState, rawState, eventMeta = null) {
         if (!rawState || typeof rawState !== 'object') return currentState;
         const s = structuredClone(currentState);
+        applyActionOutcome(s, rawState);
 
         if (rawState.location) {
             const nextLocation = cleanNameStrict(rawState.location);
@@ -2020,7 +2353,14 @@ JSON 輸出格式範例：
                     location: cleanNameStrict(entry.location || prev.location || s.location),
                     is_alive: isDead ? false : entry.is_alive !== false && entry.status !== "DEAD",
                     status: isDead ? "DEAD" : (entry.status || prev.status || "ALIVE"),
-                    relationship: { ...(prev.relationship || {}), ...(entry.relationship || {}) }
+                    relationship: { ...(prev.relationship || {}), ...(entry.relationship || {}) },
+                    trust: Math.max(-100, Math.min(100, Number(entry.trust ?? prev.trust ?? 0) || 0)),
+                    goals: Array.isArray(entry.goals) ? entry.goals.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,8) : (Array.isArray(prev.goals) ? prev.goals : []),
+                    fears: Array.isArray(entry.fears) ? entry.fears.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,8) : (Array.isArray(prev.fears) ? prev.fears : []),
+                    secrets: Array.isArray(entry.secrets) ? entry.secrets.slice(0,8) : (Array.isArray(prev.secrets) ? prev.secrets : []),
+                    knownFacts: Array.isArray(entry.knownFacts) ? [...new Set([...(prev.knownFacts || []), ...entry.knownFacts].map(x => cleanNameStrict(x)).filter(Boolean))].slice(-20) : (Array.isArray(prev.knownFacts) ? prev.knownFacts : []),
+                    resources: Array.isArray(entry.resources) ? entry.resources.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,8) : (Array.isArray(prev.resources) ? prev.resources : []),
+                    currentPlan: cleanNameStrict(entry.currentPlan || prev.currentPlan || "")
                 };
             });
             if (Array.isArray(delta.killed)) {
@@ -2093,6 +2433,53 @@ JSON 輸出格式範例：
             if (s.worldEvents.length > 50) s.worldEvents = s.worldEvents.slice(-50);
         }
 
+        // 持續性記憶：只接收有上限的結構化紀錄；不把整段敘事自動當成正史。
+        ensureWorldMemory(s);
+        if (rawState.memoryDelta && typeof rawState.memoryDelta === "object") {
+            const md = rawState.memoryDelta;
+            const wm = s.worldMemory;
+            const addUnique = (arr, entry, keyFn, limit) => {
+                if (!Array.isArray(arr) || !entry) return;
+                const key = keyFn(entry);
+                if (!key || arr.some(x => keyFn(x) === key)) return;
+                arr.push(entry);
+                if (arr.length > limit) arr.splice(0, arr.length - limit);
+            };
+            if (Array.isArray(md.chronicle)) md.chronicle.slice(0, 8).forEach(e => {
+                if (!e || typeof e !== "object") return;
+                const title = cleanNameStrict(e.title || e.name || "");
+                const fact = cleanNameStrict(e.fact || e.summary || "");
+                if (!title || !fact) return;
+                const status = ["confirmed", "rumor", "unverified"].includes(e.status) ? e.status : "confirmed";
+                const entry = { id: `EVT-${String(wm.nextEventId++).padStart(5,"0")}`, day: s.daysPassed, title: title.slice(0,100), fact: fact.slice(0,500), status, actors: Array.isArray(e.actors) ? e.actors.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,10) : [] };
+                addUnique(wm.chronicle, entry, x => `${x.title}|${x.fact}`, 200);
+            });
+            if (Array.isArray(md.openThreads)) md.openThreads.slice(0, 8).forEach(e => {
+                if (!e || typeof e !== "object") return;
+                const title = cleanNameStrict(e.title || e.name || "");
+                const summary = cleanNameStrict(e.summary || e.status || "");
+                if (!title || !summary) return;
+                const entry = { id: cleanNameStrict(e.id || `THREAD-${title.replace(/[^\w\u4e00-\u9fff]/g,"_")}`).slice(0,100), title: title.slice(0,100), summary: summary.slice(0,500), actors: Array.isArray(e.actors) ? e.actors.map(x => cleanNameStrict(x)).filter(Boolean).slice(0,10) : [], progressStage: cleanNameStrict(e.progressStage || "持續發展").slice(0,80), updatedDay: s.daysPassed };
+                const idx = wm.openThreads.findIndex(x => x.id === entry.id || x.title === entry.title);
+                if (idx >= 0) wm.openThreads[idx] = { ...wm.openThreads[idx], ...entry, lastAutonomousProgressDay: wm.openThreads[idx].lastAutonomousProgressDay ?? entry.updatedDay }; else wm.openThreads.push({ ...entry, lastAutonomousProgressDay: entry.updatedDay });
+                if (wm.openThreads.length > 80) wm.openThreads.splice(0, wm.openThreads.length - 80);
+            });
+            if (Array.isArray(md.resolvedThreads)) {
+                const done = new Set(md.resolvedThreads.map(x => cleanNameStrict(typeof x === "string" ? x : x && (x.id || x.title || x.name))).filter(Boolean));
+                wm.openThreads = wm.openThreads.filter(x => !done.has(x.id) && !done.has(x.title));
+            }
+            if (Array.isArray(md.revealedSecrets)) md.revealedSecrets.slice(0, 8).forEach(e => {
+                if (!e || typeof e !== "object") return;
+                const subject = cleanNameStrict(e.subject || "");
+                const fact = cleanNameStrict(e.fact || e.summary || "");
+                if (!subject || !fact) return;
+                addUnique(wm.revealedSecrets, { subject: subject.slice(0,100), fact: fact.slice(0,500), day: s.daysPassed }, x => `${x.subject}|${x.fact}`, 100);
+            });
+            if (typeof md.recentSummary === "string" && md.recentSummary.trim()) wm.recentSummary = md.recentSummary.trim().slice(0,1800);
+        }
+
+        advanceWorldState(s, elapsedDays, rawState.memoryDelta && rawState.memoryDelta.worldStateChanges);
+
         if (Array.isArray(rawState.quests) && rawState.quests.length > 0) {
             s.quests = rawState.quests
                 .filter(q => q && typeof q === 'object')
@@ -2160,14 +2547,20 @@ JSON 輸出格式範例：
                 if (eventMeta.clearFatigue) gameState.practiceFatigue = 0;
                 if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
                 if (eventMeta.deductStone) gameState.spiritStone = Math.max(0, gameState.spiritStone - eventMeta.deductStone);
+                if (eventMeta.breakthroughInsightGain) {
+                    gameState.breakthroughInsight = Math.min(0.35, (Number(gameState.breakthroughInsight) || 0) + Number(eventMeta.breakthroughInsightGain));
+                }
+                if (eventMeta.isDetox) {
+                    gameState.danToxin = 0;
+                    gameState.status = (gameState.status || []).filter(x => !/^藥石丹毒(?:\s*Lv\.\d+)?$/.test(String(x)));
+                    gameState.hp = Math.min(gameState.hp, getMaxHp(gameState));
+                }
                 if (eventMeta.isHospital) {
                     gameState.hospitalVisitCount = safeNumber(eventMeta.hospitalVisitCountAfter, gameState.hospitalVisitCount, 0, 1e6);
                     gameState.lastHospitalDay = safeNumber(eventMeta.hospitalLastDayAfter, gameState.daysPassed, -1e9, 1e9);
-                    gameState.danToxin = (gameState.danToxin || 0) + 1;
-                    const toxinName = `藥石丹毒 Lv.${gameState.danToxin}`;
-                    if (!gameState.status.includes(toxinName)) {
-                        gameState.status.push(toxinName);
-                    }
+                    gameState.danToxin = Math.min(10, (gameState.danToxin || 0) + 1);
+                    gameState.status = (gameState.status || []).filter(x => !/^藥石丹毒(?:\s*Lv\.\d+)?$/.test(String(x)));
+                    gameState.status.push(`藥石丹毒 Lv.${gameState.danToxin}`);
                 }
                 if (eventMeta.isBreakthrough) {
                     if (eventMeta.breakthroughSuccess) {
@@ -2175,6 +2568,7 @@ JSON 輸出格式範例：
                         gameState.level += 1;
                         const rDef = getRealmDef(gameState.level);
                         gameState.realm = rDef.name; gameState.maxExp = rDef.maxExp; gameState.exp = 0;
+                        gameState.breakthroughInsight = 0;
                         gameState.hp = getMaxHp(gameState);
 
                         // 首次突破練氣一層：觸發天道抽卡與身世保底獨立比對取孰高
@@ -2684,8 +3078,9 @@ JSON 輸出格式範例：
 
         const isEnabled = gameState.hasChosenOrigin && !gameState.isDead;
         document.getElementById("btn-heal").disabled = !isEnabled;
-        document.getElementById("btn-long-heal").disabled = !isEnabled;
         document.getElementById("btn-hospital").disabled = !isEnabled;
+        const detoxButton = document.getElementById("btn-detox");
+        if (detoxButton) detoxButton.disabled = !isEnabled || !(gameState.danToxin > 0);
         const sectReady = isEnabled && gameState.sect && gameState.sect.joined && isWithinOwnSectTerritory(gameState.location);
         document.getElementById("btn-sect-quest").disabled = !sectReady;
         document.getElementById("btn-sect-lib").disabled = !sectReady || !String(gameState.location || "").includes("藏經閣");
@@ -2744,6 +3139,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
+        ensureWorldMemory(gameState); gameState.version = "6.18";
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         localStorage.setItem("blade_v600_save", JSON.stringify(payload));
     }
@@ -2751,13 +3147,13 @@ JSON 輸出格式範例：
     function loadGameState() {
         const saved = localStorage.getItem("blade_v600_save") || localStorage.getItem("blade_v503_save");
         if (!saved) {
-            gameState = getDefaultGameState();
+            gameState = ensureWorldMemory(getDefaultGameState());
             storyLogData = [{ role: "天道", content: DEFAULT_WELCOME_MSG, type: "ai" }];
             conversationHistory = [];
         } else {
             try {
                 const pkg = JSON.parse(saved);
-                gameState = normalizeGameState(pkg.state);
+                gameState = ensureWorldMemory(normalizeGameState(pkg.state));
                 storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
                 conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
             } catch (e) {
@@ -2768,6 +3164,7 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
+        ensureWorldMemory(gameState); gameState.version = "6.18";
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -2784,7 +3181,7 @@ JSON 輸出格式範例：
         reader.onload = function(evt) {
             try {
                 const pkg = JSON.parse(evt.target.result);
-                gameState = normalizeGameState(pkg.state);
+                gameState = ensureWorldMemory(normalizeGameState(pkg.state));
                 storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
                 conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
                 saveGameState(); renderUI(); renderStoryLogs();
