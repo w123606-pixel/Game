@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+<!-- V6.37｜裝備全流程與不可拆解物修正版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>九州裂天錄 - 裝備階級、HP傷害、宗門同步與NPC名冊修正版 V6.35</title>
@@ -497,6 +498,9 @@
             const existing = result.find(i => cleanNameStrict(i.name) === name && (i.tier || getItemMeta(i).rarity) === requestedTier && (i.rank || getItemRank(i)) === requestedRank);
             if (existing) {
                 existing.quantity += qty;
+                existing.isQuestItem = existing.isQuestItem || isQuestItem;
+                // 同名同階級物品合併時，安全限制採較嚴格值，避免不可拆解物被一般副本覆蓋。
+                existing.canDisassemble = existing.canDisassemble && canDisassemble && !existing.isQuestItem;
             } else {
                 const meta = getItemMeta(rawItem && typeof rawItem === 'object' ? rawItem : name);
                 result.push({
@@ -547,8 +551,10 @@
                 type: (typeof itemObjOrName === 'object' && itemObjOrName.type) || meta.type,
                 tier: incomingTier, rank: incomingRank, rankColor: getItemRankColor(incomingRank),
                 rarityColor: meta.rarityColor, value: (typeof itemObjOrName === 'object' && Number.isFinite(Number(itemObjOrName.value))) ? Number(itemObjOrName.value) : (meta.value || 10),
-                isQuestItem: meta.isQuestItem,
-                canDisassemble: !meta.isQuestItem && meta.type !== 'consumable' && !isCurrencyOrConsumable
+                isQuestItem: Boolean((typeof itemObjOrName === 'object' && itemObjOrName && itemObjOrName.isQuestItem) || meta.isQuestItem),
+                canDisassemble: !(typeof itemObjOrName === 'object' && itemObjOrName && itemObjOrName.canDisassemble === false)
+                    && !((typeof itemObjOrName === 'object' && itemObjOrName && itemObjOrName.isQuestItem) || meta.isQuestItem)
+                    && meta.type !== 'consumable' && !isCurrencyOrConsumable
             });
         }
     }
@@ -721,7 +727,10 @@
             }
 
             const inv = gameState.inventory;
-            const idx = inv.findIndex(i => cleanNameStrict(i.name) === cleanName);
+            let idx = inv.indexOf(targetItem);
+            if (idx === -1) idx = inv.findIndex(i => cleanNameStrict(i.name) === cleanName
+                && (i.rank || getItemRank(i)) === (targetItem.rank || getItemRank(targetItem))
+                && (i.tier || i.quality || getItemMeta(i).rarity) === (targetItem.tier || targetItem.quality || getItemMeta(targetItem).rarity));
             if (idx === -1) return { success: false, reason: "▤ 背包中無此物品！" };
 
             if (inv[idx].quantity > 1) {
@@ -1280,7 +1289,7 @@
         const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
 
-        const explicitTier = itemInput && typeof itemInput === 'object' ? (itemInput.tier || itemInput.rarity) : '';
+        const explicitTier = itemInput && typeof itemInput === 'object' ? (itemInput.tier || itemInput.rarity || (Object.keys(RARITY_TIERS).includes(itemInput.quality) ? itemInput.quality : '')) : ''
         const validTiers = Object.keys(RARITY_TIERS);
         let tierKey = validTiers.includes(explicitTier) ? explicitTier : '下品';
         if (!validTiers.includes(explicitTier)) {
@@ -1990,7 +1999,7 @@
             openGameModal("✦ 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
         } else if (action === 'salvage') {
             const bodyContainer = document.createElement("div");
-            bodyContainer.innerHTML = `確定要拆解<b>【[${invItem.tier || meta.rarity}] ${cleanName}】</b>嗎？<br><br>
+            bodyContainer.innerHTML = `確定要拆解<b>【[${invItem.rank || getItemRank(invItem)}·${invItem.quality || invItem.tier || meta.rarity}] ${cleanName}】</b>嗎？<br><br>
             ??? <b>降階提煉（35% 殘值收斂）：</b><br>
             ‧ 產物必下降一階，防止無限套利與複製！`;
 
@@ -2022,22 +2031,46 @@
         renderUI(); saveGameState();
     }
 
-    function equipItem(itemName) {
-        const cleanName = cleanNameStrict(itemName);
-        const invItem = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
+    function equipItem(itemInput) {
+        const cleanName = cleanNameStrict(typeof itemInput === 'object' && itemInput ? itemInput.name : itemInput);
+        // 以按鈕所屬的物件為優先，避免同名但不同階級/品質的物品拿錯件。
+        const invItem = (typeof itemInput === 'object' && itemInput)
+            ? gameState.inventory.find(i => i === itemInput)
+            : gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
         if (!invItem) return;
 
-        const meta = getItemMeta(cleanName);
-        if (!meta.slot) return;
+        const meta = getItemMeta(invItem);
+        if (!meta.slot) {
+            openGameModal("✦ 無法裝備", "此物品目前無法辨識為可裝備的武器、防具、飾品或法寶。");
+            return;
+        }
+        const itemRank = invItem.rank || invItem.itemRank || getItemRank(invItem);
+        const itemQuality = invItem.quality || invItem.tier || invItem.rarity || meta.rarity || "下品";
+        const equipped = {
+            ...meta,
+            name: cleanName,
+            rank: itemRank,
+            tier: itemQuality,
+            quality: itemQuality,
+            rankColor: getItemRankColor(itemRank),
+            rarityColor: meta.rarityColor,
+            value: Number.isFinite(Number(invItem.value)) ? Number(invItem.value) : meta.value,
+            type: invItem.type || meta.type,
+            isQuestItem: Boolean(invItem.isQuestItem || meta.isQuestItem),
+            canDisassemble: invItem.canDisassemble !== false && !invItem.isQuestItem && !meta.isQuestItem
+        };
 
-        removeItemFromInventory(gameState.inventory, cleanName, 1);
+        // 依物件參照扣除一件，不用名稱搜尋，避免扣到同名的其他階級/品質堆疊。
+        const invIndex = gameState.inventory.indexOf(invItem);
+        if (invIndex < 0) return;
+        if ((Number(invItem.quantity) || 1) > 1) invItem.quantity = (Number(invItem.quantity) || 1) - 1;
+        else gameState.inventory.splice(invIndex, 1);
 
         if (gameState.equipment[meta.slot]) {
             const oldEq = gameState.equipment[meta.slot];
-            const oldName = cleanNameStrict(typeof oldEq === 'object' ? oldEq.name : oldEq);
-            addItemToInventory(gameState.inventory, oldName, 1);
+            addItemToInventory(gameState.inventory, typeof oldEq === 'object' ? { ...oldEq, quantity: 1 } : { name: oldEq, quantity: 1 }, 1);
         }
-        gameState.equipment[meta.slot] = meta;
+        gameState.equipment[meta.slot] = equipped;
         renderUI(); saveGameState();
     }
 
@@ -2046,7 +2079,8 @@
         const itemObj = gameState.equipment[slot];
         const itemName = cleanNameStrict(typeof itemObj === 'object' ? itemObj.name : itemObj);
 
-        addItemToInventory(gameState.inventory, itemName, 1);
+        // 卸下時回存完整物件，而非只回存名稱。
+        addItemToInventory(gameState.inventory, typeof itemObj === 'object' ? itemObj : { name: itemName }, 1);
         gameState.equipment[slot] = null;
         renderUI(); saveGameState();
     }
@@ -3826,7 +3860,9 @@ JSON 輸出格式範例：
             if (eqItem) {
                 const name = cleanNameStrict(typeof eqItem === 'object' ? eqItem.name : eqItem);
                 const meta = getItemMeta(eqItem || name);
-                if (nameEl) { nameEl.textContent = `[${meta.rarity}] ${name}`; nameEl.style.color = meta.rarityColor; }
+                const eqRank = (typeof eqItem === 'object' && (eqItem.rank || eqItem.itemRank)) || getItemRank(eqItem || name);
+                const eqQuality = (typeof eqItem === 'object' && (eqItem.quality || eqItem.tier || eqItem.rarity)) || meta.rarity || "下品";
+                if (nameEl) { nameEl.textContent = `[${eqRank}·${eqQuality}] ${name}`; nameEl.style.color = getItemRankColor(eqRank); }
                 if (descEl) descEl.textContent = meta.desc || "無屬性加成";
                 if (btnEl) btnEl.disabled = false;
             } else {
@@ -3849,14 +3885,15 @@ JSON 輸出格式範例：
                     let top = document.createElement("div"); top.className = "item-top";
                     let span = document.createElement("span"); 
                     const itemRank = item.rank || getItemRank(item);
-                    span.textContent = `✦ [${itemRank}·${item.tier || meta.rarity}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
+                    const itemQuality = item.quality || item.tier || item.rarity || meta.rarity || "下品";
+                    span.textContent = `✦ [${itemRank}·${itemQuality}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
                     span.style.color = getItemRankColor(itemRank);
-                    span.title = `裝備階級：${itemRank}；物品品質：${item.tier || meta.rarity}`;
+                    span.title = `裝備階級：${itemRank}；物品品質：${itemQuality}`;
                     
                     let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
                     if (meta.slot) {
-                        let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(name); actionGroup.appendChild(b);
+                        let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(item); actionGroup.appendChild(b);
                     } else if (meta.type === 'consumable') {
                         let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
                     } else if (meta.type === 'knowledge') {
@@ -4206,3 +4243,4 @@ JSON 輸出格式範例：
 </script>
 </body>
 </html>
+
