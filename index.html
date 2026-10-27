@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<!-- V6.37｜裝備全流程與不可拆解物修正版 -->
+<!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 裝備階級、HP傷害、宗門同步與NPC名冊修正版 V6.35</title>
+    <title>九州裂天錄 - 修為境界裝備系統整合版 V6.38</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -448,114 +448,131 @@
         return 1;
     }
 
-    // 裝備「階級」與「品質」是兩個不同維度：rank=黃階/玄階/地階/天階/仙階；tier=凡品/下品/中品/上品/極品/仙品。
-    const ITEM_RANKS = { '凡階':0, '黃階':1, '玄階':2, '地階':3, '天階':4, '仙階':5, '神階':6, '聖階':7 };
-    const ITEM_RANK_COLORS = { '凡階':'#888888', '黃階':'#43a047', '玄階':'#0288d1', '地階':'#ab47bc', '天階':'#ffd700', '仙階':'#ff6d00', '神階':'#ff5252', '聖階':'#f5f5f5' };
-    function getItemRank(itemInput) {
+    // V6.38 裝備系統：裝備只保留「境界階」。不再使用天階、仙階搭配上下品的雙重分類。
+    // 12 個裝備階與 REALM_BASE_NAMES 的 12 個修為大境界一一對應；每 10 層為一個裝備階。
+    const EQUIPMENT_GRADES = [
+        { name:'凡器', color:'#888888', mult:1.00 },
+        { name:'靈器', color:'#43a047', mult:1.25 },
+        { name:'築基器', color:'#26a69a', mult:1.60 },
+        { name:'金丹器', color:'#0288d1', mult:2.10 },
+        { name:'元嬰器', color:'#5c6bc0', mult:2.80 },
+        { name:'化神器', color:'#ab47bc', mult:3.70 },
+        { name:'返虛器', color:'#8e24aa', mult:4.90 },
+        { name:'大乘器', color:'#ffd700', mult:6.50 },
+        { name:'真仙器', color:'#ff8f00', mult:8.60 },
+        { name:'太乙器', color:'#ff5252', mult:11.4 },
+        { name:'聖道器', color:'#f5f5f5', mult:15.0 },
+        { name:'主宰器', color:'#80deea', mult:20.0 }
+    ];
+    const EQUIPMENT_GRADE_INDEX = Object.fromEntries(EQUIPMENT_GRADES.map((g,i)=>[g.name,i]));
+    const LEGACY_RANK_MAP = { '凡階':0, '黃階':1, '玄階':2, '地階':3, '天階':4, '仙階':8, '神階':9, '聖階':10 };
+    function getEquipmentGradeIndex(itemInput) {
         const rawName = typeof itemInput === 'object' && itemInput ? String(itemInput.name || '') : String(itemInput || '');
-        const explicit = itemInput && typeof itemInput === 'object' ? String(itemInput.rank || itemInput.itemRank || '') : '';
-        if (ITEM_RANKS[explicit] !== undefined) return explicit;
+        const explicit = itemInput && typeof itemInput === 'object' ? String(itemInput.grade || itemInput.rank || itemInput.itemRank || '') : '';
+        if (EQUIPMENT_GRADE_INDEX[explicit] !== undefined) return EQUIPMENT_GRADE_INDEX[explicit];
         const clean = cleanNameStrict(rawName);
-        for (const rank of ['聖階','神階','仙階','天階','地階','玄階','黃階','凡階']) if (clean.includes(rank)) return rank;
-        // 未標明階級的裝備依名稱材質推定；普通/粗製裝備不再一律被誤認為下品品質就是裝備階級。
-        if (/(仙器|仙寶|仙劍|仙甲|仙袍)/.test(clean)) return '仙階';
-        if (/(天器|天寶|天劍|天甲|天袍)/.test(clean)) return '天階';
-        if (/(地器|地寶|地劍|地甲|地袍)/.test(clean)) return '地階';
-        if (/(玄器|玄寶|玄劍|玄甲|玄袍)/.test(clean)) return '玄階';
-        if (/(粗鐵|木劍|破劍|鏽劍|骨刀|普通)/.test(clean)) return '凡階';
-        return '黃階';
+        for (const g of [...EQUIPMENT_GRADES].reverse()) if (clean.includes(g.name)) return EQUIPMENT_GRADE_INDEX[g.name];
+        for (const old of ['聖階','神階','仙階','天階','地階','玄階','黃階','凡階']) if (clean.includes(old)) return LEGACY_RANK_MAP[old];
+        if (itemInput && typeof itemInput === 'object') {
+            const oldRank = String(itemInput.rank || itemInput.itemRank || '');
+            if (LEGACY_RANK_MAP[oldRank] !== undefined) return LEGACY_RANK_MAP[oldRank];
+            if (Number.isInteger(itemInput.gradeIndex)) return Math.max(0, Math.min(EQUIPMENT_GRADES.length-1, itemInput.gradeIndex));
+        }
+        // 沒有明確標示的裝備，依玩家目前修為大境界定階；初始化階段則安全回退靈器。
+        try {
+            const level = Math.max(0, Math.floor(Number(gameState && gameState.level) || 0));
+            return Math.max(0, Math.min(EQUIPMENT_GRADES.length - 1, Math.floor((Math.max(1, level) - 1) / 10) + 1));
+        } catch (_) { return 1; }
     }
-    function getItemRankColor(rank) { return ITEM_RANK_COLORS[rank] || ITEM_RANK_COLORS['黃階']; }
+    function getItemRank(itemInput) { return EQUIPMENT_GRADES[getEquipmentGradeIndex(itemInput)].name; }
+    function getItemRankColor(rank) { return (EQUIPMENT_GRADES[EQUIPMENT_GRADE_INDEX[rank]] || EQUIPMENT_GRADES[1]).color; }
+    function getEquipmentGradeMultiplier(itemInput) { return EQUIPMENT_GRADES[getEquipmentGradeIndex(itemInput)].mult; }
 
     function normalizeInventory(rawInv) {
         if (!Array.isArray(rawInv)) return [];
         const result = [];
         rawInv.forEach(rawItem => {
-            let name = "";
-            let qty = 1;
-            let type = "misc";
-            let tier = "下品";
-            let isQuestItem = false;
-            let canDisassemble = true;
-
-            if (typeof rawItem === 'string') {
-                name = cleanNameStrict(rawItem);
-            } else if (rawItem && typeof rawItem === 'object') {
-                name = cleanNameStrict(rawItem.name);
-                qty = safeNumber(rawItem.quantity, 1, 1, 9999);
-                type = rawItem.type || "misc";
-                tier = rawItem.quality || rawItem.rarity || (Object.keys(RARITY_TIERS).includes(rawItem.tier) ? rawItem.tier : getItemMeta(rawItem.name).rarity) || "下品";
-                isQuestItem = Boolean(rawItem.isQuestItem);
-                canDisassemble = rawItem.canDisassemble !== undefined ? Boolean(rawItem.canDisassemble) : true;
-            }
-
+            const isObj = rawItem && typeof rawItem === 'object';
+            const name = cleanNameStrict(isObj ? rawItem.name : rawItem);
             if (!name) return;
-
-            const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥|粗麵餅|百草露/.test(name);
-
-            const requestedTier = (rawItem && typeof rawItem === 'object' && (rawItem.quality || rawItem.rarity || (Object.keys(RARITY_TIERS).includes(rawItem.tier) ? rawItem.tier : null))) || getItemMeta(name).rarity;
-            const requestedRank = getItemRank(rawItem && typeof rawItem === 'object' ? rawItem : name);
-            const existing = result.find(i => cleanNameStrict(i.name) === name && (i.tier || getItemMeta(i).rarity) === requestedTier && (i.rank || getItemRank(i)) === requestedRank);
+            const qty = safeNumber(isObj ? rawItem.quantity : 1, 1, 1, 9999);
+            const meta = getItemMeta(isObj ? rawItem : name);
+            const isEquipment = meta.type === 'equipment' || Boolean(meta.slot);
+            const gradeIndex = isEquipment ? getEquipmentGradeIndex(rawItem) : null;
+            const grade = isEquipment ? EQUIPMENT_GRADES[gradeIndex].name : null;
+            const oldTier = isObj ? (rawItem.tier || rawItem.quality || rawItem.rarity) : null;
+            const isUnidentified = meta.type === 'unidentified' || (isObj && (rawItem.identified === false || ['未鑑定','蒙塵'].includes(String(rawItem.quality || rawItem.tier || rawItem.rarity || ''))));
+            const isQuestItem = Boolean(isObj && rawItem.isQuestItem) || Boolean(meta.isQuestItem);
+            const canDisassemble = (isObj && rawItem.canDisassemble !== undefined ? Boolean(rawItem.canDisassemble) : meta.canDisassemble !== false) && !isQuestItem && meta.canDisassemble !== false && meta.type === 'equipment' && !/靈石/.test(name);
+            const item = {
+                ...(isObj ? rawItem : {}), name, quantity: qty,
+                type: isUnidentified ? 'unidentified' : ((isObj && rawItem.type) || meta.type),
+                identified: isUnidentified ? false : (isObj && rawItem.identified === false ? false : (isObj && rawItem.identified !== undefined ? Boolean(rawItem.identified) : true)),
+                isQuestItem, canDisassemble,
+                value: isObj && Number.isFinite(Number(rawItem.value)) ? Number(rawItem.value) : (meta.value || 10)
+            };
+            if (isEquipment) {
+                item.grade = grade; item.gradeIndex = gradeIndex; item.rank = grade; item.rankColor = getItemRankColor(grade);
+                delete item.quality; delete item.rarity; delete item.tier;
+            } else if (oldTier) {
+                item.tier = oldTier;
+            } else if (meta.rarity) item.tier = meta.rarity;
+            const permissions = getItemPermissions(item);
+            const key = isEquipment ? `E:${gradeIndex}:${item.canDisassemble ? 'D' : 'ND'}:${item.canSell === false ? 'NS' : 'S'}` : `N:${item.type}:${meta.category}:${item.tier || meta.rarity || ''}:${item.identified === false ? 'U' : 'I'}:${item.questLocked ? 'L' : ''}:${permissions.sell ? 'S' : 'NS'}:${permissions.drop ? 'D' : 'ND'}:${permissions.disassemble ? 'DS' : 'NDS'}:${permissions.use ? 'U' : 'NU'}:${permissions.comprehend ? 'C' : 'NC'}`;
+            const existing = result.find(i => cleanNameStrict(i.name) === name && i.__stackKey === key);
             if (existing) {
-                existing.quantity += qty;
+                existing.quantity = Math.min(9999, existing.quantity + qty);
                 existing.isQuestItem = existing.isQuestItem || isQuestItem;
-                // 同名同階級物品合併時，安全限制採較嚴格值，避免不可拆解物被一般副本覆蓋。
                 existing.canDisassemble = existing.canDisassemble && canDisassemble && !existing.isQuestItem;
             } else {
-                const meta = getItemMeta(rawItem && typeof rawItem === 'object' ? rawItem : name);
-                result.push({
-                    name: name,
-                    quantity: qty,
-                    type: (rawItem && typeof rawItem === 'object' && rawItem.type) || meta.type,
-                    tier: requestedTier, rank: requestedRank, rankColor: getItemRankColor(requestedRank),
-                    rarityColor: meta.rarityColor, value: (rawItem && typeof rawItem === 'object' && Number.isFinite(Number(rawItem.value))) ? Number(rawItem.value) : (meta.value || 10),
-                    isQuestItem: isQuestItem || meta.isQuestItem,
-                    canDisassemble: canDisassemble && !meta.isQuestItem && meta.type !== 'consumable' && !isCurrencyOrConsumable
-                });
+                item.__stackKey = key;
+                result.push(item);
             }
         });
+        result.forEach(i => delete i.__stackKey);
         return result;
     }
 
     function addItemToInventory(inv, itemObjOrName, qty = 1) {
-        let name = "";
-        let amount = qty;
-
-        if (typeof itemObjOrName === 'string') {
-            name = cleanNameStrict(itemObjOrName);
-        } else if (itemObjOrName && typeof itemObjOrName === 'object') {
-            name = cleanNameStrict(itemObjOrName.name);
-            amount = safeNumber(itemObjOrName.quantity || itemObjOrName.qty, qty, 1, 9999);
-        }
+        if (!Array.isArray(inv)) return;
+        const isObj = itemObjOrName && typeof itemObjOrName === 'object';
+        const name = cleanNameStrict(isObj ? itemObjOrName.name : itemObjOrName);
         if (!name) return;
-
-        const isCurrencyOrConsumable = /靈石|聚氣丹|培元丹|療傷丹|回春丹|金創藥|粗麵餅|百草露/.test(name);
-
-        const incomingTier = (typeof itemObjOrName === 'object' && itemObjOrName && (itemObjOrName.quality || itemObjOrName.rarity || (Object.keys(RARITY_TIERS).includes(itemObjOrName.tier) ? itemObjOrName.tier : null))) || getItemMeta(itemObjOrName && typeof itemObjOrName === 'object' ? itemObjOrName : name).rarity;
-        const incomingRank = getItemRank(itemObjOrName && typeof itemObjOrName === 'object' ? itemObjOrName : name);
-        const existing = inv.find(i => cleanNameStrict(i.name) === name && (i.tier || getItemMeta(i).rarity) === incomingTier && (i.rank || getItemRank(i)) === incomingRank);
+        const meta = getItemMeta(isObj ? itemObjOrName : name);
+        const amount = safeNumber(isObj ? (itemObjOrName.quantity || itemObjOrName.qty) : qty, qty, 1, 9999);
+        const isEquipment = meta.type === 'equipment' || Boolean(meta.slot);
+        const gradeIndex = isEquipment ? getEquipmentGradeIndex(itemObjOrName) : null;
+        const grade = isEquipment ? EQUIPMENT_GRADES[gradeIndex].name : null;
+        const incomingTier = isObj ? (itemObjOrName.tier || itemObjOrName.quality || itemObjOrName.rarity || meta.rarity) : meta.rarity;
+        const incomingPermissions = getItemPermissions(isObj ? itemObjOrName : name);
+        const incomingIdentified = !(isObj && (itemObjOrName.identified === false || ['未鑑定','蒙塵'].includes(String(itemObjOrName.quality || itemObjOrName.tier || itemObjOrName.rarity || ''))));
+        const incomingQuest = Boolean((isObj && (itemObjOrName.isQuestItem || itemObjOrName.questLocked)) || meta.isQuestItem);
+        const existing = inv.find(i => cleanNameStrict(i.name) === name && (isEquipment
+            ? getEquipmentGradeIndex(i) === gradeIndex && getItemPermissions(i).disassemble === incomingPermissions.disassemble
+            : (i.tier || i.quality || i.rarity || getItemMeta(i).rarity) === incomingTier && getItemMeta(i).type === meta.type && (i.identified !== false) === incomingIdentified && getItemPermissions(i).sell === incomingPermissions.sell && getItemPermissions(i).drop === incomingPermissions.drop && getItemPermissions(i).use === incomingPermissions.use && getItemPermissions(i).comprehend === incomingPermissions.comprehend && Boolean(i.isQuestItem || i.questLocked || getItemMeta(i).isQuestItem) === incomingQuest));
         if (existing) {
             existing.quantity = Math.min(9999, (Number(existing.quantity) || 0) + amount);
-            if (typeof itemObjOrName === 'object' && itemObjOrName) {
+            if (isObj) {
                 if (itemObjOrName.type) existing.type = itemObjOrName.type;
-                if (itemObjOrName.quality || itemObjOrName.rarity || Object.keys(RARITY_TIERS).includes(itemObjOrName.tier)) existing.tier = itemObjOrName.quality || itemObjOrName.rarity || itemObjOrName.tier;
-                existing.rank = itemObjOrName.rank || incomingRank; existing.rankColor = getItemRankColor(existing.rank);
                 if (itemObjOrName.isQuestItem) existing.isQuestItem = true;
-                if (itemObjOrName.canDisassemble === false) existing.canDisassemble = false;
+                if (itemObjOrName.canDisassemble === false || itemObjOrName.isQuestItem) existing.canDisassemble = false;
+                if (Number.isFinite(Number(itemObjOrName.value))) existing.value = Number(itemObjOrName.value);
             }
         } else {
-            const meta = getItemMeta(typeof itemObjOrName === 'object' && itemObjOrName ? itemObjOrName : name);
-            inv.push({
-                name: name,
-                quantity: amount,
-                type: (typeof itemObjOrName === 'object' && itemObjOrName.type) || meta.type,
-                tier: incomingTier, rank: incomingRank, rankColor: getItemRankColor(incomingRank),
-                rarityColor: meta.rarityColor, value: (typeof itemObjOrName === 'object' && Number.isFinite(Number(itemObjOrName.value))) ? Number(itemObjOrName.value) : (meta.value || 10),
-                isQuestItem: Boolean((typeof itemObjOrName === 'object' && itemObjOrName && itemObjOrName.isQuestItem) || meta.isQuestItem),
-                canDisassemble: !(typeof itemObjOrName === 'object' && itemObjOrName && itemObjOrName.canDisassemble === false)
-                    && !((typeof itemObjOrName === 'object' && itemObjOrName && itemObjOrName.isQuestItem) || meta.isQuestItem)
-                    && meta.type !== 'consumable' && !isCurrencyOrConsumable
-            });
+            const item = {
+                ...(isObj ? itemObjOrName : {}), name, quantity: amount,
+                type: (isObj && itemObjOrName.type) || meta.type,
+                value: isObj && Number.isFinite(Number(itemObjOrName.value)) ? Number(itemObjOrName.value) : (meta.value || 10),
+                isQuestItem: Boolean((isObj && itemObjOrName.isQuestItem) || meta.isQuestItem),
+                canSell: !(isObj && itemObjOrName.canSell === false) && meta.canSell !== false && !meta.isQuestItem,
+                canDrop: !(isObj && itemObjOrName.canDrop === false) && meta.canDrop !== false && !meta.isQuestItem,
+                canDisassemble: meta.type === 'equipment' && meta.canDisassemble !== false && !(isObj && itemObjOrName.canDisassemble === false) && !(isObj && itemObjOrName.isQuestItem) && !meta.isQuestItem && !/靈石/.test(name)
+            };
+            if (isEquipment) {
+                item.grade = grade; item.gradeIndex = gradeIndex; item.rank = grade; item.rankColor = getItemRankColor(grade);
+                delete item.quality; delete item.rarity; delete item.tier;
+            } else item.tier = incomingTier;
+            inv.push(item);
         }
     }
 
@@ -645,7 +662,11 @@
             const quantity=economyInteger(trade.quantity,"交易數量",1,9999),price=economyInteger(trade.total_gold,"交易總價");
             if(price===0 && trade.allow_free!==true) throw new Error("零元交易未經授權。");
             const name=cleanNameStrict(trade.item_name),meta=getItemMeta({name,tier:trade.tier});
-            if(!name || /靈石/.test(name) || meta.isQuestItem || meta.type==="special") throw new Error("貨幣或關鍵劇情物品不可交易。");
+            if(!name || /靈石/.test(name) || meta.isQuestItem || meta.type==="special" || meta.type==="key") throw new Error("貨幣、鑰匙、憑證或關鍵劇情物品不可交易。");
+            if (trade.type === "SELL") {
+                const owned = (s.inventory || []).find(i => cleanNameStrict(i.name) === name);
+                if (!owned || !getItemPermissions(owned).sell || owned.canSell === false) throw new Error("此物品依核心權限不可出售。");
+            }
             const item={name,quantity,tier:trade.tier || meta.rarity,type:trade.item_type || meta.type};
             if(trade.type==="BUY"){debit=price;adds=economyItems([item],"購入");}
             else {credit=price;removes=economyItems([item],"出售");}
@@ -678,22 +699,35 @@
         const inventory=structuredClone(s.inventory||[]),removed=[],added=[];
         // Work only on a detached inventory; aggregate duplicate removals through sequential draft checks.
         for(const item of removes){
-            const matches=inventory.filter(i=>cleanNameStrict(i.name)===item.name && (!item.tier || (i.tier||getItemMeta(i).rarity)===item.tier));
-            if(matches.length!==1) throw new Error(`材料${item.name}不存在或品階不明，請指定品階。`);
+            const removeMeta=getItemMeta(item);
+            const isEquipRemoval=removeMeta.type==='equipment' || Boolean(removeMeta.slot) || item.grade || item.gradeIndex!==undefined;
+            const matches=inventory.filter(i=>cleanNameStrict(i.name)===item.name && (isEquipRemoval
+                ? getEquipmentGradeIndex(i)===getEquipmentGradeIndex(item)
+                : (!item.tier || (i.tier||getItemMeta(i).rarity)===item.tier)));
+            if(matches.length!==1) throw new Error(`物品${item.name}不存在或境界階不明，請指定裝備階。`);
             const owned=matches[0];
             if(trade && (owned.isQuestItem || getItemMeta(owned).isQuestItem || getItemMeta(owned).type==="special")) throw new Error("關鍵物品不可出售。");
             const quantity=economyInteger(owned.quantity,"庫存數量",1,9999);
             if(quantity<item.quantity) throw new Error(`材料不足：${item.name}需要${item.quantity}份。`);
-            const tier=owned.tier||getItemMeta(owned).rarity;
-            removeItemFromInventory(inventory,item.name,item.quantity,tier);
-            removed.push({name:item.name,tier,quantity:item.quantity});
+            const ownedMeta=getItemMeta(owned);
+            const isEquip=ownedMeta.type==='equipment' || Boolean(ownedMeta.slot);
+            const tier=isEquip ? undefined : (owned.tier||ownedMeta.rarity);
+            if(isEquip) {
+                const ownedIndex=inventory.indexOf(owned);
+                if(owned.quantity>item.quantity) owned.quantity-=item.quantity; else inventory.splice(ownedIndex,1);
+            } else removeItemFromInventory(inventory,item.name,item.quantity,tier);
+            removed.push({name:item.name,...(isEquip?{grade:getItemRank(owned)}:{tier}),quantity:item.quantity});
         }
         for(const item of adds){
-            const tier=item.tier||getItemMeta(item).rarity;
-            const owned=inventory.find(i=>cleanNameStrict(i.name)===item.name && (i.tier||getItemMeta(i).rarity)===tier);
+            const addMeta=getItemMeta(item);
+            const isEquip=addMeta.type==='equipment' || Boolean(addMeta.slot) || item.grade || item.gradeIndex!==undefined;
+            const tier=isEquip ? undefined : (item.tier||addMeta.rarity);
+            const owned=inventory.find(i=>cleanNameStrict(i.name)===item.name && (isEquip
+                ? getEquipmentGradeIndex(i)===getEquipmentGradeIndex(item)
+                : (i.tier||getItemMeta(i).rarity)===tier));
             if(owned && economyInteger(owned.quantity,"庫存數量",1,9999)+item.quantity>9999) throw new Error(`物品${item.name}將超過堆疊上限，整筆未提交。`);
-            if(owned)owned.quantity+=item.quantity;else addItemToInventory(inventory,{...item,tier});
-            added.push({name:item.name,tier,quantity:item.quantity});
+            if(owned)owned.quantity+=item.quantity;else addItemToInventory(inventory,isEquip?{...item,grade:getItemRank(item),gradeIndex:getEquipmentGradeIndex(item)}:{...item,tier});
+            added.push({name:item.name,...(isEquip?{grade:getItemRank(item)}:{tier}),quantity:item.quantity});
         }
         const receipt={id,parentId:request.parentId||id,sourceKey:request.sourceKey||id,kind,reason,day:Number(s.daysPassed)||0,before,credit,debit,gained:credit-debit,after,removed,added,status:"settled"};
         const ledger={...structuredClone(old),receipts:[...structuredClone(old.receipts),receipt]};
@@ -721,9 +755,10 @@
         
         processDisassembly(targetItem) {
             const cleanName = cleanNameStrict(targetItem.name);
+            const itemMeta = getItemMeta(targetItem);
 
-            if (targetItem.isQuestItem || !targetItem.canDisassemble || /靈石/.test(cleanName)) {
-                return { success: false, reason: "✦ 此物品為貨幣、關鍵劇情道具或無法拆解！" };
+            if (!getItemPermissions(targetItem).disassemble || targetItem.isQuestItem || !targetItem.canDisassemble || itemMeta.canDisassemble === false || /靈石/.test(cleanName)) {
+                return { success: false, reason: "✦ 此物品為貨幣、憑證、典籍、消耗品、材料或受保護物品，無法拆解！" };
             }
 
             const inv = gameState.inventory;
@@ -739,15 +774,14 @@
                 inv.splice(idx, 1);
             }
 
-            const itemTier = targetItem.tier || "下品";
             const baseVal = Math.max(1, Number(targetItem.value) || 10);
             const yieldVal = Math.max(1, Math.floor(baseVal * 0.35));
-            const tierRank = { "凡品": 0, "下品": 1, "中品": 2, "上品": 3, "極品": 4, "仙品": 5 };
-            const rank = tierRank[itemTier] ?? 1;
-            // 拆解只能回收材料，不再憑空產生靈石；回收價值受原物品價值與品階限制。
+            const meta = getItemMeta(targetItem);
+            const gradeIndex = (meta.type === 'equipment' || meta.slot) ? getEquipmentGradeIndex(targetItem) : 1;
+            // 裝備拆解按境界階回收材料；非裝備材料沿用一般回收規則。
             const gainedItems = [{
-                name: rank >= 4 ? "上品靈材碎屑" : rank >= 2 ? "中品靈材碎屑" : "下品靈材碎屑",
-                quantity: 1, type: "material", tier: rank >= 4 ? "上品" : rank >= 2 ? "中品" : "下品", value: yieldVal
+                name: gradeIndex >= 8 ? "仙源靈材碎屑" : gradeIndex >= 5 ? "高階靈材碎屑" : gradeIndex >= 3 ? "中階靈材碎屑" : "基礎靈材碎屑",
+                quantity: 1, type: "material", tier: gradeIndex >= 8 ? "仙品" : gradeIndex >= 5 ? "上品" : gradeIndex >= 3 ? "中品" : "下品", value: yieldVal
             }];
 
             const sanitizedGained = gainedItems.filter(g => cleanNameStrict(g.name) !== cleanName);
@@ -764,16 +798,19 @@
                 return {success:true,receipt,message:formatEconomyReceipt(receipt)};
             } catch(error){return {success:false,reason:error.message};}
         },
-        useItemOptimistic(itemName) {
-            const clean = cleanNameStrict(itemName);
-            const item = gameState.inventory.find(i => cleanNameStrict(i.name) === clean);
+        useItemOptimistic(itemInput) {
+            const clean = cleanNameStrict(itemInput && typeof itemInput === 'object' ? itemInput.name : itemInput);
+            const item = itemInput && typeof itemInput === 'object' && gameState.inventory.includes(itemInput)
+                ? itemInput : gameState.inventory.find(i => cleanNameStrict(i.name) === clean);
             if (!item) return { success: false, reason: `▤ 背包中沒有【${clean}】！` };
 
             const meta = getItemMeta(item);
-            if (meta.type !== 'consumable') return { success: false, reason: `??【${clean}】不是可直接使用的消耗品。` };
+            if (!getItemPermissions(item).use) return { success: false, reason: `【${clean}】不是可直接使用的消耗品，或目前狀態不允許使用。` };
             if (meta.hpGain && gameState.hp >= getMaxHp(gameState)) return { success: false, reason: "✦ 生命值已滿，無需使用療傷物品。" };
             if (meta.expGain && gameState.exp >= gameState.maxExp) return { success: false, reason: "✦ 修為已滿，請先突破後再使用修為丹。" };
-            removeItemFromInventory(gameState.inventory, clean, 1);
+            const idx = gameState.inventory.indexOf(item);
+            if (idx < 0) return { success:false, reason:'物品已不在背包中。' };
+            if ((Number(item.quantity)||1)>1) item.quantity -= 1; else gameState.inventory.splice(idx,1);
 
             if (meta.hpGain) gameState.hp = Math.min(getMaxHp(gameState), gameState.hp + meta.hpGain);
             if (meta.expGain) applyCultivationExp(meta.expGain, gameState);
@@ -1284,12 +1321,13 @@
         '仙品': { name: '仙品', color: '#ff6d00', mult: 5.0 }
     };
 
-    // Item MECE Metadata Helper (包含食物、露水等消耗品正則擴充)
+    // 統一物品分類：先辨識用途/劇情語意，再辨識典籍、消耗品與裝備；避免單一字元誤判。
     function getItemMeta(itemInput) {
-        const rawName = typeof itemInput === 'object' ? (itemInput.name || '') : String(itemInput || '');
+        const isObj = itemInput && typeof itemInput === 'object';
+        const rawName = isObj ? (itemInput.name || '') : String(itemInput || '');
         const clean = cleanNameStrict(rawName);
-
-        const explicitTier = itemInput && typeof itemInput === 'object' ? (itemInput.tier || itemInput.rarity || (Object.keys(RARITY_TIERS).includes(itemInput.quality) ? itemInput.quality : '')) : ''
+        const explicitType = isObj ? String(itemInput.type || itemInput.category || '').toLowerCase() : '';
+        const explicitTier = isObj ? (itemInput.tier || itemInput.rarity || (Object.keys(RARITY_TIERS).includes(itemInput.quality) ? itemInput.quality : '')) : '';
         const validTiers = Object.keys(RARITY_TIERS);
         let tierKey = validTiers.includes(explicitTier) ? explicitTier : '下品';
         if (!validTiers.includes(explicitTier)) {
@@ -1297,66 +1335,147 @@
             else if (/(極品|天龍|紫金)/.test(clean)) tierKey = '極品';
             else if (/(上品|靈寶|赤金)/.test(clean)) tierKey = '上品';
             else if (/(中品|精鋼|青銅|白銀)/.test(clean)) tierKey = '中品';
-            else if (/(凡品|凡階|普通)/.test(clean)) tierKey = '凡品';
-            else if (/(下品|下階|黑鐵|木|粗|劣|破|鏽|舊|骨角|殘材)/.test(clean)) tierKey = '下品';
+            else if (/(凡品|普通)/.test(clean)) tierKey = '凡品';
         }
-
         const rarity = RARITY_TIERS[tierKey] || RARITY_TIERS['下品'];
+        const meta = (type, extra={}) => ({ type, category: ({equipment:'裝備',consumable:'消耗品',material:'材料',misc:'凡物',knowledge:'典籍',key:'鑰匙／憑證',special:'特殊物品',unidentified:'未鑑定物',fragment:'殘片'}[type] || '特殊物品'), name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, isQuestItem: false, canDisassemble: false, canSell: true, canDrop: true, desc: '修仙物品', ...extra });
 
-        if (/信物|鑰匙|密卷|血書|令牌/.test(clean)) return { type: 'special', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 50, isQuestItem: true, desc: "✦ [關鍵劇情憑證] 嚴禁隨意丟棄與變賣" };
-        if (/未鑑定|蒙塵/.test(clean)) return { type: 'unidentified', name: clean, rarity: '凡品', rarityColor: '#888', value: 20, isQuestItem: false, desc: "蒙塵古物，可【鑑定】解鎖真面目" };
-        if (/殘片|碎片|廢寶/.test(clean)) return { type: 'fragment', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 15, isQuestItem: false, desc: "湊齊 3 個可【熔煉】合成完整古寶" };
-        if (/材料|精金|靈鐵|礦石|草藥|粉末|粗鐵胚料|精鋼材料|殘材|精粹/.test(clean)) return { type: 'material', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, isQuestItem: false, desc: "鍛造材料，可於坊市變賣換取靈石" };
-        
-        // 典籍辨識優先於「草、藥、丹」等泛用字，避免玉簡/手札被誤判為消耗品。
-        const isPureInformationItem = /(座標|地圖|路線|方位|位置|地點|洞府位置|秘境位置|情報|名單|通行路引|地形圖)/.test(clean);
-        if (!isPureInformationItem && /(功法|心法|秘笈|殘篇|殘頁|古籍|修煉法門|身法|神通|術法|劍訣|刀訣|真經|傳承玉簡|功法玉簡|破損玉簡|殘缺玉簡|獸皮卷|帛書|手札|拓本|心得|筆記)/.test(clean)) {
-            return { type: 'knowledge', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, isQuestItem: false, desc: "蘊含天地玄機之修煉典籍，可依內容參悟對應法門" };
+        // 1. 結構化分類優先；但仍對關鍵憑證做安全覆寫，防止 AI 將鑰匙標成典籍/消耗品。
+        const keyPattern = /(洞府玉簡|洞府令牌|洞府鑰匙|秘境玉簡|秘境令牌|禁制玉簡|禁制令牌|傳送玉簡|傳送令牌|通行玉簡|通行令牌|開啟.{0,6}(洞府|秘境|石門|禁制)|.{0,8}(鑰匙|令牌|通行令|入門令|開門令|信物|憑證|路引))/;
+        if (keyPattern.test(clean) || explicitType === 'key' || explicitType === 'quest' || explicitType === 'questitem') {
+            return meta('key', { category:'鑰匙／憑證', value:50, isQuestItem:true, canDisassemble:false, canSell:false, canDrop:false, desc:'開啟洞府、秘境或通行禁制的憑證；不可參悟、不可拆解、不可變賣或丟棄。' });
         }
-        if (isPureInformationItem && /(玉簡|卷|圖|令|書|冊)/.test(clean)) {
-            return { type: 'special', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 20, isQuestItem: false, desc: "記錄座標、地圖或情報的資訊物品，不可直接參悟功法" };
+        if (/(任務道具|劇情道具|關鍵物品|主線信物|血書|密卷)/.test(clean) || (isObj && itemInput.isQuestItem)) {
+            return meta('special', { category:'任務／劇情物品', value:50, isQuestItem:true, canDisassemble:false, canSell:false, canDrop:false, desc:'任務或劇情關鍵物品，請妥善保管。' });
         }
-
-        // 消耗品辨識採用較明確的食物/丹藥詞彙，避免所有含「草」字物品都能直接服用。
-        if (/(聚氣丹|修為丹|療傷丹|回春丹|辟穀丹|餅|肉|饅頭|乾糧|清水|靈泉|露水|湯|膏|散|丸|劑|丹|藥)/.test(clean)) {
-            const isExpType = /聚氣丹|修為丹/.test(clean);
-            return { 
-                type: 'consumable', 
-                name: clean, 
-                rarity: rarity.name, 
-                rarityColor: rarity.color, 
-                value: 15, 
-                expGain: isExpType ? Math.floor(30 * rarity.mult) : 0, 
-                hpGain: isExpType ? 0 : Math.floor(40 * rarity.mult), 
-                isQuestItem: false, 
-                desc: isExpType ? `服下可增加 ${Math.floor(30 * rarity.mult)} 點修為` : `服下可恢復 ${Math.floor(40 * rarity.mult)} 點 HP` 
-            };
+        if (/未鑑定|蒙塵/.test(clean) || explicitType === 'unidentified' || (isObj && (itemInput.identified === false || ['未鑑定','蒙塵'].includes(String(itemInput.quality || itemInput.tier || itemInput.rarity || ''))))) {
+            return meta('unidentified', { category:'未鑑定物', rarity:'凡品', rarityColor:'#888', value:20, canDisassemble:false, canSell:false, canDrop:false, desc:'尚未辨明用途的古物，可使用鑑定功能。' });
         }
-        
-        if (/(劍|刀|槍|戟|弓|刃|杖|斧|鞭)/.test(clean)) {
-            const hp = Math.floor(25 * rarity.mult);
-            const str = Math.floor(6 * rarity.mult);
-            return { type: 'equipment', slot: 'weapon', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 80, hpBonus: hp, strBonus: str, isQuestItem: false, desc: `HP +${hp}, 膂力 +${str}` };
-        }
-        if (/(甲|袍|衣|鎧|衫|盾)/.test(clean)) {
-            const hp = Math.floor(50 * rarity.mult);
-            const con = Math.floor(5 * rarity.mult);
-            return { type: 'equipment', slot: 'armor', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 80, hpBonus: hp, conBonus: con, isQuestItem: false, desc: `HP +${hp}, 根骨 +${con}` };
-        }
-        if (/(戒|墜|佩|項鏈|鐲|玉佩|玉戒|玉墜|玉鐲|戒指)/.test(clean)) {
-            const hp = Math.floor(15 * rarity.mult);
-            const luk = Math.floor(5 * rarity.mult);
-            const agi = Math.floor(5 * rarity.mult);
-            return { type: 'equipment', slot: 'accessory', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 100, hpBonus: hp, lukBonus: luk, agiBonus: agi, isQuestItem: false, desc: `HP +${hp}, 氣運 +${luk}, 身法 +${agi}` };
-        }
-        if (/(印|鏡|塔|鼎|幡|珠|葫蘆)/.test(clean)) {
-            const hp = Math.floor(80 * rarity.mult);
-            const intBonus = Math.floor(8 * rarity.mult);
-            const wis = Math.floor(5 * rarity.mult);
-            return { type: 'equipment', slot: 'treasure', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 150, hpBonus: hp, intBonus: intBonus, wisBonus: wis, isQuestItem: false, desc: `HP +${hp}, 神識 +${intBonus}, 悟性 +${wis}` };
+        if (/殘片|碎片|廢寶/.test(clean) || explicitType === 'fragment') {
+            return meta('fragment', { category:'殘片', value:15, canDisassemble:false, canSell:false, canDrop:false, desc:'可收集同類殘片進行熔煉；未達數量前不可拆解。' });
         }
 
-        return { type: 'misc', name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, hpBonus: 0, isQuestItem: false, desc: "修仙雜物，可變賣或拆解" };
+        // 已有結構化分類可用於 AI/存檔物品，但不得凌駕上方的憑證、任務保護與未鑑定安全規則。
+        const categoryAliases = {
+            'equipment':'equipment','weapon':'equipment','武器':'equipment','armor':'equipment','防具':'equipment','accessory':'equipment','飾品':'equipment','treasure':'equipment','法寶':'equipment',
+            'consumable':'consumable','丹藥':'consumable','修為丹藥':'consumable','食物／飲水':'consumable','食物/飲水':'consumable',
+            'material':'material','材料':'material','靈材':'material',
+            'knowledge':'knowledge','典籍':'knowledge',
+            'key':'key','鑰匙／憑證':'key','鑰匙/憑證':'key',
+            'special':'special','任務／劇情物品':'special','任務/劇情物品':'special','地圖／情報':'special','地圖/情報':'special','資訊物品':'special',
+            'misc':'misc','凡物':'misc','雜項':'misc',
+            'fragment':'fragment','殘片':'fragment','unidentified':'unidentified','未鑑定物':'unidentified'
+        };
+        const declaredCategory = String(isObj ? (itemInput.category || '') : '').trim();
+        const declaredType = String(isObj ? (itemInput.type || '') : '').trim().toLowerCase();
+        const declared = categoryAliases[declaredCategory] || categoryAliases[declaredType] || '';
+        if (declared === 'key') return meta('key',{category:'鑰匙／憑證',isQuestItem:true,canDisassemble:false,canSell:false,canDrop:false,value:50,desc:'鑰匙或通行憑證，不可參悟、拆解、出售或丟棄。'});
+        if (declared === 'special') return meta('special',{category:declaredCategory || '特殊物品',isQuestItem:Boolean(isObj && itemInput.isQuestItem),canDisassemble:false,canSell:false,canDrop:false,desc:'特殊資訊或劇情物品，依專用互動處理。'});
+        if (declared === 'unidentified') return meta('unidentified',{category:'未鑑定物',canDisassemble:false,canSell:false,canDrop:false,value:20,desc:'尚未辨明用途，須先鑑定。'});
+        if (declared === 'fragment') return meta('fragment',{category:'殘片',canDisassemble:false,canSell:false,canDrop:false,desc:'可透過專用熔煉功能處理。'});
+        if (declared === 'equipment') {
+            const slotMap = {'武器':'weapon','weapon':'weapon','防具':'armor','armor':'armor','飾品':'accessory','accessory':'accessory','法寶':'treasure','treasure':'treasure'};
+            const declaredSlot = slotMap[declaredCategory] || slotMap[declaredType] || null;
+            if (declaredSlot) {
+                const grade = getItemRank(itemInput);
+                const mult = getEquipmentGradeMultiplier(itemInput);
+                const hp = Math.floor((declaredSlot==='weapon'?25:declaredSlot==='armor'?50:declaredSlot==='accessory'?15:80)*mult);
+                const extra = declaredSlot==='weapon'?{strBonus:Math.floor(6*mult)}:declaredSlot==='armor'?{conBonus:Math.floor(5*mult)}:declaredSlot==='accessory'?{lukBonus:Math.floor(5*mult),agiBonus:Math.floor(5*mult)}:{intBonus:Math.floor(8*mult),wisBonus:Math.floor(5*mult)};
+                return meta('equipment',{category:declaredCategory || ({weapon:'武器',armor:'防具',accessory:'飾品',treasure:'法寶'}[declaredSlot]),slot:declaredSlot,grade,rank:grade,rarityColor:getItemRankColor(grade),value:Math.floor((declaredSlot==='treasure'?150:declaredSlot==='accessory'?100:80)*mult),hpBonus:hp,...extra,canDisassemble:itemInput.canDisassemble!==false,desc:`${grade}｜HP +${hp}`});
+            }
+        }
+        if (declared === 'consumable' && !/(妖丹|內丹|丹砂|丹珠|丹粉)$/.test(clean)) {
+            const isExpType=/(聚氣丹|培元丹|修為丹|築基丹)/.test(clean);
+            const hpGain=isExpType?0:Math.floor(40*rarity.mult), expGain=isExpType?Math.floor(30*rarity.mult):0;
+            return meta('consumable',{category:declaredCategory || (isExpType?'修為丹藥':'丹藥'),value:15,expGain,hpGain,canDisassemble:false,desc:isExpType?`服下可增加 ${expGain} 點修為`:`服下可恢復 ${hpGain} 點 HP`});
+        }
+        if (declared === 'material') return meta('material',{category:declaredCategory || '材料',value:Math.max(10,Math.floor(10*rarity.mult)),canDisassemble:false,desc:'可用於鍛造、煉製或交付任務；不可直接服用。'});
+        if (declared === 'knowledge') return meta('knowledge',{category:'典籍',value:100,canDisassemble:false,desc:'由物品定義確認為典籍，可依內容參悟。'});
+
+        // 2. 典籍：必須有明確修煉/傳承語意。單獨「玉簡、古書、卷軸」不自動提供參悟。
+        const explicitKnowledge = /(功法|心法|秘笈|秘籍|修煉法門|修練法門|身法|神通|術法|劍訣|刀訣|真經|傳承玉簡|功法玉簡|修煉玉簡|修練玉簡|功法殘篇|古籍|修煉手札|參悟心得|修行筆記)/.test(clean);
+        if (explicitKnowledge || explicitType === 'knowledge' || explicitType === 'book') {
+            return meta('knowledge', { category:'典籍', value:100, canDisassemble:false, desc:'明確記載修煉法門或傳承內容，可依內容參悟；若為鑰匙或通行憑證則不適用。' });
+        }
+        if (/(座標|地圖|路線|方位|位置|洞府位置|秘境位置|情報|名單|地形圖|地圖玉簡|情報玉簡|洞府圖|秘境圖)/.test(clean)) {
+            return meta('special', { category:'地圖／情報', value:20, canDisassemble:false, desc:'記錄座標、路線或情報的資訊物品，不可直接參悟。' });
+        }
+        // 一般玉簡預設為資訊物品，不猜測它是功法；只有明確命名為功法/傳承才可參悟。
+        if (/(玉簡|玉册|玉冊|卷軸|書卷|手札|冊子|古書)/.test(clean)) {
+            return meta('special', { category:'資訊物品', value:20, canDisassemble:false, desc:'記錄內容尚未明確，不可直接參悟；需由劇情或專用互動判定用途。' });
+        }
+
+        // 3. 裝備先於一般珠、丹等字詞判斷，避免「護心珠」被誤當消耗品。
+        const equipmentMult = getEquipmentGradeMultiplier(isObj ? itemInput : clean);
+        const equipmentGrade = getItemRank(isObj ? itemInput : clean);
+        if (/(劍|刀|槍|戟|弓|刃|杖|斧|鞭)/.test(clean) && !/(劍訣|刀訣|劍譜|刀譜)/.test(clean)) {
+            const hp=Math.floor(25*equipmentMult), str=Math.floor(6*equipmentMult);
+            return meta('equipment',{category:'武器',slot:'weapon',grade:equipmentGrade,rank:equipmentGrade,rarityColor:getItemRankColor(equipmentGrade),value:Math.floor(80*equipmentMult),hpBonus:hp,strBonus:str,canDisassemble:true,desc:`${equipmentGrade}｜HP +${hp}, 膂力 +${str}`});
+        }
+        if (/(甲|袍|衣|鎧|衫|盾|護腕|護肩|護腿|靴)/.test(clean)) {
+            const hp=Math.floor(50*equipmentMult), con=Math.floor(5*equipmentMult);
+            return meta('equipment',{category:'防具',slot:'armor',grade:equipmentGrade,rank:equipmentGrade,rarityColor:getItemRankColor(equipmentGrade),value:Math.floor(80*equipmentMult),hpBonus:hp,conBonus:con,canDisassemble:true,desc:`${equipmentGrade}｜HP +${hp}, 根骨 +${con}`});
+        }
+        if (/(戒|墜|佩|項鏈|項鍊|鐲|玉佩|玉戒|玉墜|玉鐲|戒指)/.test(clean)) {
+            const hp=Math.floor(15*equipmentMult), luk=Math.floor(5*equipmentMult), agi=Math.floor(5*equipmentMult);
+            return meta('equipment',{category:'飾品',slot:'accessory',grade:equipmentGrade,rank:equipmentGrade,rarityColor:getItemRankColor(equipmentGrade),value:Math.floor(100*equipmentMult),hpBonus:hp,lukBonus:luk,agiBonus:agi,canDisassemble:true,desc:`${equipmentGrade}｜HP +${hp}, 氣運 +${luk}, 身法 +${agi}`});
+        }
+        if (/(法寶|寶印|靈鏡|寶鏡|寶塔|寶鼎|法幡|護心珠|靈珠|寶珠|葫蘆)/.test(clean) || (/(印|鏡|塔|鼎|幡|珠|葫蘆)/.test(clean) && !/(丹珠|珠粉|珠串材料)/.test(clean))) {
+            const hp=Math.floor(80*equipmentMult), intBonus=Math.floor(8*equipmentMult), wis=Math.floor(5*equipmentMult);
+            return meta('equipment',{category:'法寶',slot:'treasure',grade:equipmentGrade,rank:equipmentGrade,rarityColor:getItemRankColor(equipmentGrade),value:Math.floor(150*equipmentMult),hpBonus:hp,intBonus,wisBonus:wis,canDisassemble:true,desc:`${equipmentGrade}｜HP +${hp}, 神識 +${intBonus}, 悟性 +${wis}`});
+        }
+
+        // 4. 明確的消耗品白名單；不因單獨出現「藥、丹、丸、散、膏」就允許服用。
+        const isFood = /(粗麵餅|乾糧|饅頭|肉乾|烤肉|靈果|果子|清水|靈泉|露水|米飯|糕點|湯羹)/.test(clean);
+        const isPill = /(聚氣丹|培元丹|修為丹|療傷丹|回春丹|金創藥|辟穀丹|解毒丹|清心丹|凝神丹|洗髓丹|築基丹|補氣丹|復元丹|止血散|回春膏|丹$|散$|膏$|丸$|藥$)/.test(clean) && !/(妖丹|內丹|丹砂|丹珠|丹粉)$/.test(clean);
+        if (isFood || isPill || explicitType === 'consumable') {
+            const isExpType=/(聚氣丹|培元丹|修為丹|築基丹)/.test(clean);
+            const hpGain=isExpType?0:Math.floor(40*rarity.mult);
+            const expGain=isExpType?Math.floor(30*rarity.mult):0;
+            return meta('consumable',{category:isExpType?'修為丹藥':(isPill?'丹藥':'食物／飲水'),value:15,expGain,hpGain,canDisassemble:false,desc:isExpType?`服下可增加 ${expGain} 點修為`:`服下可恢復 ${hpGain} 點 HP`});
+        }
+
+        // 5. 材料以採集/鍛造詞彙為準；一般草木、石頭等落入凡物，不可因字詞誤判成丹藥。
+        if (/(材料|精金|靈鐵|礦石|草藥|靈草|藥草|.{1,8}(草|靈花|仙花|藤|靈芝|菌菇)$|獸材|獸骨|妖獸皮|獸筋|粉末|粗鐵胚料|精鋼材|殘材|精粹|木材|靈木|晶核|內丹|妖丹|靈石碎屑|鐵礦|銅礦|硫磺|藥粉)/.test(clean) || explicitType === 'material') {
+            return meta('material',{category:'材料',value:Math.max(10,Math.floor(10*rarity.mult)),canDisassemble:false,desc:'可用於鍛造、煉製或交付任務；不可直接服用。'});
+        }
+        if (/信物|鑰匙|密卷|血書|令牌/.test(clean)) return meta('key',{category:'鑰匙／憑證',value:50,isQuestItem:true,canDisassemble:false,desc:'特殊憑證，請妥善保管。'});
+        if (/(石頭|石塊|泥土|樹枝|枯葉|普通木|破布|碎瓦|瓦片|砂礫|空瓶|破碗|普通花草|野草|落葉|獸牙)/.test(clean) || explicitType === 'misc' || explicitType === 'junk') {
+            return meta('misc',{category:'凡物',value:5,canDisassemble:false,desc:'一般凡物，可依劇情或交易規則處理；不具備服用、參悟或裝備功能。'});
+        }
+        return meta('misc',{category:'雜項',value:10,canDisassemble:false,desc:'用途尚未明確的物品；不自動提供服用、參悟、裝備或拆解功能。'});
+    }
+
+    // V6.41 單一權限引擎：分類、存檔正規化、堆疊、UI 與底層操作共用同一套規則。
+    function getItemPermissions(itemInput) {
+        const item = itemInput && typeof itemInput === 'object' ? itemInput : { name: String(itemInput || '') };
+        const meta = getItemMeta(item);
+        const type = meta.type;
+        const locked = Boolean(item.isQuestItem || meta.isQuestItem || item.questLocked);
+        const qualityState = String(item.quality || item.tier || item.rarity || '');
+        const identified = item.identified !== false && !/未鑑定|蒙塵/.test(cleanNameStrict(item.name || '')) && !['未鑑定','蒙塵'].includes(qualityState) && type !== 'unidentified';
+        const equipped = Boolean(item.isEquipped || item.equipped);
+        const base = {
+            use: type === 'consumable' && identified,
+            equip: type === 'equipment' && Boolean(meta.slot) && identified,
+            comprehend: type === 'knowledge' && identified,
+            identify: type === 'unidentified' || item.identified === false || ['未鑑定','蒙塵'].includes(qualityState) || /未鑑定|蒙塵/.test(cleanNameStrict(item.name || '')),
+            fuse: type === 'fragment',
+            disassemble: type === 'equipment' && item.canDisassemble !== false && meta.canDisassemble !== false && !locked && identified && !equipped,
+            sell: !locked && item.canSell !== false && meta.canSell !== false && !equipped && type !== 'key' && type !== 'special' && type !== 'unidentified' && type !== 'fragment' && !/靈石/.test(cleanNameStrict(item.name || '')),
+            drop: !locked && identified && item.canDrop !== false && meta.canDrop !== false && !['key','special','unidentified','fragment'].includes(type),
+            category: meta.category,
+            type,
+            slot: meta.slot || null
+        };
+        // 固定安全規則覆寫任何 AI/舊存檔宣告的寬鬆權限。
+        if (locked || type === 'key' || type === 'special' || type === 'unidentified' || type === 'fragment') {
+            base.disassemble = false;
+            base.drop = false;
+        }
+        if (locked || type === 'key' || type === 'special' || type === 'unidentified' || type === 'fragment') base.sell = false;
+        if (!identified) { base.use = false; base.equip = false; base.comprehend = false; }
+        return base;
     }
 
     function getPhysiqueMeta(physiqueInput) {
@@ -1720,8 +1839,9 @@
         if (gameState.isDead || isTyping) return;
         const item = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanNameStrict(name));
         if (!item) { openGameModal("✦ 找不到典籍", "該物品已不在背包中，無法參悟。"); return; }
-        const meta = getItemMeta(name);
-        if (meta.type !== "knowledge") { openGameModal("✦ 無法參悟", "此物品不是可研讀的典籍或功法載體。"); return; }
+        const meta = getItemMeta(item);
+        const permissions = getItemPermissions(item);
+        if (!permissions.comprehend) { openGameModal("✦ 無法參悟", "此物品不是可研讀的典籍或功法載體，或目前狀態不允許參悟。"); return; }
         const wisdom = (gameState.stats && gameState.stats.wis) || 10;
         const rank = { "凡品": 0, "下品": 1, "中品": 2, "上品": 3, "極品": 4, "仙品": 5 };
         const tier = item.tier || meta.rarity || "下品";
@@ -1970,14 +2090,23 @@
 
     function interactInventoryItem(name, action) {
         if (gameState.isDead) return;
-        const cleanName = cleanNameStrict(name);
-        const invItem = gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
+        const suppliedItem = name && typeof name === 'object' ? name : null;
+        const cleanName = cleanNameStrict(suppliedItem ? suppliedItem.name : name);
+        const invItem = suppliedItem && gameState.inventory.includes(suppliedItem)
+            ? suppliedItem
+            : gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
         if (!invItem) return;
 
-        const meta = getItemMeta(cleanName);
+        const meta = getItemMeta(invItem);
+        const permissions = getItemPermissions(invItem);
+        const actionPermission = { use:'use', identify:'identify', fuse:'fuse', salvage:'disassemble', sell:'sell', drop:'drop', equip:'equip', comprehend:'comprehend' }[action];
+        if (actionPermission && !permissions[actionPermission]) {
+            openGameModal('✦ 操作不允許', `「${cleanName}」目前分類為【${meta.category}】，不具備此操作權限。`);
+            return;
+        }
 
         if (action === 'use') {
-            const res = TransactionEngine.useItemOptimistic(cleanName);
+            const res = TransactionEngine.useItemOptimistic(invItem);
             if (res.success) {
                 appendLogData("天道", res.message, "system", false, true);
             } else {
@@ -1986,7 +2115,10 @@
         } else if (action === 'identify') {
             const identifiedName = cleanName.replace("[未鑑定]", "").replace("蒙塵", "") + "古寶";
             removeItemFromInventory(gameState.inventory, cleanName, 1);
-            addItemToInventory(gameState.inventory, identifiedName, 1);
+            const revealed = /(戒|墜|佩|項鏈|項鍊|鐲|玉佩|玉戒|玉墜|玉鐲|戒指)/.test(identifiedName)
+                ? { name: identifiedName, quantity: 1, identified: true, quality: '下品', type: 'equipment', category: '飾品', slot: 'accessory', canDisassemble: true }
+                : { name: identifiedName, quantity: 1, identified: true, quality: '下品', type: 'misc', category: '凡物', canDisassemble: false };
+            addItemToInventory(gameState.inventory, revealed, 1);
             openGameModal("✦ 鑑定成功", `擦去歲月塵埃，揭曉古物真實面貌：<b>${identifiedName}</b>！`);
         } else if (action === 'fuse') {
             if (invItem.quantity < 3) {
@@ -1999,9 +2131,9 @@
             openGameModal("✦ 熔煉成功", `將 3 個殘片熔煉合一，成功拼湊出完整古寶：<b>${fusedName}</b>！`);
         } else if (action === 'salvage') {
             const bodyContainer = document.createElement("div");
-            bodyContainer.innerHTML = `確定要拆解<b>【[${invItem.rank || getItemRank(invItem)}·${invItem.quality || invItem.tier || meta.rarity}] ${cleanName}】</b>嗎？<br><br>
-            ??? <b>降階提煉（35% 殘值收斂）：</b><br>
-            ‧ 產物必下降一階，防止無限套利與複製！`;
+            bodyContainer.innerHTML = `確定要拆解<b>【[${(meta.type === 'equipment' || meta.slot) ? getItemRank(invItem) : (invItem.tier || meta.rarity || '雜物')}] ${cleanName}】</b>嗎？<br><br>
+            <b>材料回收（依裝備境界階與物品價值折算）：</b><br>
+            ‧ 拆解後回收靈材碎屑，不返還靈石。`;
 
             const btnConfirm = document.createElement("button");
             btnConfirm.className = "modal-btn primary";
@@ -2027,32 +2159,36 @@
         } else if (action === 'sell') {
             beginSellDialogue(cleanName);
             return;
+        } else if (action === 'drop') {
+            const idx = gameState.inventory.indexOf(invItem);
+            if (idx < 0) return;
+            if ((Number(invItem.quantity) || 1) > 1) invItem.quantity -= 1;
+            else gameState.inventory.splice(idx, 1);
+            appendLogData('天道', `你已丟棄【${cleanName}】x1。`, 'system', false, true);
         }
         renderUI(); saveGameState();
     }
 
     function equipItem(itemInput) {
         const cleanName = cleanNameStrict(typeof itemInput === 'object' && itemInput ? itemInput.name : itemInput);
-        // 以按鈕所屬的物件為優先，避免同名但不同階級/品質的物品拿錯件。
+        // 以按鈕所屬的物件為優先，避免同名不同境界階的裝備拿錯件。
         const invItem = (typeof itemInput === 'object' && itemInput)
             ? gameState.inventory.find(i => i === itemInput)
             : gameState.inventory.find(i => cleanNameStrict(i.name) === cleanName);
         if (!invItem) return;
 
         const meta = getItemMeta(invItem);
-        if (!meta.slot) {
-            openGameModal("✦ 無法裝備", "此物品目前無法辨識為可裝備的武器、防具、飾品或法寶。");
+        if (!getItemPermissions(invItem).equip || !meta.slot) {
+            openGameModal("✦ 無法裝備", "此物品目前無法裝備，或其狀態/權限不允許穿戴。");
             return;
         }
-        const itemRank = invItem.rank || invItem.itemRank || getItemRank(invItem);
-        const itemQuality = invItem.quality || invItem.tier || invItem.rarity || meta.rarity || "下品";
+        const itemGradeIndex = getEquipmentGradeIndex(invItem);
+        const itemGrade = EQUIPMENT_GRADES[itemGradeIndex].name;
         const equipped = {
             ...meta,
             name: cleanName,
-            rank: itemRank,
-            tier: itemQuality,
-            quality: itemQuality,
-            rankColor: getItemRankColor(itemRank),
+            grade: itemGrade, gradeIndex: itemGradeIndex, rank: itemGrade,
+            rankColor: getItemRankColor(itemGrade),
             rarityColor: meta.rarityColor,
             value: Number.isFinite(Number(invItem.value)) ? Number(invItem.value) : meta.value,
             type: invItem.type || meta.type,
@@ -2225,7 +2361,7 @@
             gameState.status.push("家族血脈殘脈");
             gameState.originLinggenBonus = "風雷雙靈根";
             gameState.originPhysiqueBonus = "家族血脈靈體";
-            addItemToInventory(gameState.inventory, { name: "神祕古戒", quantity: 1, rank: "仙階", quality: "未鑑定", type: "equipment", canDisassemble: false });
+            addItemToInventory(gameState.inventory, { name: "神祕古戒", quantity: 1, rank: "仙階", quality: "未鑑定", identified: false, type: "unidentified", category: "未鑑定物", canDisassemble: false, canSell: false, canDrop: false });
         } else {
             gameState.originType = "自訂身世";
             gameState.status.push("身世之謎");
@@ -2311,7 +2447,7 @@ ${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subjec
 18. [戰力差距]：描述戰鬥勝負前，必須比較雙方境界、戰力、裝備、狀態與戰術條件。低境界角色不得無條件擊敗高階長老；若越級取勝，必須指出可驗證的特殊優勢與代價。
 19. [敘事完整度]：除簡單確認、錯誤提示或短問答外，主要劇情回覆應有完整的場景、行動、結果與後果，不要只用一句話帶過；篇幅應服從事件重要性，不可為湊字數重複敘述。
 
-20. [裝備階級與品質分離]：裝備/物品可同時有 rank（凡階/黃階/玄階/地階/天階/仙階）與 tier 或 quality（凡品/下品/中品/上品/極品/仙品）；rank 不可放入 tier 欄位。武器、護甲、飾品、法寶請盡可能明確回傳 rank 與 tier/quality；未標階裝備由核心依名稱推定，預設黃階而非把品質誤當階級。
+20. [裝備境界階系統]：武器、防具、飾品、法寶只使用 grade（凡器、靈器、築基器、金丹器、元嬰器、化神器、返虛器、大乘器、真仙器、太乙器、聖道器、主宰器），不再使用天階/仙階與上下品雙重品質。裝備階應與修為大境界相符；未標示時由核心預設靈器。不要回傳裝備 tier/quality。非裝備消耗品與材料仍可使用 tier。
 21. [靈石數量一致性]：搜刮、拾取、任務獎勵的下品靈石必須在 inventoryDelta 回傳 {"name":"下品靈石","quantity":3}，quantity使用阿拉伯數字正整數，數量以結構化資料為準。story只描寫取得過程，不寫確切靈石或物品數量；精確數字由核心結算區塊顯示。沒有獎勵時回傳[]。禁止以spiritStoneDelta、缺少數量的物件、字串或未定義品階代替；交易仍只回傳tradeOffer。若核心拒絕本回合，先前敘事不構成既成事實，重試須依SSOT重新結算。所有物品物件都必須明確填quantity正整數；不同品階材料須填tier。
 JSON 輸出格式範例：
 \`\`\`json
@@ -2947,7 +3083,21 @@ JSON 輸出格式範例：
         const valid = raw && typeof raw === "object" && !Array.isArray(raw);
         const normalized = normalizeGameStateLegacy(valid ? structuredClone(raw) : raw);
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
-        s.version = "6.32";
+        s.version = "6.40";
+        s.inventory = normalizeInventory(s.inventory || []);
+        const slots = ['weapon','armor','accessory','treasure'];
+        s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
+        for (const slot of slots) {
+            const eq = s.equipment[slot];
+            if (!eq) { s.equipment[slot] = null; continue; }
+            const obj = typeof eq === 'string' ? {name:eq} : {...eq};
+            const meta = getItemMeta(obj);
+            if (!meta.slot) { s.equipment[slot] = null; addItemToInventory(s.inventory, obj, 1); continue; }
+            const gradeIndex = getEquipmentGradeIndex(obj);
+            obj.grade = EQUIPMENT_GRADES[gradeIndex].name; obj.gradeIndex = gradeIndex; obj.rank = obj.grade; obj.rankColor = getItemRankColor(obj.grade);
+            delete obj.quality; delete obj.rarity; delete obj.tier;
+            s.equipment[slot] = obj;
+        }
         s.maxHp = getMaxHp(s);
         // The legacy clamp used the realm HP instead of equipped maximum HP.
         if (valid && !s.isDead && Number.isFinite(Number(raw.hp))) s.hp = Math.max(0, Math.min(s.maxHp, Number(raw.hp)));
@@ -3249,7 +3399,7 @@ JSON 輸出格式範例：
     }
     function createSellIntent(s,name,quantity) {
         const item=(s.inventory||[]).find(i=>cleanNameStrict(i.name)===cleanNameStrict(name));
-        if(!item||item.isQuestItem||item.canSell===false||item.isEquipped||item.equipped||/\u9748\u77f3/.test(item.name))throw new Error("此物品不可出售。");
+        if(!item || !getItemPermissions(item).sell || item.isQuestItem || item.canSell===false || item.isEquipped || item.equipped || /\u9748\u77f3/.test(item.name))throw new Error("此物品不可出售。");
         return {id:newEconomyId("SELL"),item_name:cleanNameStrict(item.name),quantity:economyInteger(quantity,"quantity",1,item.quantity),location:String(s.location||""),inventorySnapshot:inventorySnapshot(s)};
     }
     function bindSellQuote(s,offer,meta) {
@@ -3860,9 +4010,8 @@ JSON 輸出格式範例：
             if (eqItem) {
                 const name = cleanNameStrict(typeof eqItem === 'object' ? eqItem.name : eqItem);
                 const meta = getItemMeta(eqItem || name);
-                const eqRank = (typeof eqItem === 'object' && (eqItem.rank || eqItem.itemRank)) || getItemRank(eqItem || name);
-                const eqQuality = (typeof eqItem === 'object' && (eqItem.quality || eqItem.tier || eqItem.rarity)) || meta.rarity || "下品";
-                if (nameEl) { nameEl.textContent = `[${eqRank}·${eqQuality}] ${name}`; nameEl.style.color = getItemRankColor(eqRank); }
+                const eqRank = getItemRank(eqItem || name);
+                if (nameEl) { nameEl.textContent = `[${eqRank}] ${name}`; nameEl.style.color = getItemRankColor(eqRank); }
                 if (descEl) descEl.textContent = meta.desc || "無屬性加成";
                 if (btnEl) btnEl.disabled = false;
             } else {
@@ -3884,32 +4033,39 @@ JSON 輸出格式範例：
                     let row = document.createElement("div"); row.className = "item-row";
                     let top = document.createElement("div"); top.className = "item-top";
                     let span = document.createElement("span"); 
-                    const itemRank = item.rank || getItemRank(item);
-                    const itemQuality = item.quality || item.tier || item.rarity || meta.rarity || "下品";
-                    span.textContent = `✦ [${itemRank}·${itemQuality}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
-                    span.style.color = getItemRankColor(itemRank);
-                    span.title = `裝備階級：${itemRank}；物品品質：${itemQuality}`;
+                    const itemRank = (meta.type === 'equipment' || meta.slot) ? getItemRank(item) : null;
+                    const itemCategory = itemRank ? itemRank : (meta.category || '雜項');
+                    span.textContent = `✦ [${itemCategory}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
+                    span.style.color = itemRank ? getItemRankColor(itemRank) : (meta.rarityColor || '#c5a059');
+                    span.title = itemRank ? `裝備境界階：${itemRank}｜類型：${meta.category || '裝備'}` : `物品類型：${meta.category || meta.type || '雜項'}`;
                     
                     let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
-                    if (meta.slot) {
+                    const permissions = getItemPermissions(item);
+                    if (permissions.equip) {
                         let b = document.createElement("button"); b.textContent = "裝備"; b.onclick = () => equipItem(item); actionGroup.appendChild(b);
-                    } else if (meta.type === 'consumable') {
-                        let b = document.createElement("button"); b.textContent = "服下"; b.onclick = () => interactInventoryItem(name, 'use'); actionGroup.appendChild(b);
-                    } else if (meta.type === 'knowledge') {
+                    } else if (permissions.use) {
+                        let b = document.createElement("button"); b.textContent = /乾糧|饅頭|肉乾|烤肉|清水|靈泉|露水|米飯|糕點|湯羹|麵餅|果子|靈果/.test(name) ? "食用" : "使用"; b.onclick = () => interactInventoryItem(item, 'use'); actionGroup.appendChild(b);
+                    } else if (permissions.comprehend) {
                         let b = document.createElement("button"); b.textContent = "參悟"; b.onclick = () => comprehendKnowledgeItem(name); actionGroup.appendChild(b);
-                    } else if (meta.type === 'unidentified') {
-                        let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(name, 'identify'); actionGroup.appendChild(b);
-                    } else if (meta.type === 'fragment') {
-                        let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(name, 'fuse'); actionGroup.appendChild(b);
+                    } else if (permissions.identify) {
+                        let b = document.createElement("button"); b.textContent = "鑑定"; b.onclick = () => interactInventoryItem(item, 'identify'); actionGroup.appendChild(b);
+                    } else if (permissions.fuse) {
+                        let b = document.createElement("button"); b.textContent = "熔煉"; b.onclick = () => interactInventoryItem(item, 'fuse'); actionGroup.appendChild(b);
                     }
 
-                    if (item.canDisassemble) {
-                        let b = document.createElement("button"); b.textContent = "拆解"; b.onclick = () => interactInventoryItem(name, 'salvage'); actionGroup.appendChild(b);
+                    if (permissions.disassemble) {
+                        let b = document.createElement("button"); b.textContent = "拆解"; b.onclick = () => interactInventoryItem(item, 'salvage'); actionGroup.appendChild(b);
                     }
 
-                    if (!item.isQuestItem) {
-                        let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.disabled = !getSellTradeContext(); bSell.title = bSell.disabled ? "請先前往商店、坊市或與商人進入交易對話" : "與商人議價後出售"; bSell.onclick = () => interactInventoryItem(name, 'sell'); actionGroup.appendChild(bSell);
+                    if (permissions.sell) {
+                        let bSell = document.createElement("button"); bSell.textContent = "變賣"; bSell.disabled = !getSellTradeContext(); bSell.title = bSell.disabled ? "請先前往商店、坊市或與商人進入交易對話" : "與商人議價後出售"; bSell.onclick = () => interactInventoryItem(item, 'sell'); actionGroup.appendChild(bSell);
+                    }
+                    if (permissions.drop) {
+                        let bDrop = document.createElement("button"); bDrop.textContent = "丟棄"; bDrop.title = "丟棄 1 件物品"; bDrop.onclick = () => openGameModal("丟棄物品", `確定丟棄【${name}】x1 嗎？`, [
+                            Object.assign(document.createElement("button"), {className:"modal-btn primary", textContent:"確定丟棄", onclick:()=>{closeGameModal();interactInventoryItem(item,'drop');}}),
+                            Object.assign(document.createElement("button"), {className:"modal-btn", textContent:"取消", onclick:closeGameModal})
+                        ]); actionGroup.appendChild(bDrop);
                     }
 
                     top.appendChild(span); top.appendChild(actionGroup); row.appendChild(top); invBox.appendChild(row);
@@ -4108,7 +4264,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.32"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.40"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         try {
@@ -4141,7 +4297,7 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.32"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.40"; gameState.maxHp = getMaxHp(gameState);
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -4172,7 +4328,7 @@ JSON 輸出格式範例：
         if (pkg.history !== undefined && (!Array.isArray(pkg.history) || pkg.history.some(x => !object(x) || typeof x.role !== "string" || !Array.isArray(x.parts) || x.parts.some(p => !object(p) || typeof p.text !== "string"))))
             throw new Error("對話紀錄格式無效。");
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.32"; state.maxHp = getMaxHp(state);
+        state.version = "6.40"; state.maxHp = getMaxHp(state);
         return {state, logs: structuredClone(pkg.logs || []), history: structuredClone(pkg.history || []).slice(-100)};
     }
     function importSave(e) {
@@ -4243,4 +4399,3 @@ JSON 輸出格式範例：
 </script>
 </body>
 </html>
-
