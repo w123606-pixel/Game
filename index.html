@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 拍賣交易與敘事一致性修正版 V6.63</title>
+    <title>九州裂天錄 - 體驗與容錯修正版 V6.64</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -3447,11 +3447,21 @@ JSON 輸出格式範例：
 
         if (rawState.sectDelta && typeof rawState.sectDelta === "object") {
             const sd = rawState.sectDelta;
-            const storyForSect = String(rawState.story || "");
             const sectName = cleanNameStrict(sd.name || sd.sectName || "");
-            const confirmsJoin = sd.joined === true && sectName && !["無", "無宗門", "散修"].includes(sectName);
+            const confirmsJoin = sectName && !["無", "無宗門", "散修", "無門派"].includes(sectName);
             if (confirmsJoin) {
-                s.sect = { ...(s.sect || {}), joined:true, id:sd.id || (s.sect && s.sect.id) || `sect_${sectName}`, name:sectName, rank:cleanNameStrict(sd.rank || "外門弟子"), position:cleanNameStrict(sd.position || "弟子"), contribution:Math.max(0, Number(sd.contribution ?? (s.sect && s.sect.contribution) ?? 0)||0), totalContribution:Math.max(0, Number(sd.totalContribution ?? (s.sect && s.sect.totalContribution) ?? 0)||0) };
+                s.sect = { 
+                    ...(s.sect || {}), 
+                    joined: true, 
+                    id: sd.id || (s.sect && s.sect.id) || `sect_${sectName}`, 
+                    name: sectName, 
+                    rank: cleanNameStrict(sd.rank || "外門弟子"), 
+                    position: cleanNameStrict(sd.position || "弟子"), 
+                    contribution: Math.max(0, Number(sd.contribution ?? (s.sect && s.sect.contribution) ?? 0)||0), 
+                    totalContribution: Math.max(0, Number(sd.totalContribution ?? (s.sect && s.sect.totalContribution) ?? 0)||0) 
+                };
+            } else if (sectName && ["無", "無宗門", "散修", "無門派"].includes(sectName)) {
+                s.sect = { joined: false, id: null, name: "無", rank: "散修", contribution: 0, totalContribution: 0, position: "無" };
             }
         }
         if (rawState.location) {
@@ -4054,16 +4064,7 @@ JSON 輸出格式範例：
     // V6.63：不再用物資關鍵字刪除整句劇情。敘事是否成立由核心結算／待確認提案決定；
     // 這裡只清除舊版本重複注入的除錯尾註，避免正常對話被切碎。
     function projectNarrative(text,s) {
-        const debugNote=/\n?【物資與收支敘述已隱藏；實際變動請見核心結算，待確認提案尚未入帳。】/g;
-        let clean=String(text||"").replace(debugNote,"").trim();
-        const pending=s?.pendingEconomyProposal;
-        if(pending && ["購買","拍賣競標","purchase","auction"].includes(pending.operation)) {
-            const claims=/(已成交|成交了|成功得標|競標成功|已付款|已支付|已交付|交付到你|收入囊中|已收入背包|已經拿到|你獲得了|你取得了|拍賣落槌)/;
-            const itemNames=(pending.request?.adds||[]).map(i=>cleanNameStrict(i.name)).filter(Boolean);
-            const sentences=clean.split(/(?<=[。！？!?])|\n+/);
-            clean=sentences.filter(sentence=>!(claims.test(sentence) && (!itemNames.length || itemNames.some(name=>sentence.includes(name)) || /成交|得標|付款|交付|落槌/.test(sentence)))).join("").trim();
-            if(!/待確認|尚未入帳|等待確認/.test(clean)) clean += (clean?"\n":"")+"【交易待確認：靈石與物品尚未變更，請確認提案後才會正式成交。】";
-        }
+        let clean = String(text || "").replace(/\n?【物資與收支敘述已隱藏.*?】/g, "").trim();
         return clean || "你觀察著眼前的局勢，等待下一步變化。";
     }
     function inventorySnapshot(s){return JSON.stringify(s.inventory||[]);}
@@ -4089,7 +4090,9 @@ JSON 輸出格式範例：
         if(!adds.length&&!removes.length&&!credit&&!delta&&!fee)return null;
         if(!["reward","consolation","exchange","craft","loss","purchase","auction"].includes(op?.kind))throw new Error("經濟提案須明確指定操作類型。");
         if(/\u7149|\u70bc|\u6253\u9020|\u5408\u6210|\u88fd\u4f5c|\u5236\u4f5c|\u514c\u63db|\u5151\u6362|\u4ea4\u63db|\u4ea4\u6362/.test(String(meta.actionText||""))&&!["exchange","craft"].includes(op.kind))throw new Error("製作或交換不可偽裝為免費獎勵。");
-        if(["reward","consolation"].includes(op.kind)&&(removes.length||delta<0||fee))throw new Error("純獎勵不可扣材料或費用。");
+        if(["reward","consolation"].includes(op.kind)&&(removes.length||delta<0||fee)) {
+            op.kind = "exchange";
+        }
         if(["exchange","craft"].includes(op.kind)&&!removes.length&&delta>=0&&!fee)throw new Error("交換或製作缺少投入，拒絕免費產出。");
         if(["purchase","auction"].includes(op.kind)) {
             if(!adds.length || removes.length || credit || delta<0 || fee<=0) throw new Error("購買／拍賣必須同時包含明確物品、正數成交價，且不得夾帶出售或獎勵。");
@@ -4129,15 +4132,65 @@ JSON 輸出格式範例：
         gameState.pendingEconomyProposal=null;saveGameState();renderUI();
     }
     function renderEconomyProposal() {
-        let el=document.getElementById("economy-proposal-panel");
-        if(!el){el=document.createElement("section");el.id="economy-proposal-panel";el.setAttribute("aria-live","polite");document.getElementById("story-log").before(el);}
-        el.replaceChildren();const p=gameState?.pendingEconomyProposal;if(!p)return;
-        const r=p.request,txt=document.createElement("p");
-        txt.textContent=`\u5f85\u78ba\u8a8d\u63d0\u6848\uff08\u5c1a\u672a\u5165\u5e33\uff09 | ${p.operation} | \u6536\u5165 ${r.credit}, \u652f\u51fa ${r.debit} | \u6295\u5165: ${r.removes.map(i=>i.name+" x "+i.quantity).join(", ")||"\u7121"} | \u7522\u51fa: ${r.adds.map(i=>i.name+" x "+i.quantity).join(", ")||"\u7121"}`;
-        el.appendChild(txt);
-        for(const [label,handler]of [["\u78ba\u8a8d\u6295\u5165\u8207\u7522\u51fa",confirmEconomyProposal],["\u53d6\u6d88\u63d0\u6848",cancelEconomyProposal]]){
-            const btn=document.createElement("button");btn.type="button";btn.textContent=label;btn.disabled=!!isTyping;btn.onclick=()=>handler(p.id);el.appendChild(btn);
+        let el = document.getElementById("economy-proposal-panel");
+        if (!el) {
+            el = document.createElement("section"); 
+            el.id = "economy-proposal-panel"; 
+            el.setAttribute("aria-live", "polite"); 
+            document.getElementById("story-log").before(el);
         }
+        
+        const p = gameState?.pendingEconomyProposal;
+        if (!p) {
+            el.style.display = 'none';
+            el.replaceChildren();
+            return;
+        }
+        
+        el.style.display = 'block';
+        el.replaceChildren();
+        
+        const r = p.request;
+        
+        const contentDiv = document.createElement("div");
+        contentDiv.innerHTML = `
+            <div style="font-weight:bold; color:var(--border-gold); margin-bottom:8px; border-bottom:1px solid #3a3d52; padding-bottom:6px;">
+                ✦ 天道結算提示：${p.operation}
+            </div>
+            <div style="font-size:0.85rem; margin-bottom:12px; line-height:1.6;">
+                <span style="color:var(--hl-cyan);">✚ 收入靈石：${r.credit}</span> ｜ 
+                <span style="color:var(--accent-red);">➖ 支出靈石：${r.debit}</span><br>
+                <span style="color:var(--accent-green);">✚ 獲得物品：${r.adds.length ? r.adds.map(i => i.name + " x" + i.quantity).join("、") : "無"}</span><br>
+                <span style="color:#aaa;">➖ 失去物品：${r.removes.length ? r.removes.map(i => i.name + " x" + i.quantity).join("、") : "無"}</span>
+            </div>
+        `;
+        el.appendChild(contentDiv);
+
+        const btnBox = document.createElement("div");
+        btnBox.style.display = "flex"; 
+        btnBox.style.gap = "8px";
+
+        const btnConfirm = document.createElement("button");
+        btnConfirm.className = "choice-btn";
+        btnConfirm.style.flex = "1";
+        btnConfirm.style.background = "var(--border-gold)";
+        btnConfirm.style.color = "#000";
+        btnConfirm.textContent = "✓ 接受結算";
+        btnConfirm.disabled = !!isTyping;
+        btnConfirm.onclick = () => confirmEconomyProposal(p.id);
+
+        const btnCancel = document.createElement("button");
+        btnCancel.className = "choice-btn";
+        btnCancel.style.flex = "1";
+        btnCancel.style.background = "#4a1515";
+        btnCancel.style.color = "#fff";
+        btnCancel.textContent = "✕ 拒絕並撤回";
+        btnCancel.disabled = !!isTyping;
+        btnCancel.onclick = () => cancelEconomyProposal(p.id);
+
+        btnBox.appendChild(btnConfirm);
+        btnBox.appendChild(btnCancel);
+        el.appendChild(btnBox);
     }
     function createSellIntent(s,nameOrItem,quantity) {
         const item = nameOrItem && typeof nameOrItem === 'object'
@@ -4281,9 +4334,11 @@ JSON 輸出格式範例：
         
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`, {
             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
+        }).catch(e => {
+            throw new Error(`天機遮蔽，神念無法傳達 (網路連線或API被阻擋，請檢查連線。原錯誤: ${e.message})`);
         });
 
-        if (!res.ok) throw new Error(`API 請求失敗`);
+        if (!res.ok) throw new Error(`天道反噬 (API 請求失敗，狀態碼：${res.status})`);
         const data = await res.json();
         return data.candidates?.[0]?.content?.parts?.[0]?.text || "天道無回應...";
     }
@@ -4464,8 +4519,9 @@ JSON 輸出格式範例：
             appendLogData("天道", storyText, "ai", false, true);
             for(const r of gameState.economy?.receipts || []) if(!(stateBeforeAction.economy?.receipts||[]).some(old=>old.id===r.id)) publishEconomyReceipt(r);
             finishEconomySummary(gameState,stateBeforeAction,eventMeta.sourceId);
-            if(gameState.lastEconomySummary && (gameState.lastEconomySummary.receiptIds||[]).length) appendLogData("系統",formatEconomySummary(gameState.lastEconomySummary),"system",false,true);
-            if(gameState.lastEconomyWarning) appendLogData("系統",`【敘事核對提醒】${gameState.lastEconomyWarning}`,"system",false,true);
+            // 已依設定隱藏每輪對話日誌重複結算提示
+            // if(gameState.lastEconomySummary && (gameState.lastEconomySummary.receiptIds||[]).length) appendLogData("系統",formatEconomySummary(gameState.lastEconomySummary),"system",false,true);
+            // if(gameState.lastEconomyWarning) appendLogData("系統",`【敘事核對提醒】${gameState.lastEconomyWarning}`,"system",false,true);
             checkLifeStatus(gameState);
         } catch (error) {
             gameState = stateBeforeAction;
