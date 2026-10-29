@@ -1476,10 +1476,10 @@
         '傳承玉簡': { id:'knowledge_legacy_slip', type:'knowledge', category:'典籍', canDisassemble:false, canSell:false, canDrop:false, desc:'傳承類玉簡；若實際用途為開啟秘境，應另登錄為鑰匙憑證。' },
         '任務令牌': { id:'quest_token_generic', type:'special', category:'任務／劇情物品', isQuestItem:true, canDisassemble:false, canSell:false, canDrop:false },
         '未鑑定古戒': { id:'unidentified_ancient_ring', type:'unidentified', category:'未鑑定物', canDisassemble:false, canSell:false, canDrop:false, identified:false },
-        '神祕古戒': { id:'unidentified_mysterious_ring', type:'unidentified', category:'未鑑定物', canDisassemble:false, canSell:false, canDrop:false, identified:false },
+        '神祕古戒': { id:'unidentified_mysterious_ring', type:'unidentified', category:'未鑑定物', canDisassemble:false, canSell:false, canDrop:false, identified:false, desc:'未鑑定的家傳古戒。持有時血脈微弱共鳴：體魄+1、悟性+1、機緣+1、生命上限+5。' },
         // 鑑定產物也必須正式登錄；否則 addItemToInventory 會把它當未知物並封鎖交易權限。
-        '神祕古戒古寶': { id:'identified_mysterious_ring', type:'equipment', category:'飾品', slot:'accessory', grade:'主宰器', rank:'主宰器', gradeIndex:11, sealLevel:1, maxSealLevel:10, identified:true, canDisassemble:false, canSell:false, canDrop:false, value:1000, desc:'已鑑定的古戒（上古主宰器）。' },
-        '遠古戒指古寶': { id:'identified_ancient_ring', type:'equipment', category:'飾品', slot:'accessory', grade:'主宰器', rank:'主宰器', gradeIndex:11, sealLevel:1, maxSealLevel:10, identified:true, canDisassemble:false, canSell:false, canDrop:false, value:1000, desc:'已鑑定的古戒（上古主宰器）。' },
+        '神祕古戒古寶': { id:'identified_mysterious_ring', type:'equipment', category:'飾品', slot:'accessory', grade:'主宰器', rank:'主宰器', gradeIndex:11, sealLevel:1, maxSealLevel:10, identified:true, canDisassemble:false, canSell:false, canDrop:false, value:1000, desc:'上古主宰器：裝備後依解封重數獲得六維屬性與生命上限加成；每重增加力量1、體魄2、敏捷1、悟性2、神識1、機緣1、生命20。' },
+        '遠古戒指古寶': { id:'identified_ancient_ring', type:'equipment', category:'飾品', slot:'accessory', grade:'主宰器', rank:'主宰器', gradeIndex:11, sealLevel:1, maxSealLevel:10, identified:true, canDisassemble:false, canSell:false, canDrop:false, value:1000, desc:'上古主宰器：裝備後依解封重數獲得六維屬性與生命上限加成；每重增加力量1、體魄2、敏捷1、悟性2、神識1、機緣1、生命20。' },
         '乾糧': { id:'food_ration', type:'consumable', category:'食物／飲水', canDisassemble:false, canSell:true, canDrop:true },
         '清水': { id:'food_water', type:'consumable', category:'食物／飲水', canDisassemble:false, canSell:true, canDrop:true },
         '基礎靈材碎屑': { id:'material_shard_basic', type:'material', category:'材料', canDisassemble:false, canSell:true, canDrop:true, value:5 },
@@ -2166,6 +2166,21 @@
         return { name: "尋常之地", hpMult: 1.0, expPerDay: 1, fatigueCost: 15 };
     }
 
+    // V6.66 古戒：未鑑定時提供微弱的血脈共鳴；鑑定裝備後依封印階段增強。
+    function getAncientRingBonus(item, equipped = false) {
+        if (!item || !['神祕古戒','神祕古戒古寶','遠古戒指古寶'].includes(cleanNameStrict(item.name))) return null;
+        if (item.identified === false || item.type === 'unidentified') {
+            return { str:0, con:1, agi:0, int:0, wis:1, luk:1, hp:5, stage:0 };
+        }
+        if (!equipped) return null;
+        const stage = Math.max(1, Math.min(10, Math.floor(Number(item.sealLevel) || 1)));
+        return { str:stage, con:stage * 2, agi:stage, int:stage, wis:stage * 2, luk:stage, hp:20 * stage, stage };
+    }
+    function getAncientRingPassive(s) {
+        // 未鑑定戒指只給一次被動效果；鑑定後必須裝備才會得到較強的屬性。
+        const ring = (s.inventory || []).find(i => cleanNameStrict(i.name) === '神祕古戒' && i.identified === false);
+        return ring ? getAncientRingBonus(ring) : null;
+    }
     function getStatBreakdown(s = gameState) {
         const base = s.stats || { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 };
         const bonus = { str: 0, con: 0, agi: 0, int: 0, wis: 0, luk: 0 };
@@ -2189,6 +2204,12 @@
             }
         });
 
+        const passiveRing = getAncientRingPassive(s);
+        if (passiveRing) for (const stat of ['str','con','agi','int','wis','luk']) bonus[stat] += passiveRing[stat];
+        Object.values(s.equipment || {}).forEach(eq => {
+            const ring = getAncientRingBonus(eq, true);
+            if (ring) for (const stat of ['str','con','agi','int','wis','luk']) bonus[stat] += ring[stat];
+        });
         const phyMeta = getPhysiqueMeta(s.physique);
         if (phyMeta.str) bonus.str += phyMeta.str;
         if (phyMeta.con) bonus.con += phyMeta.con;
@@ -2242,6 +2263,9 @@
                 if (meta.hpBonus) eqHp += meta.hpBonus;
             }
         });
+        const passiveRing = getAncientRingPassive(s);
+        if (passiveRing) eqHp += passiveRing.hp;
+        Object.values(s.equipment || {}).forEach(eq => { const ring = getAncientRingBonus(eq, true); if (ring) eqHp += ring.hp; });
         const phyMeta = getPhysiqueMeta(s.physique);
         let rawHp = Math.floor((realmDef.maxHp + kfHp + eqHp) * (phyMeta.hpMult || 1.0));
         
@@ -2336,7 +2360,7 @@
                 const currentSeal = Math.max(1, Math.min(10, Number(item.sealLevel) || 1));
                 if (currentSeal < 10) {
                     item.sealLevel = currentSeal + 1;
-                    item.desc = `上古主宰器（第 ${item.sealLevel}/10 重解封）：隨著突破大境界將逐步解封主宰威能。`;
+                    item.desc = `上古主宰器（第 ${item.sealLevel}/10 重解封）：裝備後六維屬性及生命上限依解封重數增強。`;
                     appendLogData("天道", `✦ 【古戒共鳴】隨著你修為突破至「${s.realm}」，神祕古戒解開第 ${item.sealLevel} 重封印，主宰威壓大增！`, "system", false, true);
                 }
             }
@@ -2790,13 +2814,13 @@
                     name: '神祕古戒古寶', quantity: 1, identified: true, grade: '主宰器', rank: '主宰器', gradeIndex: 11,
                     sealLevel: 1, maxSealLevel: 10, type: 'equipment', category: '飾品', slot: 'accessory',
                     canDisassemble: false, canSell: false, canDrop: false, itemId: 'identified_mysterious_ring',
-                    desc: '上古主宰器（第 1/10 重解封）：隨著突破大境界將逐步解封主宰威能。'
+                    desc: '上古主宰器（第 1/10 重解封）：裝備後六維與生命加成隨解封增強。'
                 },
                 'unidentified_ancient_ring': {
                     name: '遠古戒指古寶', quantity: 1, identified: true, grade: '主宰器', rank: '主宰器', gradeIndex: 11,
                     sealLevel: 1, maxSealLevel: 10, type: 'equipment', category: '飾品', slot: 'accessory',
                     canDisassemble: false, canSell: false, canDrop: false, itemId: 'identified_ancient_ring',
-                    desc: '上古主宰器（第 1/10 重解封）：隨著突破大境界將逐步解封主宰威能。'
+                    desc: '上古主宰器（第 1/10 重解封）：裝備後六維與生命加成隨解封增強。'
                 }
             };
             const sourceDefinition = getCanonicalItemDefinition(invItem);
@@ -4137,7 +4161,7 @@ JSON 輸出格式範例：
         const request={eventId:"PROPOSAL:"+sourceId,sourceKey:"CLAIM:"+sourceKey,parentId:sourceId,kind:"turn",credit,debit:economyInteger((delta<0?-delta:0)+fee,"total debit"),adds,removes};
         settleEconomy(structuredClone(s),request,ECONOMY_AUTHORITY);
         const operationLabel={reward:"回合獎勵",consolation:"失敗補償",exchange:"物品交換",craft:"材料製作",loss:"物品／靈石損失",purchase:"購買",auction:"拍賣競標"}[op.kind]||op.kind;
-        return {id:request.eventId,sourceKey,operation:operationLabel,request,location:String(s.location||""),inventorySnapshot:inventorySnapshot(s),balance:s.spiritStone,status:"pending"};
+        return {id:request.eventId,sourceKey,operation:operationLabel,kind:op.kind,request,location:String(s.location||""),inventorySnapshot:inventorySnapshot(s),balance:s.spiritStone,status:"pending"};
     }
     function approveEconomyProposal(s,id) {
         const p=s.pendingEconomyProposal;
@@ -4343,7 +4367,18 @@ JSON 輸出格式範例：
         ensureEconomyState(result);
         result.economy.appliedSources=result.economy.appliedSources||[];
         result.economy.appliedSources.push(sourceId);
-        if(proposal)result.pendingEconomyProposal=proposal;
+        if (proposal) {
+            // 僅純獎勵及失敗補償免按確認；經過 settleEconomy 的完整驗證，且保留來源防重領。
+            const autoReward = ['reward','consolation'].includes(proposal.kind)
+                && proposal.request.debit === 0 && proposal.request.removes.length === 0;
+            if (autoReward) {
+                result.pendingEconomyProposal = proposal;
+                const receipt = approveEconomyProposal(result, proposal.id);
+                result.lastAutoEconomyReceipt = { operation: proposal.operation,
+                    credit: proposal.request.credit, adds: structuredClone(proposal.request.adds),
+                    eventId: proposal.id };
+            } else result.pendingEconomyProposal = proposal;
+        }
         if(result.pendingTradeOffer?.type==="SELL")bindSellQuote(result,result.pendingTradeOffer,eventMeta);
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
         result.version="6.34";
@@ -4351,6 +4386,7 @@ JSON 輸出格式範例：
         return result;
     }
 
+    // V6.66: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
     async function callGeminiApi(apiKey, sceneRepair = null) {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
