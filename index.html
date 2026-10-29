@@ -317,6 +317,21 @@
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showItemLifecycleE2EResults()">✦ 執行物品生命週期 E2E 測試</button>
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showSaveTradeRegressionResults()">✦ V6.61 存檔往返／交易異常測試</button>
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showLongTermStressResults()">✦ V6.63 多角色長期壓力測試（400 筆交易）</button>
+            <section id="live-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #a78649;border-radius:8px;background:#171922;">
+  <h2 style="margin:0 0 8px;color:#ffd27a;">✦ 真實 Gemini 連續遊玩驗證</h2>
+  <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;margin:4px 0 9px;">直接呼叫所設定的 Gemini 模型（不是模擬回應）。測試會暫時使用隔離角色與測試靈石，結束後恢復原存檔。可能產生 API 用量／費用；測試期間請勿另開同一遊戲存檔操作。</p>
+  <label for="live-qa-turns" style="font-size:.8rem">測試長度：</label>
+  <select id="live-qa-turns" style="margin-bottom:8px;width:100%;padding:7px;border:1px solid #555;background:#242834;color:#fff;">
+    <option value="8">8 回合：出身、劇情、NPC、戰鬥、採集</option>
+    <option value="12" selected>12 回合：加測商店交易與後續狀態</option>
+  </select>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <button id="live-qa-start" class="sys-btn" style="flex:2;min-width:120px;" onclick="startLiveGeminiQA()">▶ 開始真實測試</button>
+    <button id="live-qa-stop" class="sys-btn" style="flex:1;min-width:80px;" onclick="stopLiveGeminiQA()" disabled>停止</button>
+    <button id="live-qa-export" class="sys-btn" style="flex:1;min-width:100px;" onclick="exportLiveGeminiQA()" disabled>↧ 匯出報告</button>
+  </div>
+  <div id="live-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.79rem;line-height:1.6;padding:8px;margin-top:8px;border-radius:5px;background:#0d1019;color:#c8ddcc;max-height:260px;overflow:auto;">尚未執行。請先在上方設定 API Key 與模型。</div>
+</section>
             <h2 style="margin-top:10px;">▣ 行動結算診斷</h2>
             <div id="action-diagnostic-panel" style="padding:9px;margin:8px 0;border:1px solid #414456;border-radius:6px;font-size:0.78rem;color:#bdc3d2;white-space:pre-wrap;overflow-wrap:anywhere;">尚無測試紀錄。</div>
             <h2 style="margin-top:10px;">▣ 存檔管理</h2>
@@ -4493,6 +4508,7 @@ JSON 輸出格式範例：
     // V6.68: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
     // V6.67: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
     async function callGeminiApi(apiKey, sceneRepair = null, repairKind = 'scene') {
+        if (__liveQaRuntime?.active) __liveQaRuntime.currentCalls++;
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
         const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
@@ -4523,7 +4539,9 @@ JSON 輸出格式範例：
         if(!res)throw new Error(`網路連線失敗，重試後仍無法取得回應 (${String(lastNetworkError?.message||"網路中斷").slice(0,100)})`);
         if(!res.ok)throw new Error(`AI 服務暫時繁忙，重試後仍回傳狀態碼 ${res.status}。`);
         const data=await res.json();
-        return (data.candidates?.[0]?.content?.parts||[]).map(part=>part.text||"").join("") || "天道無回應...";
+        const __liveQaText=(data.candidates?.[0]?.content?.parts||[]).map(part=>part.text||"").join("") || "天道無回應...";
+        if (__liveQaRuntime?.active) __liveQaRuntime.responses.push({kind:sceneRepair?repairKind:"initial",status:res.status,text:__liveQaText});
+        return __liveQaText;
     }
 
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
@@ -5442,6 +5460,163 @@ JSON 輸出格式範例：
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(tabId).classList.add('active'); btn.classList.add('active');
     }
+
+    // Optional, user-triggered real Gemini QA. Runs a disposable test character through sendAction.
+    // Never exports or modifies the Gemini API key. Restores the user's save after the run.
+    let __liveQaRuntime = null;
+    let __liveQaReport = null;
+    const LIVE_QA_BACKUP_KEY = "blade_live_qa_recover_v1";
+    const LIVE_QA_CASES = [
+        {group:"出身", action:"3 落魄少主。依照遊戲身世規則選定出身，從破廟開始我的旅程。"},
+        {group:"突破", action:"我在破廟靜心感應天地靈氣，嘗試首次引氣入體，確定成功後再進行後續故事。"},
+        {group:"場景", action:"我從破廟出發，走到青石鎮市集；請在故事末尾明確交代我實際所處位置。"},
+        {group:"NPC 建立", action:"我在青石鎮市集結識名叫沈伯的藥鋪掌櫃，互相交換姓名，約定日後長期合作，請記住這段持續關係。"},
+        {group:"NPC 連續", action:"我再次找到先前認識的藥鋪掌櫃，提起我們的長期合作約定，詢問昨日山道出現異獸的傳聞；本次不交易。"},
+        {group:"採集", action:"我離開市集，在附近安全山坡搜尋一株常見靈草。只有真正採集成功，才把靈草加入背包；不消耗靈石或材料。"},
+        {group:"戰鬥", action:"山道有一頭兇猛野狼撲來，我嘗試舉臂格擋並反擊；若確實被擊中受傷，請在 hpDelta 中結算負數傷害，不得只寫受傷文字。"},
+        {group:"逃離", action:"若危險仍在，我立刻逃回青石鎮安全地帶並確認是否仍負傷；若成功脫離，請將 activeThreats 更新為空。"},
+        {group:"NPC 後續", action:"我去探望曾經約定長期合作的沈伯，請他看一眼我在山道上的遭遇，詢問能否找到療傷線索。"},
+        {group:"商店詢價", action:"我來到青石鎮藥鋪，詢問普通聚氣丹一枚的合理靈石價格。現在只詢價，不交付靈石也不交付物品。"},
+        {group:"物品交易", action:"我決定在青石鎮藥鋪購買一枚普通聚氣丹，價格若合理且不超過20靈石則提出正確的購買交易供我確認；不要在確認前直接入帳。"},
+        {group:"狀態連續", action:"請整理我目前所處的場景、已認識的人物和剛才是否真正成交，接著自然延續劇情；不要憑空新增物品、人物關係或靈石。"}
+    ];
+    function liveQaEl(id){return document.getElementById(id);}
+    function liveQaProgress(msg){const el=liveQaEl('live-qa-progress');if(el){el.textContent=msg;el.scrollTop=el.scrollHeight;}}
+    function liveQaSnapshot(){return {
+        state:structuredClone(gameState),logs:structuredClone(storyLogData),history:structuredClone(conversationHistory),
+        save:localStorage.getItem('blade_v600_save'),legacy:localStorage.getItem('blade_v503_save')
+    };}
+    function liveQaRestoreSavedText(key,raw){if(raw===null)localStorage.removeItem(key);else localStorage.setItem(key,raw);}
+    function liveQaRestore(snapshot){
+        if(!snapshot) return;
+        liveQaRestoreSavedText('blade_v600_save',snapshot.save);
+        liveQaRestoreSavedText('blade_v503_save',snapshot.legacy);
+        gameState=structuredClone(snapshot.state);
+        storyLogData=structuredClone(snapshot.logs);
+        conversationHistory=structuredClone(snapshot.history);
+        isTyping=false;stopLoadingAnim();renderUI();renderStoryLogs();
+    }
+    function liveQaSanitize(s){
+        const key=document.getElementById('api-key')?.value?.trim() || localStorage.getItem('blade_api_key') || '';
+        return typeof s==='string' && key.length>=8 ? s.split(key).join('[REDACTED]') : s;
+    }
+    function liveQaStateBrief(s){
+        return {
+            hp:s.hp,maxHp:getMaxHp(s),stones:s.spiritStone,location:String(s.location||''),mode:s.scenarioMode,
+            threats:structuredClone(s.activeThreats||[]),
+            npcs:Object.values(s.npcRegistry||{}).map(n=>({name:n.name,alive:n.is_alive,relationship:n.relationship,location:n.location})),
+            items:(s.inventory||[]).map(i=>({name:i.name,quantity:i.quantity,itemId:i.itemId,identified:i.identified})),
+            pending:s.pendingEconomyProposal?{kind:s.pendingEconomyProposal.kind,credit:s.pendingEconomyProposal.request?.credit,debit:s.pendingEconomyProposal.request?.debit,adds:s.pendingEconomyProposal.request?.adds}:null,
+            tradeOffer:s.pendingTradeOffer?{type:s.pendingTradeOffer.type,item_name:s.pendingTradeOffer.item_name,price:s.pendingTradeOffer.price}:null,
+            telemetry:structuredClone(s.actionTelemetry||{})
+        };
+    }
+    function liveQaInventorySignature(x){return JSON.stringify(x.items.map(i=>[i.name,i.quantity,i.itemId]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));}
+    function liveQaRestoreInterrupted(){
+        const raw=localStorage.getItem(LIVE_QA_BACKUP_KEY);
+        if(!raw) return false;
+        try {
+            const stored=JSON.parse(raw);
+            liveQaRestoreSavedText('blade_v600_save',stored.save??null);
+            liveQaRestoreSavedText('blade_v503_save',stored.legacy??null);
+            localStorage.removeItem(LIVE_QA_BACKUP_KEY);
+            liveQaProgress('偵測到上次真實測試意外中斷，已從備份恢復原存檔。請重新載入遊戲確認。');
+            return true;
+        } catch(e){liveQaProgress('測試備份回復失敗，請勿重置遊戲：'+String(e.message));return false;}
+    }
+    async function startLiveGeminiQA(){
+        if(__liveQaRuntime?.active || isTyping) return;
+        const key=document.getElementById('api-key').value.trim() || localStorage.getItem('blade_api_key');
+        if(!key){openGameModal('未設定 Gemini Key','請在系統頁面設定 API Key；金鑰不會放進測試報告。');return;}
+        const turns=Number(liveQaEl('live-qa-turns')?.value||12);
+        if(!confirm(`此測試會呼叫真實 Gemini API，執行 ${turns} 回合，錯誤修補可能產生額外請求及計費。測試會暫存現有遊戲存檔並切換至測試角色，結束後恢復；測試期間不要在其他分頁操作相同存檔。確定開始？`))return;
+        let snapshot;
+        try {
+            snapshot=liveQaSnapshot();
+            // Persistent recovery backup excludes any API key or personal secret.
+            localStorage.setItem(LIVE_QA_BACKUP_KEY,JSON.stringify({save:snapshot.save,legacy:snapshot.legacy}));
+        } catch(e){openGameModal('無法安全啟動測試','原存檔備份失敗，本次不執行：'+e.message);return;}
+        const rt={active:true,stop:false,responses:[],currentCalls:0,startedAt:new Date().toISOString(),rounds:[],lastMessage:''};
+        __liveQaRuntime=rt;
+        __liveQaReport=null;
+        liveQaEl('live-qa-start').disabled=true;
+        liveQaEl('live-qa-stop').disabled=false;
+        liveQaEl('live-qa-export').disabled=true;
+        const progress=[];
+        try {
+            gameState=getDefaultGameState();
+            conversationHistory=[];
+            storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
+            isTyping=false;
+            renderUI();renderStoryLogs();
+            for(let i=0;i<turns;i++){
+                if(rt.stop){progress.push(`第 ${i+1} 回合前：使用者停止測試。`);break;}
+                const current=LIVE_QA_CASES[i];
+                if(i===1)gameState.spiritStone=300; // Explicit isolated test fixture; not an AI-granted reward.
+                const before=liveQaStateBrief(gameState), callsStart=rt.currentCalls, responseStart=rt.responses.length;
+                const logsStart=storyLogData.length;
+                await sendAction(current.action,{actionType:current.group==='戰鬥'?'combat':'qa',qaTest:true});
+                const after=liveQaStateBrief(gameState);
+                const succeeded=Number(after.telemetry.completed||0)>Number(before.telemetry.completed||0);
+                let approval=null;
+                if(succeeded && gameState.pendingEconomyProposal){
+                    const p=gameState.pendingEconomyProposal;
+                    const req=p.request||{};
+                    // Only auto-approve in the disposable QA state, under a tight price threshold.
+                    const eligible=['reward','consolation'].includes(p.kind) || (p.kind==='purchase' && Number(req.debit||0)<=20 && Number(req.debit||0)>=0 && (!req.removes||!req.removes.length));
+                    if(eligible){
+                        try{approveEconomyProposal(gameState,p.id);approval={kind:p.kind,success:true};saveGameState();renderUI();}
+                        catch(e){approval={kind:p.kind,success:false,error:e.message};}
+                    } else approval={kind:p.kind,success:false,reason:'安全限制：未自動核准此提案'};
+                }
+                const finalState=liveQaStateBrief(gameState);
+                const raw=rt.responses.slice(responseStart).map(x=>({...x,text:liveQaSanitize(x.text)}));
+                const story=storyLogData.slice(logsStart).filter(x=>x.type==='ai').map(x=>x.content).join('\n');
+                const injuryText=hasConfirmedPlayerInjury(story);
+                const hpChanged=Number(finalState.hp)-Number(before.hp);
+                const record={turn:i+1,group:current.group,action:current.action,succeeded,apiCalls:rt.currentCalls-callsStart,
+                    responses:raw,story:liveQaSanitize(story),before,after:finalState,
+                    hpDeltaActual:hpChanged,injuryInStory:injuryText,
+                    injuryMismatch:injuryText&&hpChanged>=0,
+                    itemChanged:liveQaInventorySignature(before)!==liveQaInventorySignature(finalState),
+                    npcChanged:JSON.stringify(before.npcs)!==JSON.stringify(finalState.npcs),
+                    approval, failure:!succeeded?(finalState.telemetry.recent||[]).slice(-1)[0]?.reason:null};
+                rt.rounds.push(record);
+                progress.push(`${i+1}/${turns} ${current.group}：${succeeded?'成功':'未完成'}｜API 回應 ${raw.length} 則｜HP ${before.hp}→${finalState.hp}｜靈石 ${before.stones}→${finalState.stones}${record.failure?'｜'+record.failure.slice(0,52):''}`);
+                liveQaProgress(progress.join('\n'));
+                if(gameState.isDead){progress.push('角色死亡，已停止後續流程。');break;}
+            }
+        }catch(e){rt.unexpectedError=liveQaSanitize(String(e?.message||e));progress.push('測試程序中斷：'+rt.unexpectedError);}
+        finally {
+            rt.active=false;
+            const successful=rt.rounds.filter(r=>r.succeeded).length;
+            const failures=rt.rounds.length-successful;
+            const repairs=rt.rounds.filter(r=>r.apiCalls>1).length;
+            __liveQaReport={tool:'九州裂天錄 V6.68 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+                startedAt:rt.startedAt,finishedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
+                completedRounds:rt.rounds.length,successfulRounds:successful,failedRounds:failures,repairedRounds:repairs,
+                apiInvocations:rt.currentCalls,interrupted:Boolean(rt.stop||rt.unexpectedError),unexpectedError:rt.unexpectedError||null,
+                note:'原始文字／NPC 劇情連續性仍需人工審查。API 金鑰不會匯出。已自動回復玩家原存檔。',rounds:rt.rounds};
+            try {liveQaRestore(snapshot);localStorage.removeItem(LIVE_QA_BACKUP_KEY);}
+            catch(e){progress.push('注意：原存檔回復失敗，請重新載入頁面啟動自動回復：'+e.message);}
+            __liveQaRuntime=null;
+            liveQaEl('live-qa-start').disabled=false;
+            liveQaEl('live-qa-stop').disabled=true;
+            liveQaEl('live-qa-export').disabled=false;
+            progress.push(`完成：${successful}/${rt.rounds.length} 回合成功；${failures} 回合未完成；${repairs} 回合有追加 Gemini 修補請求。`);
+            progress.push('原本角色與存檔已回復。按「匯出報告」取得完整逐回合原始回應與結算對照。');
+            liveQaProgress(progress.join('\n'));
+        }
+    }
+    function stopLiveGeminiQA(){if(__liveQaRuntime?.active){__liveQaRuntime.stop=true;liveQaProgress('已請求停止：目前正在送出的 Gemini 請求結束後停止並還原存檔。');}}
+    function exportLiveGeminiQA(){
+        if(!__liveQaReport)return;
+        const blob=new Blob([JSON.stringify(__liveQaReport,null,2)],{type:'application/json;charset=utf-8'});
+        const url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download='九州裂天錄_真實Gemini回歸測試_'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    document.addEventListener('DOMContentLoaded',()=>{liveQaRestoreInterrupted();});
 
     document.addEventListener("DOMContentLoaded", () => {
         if (localStorage.getItem("blade_api_key")) document.getElementById("api-key").value = localStorage.getItem("blade_api_key");
