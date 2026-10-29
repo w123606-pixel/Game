@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 行動容錯與連續性修正版 V6.68</title>
+    <title>九州裂天錄 - 突破交易與 Gemini 效能修正版 V6.69</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -319,7 +319,7 @@
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showLongTermStressResults()">✦ V6.63 多角色長期壓力測試（400 筆交易）</button>
             <section id="live-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #a78649;border-radius:8px;background:#171922;">
   <h2 style="margin:0 0 8px;color:#ffd27a;">✦ 真實 Gemini 連續遊玩驗證</h2>
-  <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;margin:4px 0 9px;">直接呼叫所設定的 Gemini 模型（不是模擬回應）。測試會暫時使用隔離角色與測試靈石，結束後恢復原存檔。可能產生 API 用量／費用；測試期間請勿另開同一遊戲存檔操作。</p>
+  <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;margin:4px 0 9px;">直接呼叫 Gemini 模型。隔離角色在<strong>測試開始前</strong>取得 300 顆測試靈石；突破前設定修為圓滿，但<strong>仍必須走突破按鈕</strong>。每次 HTTP 嘗試與耗時都會記錄；測試結束後恢復原存檔。可能產生 API 用量／費用；請勿同時多分頁操作。</p>
   <label for="live-qa-turns" style="font-size:.8rem">測試長度：</label>
   <select id="live-qa-turns" style="margin-bottom:8px;width:100%;padding:7px;border:1px solid #555;background:#242834;color:#fff;">
     <option value="8">8 回合：出身、劇情、NPC、戰鬥、採集</option>
@@ -3125,6 +3125,7 @@
 
     function attemptBreakthrough() {
         if (gameState.isDead) return;
+        if (!gameState.hasChosenOrigin) {openGameModal("✦ 尚未選擇身世", "請先完成身世問心。 ");return;}
         if (getEffectiveMode(gameState) === "DANGER" || (Array.isArray(gameState.activeThreats) && gameState.activeThreats.length > 0)) {
             openGameModal("✦ 無法突破", "目前仍處於戰鬥或生死危機中，請先脫離危險、清除威脅後再行突破。");
             return;
@@ -3138,8 +3139,14 @@
         const linggenMeta = getLinggenMeta(gameState.linggen || "真靈根");
         const insightBonus = Math.min(0.35, Math.max(0, Number(gameState.breakthroughInsight) || 0));
         const baseRate = Math.max(0.12, Math.min(0.88, (Number(nextDef.baseRate) || 0.5) + (Number(linggenMeta.breakBonus) || 0) + insightBonus));
-        const isSuccess = Math.random() < baseRate;
-        sendAction(`【盤膝運功，衝擊突破至「${nextDef.name}」境界！成功率 ${Math.round(baseRate * 100)}%，突破感悟加成 ${Math.round(insightBonus * 100)}%】`, { isBreakthrough: true, breakthroughSuccess: isSuccess, breakthroughRate: baseRate });
+        // V6.69: the first qi-entry tutorial guarantee applies ONLY when the player presses this button.
+        const firstQi = gameState.hasChosenOrigin === true && Number(gameState.level) === 0 && gameState.realm === "凡人";
+        const effectiveRate = firstQi ? 1 : baseRate;
+        const isSuccess = firstQi || Math.random() < baseRate;
+        return sendAction(`【按下突破按鈕，盤膝運功衝擊「${nextDef.name}」；核心成功率 ${Math.round(effectiveRate * 100)}%】`, {
+            isBreakthrough:true,breakthroughSuccess:isSuccess,breakthroughRate:effectiveRate,
+            actionType:"breakthrough",firstQiEntry:firstQi,fromBreakthroughButton:true
+        });
     }
 
     // 身世初始化（不提前顯化資質，改為記錄保底背景，並由前端鎖定防古戒重複發放）
@@ -3670,7 +3677,7 @@ JSON 輸出格式範例：
                     status: isDead ? "DEAD" : (entry.status || prev.status || "ALIVE"),
                     relationship: {
                         ...(prev.relationship || {}), ...(entry.relationship || {}),
-                        favorability: Math.max(-100, Math.min(100, Number((entry.relationship && entry.relationship.favorability) ?? (prev.relationship && prev.relationship.favorability) ?? 0) || 0)),
+                        favorability: Math.max(-100, Math.min(100, Number((entry.relationship && entry.relationship.favorability) ?? entry.favorability ?? (prev.relationship && prev.relationship.favorability) ?? 0) || 0)),
                         awe: Math.max(0, Math.min(100, Number((entry.relationship && entry.relationship.awe) ?? (prev.relationship && prev.relationship.awe) ?? 0) || 0)),
                         profit: Math.max(-100, Math.min(100, Number((entry.relationship && entry.relationship.profit) ?? (prev.relationship && prev.relationship.profit) ?? 0) || 0))
                     },
@@ -4135,6 +4142,47 @@ JSON 輸出格式範例：
         return `【核心結算】下品靈石 +${r.gained}；結算前 ${r.before} → 結算後 ${r.after} 顆。故事文字不另行發獎。`;
     }
 
+    // The model sometimes returns both a quote and an immediate purchase. Never charge/transfer twice;
+    // treat a valid quote as the player's NEXT explicit decision, and never silently approve a higher price.
+    function statedPriceCeiling(text) {
+        const t=String(text||'');
+        const m=t.match(/(?:不超過|最多|上限|至多|最高|不高於|不超出)\s*(\d{1,8})\s*(?:顆|枚|塊)?\s*靈石/);
+        return m?Number(m[1]):null;
+    }
+    function reconcileQuoteVersusSettlement(raw,actionText) {
+        const out=structuredClone(raw);
+        const offer=out.tradeOffer;
+        const limit=statedPriceCeiling(actionText);
+        if(!offer){
+            const proposedPrice=Number(out.economyOperation?.fee||0);
+            if(limit!==null && ['purchase','auction'].includes(out.economyOperation?.kind) && proposedPrice>limit){
+                out.inventoryDelta=[];out.inventoryRemoveDelta=[];out.lostItems=[];
+                out.economyOperation={kind:'reward',fee:0};out.spiritStonesDelta=0;
+                if(out.actionOutcome)out.actionOutcome={...out.actionOutcome,result:'partial',reason:'報價高於玩家預算'};
+                out.story=`店家要求 ${proposedPrice} 顆靈石，超出你設定的 ${limit} 顆預算。尚未成交，也沒有扣除物資。`;
+            }
+            return out;
+        }
+        const price=Number(offer.total_gold);
+        if(limit!==null && price>limit){
+            // Negotiation failure is not an engine failure. No unauthorized funds or goods change.
+            out.tradeOffer=null;out.inventoryDelta=[];out.inventoryRemoveDelta=[];out.lostItems=[];
+            out.spiritStonesDelta=0;out.economyOperation={kind:'reward',fee:0};
+            if(out.actionOutcome)out.actionOutcome={...out.actionOutcome,result:'partial',reason:'商家報價高於玩家上限，未成交'};
+            out.story=`店家開價 ${price} 顆靈石，高於你設定的 ${limit} 顆上限，交易尚未成立。你可另行議價或離開。`;
+            return out;
+        }
+        // If a coherent BUY/SELL quote exists, preserve it as a quote only (never a confirmed transfer).
+        const adds=out.inventoryDelta||[],removes=out.inventoryRemoveDelta||out.lostItems||[];
+        if(adds.length||removes.length||Number(out.spiritStonesDelta||0)||Number(out.economyOperation?.fee||0)){
+            out.inventoryDelta=[];out.inventoryRemoveDelta=[];out.lostItems=[];out.spiritStonesDelta=0;
+            out.economyOperation={kind:'reward',fee:0};
+            // Quote is a proposal; do not leave a story claiming it has already settled.
+            out.story=`店家提出${offer.type==='SELL'?'收購':'出售'}「${offer.item_name}」×${offer.quantity}的整筆報價 ${price} 顆靈石，尚待你確認，物資與靈石均未變動。`;
+        }
+        return out;
+    }
+
     function validateEconomicQuote(o) {
         if(o===undefined||o===null)return;
         if(typeof o!=="object"||Array.isArray(o)||!["BUY","SELL"].includes(String(o.type||"").trim().toUpperCase()))throw new Error("交易類型無效。");
@@ -4328,12 +4376,34 @@ JSON 輸出格式範例：
         }
         confirmTradeOfferV629();if(!gameState.pendingTradeOffer)gameState.pendingSellIntent=null;
     }
+    // V6.69: concise, bounded authoritative context reduces repeated input tokens while retaining SSOT.
     function getSystemPrompt() {
-        return getSystemPromptV629()+`\nV6.33 OVERRIDING ECONOMY CONTRACT: story describes scenes, characters and emotions only. Do not narrate item/currency transfers, amounts, consumption or completed trades. Pure reward/consolation operations with no debit/removes are core-verified and auto-settled; purchase/auction/exchange/craft/loss require explicit player approval. Every item requires an explicit positive integer quantity. Omit fields when unchanged. Every proposal requires economyOperation:{kind:"reward"|"consolation"|"exchange"|"craft"|"loss"|"purchase"|"auction",fee:nonnegative integer}. When buying an item or bidding in an auction, use kind="purchase" or "auction", set fee to the full positive total price in lower-grade spirit stones, and put the exact acquired item(s) in inventoryDelta with name, positive integer quantity and any known tier; do not use tradeOffer for auction-house lots unless the UI explicitly opened a BUY quote. Purchase/auction proposals must be confirmed by the player in the pending proposal UI. Until confirmation, describe only bidding, negotiation, or a pending result; never say "成交", "已付款", "已交付" or that the item is in the inventory. If confirmation fails or the balance is insufficient, the story must not claim the transaction succeeded. Craft/exchange must list complete inventoryRemoveDelta inputs, inventoryDelta outputs and fees; no free outputs. Reward cannot consume inputs. Failure cannot transfer assets except explicit consolation with no inputs or costs, automatically settled after core validation. Currency rewards aggregate cap is 9999; split entries are combined. Zero-price quotes are invalid. Quest rewards must use sourceEntityId from core events and may only be claimed once. SELL quotes must match pendingSellIntent exactly and include counterparty. Quote turns cannot transfer assets. Continue responding in Traditional Chinese.\nPending sell intent: ${JSON.stringify(gameState.pendingSellIntent||null)}`;
+        ensureWorldMemory(gameState);
+        const wm=gameState.worldMemory||{};
+        const canon=JSON.stringify(WORLD_BIBLE);
+        const npcs=Object.values(gameState.npcRegistry||{}).filter(n=>n&&n.is_alive!==false&&n.status!=="DEAD")
+            .slice(-15).map(n=>({id:n.id,name:n.name,title:n.title,location:n.location,trust:n.trust,relationship:n.relationship,knownFacts:(n.knownFacts||[]).slice(-3),goals:(n.goals||[]).slice(0,2)}));
+        const recent=(wm.chronicle||[]).slice(-8);
+        const threads=(wm.openThreads||[]).slice(-8);
+        const inv=(gameState.inventory||[]).map(i=>({name:i.name,quantity:i.quantity,identified:i.identified})).slice(0,45);
+        const snap={realm:gameState.realm,level:gameState.level,exp:gameState.exp,maxExp:gameState.maxExp,hp:gameState.hp,maxHp:getMaxHp(gameState),origin:gameState.originType,linggen:gameState.linggen,physique:gameState.physique,stones:gameState.spiritStone,sect:gameState.sect,location:gameState.location,mode:gameState.scenarioMode,threats:gameState.activeThreats,inventory:inv,npcs,quests:(gameState.quests||[]).slice(-10),pendingSellIntent:gameState.pendingSellIntent||null};
+        return `你是《九州裂天錄》修仙 RPG 的敘事 AI。繁體中文、因果嚴謹、不討好玩家、不憑空送物；遊戲核心資料是唯一真實來源，故事只描寫結果且不得擅自結算。
+【固定世界】${canon}
+【近期真實記憶】${String(wm.recentSummary||'').slice(0,550)}；紀事:${JSON.stringify(recent)}；未結事件:${JSON.stringify(threads)}
+【核心快照 SSOT】${JSON.stringify(snap)}
+【硬性規則】
+1) 不得直接改寫境界、HP、靈石、裝備、人脈或宗門；依規則提交 JSON 提案。**僅按下「突破境界」按鈕觸發突破**，即使玩家文字寫「引氣入體、突破」也只能感悟、修練，不得宣告已入練氣等新境界。若收到「核心突破按鈕已正式判定」才寫出成敗。境界以 SSOT 為準。
+2) NPC 必須沿用 SSOT 身分；未登記 NPC 不可假稱過去已建立關係。路人、一次性商家、普通敵人不進永久登記。只有可持續關係（師徒、重要任務、長期合作）才放 npcDelta.created，附 persistent:true、importance、relationship:{favorability:0,awe:0,profit:0}，獨立 trust(−100..100) 與 knownFacts。updated 僅限既有 NPC。死者不復活。
+3) 傷害命中玩家就回傳負整數 hpDelta 及 hpReason；未受傷回傳 0；NPC 傷亡與場景威脅須一致。不要只在故事裡宣稱 HP 改變。
+4) 每回合都回傳最終 location、scenarioMode(IDLE/DIALOGUE/HAZARD/DANGER)、activeThreats(陣列)。逃離成功且無威脅時清空威脅。每日時間/修為由核心檢查。
+5) 價格詢問、議價、商家反報價：只使用 tradeOffer 或 null，不回傳 inventoryDelta、fee 或付款事實。tradeOffer:{type:"BUY"|"SELL",item_name:"完整名稱",quantity:1,total_gold:正整數,counterparty:"商家"}；價格高於玩家出價上限時，不得改為成交。只有明確下單且價格已確定的購買、拍賣才回傳 economyOperation:{kind:"purchase"|"auction",fee:正整數} 加 inventoryDelta:[{name,quantity:正整數}]，tradeOffer 必須 null；核心待玩家確認，絕不可宣稱已付款。
+6) 合法採集/拾取/任務獎勵：economyOperation:{kind:"reward",fee:0}，inventoryDelta 明確列物品和正整數數量；不可扣材料/費用。煉製、交換須使用 kind:craft 或 exchange，列出投入物品及成本；損失 kind:loss；失敗不得發獎（除純補償 consolation）。物品/靈石不可從故事文字直接入帳；任務獎勵來源必須已由核心登記 (Quest rewards must use sourceEntityId and may only be claimed once)。下品靈石獎勵列 inventoryDelta 中 {name:"下品靈石",quantity:正整數}；不得藉此買賣貨幣。
+7) 堅守 NPC 動機、宗門權限、世界時間線、已登記任務及內在邏輯；以結構化 npcDelta、memoryDelta、quests、techniqueDelta 回傳可持續的新增事實。裝備物品 grade 用凡器/靈器/築基器/金丹器/元嬰器/化神器/返虛器/大乘器/真仙器/太乙器/聖道器/主宰器；一般消耗品與材料可用 tier。
+【輸出】只回傳一個合法 JSON 物件，不加 markdown，不加註解。至少包含：{"story":"約兩至四段故事","actionOutcome":{"result":"success|partial|failure|neutral","risk":"low|medium|high","reason":"理由","costs":[],"consequences":[]},"expDelta":0,"hpDelta":0,"hpReason":"無","daysPassedDelta":0,"inventoryDelta":[],"inventoryRemoveDelta":[],"economyOperation":{"kind":"reward","fee":0},"tradeOffer":null,"npcDelta":{"created":[],"updated":[],"killed":[]},"techniqueDelta":[],"worldEvents":[],"memoryDelta":{"chronicle":[],"openThreads":[],"resolvedThreads":[],"revealedSecrets":[],"worldStateChanges":[],"recentSummary":""},"quests":[],"choices":["選擇一","選擇二"],"location":"最終地點","scenarioMode":"IDLE","activeThreats":[]}。沒發生的增量用空陣列或0。開局身世物品由前端發放，禁止重複發放。`; 
     }
 
 
-    // V6.68: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
+    // V6.69: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
     const REPAIRABLE_SETTLEMENT_ERRORS = [
         "經濟提案須明確指定操作類型", "經濟操作格式無效", "製作或交換不可偽裝為免費獎勵", "純獎勵不可扣材料或費用"
     ];
@@ -4370,6 +4440,11 @@ JSON 輸出格式範例：
         // All AI-proposed goods, identities, quantities, deltas, risks and story retain the original values.
         return {...original,economyOperation:{...(before && typeof before==="object" ? before : {}),kind,fee:savedFee}};
     }
+    let __lastGeminiTimings=[];
+    function recordGeminiTiming(e){
+        __lastGeminiTimings.push({...e,time:new Date().toISOString()});
+        if(__lastGeminiTimings.length>40)__lastGeminiTimings.shift();
+    }
     function updateActionTelemetry(target, success, recovered, errorText) {
         const t=target.actionTelemetry && typeof target.actionTelemetry==="object"?target.actionTelemetry:{};
         t.attempts=(Number(t.attempts)||0)+1;
@@ -4385,8 +4460,33 @@ JSON 輸出格式範例：
         const t=gameState?.actionTelemetry||{};
         const recent=Array.isArray(t.recent)?t.recent.slice(-8):[];
         const lines=[`嘗試：${Number(t.attempts)||0}｜成功：${Number(t.completed)||0}｜自動修補後成功：${Number(t.recovered)||0}｜未完成：${Number(t.failed)||0}`];
+        const recentHttp=__lastGeminiTimings.slice(-6);
+        if(recentHttp.length){
+            lines.push('Gemini 最近請求（毫秒）：');
+            for(const x of recentHttp)lines.push(`  ${x.phase} 第${x.attempt}次｜HTTP ${x.status}｜${x.durationMs}ms｜輸入 ${x.requestChars}字元`);
+        }
         for(const item of recent)lines.push(`${String(item.time||"").slice(0,19)} ${String(item.reason||"").slice(0,160)}`);
         el.textContent=lines.join("\n");
+    }
+
+    // V6.69: Never let a text-only action become a successful breakthrough in story or memory.
+    function guardUnauthorizedBreakthrough(story,delta,s) {
+        const out=structuredClone(delta||{});
+        const forbidden=/(?:正式|成功|終於|已經|已然|一舉|順利|就此).{0,15}(?:踏入|突破至|晉升|晉級|進入|邁入).{0,14}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙|境界|修仙門檻)|(?:突破成功|境界突破|踏入練氣|跨入練氣|成為練氣修士|不再是凡人|正式成為修士)/;
+        let removed=false;
+        const cleaned=String(story||'').split(/(?<=[。！？\n])/).map(sentence=>{
+            if(forbidden.test(sentence)){removed=true;return '';}
+            return sentence;
+        }).join('').trim();
+        if(removed){
+            if(out.memoryDelta && typeof out.memoryDelta==='object') {
+                if(typeof out.memoryDelta.recentSummary==='string' && forbidden.test(out.memoryDelta.recentSummary)) out.memoryDelta.recentSummary='本回合僅感應天地靈氣，未正式突破；境界仍是'+s.realm;
+                for(const key of ['chronicle','worldStateChanges','resolvedThreads','revealedSecrets']) if(Array.isArray(out.memoryDelta[key]))out.memoryDelta[key]=out.memoryDelta[key].filter(v=>!forbidden.test(JSON.stringify(v)));
+            }
+            if(Array.isArray(out.worldEvents))out.worldEvents=out.worldEvents.filter(v=>!forbidden.test(JSON.stringify(v)));
+            if(Array.isArray(out.quests))out.quests=out.quests.filter(v=>!forbidden.test(JSON.stringify(v)));
+        }
+        return {story:removed?((cleaned?cleaned+'\n\n':'')+`你雖有所感悟，但境界依舊是【${s.realm}】；必須修為圓滿且由你按下「突破境界」，才能正式晉級。`):String(story||''),delta:out,corrected:removed};
     }
 
     // V6.67：有限的受傷敘事核對；不從文字猜測扣血數值，也不信任 AI 任意修改生命權威欄位。
@@ -4444,9 +4544,13 @@ JSON 輸出格式範例：
         if(raw.inventoryRemoveDelta!==undefined && !Array.isArray(raw.inventoryRemoveDelta)) throw new Error("扣除物品清單格式無效。");
         if(raw.lostItems!==undefined && !Array.isArray(raw.lostItems)) throw new Error("遺失物品清單格式無效。");
         if(raw.inventoryRemoveDelta && raw.lostItems && raw.lostItems.length) throw new Error("扣除清單重複，請只使用inventoryRemoveDelta。");
-        validateEconomicQuote(raw.tradeOffer); const stoneExpected=validateStoneRewards(raw);
-        const proposal=prepareEconomyProposal(s,raw,eventMeta,sourceId,stoneExpected);
+        validateEconomicQuote(raw.tradeOffer);
+        const normalizedTrade = reconcileQuoteVersusSettlement(raw,eventMeta.actionText||'');
+        const stoneExpected=validateStoneRewards(normalizedTrade);
+        const proposal=prepareEconomyProposal(s,normalizedTrade,eventMeta,sourceId,stoneExpected);
         raw.inventoryDelta=[];raw.inventoryRemoveDelta=[];raw.lostItems=[];raw.spiritStonesDelta=0;
+        raw.tradeOffer=normalizedTrade.tradeOffer;
+        raw.economyOperation=normalizedTrade.economyOperation;
         const bounty=eventMeta && eventMeta.bountyContractId ? (s.bountyContracts||[]).find(c=>c.id===eventMeta.bountyContractId) : null;
         if(eventMeta && eventMeta.bountyContractId && raw.npcDelta) {
             // Narrative cannot settle any death during a bounty response, including upsert bypasses.
@@ -4491,6 +4595,11 @@ JSON 輸出格式範例：
             const autoReward = ['reward','consolation'].includes(proposal.kind)
                 && proposal.request.debit === 0 && proposal.request.removes.length === 0;
             if (autoReward) {
+                // Same-turn movement is allowed for an already core-validated pure reward.
+                // Manual transactions still retain the original location/inventory/balance anti-stale snapshot.
+                proposal.location=String(result.location||'');
+                proposal.inventorySnapshot=inventorySnapshot(result);
+                proposal.balance=result.spiritStone;
                 result.pendingEconomyProposal = proposal;
                 const receipt = approveEconomyProposal(result, proposal.id);
                 result.lastAutoEconomyReceipt = { operation: proposal.operation,
@@ -4500,18 +4609,18 @@ JSON 輸出格式範例：
         }
         if(result.pendingTradeOffer?.type==="SELL")bindSellQuote(result,result.pendingTradeOffer,eventMeta);
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
-        result.version="6.68";
+        result.version="6.69";
         finishEconomySummary(result,currentState,sourceId);
         return result;
     }
 
-    // V6.68: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
+    // V6.69: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
     // V6.67: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
     async function callGeminiApi(apiKey, sceneRepair = null, repairKind = 'scene') {
         if (__liveQaRuntime?.active) __liveQaRuntime.currentCalls++;
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
-        const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
+        const contents = conversationHistory.slice(-6).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: String(m.content||'').slice(-2400) }] }));
         if (sceneRepair) {
             const instruction = repairKind === 'injury'
                 ? 'HP CONSISTENCY REPAIR: The story explicitly describes the PLAYER being injured, but JSON has no negative hpDelta. If injury occurred, supply negative integer hpDelta and hpReason. Otherwise revise only story to an uninjured outcome. Preserve all other fields. Return complete JSON.'
@@ -4522,19 +4631,27 @@ JSON 輸出格式範例：
                 : 'Repair only missing end-of-turn location, scenarioMode and activeThreats. Preserve all other fields exactly. Return complete corrected JSON.';
             contents.push({role:'model',parts:[{text:sceneRepair}]}, {role:'user',parts:[{text:instruction}]});
         }
-        const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() + "\nSCENE SNAPSHOT REQUIRED EVERY TURN: In the state JSON always include location (nonempty current end-of-turn location), scenarioMode (IDLE/DIALOGUE/HAZARD/DANGER), and activeThreats (complete current threats array). Even if unchanged repeat these fields. When combat ends or escape succeeds explicitly send activeThreats:[] and the correct new mode. The story and scene must describe the same final moment. Never use an intended destination, flashback, or NPC location as the player location." }] }, contents: contents };
+        const bodyData = {system_instruction:{parts:[{text:getSystemPrompt()}]},contents,
+            generationConfig:{responseMimeType:'application/json',temperature:0.65,maxOutputTokens:4096}};
         
         const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
         let res=null,lastNetworkError=null;
+        const requestSize=JSON.stringify(bodyData).length;
         for(let attempt=0;attempt<3;attempt++){
+            const began=performance.now();
+            let outcome='network';
             try {
                 res=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bodyData)});
-                lastNetworkError=null;
-            } catch(e){lastNetworkError=e;res=null;}
+                lastNetworkError=null;outcome=res.status;
+            } catch(e){lastNetworkError=e;res=null;outcome='network';}
+            const event={type:repairKind,phase:sceneRepair?repairKind:'initial',attempt:attempt+1,status:outcome,
+                durationMs:Math.round(performance.now()-began),requestChars:requestSize};
+            if(__liveQaRuntime?.active)__liveQaRuntime.httpEvents.push(event);
+            recordGeminiTiming(event);
             if(res?.ok)break;
             if(res && ![429,500,502,503,504].includes(res.status))
                 throw new Error(`天道反噬 (API 請求失敗，狀態碼：${res.status})`);
-            if(attempt<2)await new Promise(resolve=>setTimeout(resolve,600*(2**attempt)));
+            if(attempt<2)await new Promise(resolve=>setTimeout(resolve,650*(2**attempt)));
         }
         if(!res)throw new Error(`網路連線失敗，重試後仍無法取得回應 (${String(lastNetworkError?.message||"網路中斷").slice(0,100)})`);
         if(!res.ok)throw new Error(`AI 服務暫時繁忙，重試後仍回傳狀態碼 ${res.status}。`);
@@ -4557,15 +4674,14 @@ JSON 輸出格式範例：
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
 
-        // V6.25：新手首次引氣入體必須走核心結算，不能只靠 AI 在故事中宣告突破。
-        // 只在已選身世、仍是凡人 Lv.0、且玩家明確嘗試引氣入體時觸發；首次引氣作為新手開局保底成功。
-        const isFirstQiEntryAttempt = !gameState.isDead && gameState.hasChosenOrigin === true &&
-            Number(gameState.level) === 0 && String(gameState.realm || "凡人") === "凡人" &&
-            /(引氣入體|引氣|感應天地靈氣|開始修仙|吸納靈氣入體)/.test(String(actionText));
-        if (isFirstQiEntryAttempt) {
-            eventMeta = { ...(eventMeta || {}), isBreakthrough: true, breakthroughSuccess: true,
-                breakthroughRate: 1, actionType: "breakthrough", firstQiEntry: true };
-            customPromptText = `【遊戲核心已判定：這是角色首次引氣入體，教學階段保底成功。請描寫靈氣入體、開拓氣海並正式進入「${getRealmDef(1).name}」的過程。不得聲稱仍是凡人、不得宣告其他境界或額外突破；不要自行改寫數值。】`;
+        // V6.69: narrative actions cannot grant breakthrough permission. Only the button supplies authorized metadata.
+        if (eventMeta?.isBreakthrough && eventMeta.fromBreakthroughButton !== true)
+            {openGameModal("✦ 突破權限不足", "請使用『突破境界』按鈕。 ");return;}
+        if (eventMeta?.isBreakthrough && (gameState.exp < gameState.maxExp || !gameState.hasChosenOrigin ||
+                getEffectiveMode(gameState) === "DANGER" || (gameState.activeThreats||[]).length))
+            {openGameModal("✦ 突破條件不足", "突破必須修為圓滿、無危機且已選身世。 ");return;}
+        if (eventMeta?.fromBreakthroughButton) {
+            customPromptText = `【核心突破按鈕已正式判定：${eventMeta.breakthroughSuccess?'成功':'失敗'}。${eventMeta.firstQiEntry?'首次引氣入體教學保底成功。':''}只描寫當次判定，不改動天道數值與靈石。】`;
         }
         eventMeta = { ...(eventMeta || {}), eventId: (eventMeta && eventMeta.eventId) || `ACTION:${Date.now()}:${Math.random().toString(36).slice(2,12)}` };
         let promptToSend = customPromptText || actionText;
@@ -4626,6 +4742,16 @@ JSON 輸出格式範例：
                     throw new Error('故事描述角色實際受傷，但未提供有效HP傷害結算，本回合未入帳。');
                 }
                 repairedThisTurn=true;
+            }
+            if (!eventMeta?.fromBreakthroughButton) {
+                const protectedBreakthrough = guardUnauthorizedBreakthrough(storyText,parsedState,gameState);
+                storyText=protectedBreakthrough.story;
+                parsedState=protectedBreakthrough.delta;
+            }
+            if (parsedState) {
+                const adjustedTrade=reconcileQuoteVersusSettlement(parsedState,actionText);
+                if(adjustedTrade.story && adjustedTrade.story!==parsedState.story)storyText=adjustedTrade.story;
+                parsedState=adjustedTrade;
             }
             // 預設事件已由核心明確推進時間時，忽略同一回合 AI 的天數欄位，避免重複計算。
             if (parsedState && eventMeta && Number(eventMeta.addDays) > 0) {
@@ -5169,7 +5295,7 @@ JSON 輸出格式範例：
                 locEl.textContent = `位置: ${n.location || "未知"}`;
 
                 const favorEl = document.createElement("div"); favorEl.className = "npc-favor";
-                favorEl.textContent = `好感: ${fav} [${getNpcRelationText(fav)}] | 敬畏: ${n.relationship.awe || 0} | 利益: ${n.relationship.profit || 0}`;
+                favorEl.textContent = `好感: ${fav} [${getNpcRelationText(fav)}] | 信任: ${Number(n.trust)||0} | 敬畏: ${n.relationship.awe || 0} | 利益: ${n.relationship.profit || 0}`;
 
                 info.appendChild(nameEl); info.appendChild(locEl); info.appendChild(favorEl);
                 top.appendChild(info); card.appendChild(top);
@@ -5329,7 +5455,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.68"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.69"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         try {
@@ -5362,7 +5488,7 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.68"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.69"; gameState.maxHp = getMaxHp(gameState);
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -5397,7 +5523,7 @@ JSON 輸出格式範例：
         const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
             content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.68"; state.maxHp = getMaxHp(state);
+        state.version = "6.69"; state.maxHp = getMaxHp(state);
         return {state, logs: structuredClone(pkg.logs || []), history};
     }
     function importSave(e) {
@@ -5468,7 +5594,7 @@ JSON 輸出格式範例：
     const LIVE_QA_BACKUP_KEY = "blade_live_qa_recover_v1";
     const LIVE_QA_CASES = [
         {group:"出身", action:"3 落魄少主。依照遊戲身世規則選定出身，從破廟開始我的旅程。"},
-        {group:"突破", action:"我在破廟靜心感應天地靈氣，嘗試首次引氣入體，確定成功後再進行後續故事。"},
+        {group:"突破", action:"【測試按鈕】修為圓滿後按下突破境界，嘗試首次引氣入體。"},
         {group:"場景", action:"我從破廟出發，走到青石鎮市集；請在故事末尾明確交代我實際所處位置。"},
         {group:"NPC 建立", action:"我在青石鎮市集結識名叫沈伯的藥鋪掌櫃，互相交換姓名，約定日後長期合作，請記住這段持續關係。"},
         {group:"NPC 連續", action:"我再次找到先前認識的藥鋪掌櫃，提起我們的長期合作約定，詢問昨日山道出現異獸的傳聞；本次不交易。"},
@@ -5504,7 +5630,7 @@ JSON 輸出格式範例：
         return {
             hp:s.hp,maxHp:getMaxHp(s),stones:s.spiritStone,location:String(s.location||''),mode:s.scenarioMode,
             threats:structuredClone(s.activeThreats||[]),
-            npcs:Object.values(s.npcRegistry||{}).map(n=>({name:n.name,alive:n.is_alive,relationship:n.relationship,location:n.location})),
+            npcs:Object.values(s.npcRegistry||{}).map(n=>({name:n.name,alive:n.is_alive,relationship:n.relationship,trust:n.trust,location:n.location})),
             items:(s.inventory||[]).map(i=>({name:i.name,quantity:i.quantity,itemId:i.itemId,identified:i.identified})),
             pending:s.pendingEconomyProposal?{kind:s.pendingEconomyProposal.kind,credit:s.pendingEconomyProposal.request?.credit,debit:s.pendingEconomyProposal.request?.debit,adds:s.pendingEconomyProposal.request?.adds}:null,
             tradeOffer:s.pendingTradeOffer?{type:s.pendingTradeOffer.type,item_name:s.pendingTradeOffer.item_name,price:s.pendingTradeOffer.price}:null,
@@ -5536,7 +5662,7 @@ JSON 輸出格式範例：
             // Persistent recovery backup excludes any API key or personal secret.
             localStorage.setItem(LIVE_QA_BACKUP_KEY,JSON.stringify({save:snapshot.save,legacy:snapshot.legacy}));
         } catch(e){openGameModal('無法安全啟動測試','原存檔備份失敗，本次不執行：'+e.message);return;}
-        const rt={active:true,stop:false,responses:[],currentCalls:0,startedAt:new Date().toISOString(),rounds:[],lastMessage:''};
+        const rt={active:true,stop:false,responses:[],httpEvents:[],currentCalls:0,startedAt:new Date().toISOString(),rounds:[],skipped:[],lastMessage:''};
         __liveQaRuntime=rt;
         __liveQaReport=null;
         liveQaEl('live-qa-start').disabled=true;
@@ -5545,6 +5671,7 @@ JSON 輸出格式範例：
         const progress=[];
         try {
             gameState=getDefaultGameState();
+            gameState.spiritStone=300; // Isolated QA-only starting wallet, before any narrative round.
             conversationHistory=[];
             storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
             isTyping=false;
@@ -5552,10 +5679,21 @@ JSON 輸出格式範例：
             for(let i=0;i<turns;i++){
                 if(rt.stop){progress.push(`第 ${i+1} 回合前：使用者停止測試。`);break;}
                 const current=LIVE_QA_CASES[i];
-                if(i===1)gameState.spiritStone=300; // Explicit isolated test fixture; not an AI-granted reward.
+                // Hard prerequisites: do not invent past relationships or proceed after failed origin/first breakthrough.
+                const previous=rt.rounds[rt.rounds.length-1];
+                if(i>0 && previous && !previous.succeeded && ['出身','突破','場景'].includes(previous.group)){
+                    progress.push(`前置步驟「${previous.group}」失敗，停止測試以免污染後續劇情。`);break;
+                }
+                if(['NPC 連續','NPC 後續'].includes(current.group) && !Object.values(gameState.npcRegistry||{}).some(n=>n.name==='沈伯')){
+                    rt.skipped=(rt.skipped||[]).concat({turn:i+1,group:current.group,reason:'沈伯未成功登記，不進行虛構前史的續談'});
+                    progress.push(`${i+1}/${turns} ${current.group}：跳過（前置 NPC 不存在）`);liveQaProgress(progress.join('\n'));continue;
+                }
+                if(i===1) {gameState.exp=gameState.maxExp;}// Test-only cultivation fixture; button checks prerequisites.
                 const before=liveQaStateBrief(gameState), callsStart=rt.currentCalls, responseStart=rt.responses.length;
+                const httpStart=rt.httpEvents.length;
                 const logsStart=storyLogData.length;
-                await sendAction(current.action,{actionType:current.group==='戰鬥'?'combat':'qa',qaTest:true});
+                if(current.group==='突破')await attemptBreakthrough();
+                else await sendAction(current.action,{actionType:current.group==='戰鬥'?'combat':'qa',qaTest:true});
                 const after=liveQaStateBrief(gameState);
                 const succeeded=Number(after.telemetry.completed||0)>Number(before.telemetry.completed||0);
                 let approval=null;
@@ -5575,7 +5713,9 @@ JSON 輸出格式範例：
                 const injuryText=hasConfirmedPlayerInjury(story);
                 const hpChanged=Number(finalState.hp)-Number(before.hp);
                 const record={turn:i+1,group:current.group,action:current.action,succeeded,apiCalls:rt.currentCalls-callsStart,
-                    responses:raw,story:liveQaSanitize(story),before,after:finalState,
+                    responses:raw,httpRequests:rt.httpEvents.slice(httpStart),
+                    requestDurationMs:rt.httpEvents.slice(httpStart).reduce((n,e)=>n+e.durationMs,0),
+                    story:liveQaSanitize(story),before,after:finalState,
                     hpDeltaActual:hpChanged,injuryInStory:injuryText,
                     injuryMismatch:injuryText&&hpChanged>=0,
                     itemChanged:liveQaInventorySignature(before)!==liveQaInventorySignature(finalState),
@@ -5592,10 +5732,13 @@ JSON 輸出格式範例：
             const successful=rt.rounds.filter(r=>r.succeeded).length;
             const failures=rt.rounds.length-successful;
             const repairs=rt.rounds.filter(r=>r.apiCalls>1).length;
-            __liveQaReport={tool:'九州裂天錄 V6.68 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+            __liveQaReport={tool:'九州裂天錄 V6.69 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+                fixtures:{startingStones:300,breakthroughExpReady:true,notes:'測試開始前注入 300 靈石；僅測試角色可使用。突破回合前將修為設為圓滿，仍須經由突破按鈕。'},
+                httpRequests:rt.httpEvents,skippedRounds:rt.skipped,
                 startedAt:rt.startedAt,finishedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
                 completedRounds:rt.rounds.length,successfulRounds:successful,failedRounds:failures,repairedRounds:repairs,
-                apiInvocations:rt.currentCalls,interrupted:Boolean(rt.stop||rt.unexpectedError),unexpectedError:rt.unexpectedError||null,
+                apiInvocations:rt.currentCalls,httpAttempts:rt.httpEvents.length,
+                 interrupted:Boolean(rt.stop||rt.unexpectedError),unexpectedError:rt.unexpectedError||null,
                 note:'原始文字／NPC 劇情連續性仍需人工審查。API 金鑰不會匯出。已自動回復玩家原存檔。',rounds:rt.rounds};
             try {liveQaRestore(snapshot);localStorage.removeItem(LIVE_QA_BACKUP_KEY);}
             catch(e){progress.push('注意：原存檔回復失敗，請重新載入頁面啟動自動回復：'+e.message);}
