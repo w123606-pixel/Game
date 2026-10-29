@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 體驗與容錯修正版 V6.64</title>
+    <title>九州裂天錄 - 體驗與容錯修正版 V6.65</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -498,7 +498,16 @@
     }
     function getItemRank(itemInput) { return EQUIPMENT_GRADES[getEquipmentGradeIndex(itemInput)].name; }
     function getItemRankColor(rank) { return (EQUIPMENT_GRADES[EQUIPMENT_GRADE_INDEX[rank]] || EQUIPMENT_GRADES[1]).color; }
-    function getEquipmentGradeMultiplier(itemInput) { return EQUIPMENT_GRADES[getEquipmentGradeIndex(itemInput)].mult; }
+    function getEquipmentGradeMultiplier(itemInput) {
+        const gIndex = getEquipmentGradeIndex(itemInput);
+        const baseMult = EQUIPMENT_GRADES[gIndex].mult;
+        if (itemInput && typeof itemInput === 'object' && (itemInput.sealLevel || itemInput.maxSealLevel)) {
+            const seal = Math.max(1, Math.min(10, Number(itemInput.sealLevel) || 1));
+            const maxSeal = Math.max(1, Number(itemInput.maxSealLevel) || 10);
+            return 1.0 + (baseMult - 1.0) * (seal / maxSeal);
+        }
+        return baseMult;
+    }
 
     function normalizeInventory(rawInv) {
         if (!Array.isArray(rawInv)) return [];
@@ -1469,8 +1478,8 @@
         '未鑑定古戒': { id:'unidentified_ancient_ring', type:'unidentified', category:'未鑑定物', canDisassemble:false, canSell:false, canDrop:false, identified:false },
         '神祕古戒': { id:'unidentified_mysterious_ring', type:'unidentified', category:'未鑑定物', canDisassemble:false, canSell:false, canDrop:false, identified:false },
         // 鑑定產物也必須正式登錄；否則 addItemToInventory 會把它當未知物並封鎖交易權限。
-        '神祕古戒古寶': { id:'identified_mysterious_ring', type:'equipment', category:'飾品', slot:'accessory', identified:true, canDisassemble:true, canSell:true, canDrop:true, value:100, desc:'已鑑定的古戒飾品。' },
-        '遠古戒指古寶': { id:'identified_ancient_ring', type:'equipment', category:'飾品', slot:'accessory', identified:true, canDisassemble:true, canSell:true, canDrop:true, value:100, desc:'已鑑定的古戒飾品。' },
+        '神祕古戒古寶': { id:'identified_mysterious_ring', type:'equipment', category:'飾品', slot:'accessory', grade:'主宰器', rank:'主宰器', gradeIndex:11, sealLevel:1, maxSealLevel:10, identified:true, canDisassemble:false, canSell:false, canDrop:false, value:1000, desc:'已鑑定的古戒（上古主宰器）。' },
+        '遠古戒指古寶': { id:'identified_ancient_ring', type:'equipment', category:'飾品', slot:'accessory', grade:'主宰器', rank:'主宰器', gradeIndex:11, sealLevel:1, maxSealLevel:10, identified:true, canDisassemble:false, canSell:false, canDrop:false, value:1000, desc:'已鑑定的古戒（上古主宰器）。' },
         '乾糧': { id:'food_ration', type:'consumable', category:'食物／飲水', canDisassemble:false, canSell:true, canDrop:true },
         '清水': { id:'food_water', type:'consumable', category:'食物／飲水', canDisassemble:false, canSell:true, canDrop:true },
         '基礎靈材碎屑': { id:'material_shard_basic', type:'material', category:'材料', canDisassemble:false, canSell:true, canDrop:true, value:5 },
@@ -2320,6 +2329,20 @@
         return ["IDLE","DIALOGUE","HAZARD","DANGER","DEAD"].includes(mode) ? mode : "IDLE";
     }
 
+        function checkAncientRingUnseal(s = gameState) {
+        const allItems = [...(s.inventory || []), ...Object.values(s.equipment || {})].filter(Boolean);
+        allItems.forEach(item => {
+            if (item && typeof item === 'object' && cleanNameStrict(item.name).includes("古戒古寶")) {
+                const currentSeal = Math.max(1, Math.min(10, Number(item.sealLevel) || 1));
+                if (currentSeal < 10) {
+                    item.sealLevel = currentSeal + 1;
+                    item.desc = `上古主宰器（第 ${item.sealLevel}/10 重解封）：隨著突破大境界將逐步解封主宰威能。`;
+                    appendLogData("天道", `✦ 【古戒共鳴】隨著你修為突破至「${s.realm}」，神祕古戒解開第 ${item.sealLevel} 重封印，主宰威壓大增！`, "system", false, true);
+                }
+            }
+        });
+    }
+
     function checkLifeStatus(s = gameState) {
         const years = Math.floor((s.daysPassed || 0) / 365);
         const curAge = (s.ageBase || 18) + years;
@@ -2764,14 +2787,16 @@
             // 未登錄的未知古物以安全的凡物結果揭示，不授予裝備、拆解或交易權限。
             const IDENTIFICATION_RESULTS = {
                 'unidentified_mysterious_ring': {
-                    name: '神祕古戒古寶', quantity: 1, identified: true, quality: '下品',
-                    type: 'equipment', category: '飾品', slot: 'accessory', canDisassemble: true,
-                    canSell: true, canDrop: true, itemId: 'identified_mysterious_ring'
+                    name: '神祕古戒古寶', quantity: 1, identified: true, grade: '主宰器', rank: '主宰器', gradeIndex: 11,
+                    sealLevel: 1, maxSealLevel: 10, type: 'equipment', category: '飾品', slot: 'accessory',
+                    canDisassemble: false, canSell: false, canDrop: false, itemId: 'identified_mysterious_ring',
+                    desc: '上古主宰器（第 1/10 重解封）：隨著突破大境界將逐步解封主宰威能。'
                 },
                 'unidentified_ancient_ring': {
-                    name: '遠古戒指古寶', quantity: 1, identified: true, quality: '下品',
-                    type: 'equipment', category: '飾品', slot: 'accessory', canDisassemble: true,
-                    canSell: true, canDrop: true, itemId: 'identified_ancient_ring'
+                    name: '遠古戒指古寶', quantity: 1, identified: true, grade: '主宰器', rank: '主宰器', gradeIndex: 11,
+                    sealLevel: 1, maxSealLevel: 10, type: 'equipment', category: '飾品', slot: 'accessory',
+                    canDisassemble: false, canSell: false, canDrop: false, itemId: 'identified_ancient_ring',
+                    desc: '上古主宰器（第 1/10 重解封）：隨著突破大境界將逐步解封主宰威能。'
                 }
             };
             const sourceDefinition = getCanonicalItemDefinition(invItem);
@@ -3543,11 +3568,13 @@ JSON 輸出格式範例：
                 if (!entry || typeof entry !== "object") return false;
                 const importance = String(entry.importance || entry.persistenceTier || "").toLowerCase();
                 const rel = entry.relationship || {};
-                return (entry.persistent === true && ["normal","important","core","一般","重要","核心"].includes(importance)) || entry.isImportant === true || entry.important === true ||
-                    ["important","core","重要","核心"].includes(importance) ||
-                    !!(entry.questId || entry.activeQuest || entry.isCompanion === true || entry.joinedParty === true || entry.relationshipType || entry.persistentRole) ||
-                    !!(Array.isArray(entry.relationships) && entry.relationships.length) ||
-                    Math.abs(Number(rel.favorability) || 0) >= 25 || Math.abs(Number(entry.trust) || 0) >= 25;
+                const favor = Math.abs(Number(rel.favorability) || 0);
+                const awe = Number(rel.awe) || 0;
+                const profit = Math.abs(Number(rel.profit) || 0);
+                const isSpecialRole = ["important", "core", "重要", "核心"].includes(importance) || entry.isImportant === true || entry.important === true;
+                const hasQuestOrRole = !!(entry.questId || entry.activeQuest || entry.isCompanion === true || entry.joinedParty === true || entry.relationshipType || entry.persistentRole);
+                const hasStrongRelation = favor >= 25 || awe >= 50 || profit >= 30;
+                return (entry.persistent === true && ["normal","important","core","一般","重要","核心"].includes(importance)) || isSpecialRole || hasQuestOrRole || hasStrongRelation;
             };
             incoming.slice(0, 30).forEach(({entry, source}) => {
                 if (!entry || typeof entry !== "object") return;
@@ -4471,8 +4498,7 @@ JSON 輸出格式範例：
             if (parsedState) {
                 const authoritativeBeforeAI = {
                     level: gameState.level, realm: gameState.realm, maxExp: gameState.maxExp,
-                    maxHp: gameState.maxHp, hp: gameState.hp,
-                    isDead: gameState.isDead,
+                    maxHp: gameState.maxHp,
                     linggen: gameState.linggen, physique: gameState.physique
                 };
 
