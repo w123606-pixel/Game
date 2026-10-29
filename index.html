@@ -540,7 +540,8 @@
             } else if (meta.rarity) item.tier = meta.rarity;
             const canonicalDef = getCanonicalItemDefinition(item);
             if (canonicalDef) {
-                item.itemId = canonicalDef.id;
+                item.itemId = stableItemIdentity(rawItem, canonicalDef, name);
+                item.definitionId = canonicalDef.id;
                 item.type = isUnidentified ? 'unidentified' : canonicalDef.type;
                 for (const field of ['isQuestItem','canDisassemble','canSell','canDrop','category','expGain','hpGain','desc']) {
                     if (canonicalDef[field] !== undefined) item[field] = canonicalDef[field];
@@ -555,9 +556,13 @@
                 for (const field of ['canDisassemble','canSell','canDrop']) {
                     if (canonicalDef[field] === false) item[field] = false;
                 }
-            } else if (!item.itemId) item.itemId = `legacy:${name}`;
+            } else {
+                item.itemId = stableItemIdentity(rawItem, null, name);
+                // 不接受未註冊物品偽造中央物品定義的授權；分類仍由名稱及權限解析器決定。
+                delete item.definitionId;
+            }
             const permissions = getItemPermissions(item);
-            const key = `${item.itemId}|${isEquipment ? `E:${gradeIndex}` : `N:${item.type}:${meta.category}:${item.tier || meta.rarity || ''}:${item.identified === false ? 'U' : 'I'}`}|${item.questLocked ? 'L' : ''}|${permissions.sell ? 'S' : 'NS'}|${permissions.drop ? 'D' : 'ND'}|${permissions.disassemble ? 'DS' : 'NDS'}|${permissions.use ? 'U' : 'NU'}|${permissions.comprehend ? 'C' : 'NC'}`;
+            const key = `${item.itemId}|${item.definitionId || ''}|${isEquipment ? `E:${gradeIndex}:${item.sealLevel || 0}` : `N:${item.type}:${meta.category}:${item.tier || meta.rarity || ''}:${item.identified === false ? 'U' : 'I'}`}|${item.questLocked ? 'L' : ''}|${permissions.sell ? 'S' : 'NS'}|${permissions.drop ? 'D' : 'ND'}|${permissions.disassemble ? 'DS' : 'NDS'}|${permissions.use ? 'U' : 'NU'}|${permissions.comprehend ? 'C' : 'NC'}`;
             const existing = result.find(i => i.itemId === item.itemId && cleanNameStrict(i.name) === name && i.__stackKey === key);
             if (existing) {
                 existing.quantity = Math.min(9999, existing.quantity + qty);
@@ -588,9 +593,9 @@
         const incomingPermissions = getItemPermissions(isObj ? itemObjOrName : name);
         const incomingIdentified = !(isObj && (itemObjOrName.identified === false || ['未鑑定','蒙塵'].includes(String(itemObjOrName.quality || itemObjOrName.tier || itemObjOrName.rarity || ''))));
         const incomingQuest = Boolean(canonicalDef?.isQuestItem || (isObj && (itemObjOrName.isQuestItem || itemObjOrName.questLocked)) || meta.isQuestItem);
-        const incomingItemId = canonicalDef ? canonicalDef.id : (isObj && itemObjOrName.itemId ? String(itemObjOrName.itemId) : `legacy:${name}`);
+        const incomingItemId = stableItemIdentity(itemObjOrName, canonicalDef, name);
         const existing = inv.find(i => cleanNameStrict(i.name) === name && (i.itemId || `legacy:${cleanNameStrict(i.name)}`) === incomingItemId && (isEquipment
-            ? getEquipmentGradeIndex(i) === gradeIndex && getItemPermissions(i).disassemble === incomingPermissions.disassemble
+            ? getEquipmentGradeIndex(i) === gradeIndex && Number(i.sealLevel || 0) === Number((isObj && itemObjOrName.sealLevel) || 0) && getItemPermissions(i).disassemble === incomingPermissions.disassemble
             : (i.tier || i.quality || i.rarity || getItemMeta(i).rarity) === incomingTier && getItemMeta(i).type === meta.type && (i.identified !== false) === incomingIdentified && getItemPermissions(i).sell === incomingPermissions.sell && getItemPermissions(i).drop === incomingPermissions.drop && getItemPermissions(i).use === incomingPermissions.use && getItemPermissions(i).comprehend === incomingPermissions.comprehend && Boolean(i.isQuestItem || i.questLocked || getItemMeta(i).isQuestItem) === incomingQuest));
         if (existing) {
             existing.quantity = Math.min(9999, (Number(existing.quantity) || 0) + amount);
@@ -603,7 +608,8 @@
             }
         } else {
             const item = {
-                ...(isObj ? itemObjOrName : {}), itemId: incomingItemId, name, quantity: amount,
+                ...(isObj ? itemObjOrName : {}), itemId: incomingItemId,
+                ...(canonicalDef ? {definitionId:canonicalDef.id} : {definitionId:undefined}), name, quantity: amount,
                 type: canonicalDef ? canonicalDef.type : resolvedDef.type,
                 identified: canonicalDef?.identified === false || canonicalDef?.type === 'unidentified' ? false : !(isObj && itemObjOrName.identified === false),
                 value: isObj && Number.isFinite(Number(itemObjOrName.value)) ? Number(itemObjOrName.value) : (meta.value || 10),
@@ -1501,6 +1507,13 @@
         if (id && ITEM_DEFINITIONS_BY_ID[id]) return ITEM_DEFINITIONS_BY_ID[id];
         return null;
     }
+    // V6.67：itemId 是背包實例／堆疊識別；definitionId 是不可由輸入覆寫的中央物品定義。
+    // 舊存檔未提供個別 ID 才以中央定義 ID 作相容的預設識別，避免破壞既有存檔。
+    function stableItemIdentity(itemInput, canonicalDef, name) {
+        const given = itemInput && typeof itemInput === 'object' ? itemInput.itemId : null;
+        const valid = (typeof given === 'string' && given.trim().length && given.length <= 220) ? given.trim() : '';
+        return valid || (canonicalDef ? canonicalDef.id : `legacy:${name}`);
+    }
     // 統一解析入口：所有流程應以此結果判定分類；已登錄定義優先於 AI/舊存檔傳入的 type/category/權限。
     function resolveItemDefinition(itemInput) {
         const isObj = itemInput && typeof itemInput === 'object';
@@ -1522,8 +1535,8 @@
             ['功法玉簡', 'knowledge', false, true, true],
             ['妖丹', 'material', false, true, true],
             ['神祕古戒', 'unidentified', false, false, false],
-            ['神祕古戒古寶', 'equipment', true, true, true],
-            ['遠古戒指古寶', 'equipment', true, true, true]
+            ['神祕古戒古寶', 'equipment', false, false, false],
+            ['遠古戒指古寶', 'equipment', false, false, false]
         ];
         return required.map(([name, expectedType, expectedDisassemble, expectedSell, expectedDrop]) => {
             const def = getCanonicalItemDefinition(name);
@@ -1547,14 +1560,22 @@
         check('鑑定後遠古戒指古寶分類為裝備', identified.type === 'equipment');
         check('鑑定後遠古戒指古寶有飾品欄位', identified.slot === 'accessory');
         const perms = getItemPermissions({ name:'遠古戒指古寶', itemId:'identified_ancient_ring', identified:true, quality:'下品' });
-        check('鑑定後古戒可依定義出售', perms.sell === true);
-        check('鑑定後古戒可依定義拆解', perms.disassemble === true);
+        check('鑑定後古戒不可出售（家傳神器保護）', perms.sell === false);
+        check('鑑定後古戒不可拆解（家傳神器保護）', perms.disassemble === false);
         check('洞府玉簡不可出售或丟棄', (() => { const p=getItemPermissions({name:'洞府玉簡'}); return p.sell===false && p.drop===false && p.comprehend===false; })());
         const registry = auditItemDefinitionRegistry();
         check('中央物品登錄檢查全數通過', registry.length > 0 && registry.every(x=>x.ok), JSON.stringify(registry.filter(x=>!x.ok)));
+        // V6.67：兩個同名、不同來源實例不得在存檔或正規化時合併。
+        const distinct = normalizeInventory([
+            {name:'妖丹',itemId:'unique:A',quantity:2,identified:true,tier:'下品'},
+            {name:'妖丹',itemId:'unique:B',quantity:3,identified:true,tier:'下品'}
+        ]);
+        check('中央定義物品保留不同實例 ID', distinct.length===2 && distinct.some(x=>x.itemId==='unique:A' && x.definitionId==='material_demon_core') && distinct.some(x=>x.itemId==='unique:B' && x.quantity===3));
+        check('舊版無實例ID依定義兼容', normalizeInventory([{name:'妖丹',quantity:2}])[0]?.itemId==='material_demon_core');
+        check('同名家傳古戒仍由中央權限鎖定', (()=>{const x=normalizeInventory([{name:'神祕古戒古寶',itemId:'ring:unique',quantity:1,canSell:true,canDrop:true,canDisassemble:true}])[0];return x.itemId==='ring:unique' && x.definitionId==='identified_mysterious_ring' && !getItemPermissions(x).sell && !getItemPermissions(x).drop && !getItemPermissions(x).disassemble;})());
         // 不修改遊戲狀態的靜態生命週期檢查：確保裝備流程保留關鍵資料欄位。
         const equipmentLifecycleSource = equipItem.toString() + unequipItem.toString();
-        check('裝備流程保留 itemId', /itemId:\s*getCanonicalItemDefinition\(invItem\)/.test(equipmentLifecycleSource));
+        check('裝備流程保留 itemId', /itemId:\s*stableItemIdentity\(invItem/.test(equipmentLifecycleSource));
         check('卸裝流程回存完整物件', /\.\.\.itemObj/.test(unequipItem.toString()));
         check('卸裝流程保留鑑定狀態', /identified/.test(equipmentLifecycleSource));
         check('拆解共用原子交易入口', /commitInventoryTransaction\("拆解"/.test(TransactionEngine.processDisassembly.toString()));
@@ -1911,7 +1932,7 @@
                 addItemToInventory(inv,{name:'妖丹',itemId:'material_demon_core',quantity:1,tier:'下品',identified:true,type:'material',canSell:true,canDrop:true},1);
                 inventoryOps++;
                 const stack=inv.find(x=>x.itemId==='material_demon_core');
-                if(!stack || stack.quantity!==i+2) invOpsOk=false;
+                if(!stack || stack.quantity!==2) invOpsOk=false;
                 const removeOk=removeItemFromInventory(inv,stack,1,'下品');
                 inventoryOps++;
                 if(!removeOk || !inv[0] || inv[0].quantity!==1) invOpsOk=false;
@@ -2166,7 +2187,7 @@
         return { name: "尋常之地", hpMult: 1.0, expPerDay: 1, fatigueCost: 15 };
     }
 
-    // V6.66 古戒：未鑑定時提供微弱的血脈共鳴；鑑定裝備後依封印階段增強。
+    // V6.67 古戒：未鑑定時提供微弱的血脈共鳴；鑑定裝備後依封印階段增強。
     function getAncientRingBonus(item, equipped = false) {
         if (!item || !['神祕古戒','神祕古戒古寶','遠古戒指古寶'].includes(cleanNameStrict(item.name))) return null;
         if (item.identified === false || item.type === 'unidentified') {
@@ -2938,7 +2959,10 @@
         const equipped = {
             ...invItem,
             ...meta,
-            itemId: getCanonicalItemDefinition(invItem)?.id || invItem.itemId || `legacy:${cleanName}`,
+            sealLevel: invItem.sealLevel ?? meta.sealLevel,
+            maxSealLevel: invItem.maxSealLevel ?? meta.maxSealLevel,
+            itemId: stableItemIdentity(invItem, getCanonicalItemDefinition(invItem), cleanName),
+            definitionId: getCanonicalItemDefinition(invItem)?.id || undefined,
             name: cleanName,
             identified: invItem.identified !== false && meta.type !== 'unidentified',
             grade: itemGrade, gradeIndex: itemGradeIndex, rank: itemGrade,
@@ -2975,7 +2999,8 @@
         // 卸下時回存完整物件；若舊存檔只保存名稱，才使用相容性物件。
         const returnedItem = typeof itemObj === 'object'
             ? { ...itemObj, quantity: 1, name: itemName,
-                itemId: getCanonicalItemDefinition(itemObj)?.id || itemObj.itemId || `legacy:${itemName}` }
+                itemId: stableItemIdentity(itemObj, getCanonicalItemDefinition(itemObj), itemName),
+                definitionId: getCanonicalItemDefinition(itemObj)?.id || undefined }
             : { name: itemName, itemId: `legacy:${itemName}`, quantity: 1 };
         addItemToInventory(gameState.inventory, returnedItem, 1);
         gameState.equipment[slot] = null;
@@ -3868,6 +3893,11 @@ JSON 輸出格式範例：
             if (!meta.slot) { s.equipment[slot] = null; addItemToInventory(s.inventory, obj, 1); continue; }
             const gradeIndex = getEquipmentGradeIndex(obj);
             obj.grade = EQUIPMENT_GRADES[gradeIndex].name; obj.gradeIndex = gradeIndex; obj.rank = obj.grade; obj.rankColor = getItemRankColor(obj.grade);
+            const canonicalEquipment = getCanonicalItemDefinition(obj);
+            obj.itemId = stableItemIdentity(obj, canonicalEquipment, cleanNameStrict(obj.name));
+            if (canonicalEquipment) { obj.definitionId = canonicalEquipment.id;
+                for (const field of ['canSell','canDrop','canDisassemble']) if(canonicalEquipment[field] === false) obj[field] = false;
+            } else delete obj.definitionId;
             delete obj.quality; delete obj.rarity; delete obj.tier;
             s.equipment[slot] = obj;
         }
@@ -4037,7 +4067,8 @@ JSON 輸出格式範例：
         const canonical = getCanonicalItemDefinition({ ...rawItem, name });
         // 已登錄物品的 ID、分類及操作權限只由中央定義決定；未知物品的 AI 權限欄位會在入包時再次受核心權限引擎限制。
         return canonical
-            ? { ...rawItem, name, quantity, itemId: canonical.id, type: canonical.type, category: canonical.category,
+            ? { ...rawItem, name, quantity, itemId: stableItemIdentity(rawItem, canonical, name), definitionId:canonical.id,
+                type: canonical.type, category: canonical.category,
                 ...(canonical.identified === false ? { identified: false, type: 'unidentified', canDisassemble: false, canSell: false, canDrop: false } : {}),
                 ...(canonical.canDisassemble === false ? { canDisassemble: false } : {}),
                 ...(canonical.canSell === false ? { canSell: false } : {}),
@@ -4281,10 +4312,25 @@ JSON 輸出格式範例：
         confirmTradeOfferV629();if(!gameState.pendingTradeOffer)gameState.pendingSellIntent=null;
     }
     function getSystemPrompt() {
-        return getSystemPromptV629()+`\nV6.33 OVERRIDING ECONOMY CONTRACT: story describes scenes, characters and emotions only. Do not narrate item/currency transfers, amounts, consumption or completed trades. All economic deltas are proposals awaiting explicit player approval. Every item requires an explicit positive integer quantity. Omit fields when unchanged. Every proposal requires economyOperation:{kind:"reward"|"consolation"|"exchange"|"craft"|"loss"|"purchase"|"auction",fee:nonnegative integer}. When buying an item or bidding in an auction, use kind="purchase" or "auction", set fee to the full positive total price in lower-grade spirit stones, and put the exact acquired item(s) in inventoryDelta with name, positive integer quantity and any known tier; do not use tradeOffer for auction-house lots unless the UI explicitly opened a BUY quote. Purchase/auction proposals must be confirmed by the player in the pending proposal UI. Until confirmation, describe only bidding, negotiation, or a pending result; never say "成交", "已付款", "已交付" or that the item is in the inventory. If confirmation fails or the balance is insufficient, the story must not claim the transaction succeeded. Craft/exchange must list complete inventoryRemoveDelta inputs, inventoryDelta outputs and fees; no free outputs. Reward cannot consume inputs. Failure cannot transfer assets except explicit consolation with no inputs or costs, awaiting player approval. Currency rewards aggregate cap is 9999; split entries are combined. Zero-price quotes are invalid. Quest rewards must use sourceEntityId from core events and may only be claimed once. SELL quotes must match pendingSellIntent exactly and include counterparty. Quote turns cannot transfer assets. Continue responding in Traditional Chinese.\nPending sell intent: ${JSON.stringify(gameState.pendingSellIntent||null)}`;
+        return getSystemPromptV629()+`\nV6.33 OVERRIDING ECONOMY CONTRACT: story describes scenes, characters and emotions only. Do not narrate item/currency transfers, amounts, consumption or completed trades. Pure reward/consolation operations with no debit/removes are core-verified and auto-settled; purchase/auction/exchange/craft/loss require explicit player approval. Every item requires an explicit positive integer quantity. Omit fields when unchanged. Every proposal requires economyOperation:{kind:"reward"|"consolation"|"exchange"|"craft"|"loss"|"purchase"|"auction",fee:nonnegative integer}. When buying an item or bidding in an auction, use kind="purchase" or "auction", set fee to the full positive total price in lower-grade spirit stones, and put the exact acquired item(s) in inventoryDelta with name, positive integer quantity and any known tier; do not use tradeOffer for auction-house lots unless the UI explicitly opened a BUY quote. Purchase/auction proposals must be confirmed by the player in the pending proposal UI. Until confirmation, describe only bidding, negotiation, or a pending result; never say "成交", "已付款", "已交付" or that the item is in the inventory. If confirmation fails or the balance is insufficient, the story must not claim the transaction succeeded. Craft/exchange must list complete inventoryRemoveDelta inputs, inventoryDelta outputs and fees; no free outputs. Reward cannot consume inputs. Failure cannot transfer assets except explicit consolation with no inputs or costs, automatically settled after core validation. Currency rewards aggregate cap is 9999; split entries are combined. Zero-price quotes are invalid. Quest rewards must use sourceEntityId from core events and may only be claimed once. SELL quotes must match pendingSellIntent exactly and include counterparty. Quote turns cannot transfer assets. Continue responding in Traditional Chinese.\nPending sell intent: ${JSON.stringify(gameState.pendingSellIntent||null)}`;
     }
 
 
+    // V6.67：有限的受傷敘事核對；不從文字猜測扣血數值，也不信任 AI 任意修改生命權威欄位。
+    // 僅辨認玩家確實受傷的明確句型，避免把 NPC 受傷、假設、閃避或既往回憶誤判為傷害。
+    function hasConfirmedPlayerInjury(story) {
+        const sentences = String(story || '').split(/[。！？\n；]/);
+        return sentences.some(sentence => {
+            if (!/(你|主角|自身|你的身體)/.test(sentence)) return false;
+            if (/(未被|沒有被|不曾|未曾|並未|沒有受傷|毫髮無傷|並無大礙|避開|閃過|躲過|幻象|假設|如果|倘若|回想|曾經|記憶中|差點|險些|幾乎)/.test(sentence)) return false;
+            return /(?:你|主角|自身).{0,26}(?:被|遭|受到).{0,22}(?:擊中|擊傷|劃傷|斬傷|刺傷|重創|打傷|傷及|灼傷|毒傷)|(?:你|主角|自身).{0,32}(?:吐出一口鮮血|吐血|鮮血噴出|身受重傷|受到傷害|負傷|受了傷|中毒受創)/.test(sentence);
+        });
+    }
+    function needsInjurySettlementRepair(story, raw) {
+        const rawHp = raw && raw.hpDelta !== undefined ? Number(raw.hpDelta)
+            : raw && raw.damageDelta !== undefined ? -Math.abs(Number(raw.damageDelta)) : 0;
+        return hasConfirmedPlayerInjury(story) && !(Number.isFinite(rawHp) && rawHp < 0);
+    }
     // A scene is an end-of-turn snapshot, not a prose keyword guess.
     function normalizeSceneDelta(raw) {
         const out = {...(raw || {})};
@@ -4386,13 +4432,17 @@ JSON 輸出格式範例：
         return result;
     }
 
-    // V6.66: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
-    async function callGeminiApi(apiKey, sceneRepair = null) {
+    // V6.67: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
+    async function callGeminiApi(apiKey, sceneRepair = null, repairKind = 'scene') {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
         const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
-        if (sceneRepair) contents.push({role:"model",parts:[{text:sceneRepair}]},
-            {role:"user",parts:[{text:"Repair only the missing end-of-turn scene fields in the JSON. Preserve the story and every other delta exactly. Include location (current location), scenarioMode (IDLE/DIALOGUE/HAZARD/DANGER), and activeThreats (complete current array; [] when cleared). Return the entire original response with the corrected JSON."}]});
+        if (sceneRepair) {
+            const instruction = repairKind === 'injury'
+                ? 'HP CONSISTENCY REPAIR: The story explicitly describes the PLAYER being injured, but JSON has no negative hpDelta. If the injury truly occurred, supply a plausible negative integer hpDelta and a concise hpReason according to the actual result. If there was NO real injury, revise ONLY the story to clearly describe the dodge/block/no injury; keep hpDelta 0. Keep ALL other state deltas, economic operation, scene, NPCs, story facts, choices and items unchanged. Return the complete JSON; do not invent any reward, transaction or state change.'
+                : 'Repair only the missing end-of-turn scene fields in the JSON. Preserve the story and every other delta exactly. Include location (current location), scenarioMode (IDLE/DIALOGUE/HAZARD/DANGER), and activeThreats (complete current array; [] when cleared). Return the entire original response with the corrected JSON.';
+            contents.push({role:'model',parts:[{text:sceneRepair}]}, {role:'user',parts:[{text:instruction}]});
+        }
         const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() + "\nSCENE SNAPSHOT REQUIRED EVERY TURN: In the state JSON always include location (nonempty current end-of-turn location), scenarioMode (IDLE/DIALOGUE/HAZARD/DANGER), and activeThreats (complete current threats array). Even if unchanged repeat these fields. When combat ends or escape succeeds explicitly send activeThreats:[] and the correct new mode. The story and scene must describe the same final moment. Never use an intended destination, flashback, or NPC location as the player location." }] }, contents: contents };
         
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`, {
@@ -4459,6 +4509,23 @@ JSON 輸出格式範例：
                 if (!hasCompleteScene(parsedState)) throw new Error("AI場景資料不完整或互相矛盾，本回合未結算，請重試。");
             }
 
+            // V6.67：確定玩家受傷的敘事必須有負數 HP 結算；不自動創造傷害數值。
+            // 修補回應只接受「負傷害欄位」或「更正為未受傷的文字」，其餘經濟／角色／場景欄位一律保留初次結果。
+            if (needsInjurySettlementRepair(storyText, parsedState)) {
+                const repairedResponse = parseApiResponse(await callGeminiApi(apiKey, aiResponseText, 'injury'));
+                const repairedDelta = repairedResponse.parsedState || {};
+                const repairedHp = Number(repairedDelta.hpDelta);
+                if (Number.isSafeInteger(repairedHp) && repairedHp < 0 && repairedHp >= -1000000) {
+                    parsedState.hpDelta = repairedHp;
+                    delete parsedState.damageDelta;
+                    parsedState.hpReason = cleanNameStrict(repairedDelta.hpReason || '戰鬥受傷').slice(0,120);
+                } else if (repairedResponse.storyText && !hasConfirmedPlayerInjury(repairedResponse.storyText)
+                        && (repairedDelta.hpDelta === undefined || Number(repairedDelta.hpDelta) === 0)) {
+                    storyText = repairedResponse.storyText;
+                } else {
+                    throw new Error('故事描述角色實際受傷，但未提供有效HP傷害結算，本回合未入帳。');
+                }
+            }
             // 預設事件已由核心明確推進時間時，忽略同一回合 AI 的天數欄位，避免重複計算。
             if (parsedState && eventMeta && Number(eventMeta.addDays) > 0) {
                 delete parsedState.daysPassedDelta;
