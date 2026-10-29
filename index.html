@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 體驗與容錯修正版 V6.65</title>
+    <title>九州裂天錄 - 行動容錯與連續性修正版 V6.68</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -317,6 +317,8 @@
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showItemLifecycleE2EResults()">✦ 執行物品生命週期 E2E 測試</button>
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showSaveTradeRegressionResults()">✦ V6.61 存檔往返／交易異常測試</button>
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showLongTermStressResults()">✦ V6.63 多角色長期壓力測試（400 筆交易）</button>
+            <h2 style="margin-top:10px;">▣ 行動結算診斷</h2>
+            <div id="action-diagnostic-panel" style="padding:9px;margin:8px 0;border:1px solid #414456;border-radius:6px;font-size:0.78rem;color:#bdc3d2;white-space:pre-wrap;overflow-wrap:anywhere;">尚無測試紀錄。</div>
             <h2 style="margin-top:10px;">▣ 存檔管理</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
                 <button class="sys-btn" onclick="exportSave()">↧ 匯出存檔</button>
@@ -3213,7 +3215,7 @@ ${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subjec
 
 ?? AI 必須嚴格遵守的【八大鐵律】：
 1. [結算與因果]：每回合必須回傳 expDelta、daysPassedDelta、inventoryDelta，但允許 expDelta=0、daysPassedDelta=0、inventoryDelta=[]。不得為了讓玩家開心而保證成功、送出獎勵或憑空增加物品；高風險行動可成功、部分成功、失敗，必須符合能力、情報、準備與代價。失敗也要推進合理後果，不可無故懲罰。
-2. [物品與交易硬鎖]：背包快照中有物品才可使用！一般買賣靈石仍須回傳完整 tradeOffer 等待玩家點擊 UI 確認，不得直接修改靈石。若玩家要求交付材料給煉器師/煉丹師打造、以物易物、交任務物品或任何背包物品移轉，必須同時回傳 inventoryRemoveDelta（例如 [{"name":"粗鐵","quantity":3}]）與 inventoryDelta（實際交付的成品/換得物品）；核心會先驗證全部材料及數量，材料不足或格式錯誤時整筆物品移轉都不會執行。不得只在 story 宣稱已交付、打造或交換而漏掉 inventoryRemoveDelta，也不得在未實際扣除材料時發放成品。若玩家買賣靈石，你【嚴禁】在 JSON 輸出 inventoryDelta，只能回傳完整 tradeOffer 等待玩家點擊 UI 確認。tradeOffer 必須使用以下欄位：{"type":"SELL" 或 "BUY", "item_name":"背包中物品的完整名稱", "quantity":1, "total_gold":10, "item_type":"material", "tier":"下品"}。total_gold 必須是整筆交易的總價，必須是非負數字；不得省略、不得用 undefined/null/文字代替。若無法確定價格，tradeOffer 回傳 null，先向玩家詢問，不可敘述交易已完成。特別注意：開局身世初始裝備已由系統前端發放，首輪 JSON 嚴禁重複回傳 inventoryDelta 避免古戒重複發放！
+2. [物品與交易硬鎖]：背包快照中有物品才可使用！一般買賣若處於詢價／議價階段，僅回傳完整 tradeOffer 等待玩家點擊報價確認；若是玩家已明確下單且有成交價格的購買、拍賣，改用 economyOperation(kind:purchase/auction, fee:成交總價) 搭配 inventoryDelta 提出待確認結算，不得同時回傳 tradeOffer。不得直接修改靈石。若玩家要求交付材料給煉器師/煉丹師打造、以物易物、交任務物品或任何背包物品移轉，必須同時回傳 inventoryRemoveDelta（例如 [{"name":"粗鐵","quantity":3}]）與 inventoryDelta（實際交付的成品/換得物品）；核心會先驗證全部材料及數量，材料不足或格式錯誤時整筆物品移轉都不會執行。不得只在 story 宣稱已交付、打造或交換而漏掉 inventoryRemoveDelta，也不得在未實際扣除材料時發放成品。只有「詢價／議價」回合不得同時移轉物資；購買／拍賣結算提案則必須有 inventoryDelta 的成交物品與 economyOperation 的正數費用，並等待玩家點選確認。下品靈石是貨幣，不得作為買賣的商品物品。tradeOffer 必須使用以下欄位：{"type":"SELL" 或 "BUY", "item_name":"背包中物品的完整名稱", "quantity":1, "total_gold":10, "item_type":"material", "tier":"下品"}。total_gold 必須是整筆交易的總價，必須是非負數字；不得省略、不得用 undefined/null/文字代替。若無法確定價格，tradeOffer 回傳 null，不提出付費物品轉移；先向玩家詢問，不可敘述交易已完成。特別注意：開局身世初始裝備已由系統前端發放，首輪 JSON 嚴禁重複回傳 inventoryDelta 避免古戒重複發放！
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
 4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
 5. [NPC 去重與分級登記]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。重要規則：遇見、看見、聽見姓名、一般對話一次、普通買賣一次、路人或普通敵人，均不得因此加入永久 npcRegistry；這些人物只寫在 story 或當前場景。只有對後續有持續影響的人物才可提交 npcDelta.created/upsert，例如建立師徒/道侶/仇敵/恩情等持續關係、加入隊伍、承接或發布任務、成為重要線索持有人、重要劇情角色或多次互動後成為固定聯絡人。新增人物必須明確回傳 persistent:true 與 importance（normal/important/core）或相應的 questId、relationshipType、isCompanion 等可驗證的持續關聯欄位；不得只因有全名、title、goals 或 knownFacts 就登記。npcDelta.updated 只能更新 SSOT 中已存在的人物，不得用 updated 偷渡新增。已知人物必須優先沿用既有 id；已死人物不得被 upsert 復活。
@@ -3246,6 +3248,7 @@ JSON 輸出格式範例：
   "daysPassedDelta": 1,
   "inventoryRemoveDelta": [],
   "inventoryDelta": [{"name":"聚氣丹","quantity":1}],
+  "economyOperation": {"kind":"reward","fee":0},
   "tradeOffer": null,
   "npcDelta": {"created": [], "updated": [], "killed": []},
   "techniqueDelta": [{"name": "青元劍訣", "type": "skill", "tier": "黃階"}],
@@ -4172,9 +4175,8 @@ JSON 輸出格式範例：
         if(!adds.length&&!removes.length&&!credit&&!delta&&!fee)return null;
         if(!["reward","consolation","exchange","craft","loss","purchase","auction"].includes(op?.kind))throw new Error("經濟提案須明確指定操作類型。");
         if(/\u7149|\u70bc|\u6253\u9020|\u5408\u6210|\u88fd\u4f5c|\u5236\u4f5c|\u514c\u63db|\u5151\u6362|\u4ea4\u63db|\u4ea4\u6362/.test(String(meta.actionText||""))&&!["exchange","craft"].includes(op.kind))throw new Error("製作或交換不可偽裝為免費獎勵。");
-        if(["reward","consolation"].includes(op.kind)&&(removes.length||delta<0||fee)) {
-            op.kind = "exchange";
-        }
+        if(["reward","consolation"].includes(op.kind)&&(removes.length||delta<0||fee))
+            throw new Error("純獎勵不可扣材料或費用；請使用正確的交換或製作操作類型。");
         if(["exchange","craft"].includes(op.kind)&&!removes.length&&delta>=0&&!fee)throw new Error("交換或製作缺少投入，拒絕免費產出。");
         if(["purchase","auction"].includes(op.kind)) {
             if(!adds.length || removes.length || credit || delta<0 || fee<=0) throw new Error("購買／拍賣必須同時包含明確物品、正數成交價，且不得夾帶出售或獎勵。");
@@ -4316,6 +4318,62 @@ JSON 輸出格式範例：
     }
 
 
+    // V6.68: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
+    const REPAIRABLE_SETTLEMENT_ERRORS = [
+        "經濟提案須明確指定操作類型", "經濟操作格式無效", "製作或交換不可偽裝為免費獎勵", "純獎勵不可扣材料或費用"
+    ];
+    function isRepairableSettlementError(message) {
+        return REPAIRABLE_SETTLEMENT_ERRORS.some(x => String(message||"").includes(x));
+    }
+    function settlementKindMatchesAction(kind, actionText, raw) {
+        const text = String(actionText||"");
+        const op = raw?.economyOperation;
+        const fee = op && typeof op === "object" ? Number(op.fee||0) : 0;
+        const adds = Array.isArray(raw?.inventoryDelta) ? raw.inventoryDelta : [];
+        const removes = Array.isArray(raw?.inventoryRemoveDelta) ? raw.inventoryRemoveDelta : (Array.isArray(raw?.lostItems)?raw.lostItems:[]);
+        const delta = Number(raw?.spiritStonesDelta||0);
+        if(["reward","consolation"].includes(kind))
+            return removes.length===0 && fee===0 && delta>=0 && !/(煉|打造|製作|合成|兌換|交換|購買|拍賣|競標|出售|丟棄|失去)/.test(text);
+        if(kind === "craft") return (removes.length>0 || fee>0) && /(煉|打造|製作|合成|鍛造)/.test(text);
+        if(kind === "exchange") return (removes.length>0 || fee>0) && /(交換|兌換|交出|以物易物)/.test(text);
+        if(kind === "purchase") return fee>0 && adds.length>0 && !removes.length && /(買|購|下單)/.test(text);
+        if(kind === "auction") return fee>0 && adds.length>0 && !removes.length && /(拍賣|競標|競拍|出價)/.test(text);
+        if(kind === "loss") return !adds.length && !Number(raw?.spiritStonesDelta>0) && /(失去|遺失|丟|損失|被奪)/.test(text);
+        return false;
+    }
+    function applyEconomicKindRepair(original, candidate, actionText) {
+        if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) throw new Error("經濟修補缺少有效JSON。");
+        const before=original?.economyOperation;
+        const fixed=candidate.economyOperation;
+        if (!fixed || typeof fixed!=="object" || Array.isArray(fixed)) throw new Error("經濟修補仍缺少操作類型。");
+        const kind=String(fixed.kind||"");
+        if(!["reward","consolation","exchange","craft","loss","purchase","auction"].includes(kind))throw new Error("經濟修補提供不合法操作類型。");
+        const savedFee = before && typeof before==="object" ? (before.fee===undefined?0:before.fee) : 0;
+        if(Number(fixed.fee??0)!==Number(savedFee))throw new Error("修補擅自更動交易費用，已拒絕。");
+        if(!settlementKindMatchesAction(kind,actionText,{...original,economyOperation:{kind,fee:savedFee}}))
+            throw new Error("修補操作與玩家行動或物資收支不一致。");
+        // All AI-proposed goods, identities, quantities, deltas, risks and story retain the original values.
+        return {...original,economyOperation:{...(before && typeof before==="object" ? before : {}),kind,fee:savedFee}};
+    }
+    function updateActionTelemetry(target, success, recovered, errorText) {
+        const t=target.actionTelemetry && typeof target.actionTelemetry==="object"?target.actionTelemetry:{};
+        t.attempts=(Number(t.attempts)||0)+1;
+        t.completed=(Number(t.completed)||0)+(success?1:0);
+        t.recovered=(Number(t.recovered)||0)+(success&&recovered?1:0);
+        t.failed=(Number(t.failed)||0)+(success?0:1);
+        t.recent=Array.isArray(t.recent)?t.recent.slice(-24):[];
+        if(!success){const msg=String(errorText||"未分類失敗").slice(0,180);t.recent.push({time:new Date().toISOString(),reason:msg});}
+        target.actionTelemetry=t;
+    }
+    function renderActionTelemetry() {
+        const el=document.getElementById("action-diagnostic-panel");if(!el)return;
+        const t=gameState?.actionTelemetry||{};
+        const recent=Array.isArray(t.recent)?t.recent.slice(-8):[];
+        const lines=[`嘗試：${Number(t.attempts)||0}｜成功：${Number(t.completed)||0}｜自動修補後成功：${Number(t.recovered)||0}｜未完成：${Number(t.failed)||0}`];
+        for(const item of recent)lines.push(`${String(item.time||"").slice(0,19)} ${String(item.reason||"").slice(0,160)}`);
+        el.textContent=lines.join("\n");
+    }
+
     // V6.67：有限的受傷敘事核對；不從文字猜測扣血數值，也不信任 AI 任意修改生命權威欄位。
     // 僅辨認玩家確實受傷的明確句型，避免把 NPC 受傷、假設、閃避或既往回憶誤判為傷害。
     function hasConfirmedPlayerInjury(story) {
@@ -4427,11 +4485,12 @@ JSON 輸出格式範例：
         }
         if(result.pendingTradeOffer?.type==="SELL")bindSellQuote(result,result.pendingTradeOffer,eventMeta);
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
-        result.version="6.34";
+        result.version="6.68";
         finishEconomySummary(result,currentState,sourceId);
         return result;
     }
 
+    // V6.68: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
     // V6.67: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
     async function callGeminiApi(apiKey, sceneRepair = null, repairKind = 'scene') {
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
@@ -4439,21 +4498,32 @@ JSON 輸出格式範例：
         const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.content }] }));
         if (sceneRepair) {
             const instruction = repairKind === 'injury'
-                ? 'HP CONSISTENCY REPAIR: The story explicitly describes the PLAYER being injured, but JSON has no negative hpDelta. If the injury truly occurred, supply a plausible negative integer hpDelta and a concise hpReason according to the actual result. If there was NO real injury, revise ONLY the story to clearly describe the dodge/block/no injury; keep hpDelta 0. Keep ALL other state deltas, economic operation, scene, NPCs, story facts, choices and items unchanged. Return the complete JSON; do not invent any reward, transaction or state change.'
-                : 'Repair only the missing end-of-turn scene fields in the JSON. Preserve the story and every other delta exactly. Include location (current location), scenarioMode (IDLE/DIALOGUE/HAZARD/DANGER), and activeThreats (complete current array; [] when cleared). Return the entire original response with the corrected JSON.';
+                ? 'HP CONSISTENCY REPAIR: The story explicitly describes the PLAYER being injured, but JSON has no negative hpDelta. If injury occurred, supply negative integer hpDelta and hpReason. Otherwise revise only story to an uninjured outcome. Preserve all other fields. Return complete JSON.'
+                : repairKind === 'format'
+                ? 'JSON FORMAT REPAIR: The previous response could not be parsed as JSON with a nonempty story. Return one valid JSON object with story, location, scenarioMode and activeThreats; preserve original story and outcome. Do not create or invent any rewards, costs, items, tradeOffers or HP changes absent from the original response.'
+                : repairKind === 'settlement'
+                ? 'ECONOMY KIND REPAIR: Fix ONLY economyOperation.kind according to the attempted player action, item additions, removals, and original fee. Do NOT alter ANY other field, item name, quantity, itemId, transaction price, HP, NPC, scene, story, or outcome. Pure reward cannot consume materials or fee; craft/exchange must have inputs or costs; purchase/auction need fee and items. Return the complete original JSON with that ONE field corrected.'
+                : 'Repair only missing end-of-turn location, scenarioMode and activeThreats. Preserve all other fields exactly. Return complete corrected JSON.';
             contents.push({role:'model',parts:[{text:sceneRepair}]}, {role:'user',parts:[{text:instruction}]});
         }
         const bodyData = { system_instruction: { parts: [{ text: getSystemPrompt() + "\nSCENE SNAPSHOT REQUIRED EVERY TURN: In the state JSON always include location (nonempty current end-of-turn location), scenarioMode (IDLE/DIALOGUE/HAZARD/DANGER), and activeThreats (complete current threats array). Even if unchanged repeat these fields. When combat ends or escape succeeds explicitly send activeThreats:[] and the correct new mode. The story and scene must describe the same final moment. Never use an intended destination, flashback, or NPC location as the player location." }] }, contents: contents };
         
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`, {
-            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bodyData)
-        }).catch(e => {
-            throw new Error(`天機遮蔽，神念無法傳達 (網路連線或API被阻擋，請檢查連線。原錯誤: ${e.message})`);
-        });
-
-        if (!res.ok) throw new Error(`天道反噬 (API 請求失敗，狀態碼：${res.status})`);
-        const data = await res.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "天道無回應...";
+        const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+        let res=null,lastNetworkError=null;
+        for(let attempt=0;attempt<3;attempt++){
+            try {
+                res=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(bodyData)});
+                lastNetworkError=null;
+            } catch(e){lastNetworkError=e;res=null;}
+            if(res?.ok)break;
+            if(res && ![429,500,502,503,504].includes(res.status))
+                throw new Error(`天道反噬 (API 請求失敗，狀態碼：${res.status})`);
+            if(attempt<2)await new Promise(resolve=>setTimeout(resolve,600*(2**attempt)));
+        }
+        if(!res)throw new Error(`網路連線失敗，重試後仍無法取得回應 (${String(lastNetworkError?.message||"網路中斷").slice(0,100)})`);
+        if(!res.ok)throw new Error(`AI 服務暫時繁忙，重試後仍回傳狀態碼 ${res.status}。`);
+        const data=await res.json();
+        return (data.candidates?.[0]?.content?.parts||[]).map(part=>part.text||"").join("") || "天道無回應...";
     }
 
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
@@ -4491,6 +4561,9 @@ JSON 輸出格式範例：
         const stateBeforeAction = structuredClone(gameState);
         const logsBeforeAction=storyLogData.slice();
         startLoadingAnim(); isTyping = true;
+        let repairedThisTurn = false;
+        let failureReason = "";
+        let actionSucceeded = false;
 
         try {
             let aiResponseText = await callGeminiApi(apiKey);
@@ -4498,15 +4571,24 @@ JSON 輸出格式範例：
             if (isDoingOrigin) applyOriginInitialization(actionText);
 
             let { storyText, parsedState } = parseApiResponse(aiResponseText);
-            if (!parsedState) throw new Error("AI回應缺少有效結構化狀態，本回合未結算，請重試。");
+            if (!parsedState) {
+                const fixed = parseApiResponse(await callGeminiApi(apiKey, aiResponseText, 'format'));
+                if (!fixed.parsedState) throw new Error("AI回應缺少有效結構化狀態，本回合未結算，請重試。");
+                // A plain-text-only response has no authoritative economic payload to preserve.
+                const r=fixed.parsedState;
+                if((r.inventoryDelta||[]).length || (r.inventoryRemoveDelta||[]).length || (r.lostItems||[]).length || r.tradeOffer || r.economyOperation || Number(r.spiritStonesDelta||0) || Number(r.hpDelta||0))
+                    throw new Error("格式修補試圖新增未經驗證的物資或生命變動。");
+                ({storyText,parsedState}=fixed);repairedThisTurn=true;
+            }
             parsedState = normalizeSceneDelta(parsedState);
             if (!hasCompleteScene(parsedState)) {
                 // Repair before any fees, time, inventory or state are committed.
                 const originalDelta = parsedState;
-                const repairedText = await callGeminiApi(apiKey, aiResponseText);
+                const repairedText = await callGeminiApi(apiKey, aiResponseText, 'scene');
                 const repairedScene = normalizeSceneDelta(parseApiResponse(repairedText).parsedState);
                 parsedState = {...originalDelta, location:repairedScene.location, scenarioMode:repairedScene.scenarioMode, activeThreats:repairedScene.activeThreats};
                 if (!hasCompleteScene(parsedState)) throw new Error("AI場景資料不完整或互相矛盾，本回合未結算，請重試。");
+                repairedThisTurn=true;
             }
 
             // V6.67：確定玩家受傷的敘事必須有負數 HP 結算；不自動創造傷害數值。
@@ -4525,6 +4607,7 @@ JSON 輸出格式範例：
                 } else {
                     throw new Error('故事描述角色實際受傷，但未提供有效HP傷害結算，本回合未入帳。');
                 }
+                repairedThisTurn=true;
             }
             // 預設事件已由核心明確推進時間時，忽略同一回合 AI 的天數欄位，避免重複計算。
             if (parsedState && eventMeta && Number(eventMeta.addDays) > 0) {
@@ -4607,7 +4690,17 @@ JSON 輸出格式範例：
 
                 const inferredMeta = { ...(eventMeta || {}) };
                 if (!inferredMeta.actionType && /(戰鬥|攻擊|伏擊|迎戰|出手|交手|對決|斬殺|反擊)/.test(String(actionText || ""))) inferredMeta.actionType = "combat";
-                gameState = applyStateDelta(gameState, parsedState, inferredMeta);
+                try {
+                    gameState = applyStateDelta(gameState, parsedState, inferredMeta);
+                } catch (settlementError) {
+                    if (!isRepairableSettlementError(settlementError.message)) throw settlementError;
+                    const repairText=await callGeminiApi(apiKey,
+                        JSON.stringify({validationError:settlementError.message,original:parsedState}), 'settlement');
+                    const candidate=parseApiResponse(repairText).parsedState;
+                    parsedState=applyEconomicKindRepair(parsedState,candidate,actionText);
+                    gameState = applyStateDelta(gameState, parsedState, inferredMeta);
+                    repairedThisTurn=true;
+                }
                 // AI 不得直接改寫境界、生命等權威狀態；靈石則由 applyStateDelta 的結構化獎勵結算。
                 // 重要：不可在此把 spiritStone 還原成舊值，否則剛由 inventoryDelta 入帳的靈石會被覆蓋。
                 for (const [k, v] of Object.entries(authoritativeBeforeAI)) gameState[k] = v;
@@ -4652,12 +4745,18 @@ JSON 輸出格式範例：
             // if(gameState.lastEconomySummary && (gameState.lastEconomySummary.receiptIds||[]).length) appendLogData("系統",formatEconomySummary(gameState.lastEconomySummary),"system",false,true);
             // if(gameState.lastEconomyWarning) appendLogData("系統",`【敘事核對提醒】${gameState.lastEconomyWarning}`,"system",false,true);
             checkLifeStatus(gameState);
+            actionSucceeded=true;
         } catch (error) {
+            failureReason=String(error?.message||error||"未知問題");
             gameState = stateBeforeAction;
             storyLogData=logsBeforeAction;
             conversationHistory = historyBeforeAction;
-            appendLogData("系統", `✦ 行動失敗 (${error.message})`, "system", false, true);
+            const isResource = /(靈石不足|材料不足|餘額不足|不可出售|無法扣除)/.test(failureReason);
+            appendLogData("系統", isResource
+                ? "✦ 此次行動未完成：資源或交易條件不足，物資未變動。"
+                : "✦ 本回合結算未完成，已保留操作前的狀態。可以重試或改變行動；詳細原因見系統診斷。", "system", false, true);
         } finally {
+            updateActionTelemetry(gameState,actionSucceeded,repairedThisTurn,failureReason);
             isTyping = false; stopLoadingAnim(); renderUI(); saveGameState();
             if(inputEl) inputEl.value = "";
         }
@@ -4697,6 +4796,7 @@ JSON 輸出格式範例：
 
     function renderUI() {
         pruneNpcRegistry(gameState, 100);
+        renderActionTelemetry();
         renderEconomyProposal();
         checkLifeStatus(gameState);
 
@@ -5211,7 +5311,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.62"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.68"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         try {
@@ -5235,7 +5335,7 @@ JSON 輸出格式範例：
                 const pkg = JSON.parse(saved);
                 gameState = ensureWorldMemory(normalizeGameState(pkg.state));
                 storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
-                conversationHistory = Array.isArray(pkg.history) ? pkg.history : [];
+                conversationHistory = Array.isArray(pkg.history) ? pkg.history.slice(-100).filter(x=>x && typeof x.role==="string").map(x=>({role:x.role,content:typeof x.content==="string"?x.content:(Array.isArray(x.parts)?x.parts.map(p=>String(p.text||"")).join("\n"):"")})) : [];
             } catch (e) {
                 gameState = getDefaultGameState();
             }
@@ -5244,12 +5344,12 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.62"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.68"; gameState.maxHp = getMaxHp(gameState);
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v662_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v668_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
@@ -5272,11 +5372,15 @@ JSON 輸出格式範例：
         }
         if (pkg.logs !== undefined && (!Array.isArray(pkg.logs) || pkg.logs.some(x => !object(x) || typeof x.role !== "string" || typeof x.content !== "string")))
             throw new Error("日誌格式無效。");
-        if (pkg.history !== undefined && (!Array.isArray(pkg.history) || pkg.history.some(x => !object(x) || typeof x.role !== "string" || !Array.isArray(x.parts) || x.parts.some(p => !object(p) || typeof p.text !== "string"))))
+        if (pkg.history !== undefined && (!Array.isArray(pkg.history) || pkg.history.some(x =>
+            !object(x) || typeof x.role !== "string" ||
+            !(typeof x.content === "string" || (Array.isArray(x.parts) && x.parts.every(p => object(p) && typeof p.text === "string"))))))
             throw new Error("對話紀錄格式無效。");
+        const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
+            content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.62"; state.maxHp = getMaxHp(state);
-        return {state, logs: structuredClone(pkg.logs || []), history: structuredClone(pkg.history || []).slice(-100)};
+        state.version = "6.68"; state.maxHp = getMaxHp(state);
+        return {state, logs: structuredClone(pkg.logs || []), history};
     }
     function importSave(e) {
         const input = e.target;
