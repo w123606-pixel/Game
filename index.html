@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 突破交易與 Gemini 效能修正版 V6.69</title>
+    <title>九州裂天錄 - 突破權限與千回合真實測試版 V6.70</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -319,7 +319,7 @@
             <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showLongTermStressResults()">✦ V6.63 多角色長期壓力測試（400 筆交易）</button>
             <section id="live-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #a78649;border-radius:8px;background:#171922;">
   <h2 style="margin:0 0 8px;color:#ffd27a;">✦ 真實 Gemini 連續遊玩驗證</h2>
-  <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;margin:4px 0 9px;">直接呼叫 Gemini 模型。隔離角色在<strong>測試開始前</strong>取得 300 顆測試靈石；突破前設定修為圓滿，但<strong>仍必須走突破按鈕</strong>。每次 HTTP 嘗試與耗時都會記錄；測試結束後恢復原存檔。可能產生 API 用量／費用；請勿同時多分頁操作。</p>
+  <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;margin:4px 0 9px;">直接呼叫 Gemini 模型。隔離角色在<strong>測試開始前</strong>取得 300 顆測試靈石；突破前設定修為圓滿，但<strong>仍必須走突破按鈕且接受機率判定</strong>。每次 HTTP 嘗試與耗時都會記錄；測試結束後恢復原存檔。可能產生 API 用量／費用；請勿同時多分頁操作。</p>
   <label for="live-qa-turns" style="font-size:.8rem">測試長度：</label>
   <select id="live-qa-turns" style="margin-bottom:8px;width:100%;padding:7px;border:1px solid #555;background:#242834;color:#fff;">
     <option value="8">8 回合：出身、劇情、NPC、戰鬥、採集</option>
@@ -332,6 +332,26 @@
   </div>
   <div id="live-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.79rem;line-height:1.6;padding:8px;margin-top:8px;border-radius:5px;background:#0d1019;color:#c8ddcc;max-height:260px;overflow:auto;">尚未執行。請先在上方設定 API Key 與模型。</div>
 </section>
+            <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ 1,000 回合以上真實 Gemini 成長觀察</h2>
+              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。每次閉關、突破、戰鬥及探索都經過既有核心，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。</p>
+              <label for="long-qa-turns">目標回合：</label>
+              <select id="long-qa-turns" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
+                <option value="1000" selected>1,000 回合</option><option value="1200">1,200 回合</option><option value="1500">1,500 回合</option><option value="2000">2,000 回合</option><option value="3000">3,000 回合</option>
+              </select>
+              <label for="long-qa-delay">API 回合間隔（避免過度頻繁呼叫）：</label>
+              <select id="long-qa-delay" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
+                <option value="1000">1 秒</option><option value="3000" selected>3 秒（建議）</option><option value="6000">6 秒</option><option value="12000">12 秒</option>
+              </select>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
+                <button id="long-qa-new" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(false)">▶ 新測試</button>
+                <button id="long-qa-resume" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(true)">↻ 接續</button>
+                <button id="long-qa-stop" class="sys-btn" style="flex:1;min-width:90px;" onclick="stopLongGeminiQA()" disabled>暫停</button>
+                <button id="long-qa-export" class="sys-btn" style="flex:1;min-width:110px;" onclick="exportLongGeminiQA()">↧ 匯出進度</button>
+              </div>
+              <div id="long-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;line-height:1.65;padding:8px;margin-top:8px;border-radius:5px;background:#081118;color:#d2e2e1;max-height:300px;overflow:auto;">未執行。每回合記錄境界、修為、HP、突破、AI 錯誤與耗時；每回合保留可接續檢查點。</div>
+              <p style="font-size:.74rem;color:#b4ced0;">中途關閉或重整頁面後，重新開啟此檔並按「接續」，從最近一回合檢查點恢復。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
+            </section>
             <h2 style="margin-top:10px;">▣ 行動結算診斷</h2>
             <div id="action-diagnostic-panel" style="padding:9px;margin:8px 0;border:1px solid #414456;border-radius:6px;font-size:0.78rem;color:#bdc3d2;white-space:pre-wrap;overflow-wrap:anywhere;">尚無測試紀錄。</div>
             <h2 style="margin-top:10px;">▣ 存檔管理</h2>
@@ -3044,7 +3064,7 @@
         const expBase = locMod.expPerDay * days * (isDeathSeclusion ? 1.15 : 1);
         const fatigue = isDeathSeclusion ? Math.min(100, locMod.fatigueCost + 15) : locMod.fatigueCost;
         const insightGain = isDeathSeclusion ? 0.05 : 0;
-        sendAction(`【在「${gameState.location}」${isDeathSeclusion ? '閉死關衝擊瓶頸' : '閉關打坐'} ${days} 天】`, {
+        return sendAction(`【在「${gameState.location}」${isDeathSeclusion ? '閉死關衝擊瓶頸' : '閉關打坐'} ${days} 天】`, {
             isPresetEvent: true, addDays: days, addExp: expBase, addFatigue: fatigue,
             isDeathSeclusion, breakthroughInsightGain: insightGain
         });
@@ -3134,15 +3154,19 @@
             openGameModal("✦ 修為未滿", "修為尚未圓滿，無法強行突破！"); 
             return; 
         }
+        if ((Number(gameState.breakthroughCdDays)||0) > (Number(gameState.daysPassed)||0)) {
+            openGameModal("✦ 突破反噬休養中", `距離下次衝關還需 ${Math.ceil(gameState.breakthroughCdDays-gameState.daysPassed)} 天；請先閉關調息。`);
+            return;
+        }
 
         const nextDef = getRealmDef(gameState.level + 1);
         const linggenMeta = getLinggenMeta(gameState.linggen || "真靈根");
         const insightBonus = Math.min(0.35, Math.max(0, Number(gameState.breakthroughInsight) || 0));
         const baseRate = Math.max(0.12, Math.min(0.88, (Number(nextDef.baseRate) || 0.5) + (Number(linggenMeta.breakBonus) || 0) + insightBonus));
-        // V6.69: the first qi-entry tutorial guarantee applies ONLY when the player presses this button.
+        // V6.70: even first qi entry is a genuine probability roll; words in the input never grant permission.
         const firstQi = gameState.hasChosenOrigin === true && Number(gameState.level) === 0 && gameState.realm === "凡人";
-        const effectiveRate = firstQi ? 1 : baseRate;
-        const isSuccess = firstQi || Math.random() < baseRate;
+        const effectiveRate = baseRate;
+        const isSuccess = Math.random() < effectiveRate;
         return sendAction(`【按下突破按鈕，盤膝運功衝擊「${nextDef.name}」；核心成功率 ${Math.round(effectiveRate * 100)}%】`, {
             isBreakthrough:true,breakthroughSuccess:isSuccess,breakthroughRate:effectiveRate,
             actionType:"breakthrough",firstQiEntry:firstQi,fromBreakthroughButton:true
@@ -4376,7 +4400,7 @@ JSON 輸出格式範例：
         }
         confirmTradeOfferV629();if(!gameState.pendingTradeOffer)gameState.pendingSellIntent=null;
     }
-    // V6.69: concise, bounded authoritative context reduces repeated input tokens while retaining SSOT.
+    // V6.70: concise, bounded authoritative context reduces repeated input tokens while retaining SSOT.
     function getSystemPrompt() {
         ensureWorldMemory(gameState);
         const wm=gameState.worldMemory||{};
@@ -4403,7 +4427,7 @@ JSON 輸出格式範例：
     }
 
 
-    // V6.69: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
+    // V6.70: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
     const REPAIRABLE_SETTLEMENT_ERRORS = [
         "經濟提案須明確指定操作類型", "經濟操作格式無效", "製作或交換不可偽裝為免費獎勵", "純獎勵不可扣材料或費用"
     ];
@@ -4469,24 +4493,31 @@ JSON 輸出格式範例：
         el.textContent=lines.join("\n");
     }
 
-    // V6.69: Never let a text-only action become a successful breakthrough in story or memory.
-    function guardUnauthorizedBreakthrough(story,delta,s) {
+    // V6.70: Narration and memories are not allowed to promote the player. Canonical realm/level is only changed by an authorized button action.
+    function guardUnauthorizedBreakthrough(story,delta,s,attempted=false) {
         const out=structuredClone(delta||{});
-        const forbidden=/(?:正式|成功|終於|已經|已然|一舉|順利|就此).{0,15}(?:踏入|突破至|晉升|晉級|進入|邁入).{0,14}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙|境界|修仙門檻)|(?:突破成功|境界突破|踏入練氣|跨入練氣|成為練氣修士|不再是凡人|正式成為修士)/;
+        const forbidden=/(?:突破(?:成功|至|到|為|境界)|成功(?:突破|晉級|晉升|引氣入體)|(?:正式|終於|已經|已然|順利|一舉|就此|成功).{0,24}(?:踏入|跨入|晉入|突破|晉升|晉級|進入|邁入|成為).{0,18}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙|境界|修士)|(?:踏入|跨入|晉升|突破至|升到).{0,10}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙)|(?:不再是凡人|由凡入仙|已成修士|完成引氣入體|踏入修仙門檻))/;
         let removed=false;
         const cleaned=String(story||'').split(/(?<=[。！？\n])/).map(sentence=>{
             if(forbidden.test(sentence)){removed=true;return '';}
             return sentence;
         }).join('').trim();
-        if(removed){
-            if(out.memoryDelta && typeof out.memoryDelta==='object') {
-                if(typeof out.memoryDelta.recentSummary==='string' && forbidden.test(out.memoryDelta.recentSummary)) out.memoryDelta.recentSummary='本回合僅感應天地靈氣，未正式突破；境界仍是'+s.realm;
-                for(const key of ['chronicle','worldStateChanges','resolvedThreads','revealedSecrets']) if(Array.isArray(out.memoryDelta[key]))out.memoryDelta[key]=out.memoryDelta[key].filter(v=>!forbidden.test(JSON.stringify(v)));
+        const cleanList=(list)=>Array.isArray(list)?list.filter(v=>{
+            const bad=forbidden.test(JSON.stringify(v));if(bad)removed=true;return !bad;
+        }):list;
+        if(out.memoryDelta && typeof out.memoryDelta==='object') {
+            if(typeof out.memoryDelta.recentSummary==='string' && forbidden.test(out.memoryDelta.recentSummary)){
+                out.memoryDelta.recentSummary='本回合僅感悟／嘗試修練，境界仍是'+s.realm;removed=true;
             }
-            if(Array.isArray(out.worldEvents))out.worldEvents=out.worldEvents.filter(v=>!forbidden.test(JSON.stringify(v)));
-            if(Array.isArray(out.quests))out.quests=out.quests.filter(v=>!forbidden.test(JSON.stringify(v)));
+            for(const key of ['chronicle','worldStateChanges','resolvedThreads','revealedSecrets','openThreads']) out.memoryDelta[key]=cleanList(out.memoryDelta[key]);
         }
-        return {story:removed?((cleaned?cleaned+'\n\n':'')+`你雖有所感悟，但境界依舊是【${s.realm}】；必須修為圓滿且由你按下「突破境界」，才能正式晉級。`):String(story||''),delta:out,corrected:removed};
+        out.worldEvents=cleanList(out.worldEvents);
+        out.quests=cleanList(out.quests);
+        if(Array.isArray(out.choices))out.choices=out.choices.filter(v=>{
+            // Legitimate future suggestions to practice/attempt a breakthrough are fine; completed promotion is not.
+            const bad=forbidden.test(String(v));if(bad)removed=true;return !bad;
+        });
+        return {story:removed?((cleaned?cleaned+'\n\n':'')+(attempted?`你確實發起了突破，但天道判定失敗；境界仍為【${s.realm}】。需休養後重新嘗試。`:`你雖有所感悟，但境界依舊是【${s.realm}】。真正晉級須修為圓滿，並由你親自按下「突破境界」，接受天道機率判定。`)):String(story||''),delta:out,corrected:removed};
     }
 
     // V6.67：有限的受傷敘事核對；不從文字猜測扣血數值，也不信任 AI 任意修改生命權威欄位。
@@ -4614,7 +4645,7 @@ JSON 輸出格式範例：
         return result;
     }
 
-    // V6.69: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
+    // V6.70: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
     // V6.67: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
     async function callGeminiApi(apiKey, sceneRepair = null, repairKind = 'scene') {
         if (__liveQaRuntime?.active) __liveQaRuntime.currentCalls++;
@@ -4674,14 +4705,15 @@ JSON 輸出格式範例：
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
 
-        // V6.69: narrative actions cannot grant breakthrough permission. Only the button supplies authorized metadata.
+        // V6.70: narrative actions cannot grant breakthrough permission. Only the button supplies authorized metadata.
         if (eventMeta?.isBreakthrough && eventMeta.fromBreakthroughButton !== true)
             {openGameModal("✦ 突破權限不足", "請使用『突破境界』按鈕。 ");return;}
         if (eventMeta?.isBreakthrough && (gameState.exp < gameState.maxExp || !gameState.hasChosenOrigin ||
-                getEffectiveMode(gameState) === "DANGER" || (gameState.activeThreats||[]).length))
+                getEffectiveMode(gameState) === "DANGER" || (gameState.activeThreats||[]).length ||
+                (Number(gameState.breakthroughCdDays)||0)>(Number(gameState.daysPassed)||0)))
             {openGameModal("✦ 突破條件不足", "突破必須修為圓滿、無危機且已選身世。 ");return;}
         if (eventMeta?.fromBreakthroughButton) {
-            customPromptText = `【核心突破按鈕已正式判定：${eventMeta.breakthroughSuccess?'成功':'失敗'}。${eventMeta.firstQiEntry?'首次引氣入體教學保底成功。':''}只描寫當次判定，不改動天道數值與靈石。】`;
+            customPromptText = `【核心突破按鈕已正式判定：${eventMeta.breakthroughSuccess?'成功':'失敗'}。${eventMeta.firstQiEntry?'首次引氣入體也須依核心機率判定，不保底。':''}只描寫當次判定，不改動天道數值與靈石。】`;
         }
         eventMeta = { ...(eventMeta || {}), eventId: (eventMeta && eventMeta.eventId) || `ACTION:${Date.now()}:${Math.random().toString(36).slice(2,12)}` };
         let promptToSend = customPromptText || actionText;
@@ -4743,8 +4775,8 @@ JSON 輸出格式範例：
                 }
                 repairedThisTurn=true;
             }
-            if (!eventMeta?.fromBreakthroughButton) {
-                const protectedBreakthrough = guardUnauthorizedBreakthrough(storyText,parsedState,gameState);
+            if (!eventMeta?.fromBreakthroughButton || !eventMeta?.breakthroughSuccess) {
+                const protectedBreakthrough = guardUnauthorizedBreakthrough(storyText,parsedState,gameState,Boolean(eventMeta?.fromBreakthroughButton));
                 storyText=protectedBreakthrough.story;
                 parsedState=protectedBreakthrough.delta;
             }
@@ -4790,7 +4822,9 @@ JSON 輸出格式範例：
                     gameState.status.push(`藥石丹毒 Lv.${gameState.danToxin}`);
                 }
                 if (eventMeta.isBreakthrough) {
+                    gameState.lastBreakthroughAttempt={rate:Number(eventMeta.breakthroughRate)||0,success:Boolean(eventMeta.breakthroughSuccess),day:gameState.daysPassed,fromLevel:gameState.level};
                     if (eventMeta.breakthroughSuccess) {
+                        gameState.breakthroughCdDays=0;
                         const isFirstBreakthrough = (gameState.level === 0);
                         gameState.level += 1;
                         const rDef = getRealmDef(gameState.level);
@@ -4821,6 +4855,7 @@ JSON 輸出格式範例：
                         }
                     } else {
                         gameState.hp = Math.max(1, Math.floor(gameState.hp * 0.5));
+                        gameState.breakthroughCdDays=(Number(gameState.daysPassed)||0)+30;
                     }
                 }
             }
@@ -4874,7 +4909,7 @@ JSON 輸出格式範例：
                 }
             }
             if (eventMeta && eventMeta.isBreakthrough) {
-                const successLabel = eventMeta.firstQiEntry ? "✦ 首次引氣入體成功" : "✦ 突破判定成功";
+                const successLabel = eventMeta.firstQiEntry ? "✦ 首次引氣入體判定成功" : "✦ 突破判定成功";
                 appendLogData("天道", eventMeta.breakthroughSuccess
                     ? `${successLabel}：已進入【${gameState.realm}】(Lv.${gameState.level})。`
                     : `✦ 突破判定失敗：境界維持【${gameState.realm}】(Lv.${gameState.level})，氣血受損。`, "system", false, true);
@@ -5016,8 +5051,11 @@ JSON 輸出格式範例：
                 deduceBtn.textContent = "✦ 需先設定身世開局";
                 deduceBtn.disabled = true;
             } else {
-                deduceBtn.textContent = `✦ 衝擊突破 (${gameState.realm})`;
-                deduceBtn.disabled = gameState.isDead || getEffectiveMode(gameState) === "DANGER" || (gameState.exp < gameState.maxExp);
+                const wait=Math.max(0,(Number(gameState.breakthroughCdDays)||0)-(Number(gameState.daysPassed)||0));
+                const next=getRealmDef(gameState.level+1);
+                const chance=Math.max(0.12,Math.min(0.88,(Number(next.baseRate)||0.5)+(Number(getLinggenMeta(gameState.linggen).breakBonus)||0)+Math.min(0.35,Number(gameState.breakthroughInsight)||0)));
+                deduceBtn.textContent=wait>0?`✦ 突破休養：剩餘 ${Math.ceil(wait)} 天`:`✦ 衝擊突破 (${Math.round(chance*100)}%)`;
+                deduceBtn.disabled=gameState.isDead || getEffectiveMode(gameState)==="DANGER" || (gameState.activeThreats||[]).length>0 || (gameState.exp<gameState.maxExp) || wait>0;
             }
         }
 
@@ -5732,8 +5770,8 @@ JSON 輸出格式範例：
             const successful=rt.rounds.filter(r=>r.succeeded).length;
             const failures=rt.rounds.length-successful;
             const repairs=rt.rounds.filter(r=>r.apiCalls>1).length;
-            __liveQaReport={tool:'九州裂天錄 V6.69 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
-                fixtures:{startingStones:300,breakthroughExpReady:true,notes:'測試開始前注入 300 靈石；僅測試角色可使用。突破回合前將修為設為圓滿，仍須經由突破按鈕。'},
+            __liveQaReport={tool:'九州裂天錄 V6.70 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+                fixtures:{startingStones:300,breakthroughExpReady:true,notes:'測試開始前注入 300 靈石；僅短期測試可用。突破前將修為設滿，須按按鈕並接受機率判定。長期測試不使用這些注入。'},
                 httpRequests:rt.httpEvents,skippedRounds:rt.skipped,
                 startedAt:rt.startedAt,finishedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
                 completedRounds:rt.rounds.length,successfulRounds:successful,failedRounds:failures,repairedRounds:repairs,
@@ -5759,6 +5797,177 @@ JSON 輸出格式範例：
         a.href=url;a.download='九州裂天錄_真實Gemini回歸測試_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
+
+    // V6.70: 1,000+ round REAL Gemini endurance run. Stored checkpoints contain no API key.
+    const LONG_QA_CHECKPOINT_KEY='blade_long_gemini_checkpoint_v670';
+    const LONG_QA_BACKUP_KEY='blade_long_gemini_player_backup_v670';
+    let __longQaRuntime=null;
+    let __longQaResult=null;
+    function longQaText(value){const el=document.getElementById('long-qa-progress');if(el)el.textContent=value;}
+    function longQaControl(running){for(const id of ['long-qa-new','long-qa-resume']){
+        const b=document.getElementById(id);if(b)b.disabled=running;
+    }const stop=document.getElementById('long-qa-stop');if(stop)stop.disabled=!running;}
+    function longQaRoundPlan(s,n){
+        if(!s.hasChosenOrigin)return {type:'origin',action:'3 落魄少主。選擇出身，從荒郊破廟開始。'};
+        if(getEffectiveMode(s)==='DANGER'||(s.activeThreats||[]).length)
+            return {type:'retreat',action:'先護住性命，謹慎撤退到附近已知安全地點。成功脫離才清空 activeThreats，依實際受傷扣HP。'};
+        if(['DIALOGUE','HAZARD'].includes(getEffectiveMode(s)))
+            return {type:'depart',action:'禮貌結束當前交談或避開危險地形，返回可閉關的安全地帶，保留已知NPC關係。'};
+        if(getLocationModifier(s.location).expPerDay<=0)
+            return {type:'relocate',action:'我離開不利修行的破廟或險地，沿安全官道前往最近的青石鎮客棧住下。只有實際抵達才更新位置，不憑空增加修為或物資。'};
+        if(s.exp>=s.maxExp){
+            if((Number(s.breakthroughCdDays)||0)>(Number(s.daysPassed)||0))return {type:'cultivate',action:'閉關休養30天等待突破冷卻'};
+            return {type:'breakthrough',action:'【真正按鈕】突破境界'};
+        }
+        // High proportion of ordinary cultivation, with natural interaction and occasional hazard exposure.
+        const cycle=n%20;
+        if(cycle===7)return {type:'gather',action:'在附近安全可達的地點尋找普通草藥，若成功才依來源結算入庫，不可憑空給靈石。'};
+        if(cycle===14)return {type:'social',action:'訪問附近可信的修士，討論修行心得或參加一項不需支付費用的交流；不擅自建立永久人脈。'};
+        if(cycle===18)return {type:'explore',action:'在自身境界能力範圍內探索安全路線與合理機緣；若遭遇威脅請讓我有機會撤離。'};
+        return {type:'cultivate',action:'【閉關修練30天】'};
+    }
+    function longQaBefore(s){return {level:s.level,realm:s.realm,exp:Math.floor(s.exp||0),maxExp:Math.floor(s.maxExp||0),
+        hp:s.hp,maxHp:getMaxHp(s),stones:s.spiritStone,days:s.daysPassed,dead:Boolean(s.isDead),
+        npcs:Object.keys(s.npcRegistry||{}).length,items:(s.inventory||[]).reduce((a,x)=>a+Number(x.quantity||0),0),
+        location:String(s.location||''),mode:getEffectiveMode(s),pending:Boolean(s.pendingEconomyProposal)};}
+    function longQaCheckpoint(data){
+        // Last-turn progress is compact, so even 3,000 rounds can be resumed from localStorage.
+        localStorage.setItem(LONG_QA_CHECKPOINT_KEY,JSON.stringify(data));
+        __longQaResult=data;
+    }
+    function longQaRestoreBackup(){
+        const raw=localStorage.getItem(LONG_QA_BACKUP_KEY);
+        if(!raw)return;
+        const backup=JSON.parse(raw);
+        liveQaRestoreSavedText('blade_v600_save',backup.save??null);
+        liveQaRestoreSavedText('blade_v503_save',backup.legacy??null);
+        localStorage.removeItem(LONG_QA_BACKUP_KEY);
+    }
+    function longQaStartupRestore(){
+        try{
+            if(localStorage.getItem(LONG_QA_BACKUP_KEY)){
+                longQaRestoreBackup();
+                longQaText('上次長期測試意外中斷：已先恢復正式角色存檔。長期測試檢查點仍保留，請按「接續」。');
+            }else{
+                const c=localStorage.getItem(LONG_QA_CHECKPOINT_KEY);
+                if(c){const d=JSON.parse(c);longQaText(`可接續的測試：${d.rounds?.length||0}/${d.target} 回合，最高境界 ${d.maxRealm||'凡人'}，目前境界 ${d.state?.realm||'凡人'}。`);}
+            }
+        }catch(e){longQaText('備份還原異常：'+String(e.message));}
+    }
+    function longQaProgress(data){
+        const arr=data.rounds||[],last=arr[arr.length-1],p=data.state||{};
+        const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
+        longQaText([`回合 ${arr.length}/${data.target} | 真實 Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
+            `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
+            `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；目前 HP ${p.hp??'?'}，靈石 ${p.spiritStone??'?'}`,
+            `執行狀態：${data.status||'執行中'}，已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
+    }
+    async function startLongGeminiQA(resume=false){
+        if(__longQaRuntime?.active||__liveQaRuntime?.active||isTyping)return;
+        const key=document.getElementById('api-key').value.trim()||localStorage.getItem('blade_api_key');
+        if(!key){openGameModal('未設定 Gemini Key','請先設定自己的 Gemini API Key，長期測試不會匯出金鑰。');return;}
+        const oldText=localStorage.getItem(LONG_QA_CHECKPOINT_KEY);
+        if(resume&&!oldText){openGameModal('沒有進度','尚無長期測試檢查點，請按「新測試」。');return;}
+        if(!resume&&oldText&&!confirm('現有長期測試進度將被新的測試覆蓋。若需要舊報告請先匯出。確定重開？'))return;
+        const requested=Number(document.getElementById('long-qa-turns').value||1000);
+        const delayMs=Number(document.getElementById('long-qa-delay').value||3000);
+        if(!confirm(`即將${resume?'接續':'開始'}真正 Gemini 長期測試，至少 1,000 回合；每回合使用付費／限額 API，可能持續數小時。角色可能死亡，突破並不保證成功。會備份並還原正式遊戲。是否執行？`))return;
+        let snapshot;
+        try {
+            snapshot=liveQaSnapshot();
+            localStorage.setItem(LONG_QA_BACKUP_KEY,JSON.stringify({save:snapshot.save,legacy:snapshot.legacy}));
+        }catch(e){openGameModal('備份失敗','無法備份正式角色，不啟動測試：'+e.message);return;}
+        let data;
+        try {
+            if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
+            else {
+                gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
+                data={tool:'九州裂天錄 V6.70 真實Gemini千回合成長測試',source:'real Gemini generateContent through game code',
+                    startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
+                    target:requested,delayMs,rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    apiCalls:0,httpAttempts:0,maxLevel:0,maxRealm:'凡人',status:'running'};
+            }
+            data.target=Math.max(data.target||1000,requested);data.delayMs=delayMs;data.status='running';
+            renderUI();renderStoryLogs();
+            const rt={active:true,stop:false,responses:[],httpEvents:[],currentCalls:0};
+            __longQaRuntime=rt;
+            __liveQaRuntime=rt;  // Reuse existing Gemini HTTP instrumentation, but discard raw responses immediately after each turn.
+            longQaControl(true);
+            let streak=0;
+            for(let n=data.rounds.length;n<data.target;n++){
+                if(rt.stop){data.status='paused by user';break;}
+                if(gameState.isDead){data.status='character died';break;}
+                const plan=longQaRoundPlan(gameState,n);
+                const before=longQaBefore(gameState);
+                const completedBefore=Number(gameState.actionTelemetry?.completed||0);
+                const failedBefore=Number(gameState.actionTelemetry?.failed||0);
+                const callsBefore=rt.currentCalls,httpBefore=rt.httpEvents.length;
+                const began=Date.now();
+                try {
+                    if(plan.type==='breakthrough') await attemptBreakthrough();
+                    else if(plan.type==='cultivate') await quickHeal(30,'long');
+                    else await sendAction(plan.action);
+                    if(gameState.pendingEconomyProposal){
+                        // Only automatic pure rewards in a disposable QA state; never automatically approve purchases or costs.
+                        const p=gameState.pendingEconomyProposal;
+                        if(['reward','consolation'].includes(p.kind)){
+                            try {approveEconomyProposal(gameState,p.id);}catch(_e){}
+                        }else{
+                            // A commercial proposal is not accepted by the bot. Preserve no fictional transaction.
+                            try {cancelEconomyProposal(p.id);}catch(_e){gameState.pendingEconomyProposal=null;}
+                        }
+                    }
+                }catch(e){/* Model request or settlement error is recorded, no fabricated game result. */}
+                const after=longQaBefore(gameState);
+                const success=Number(gameState.actionTelemetry?.completed||0)>completedBefore;
+                const failure=!success?(gameState.actionTelemetry?.recent||[]).slice(-1)[0]?.reason||'操作未完成':'';
+                const deltas=rt.httpEvents.slice(httpBefore);
+                const record={turn:n+1,type:plan.type,action:plan.action,success,elapsedMs:Date.now()-began,
+                    apiCalls:rt.currentCalls-callsBefore,httpAttempts:deltas.length,apiMs:deltas.reduce((a,b)=>a+b.durationMs,0),
+                    httpCodes:deltas.map(e=>e.status),before,after,levelDelta:after.level-before.level,
+                    failure:liveQaSanitize(failure),breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
+                    breakthroughSuccess:plan.type==='breakthrough'&&success?Boolean(after.level>before.level):null,date:new Date().toISOString()};
+                data.rounds.push(record);data.apiCalls+=record.apiCalls;data.httpAttempts+=record.httpAttempts;
+                if(!success){data.failures++;streak++;}else streak=0;
+                if(plan.type==='breakthrough'&&success){
+                    if(after.level>before.level){data.breakthroughs.success++;data.milestones.push({turn:n+1,realm:after.realm,level:after.level,days:after.days,rate:Number(gameState.lastBreakthroughAttempt?.rate)||null});}
+                    else data.breakthroughs.failed++;
+                }
+                if(after.level>data.maxLevel){data.maxLevel=after.level;data.maxRealm=after.realm;}
+                // Avoid growing story/history and in-memory HTTP traces to unlimited sizes during long tests.
+                if(conversationHistory.length>80)conversationHistory=conversationHistory.slice(-80);
+                if(storyLogData.length>100)storyLogData=storyLogData.slice(-100);
+                rt.responses.length=0;rt.httpEvents.length=0;
+                data.state=structuredClone(gameState);data.history=structuredClone(conversationHistory);data.logs=structuredClone(storyLogData);
+                try{longQaCheckpoint(data);}catch(e){data.status='checkpoint storage full';rt.stop=true;longQaText('檢查點儲存失敗，已暫停；請匯出目前結果：'+String(e.message));break;}
+                if((n+1)%10===0||n<2||!success||plan.type==='breakthrough')longQaProgress(data);
+                if(streak>=5){data.status='paused after 5 consecutive failures';break;}
+                if(rt.stop){data.status=data.status==='running'?'paused by user':data.status;break;}
+                if(n+1<data.target&&delayMs>0)await new Promise(resolve=>setTimeout(resolve,delayMs));
+            }
+            if(data.rounds.length>=data.target)data.status='target reached';
+            if(gameState.isDead)data.status='character died';
+        } catch(e){if(data){data.status='unexpected error';data.unexpectedError=liveQaSanitize(String(e?.message||e));}}
+        finally {
+            if(data){data.endedAt=new Date().toISOString();try{longQaCheckpoint(data);}catch(_){}longQaProgress(data);}
+            __liveQaRuntime=null;__longQaRuntime=null;longQaControl(false);
+            try {liveQaRestore(snapshot);longQaRestoreBackup();}
+            catch(e){longQaText('緊急：正式角色還原失敗，請重整頁面觸發備份還原：'+String(e.message));}
+        }
+    }
+    function stopLongGeminiQA(){if(__longQaRuntime?.active){__longQaRuntime.stop=true;longQaText('暫停已排入：目前進行中的 Gemini 請求完成後會寫入檢查點並還原正式存檔。');}}
+    function exportLongGeminiQA(){
+        let data=__longQaResult;
+        if(!data){try{data=JSON.parse(localStorage.getItem(LONG_QA_CHECKPOINT_KEY)||'null');}catch(e){}}
+        if(!data){openGameModal('無報告','尚未開始長期測試。');return;}
+        const {state,history,logs,...safeReport}=data; // Explicitly exclude checkpoint internals and all API secrets.
+        const blob=new Blob([JSON.stringify({...safeReport,currentState:longQaBefore(state||getDefaultGameState())},null,2)],{type:'application/json;charset=utf-8'});
+        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+        a.download='九州裂天錄_千回合Gemini境界成長_'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    document.addEventListener('DOMContentLoaded',longQaStartupRestore);
+
     document.addEventListener('DOMContentLoaded',()=>{liveQaRestoreInterrupted();});
 
     document.addEventListener("DOMContentLoaded", () => {
