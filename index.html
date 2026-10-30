@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 配額管理與千回合可靠性修正版 V6.71</title>
+    <title>九州裂天錄 - NPC人脈一致性與存檔驗收修正版 V6.72</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -3686,10 +3686,28 @@ JSON 輸出格式範例：
                     const n = s.npcRegistry[k];
                     return n && ((incomingId && (k === incomingId || String(n.id || "") === incomingId)) || normalizeNpcName(n.name) === normName);
                 });
+                // V6.72: 同 ID 不得被不同姓名的回應奪用，防止 NPC 身分被篡改。
+                if (incomingId && s.npcRegistry[incomingId] &&
+                    normalizeNpcName(s.npcRegistry[incomingId].name) !== normName) return;
                 // updated 只准修改已存在 NPC，避免模型用 updated 變相新增。
                 if (source === "updated" && !existingKey) return;
                 // 未命中既有角色時，必須通過持續性門檻；背景人物仍留在 story/場景，不進永久名冊。
                 if (!existingKey && !hasPersistentSignal(entry)) return;
+                // created 是「新增」而非「覆寫」。AI 重複回傳已存在的同名角色時，
+                // 只能補充非破壞性的事實，不能回退經 updated 已確認的關係、信任和身分。
+                if (existingKey && source === "created") {
+                    const known = s.npcRegistry[existingKey];
+                    if (known && known.is_alive !== false && known.status !== "DEAD") {
+                        if (Array.isArray(entry.knownFacts)) known.knownFacts =
+                            [...new Set([...(known.knownFacts || []), ...entry.knownFacts]
+                                .map(x => cleanNameStrict(x)).filter(Boolean))].slice(-20);
+                        if (Array.isArray(entry.goals)) known.goals =
+                            [...new Set([...(known.goals || []), ...entry.goals]
+                                .map(x => cleanNameStrict(x)).filter(Boolean))].slice(0,8);
+                        known.lastInteractionDay = Number(s.daysPassed) || 0;
+                    }
+                    return;
+                }
                 const key = existingKey || incomingId || `npc_${normName.replace(/[^\w\u4e00-\u9fff]/g, "_")}`;
                 const prev = s.npcRegistry[key] || {};
                 const isDead = prev.is_alive === false || prev.status === "DEAD";
@@ -4642,7 +4660,7 @@ JSON 輸出格式範例：
         }
         if(result.pendingTradeOffer?.type==="SELL")bindSellQuote(result,result.pendingTradeOffer,eventMeta);
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
-        result.version="6.69";
+        result.version="6.72";
         finishEconomySummary(result,currentState,sourceId);
         return result;
     }
@@ -5512,7 +5530,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.69"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.72"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         try {
@@ -5545,12 +5563,12 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.69"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.72"; gameState.maxHp = getMaxHp(gameState);
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v668_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v672_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
@@ -5580,7 +5598,7 @@ JSON 輸出格式範例：
         const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
             content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.69"; state.maxHp = getMaxHp(state);
+        state.version = "6.72"; state.maxHp = getMaxHp(state);
         return {state, logs: structuredClone(pkg.logs || []), history};
     }
     function importSave(e) {
@@ -5789,7 +5807,7 @@ JSON 輸出格式範例：
             const successful=rt.rounds.filter(r=>r.succeeded).length;
             const failures=rt.rounds.length-successful;
             const repairs=rt.rounds.filter(r=>r.apiCalls>1).length;
-            __liveQaReport={tool:'九州裂天錄 V6.71 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+            __liveQaReport={tool:'九州裂天錄 V6.72 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
                 fixtures:{startingStones:300,breakthroughExpReady:true,notes:'測試開始前注入 300 靈石；僅短期測試可用。突破前將修為設滿，須按按鈕並接受機率判定。長期測試不使用這些注入。'},
                 httpRequests:rt.httpEvents,skippedRounds:rt.skipped,
                 startedAt:rt.startedAt,finishedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
@@ -5901,7 +5919,7 @@ JSON 輸出格式範例：
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V6.71 真實Gemini千回合成長測試',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V6.72 真實Gemini千回合成長測試',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
                     target:requested,delayMs,rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
