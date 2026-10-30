@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - NPC人脈一致性與存檔驗收修正版 V6.72</title>
+    <title>九州裂天錄 - 第二人生、世界動態委託與 NPC 長期故事 V6.82</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -148,7 +148,26 @@
     #economy-proposal-panel:not(:empty){border:1px solid #b89b55;border-radius:8px;padding:12px;margin:10px 0;background:#211f19;color:#eee;line-height:1.7;}
 #economy-proposal-panel button{padding:9px 14px;margin:5px;border:1px solid #b89b55;border-radius:5px;background:#38301f;color:#fff;cursor:pointer;}
 #economy-proposal-panel button:disabled{opacity:.5;cursor:wait;}
-</style>
+
+        /* V6.82: 命運導引以簡潔提示取代強制任務彈窗 */
+        .destiny-ribbon{padding:7px 10px;border-bottom:1px solid #56492d;background:#1a1b22;color:#e8cf91;font-size:.8rem;line-height:1.5;cursor:pointer;overflow-wrap:anywhere;}
+        .destiny-ribbon small{display:block;color:#bac2cd;font-size:.72rem;}
+        .destiny-pane{border:1px solid #675638;border-radius:7px;padding:10px;margin:7px 0 12px;background:#171923;font-size:.82rem;line-height:1.65;}
+        .destiny-pane .destiny-muted{color:#aeb6c3;font-size:.75rem;}
+        .destiny-pane .destiny-focus{color:#e8d4a7;}
+        .destiny-pane .destiny-line{padding:6px 0;border-bottom:1px solid #30313a;}
+        .destiny-pane button{border:1px solid #806d49;color:#ead5aa;background:#26271e;border-radius:5px;padding:7px 10px;cursor:pointer;min-height:34px;}
+
+        .fate-act{border:1px solid #665431;padding:10px;border-radius:6px;background:#20202a;margin:8px 0;line-height:1.6;}
+        .fate-lead{border:1px solid #414354;border-radius:6px;padding:9px;margin:7px 0;background:#191b25;}
+        .fate-lead strong{color:#e7cf91;}
+        .fate-lead small{display:block;color:#aeb8ca;margin:3px 0;}
+        .fate-actions{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0;}
+        .fate-actions button{padding:8px;border:1px solid #786544;border-radius:5px;background:#292b2d;color:#e9d19e;min-height:38px;cursor:pointer;}
+        .fate-actions button:disabled{opacity:.45;cursor:not-allowed;}
+        .fate-pill{color:#c9b98c;font-size:.77rem;}
+        .fate-progress{color:#b9d9c5;font-size:.8rem;}
+    </style>
 </head>
 <body>
 
@@ -161,6 +180,7 @@
                 <span id="ui-sect-top" class="sect-badge">無宗門 (散修)</span>
             </div>
         </div>
+        <div id="destiny-ribbon" class="destiny-ribbon" onclick="showDestinyGuide()" style="display:none" title="查看命運目標"></div>
         <div id="story-log"></div>
         <div class="controls-area" id="controls-area">
             <div id="trade-offer-container" style="display:none;"></div>
@@ -285,6 +305,8 @@
         </div>
 
         <div id="tab-social" class="tab-content">
+            <h2>✦ 命運與人生志向</h2>
+            <div id="ui-destiny" class="destiny-pane" aria-live="polite"></div>
             <h2>✦ 當前任務</h2>
             <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);"></div>
             
@@ -296,6 +318,8 @@
             <h2 style="margin-top:10px; color:#aaa;">✦ 故人/仇敵錄 (已身死 NPC 隔離區)</h2>
             <div id="ui-dead-npcs-list" style="margin-bottom:10px;"></div>
 
+            <h2 style="margin-top:10px; color:#ffd700;">✦ 九州自主世界局勢與委託</h2>
+            <div id="ui-world-engine" class="destiny-pane" aria-live="polite"></div>
             <h2 style="margin-top:10px; color:#ffd700;">✦ 世界紀事 (世界大事錨點 · 50條上限)</h2>
             <div id="ui-world-events" class="scroll-list" style="color: #c5a059;"></div>
         </div>
@@ -333,8 +357,8 @@
   <div id="live-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.79rem;line-height:1.6;padding:8px;margin-top:8px;border-radius:5px;background:#0d1019;color:#c8ddcc;max-height:260px;overflow:auto;">尚未執行。請先在上方設定 API Key 與模型。</div>
 </section>
             <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
-              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ 1,000 回合以上真實 Gemini 成長觀察</h2>
-              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。每次閉關、突破、戰鬥及探索都經過既有核心，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。</p>
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ 1,000 回合真實 Gemini 均衡遊玩測試（P0–P2）</h2>
+              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。測試包含修煉、NPC、探索、經濟、任務與交手情境；僅正式按鈕操作才算相應核心功能覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。</p>
               <label for="long-qa-turns">目標回合：</label>
               <select id="long-qa-turns" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
                 <option value="1000" selected>1,000 回合</option><option value="1200">1,200 回合</option><option value="1500">1,500 回合</option><option value="2000">2,000 回合</option><option value="3000">3,000 回合</option>
@@ -350,7 +374,7 @@
                 <button id="long-qa-stop" class="sys-btn" style="flex:1;min-width:90px;" onclick="stopLongGeminiQA()" disabled>暫停</button>
                 <button id="long-qa-export" class="sys-btn" style="flex:1;min-width:110px;" onclick="exportLongGeminiQA()">↧ 匯出進度</button>
               </div>
-              <div id="long-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;line-height:1.65;padding:8px;margin-top:8px;border-radius:5px;background:#081118;color:#d2e2e1;max-height:300px;overflow:auto;">未執行。每回合記錄境界、修為、HP、突破、AI 錯誤與耗時；每回合保留可接續檢查點。</div>
+              <div id="long-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;line-height:1.65;padding:8px;margin-top:8px;border-radius:5px;background:#081118;color:#d2e2e1;max-height:300px;overflow:auto;">未執行。測試進度會分類統計，記錄 HP 異常、失敗突破冷卻、修為損失及無法結算原因；每回合可接續。</div>
               <p style="font-size:.74rem;color:#b4ced0;">中途關閉或重整頁面後，重新開啟此檔並按「接續」，從最近一回合檢查點恢復。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
             </section>
             <h2 style="margin-top:10px;">▣ 行動結算診斷</h2>
@@ -971,6 +995,8 @@
 
             const meta = getItemMeta(item);
             if (!getItemPermissions(item).use) return { success: false, reason: `【${clean}】不是可直接使用的消耗品，或目前狀態不允許使用。` };
+            if (meta.breakthroughRecovery && !(Number(gameState.breakthroughCdDays)>Number(gameState.daysPassed)))
+                return {success:false,reason:'目前沒有突破反噬冷卻，不必浪費護脈復元丹。'};
             if (meta.hpGain && gameState.hp >= getMaxHp(gameState)) return { success: false, reason: "✦ 生命值已滿，無需使用療傷物品。" };
             if (meta.expGain && gameState.exp >= gameState.maxExp) return { success: false, reason: "✦ 修為已滿，請先突破後再使用修為丹。" };
             const idx = gameState.inventory.indexOf(item);
@@ -979,6 +1005,7 @@
             const inventoryBeforeUse = gameState.inventory.map(entry => entry && typeof entry === 'object' ? { ...entry } : entry);
             const hpBeforeUse = gameState.hp;
             const expBeforeUse = gameState.exp;
+            const cooldownBeforeUse=gameState.breakthroughCdDays;
             const tx = commitInventoryTransaction("使用消耗品", stagedInventory => {
                 const stagedItem = stagedInventory[idx];
                 if (!stagedItem || cleanNameStrict(stagedItem.name) !== clean || (Number(stagedItem.quantity)||1) < 1)
@@ -991,14 +1018,18 @@
             try {
                 if (meta.hpGain) gameState.hp = Math.min(getMaxHp(gameState), gameState.hp + meta.hpGain);
                 if (meta.expGain) applyCultivationExp(meta.expGain, gameState);
+                if (meta.breakthroughRecovery) gameState.breakthroughCdDays=Number(gameState.daysPassed)||0;
             } catch (error) {
                 // 若效果處理意外拋錯，恢復原背包與角色數值，避免道具已扣但效果未完整執行。
                 gameState.inventory.splice(0, gameState.inventory.length, ...inventoryBeforeUse);
                 gameState.hp = hpBeforeUse;
                 gameState.exp = expBeforeUse;
+                gameState.breakthroughCdDays=cooldownBeforeUse;
                 return { success:false, reason:`道具效果處理失敗：${error?.message || error}。已恢復背包、生命值與修為。` };
             }
-            return { success: true, message: `已使用【${clean}】，生命值/修為已依物品效果更新。` };
+            return { success: true, message: meta.breakthroughRecovery
+                ? `已使用【${clean}】，突破冷卻已解除；先前損失的修為仍須重新修練，下一次突破仍按機率判定。`
+                : `已使用【${clean}】，生命值/修為已依物品效果更新。` };
         }
     };
 
@@ -1233,9 +1264,666 @@
         return s;
     }
 
+    // ===== V6.82 命運編年引擎：完整五幕互動與正式任務 =====
+    // 真相由本地規則一次生成；未揭露內容不注入 Gemini prompt。
+    // V6.82：完整五幕查證、決策、結局、人生志向與世界時鐘整合。
+    const FATE_SCHEMA_VERSION = 1;
+    const FATE_PRESETS = Object.freeze({
+        '宗門棄子': {tag:'DISCARDED',title:'斷骨問天', question:'誰奪走至尊骨，宗門為何將我棄於葬龍谷？',
+            goals:['在葬龍谷存活並踏上修行之路','尋找當年宗門處置自己的可靠線索','辨識奪骨事件真正的責任鏈'],
+            variants:[
+                {theme:'權力陰謀',cause:'宗門高層為扶持特定弟子，批准非法移骨',motive:'鞏固繼承權與宗門內的權力',evidence:'封存的內門處置令',firstLead:'查明當年自己被送往葬龍谷的時間與涉事弟子'},
+                {theme:'禁忌試驗',cause:'部分掌權者將至尊骨用於未經允許的修煉試驗',motive:'取得突破禁忌境界的研究成果',evidence:'試驗代號與消耗簿冊',firstLead:'追查至尊骨殘痕與昔日治療紀錄'},
+                {theme:'內外勾結',cause:'宗門內線將至尊骨交予外部勢力',motive:'交換利益與外部援助',evidence:'隱藏的物資交接憑證',firstLead:'追查谷中遺留的交接痕跡'}
+            ]},
+        '奪舍死囚': {tag:'PRISONER',title:'神魔殘夢', question:'神魔記憶來自誰，為何會與這具死囚肉身相連？',
+            goals:['活著離開死牢並維持自身意志','查證原身罪案及神魔記憶的來源','決定如何面對記憶蘊含的力量與代價'],
+            variants:[
+                {theme:'古魂寄宿',cause:'一縷古老殘魂的記憶寄宿在死囚體內',motive:'殘魂試圖延續自身存在',evidence:'古魂在舊卷宗中留下的稱謂',firstLead:'查找原身被押入死牢的紀錄'},
+                {theme:'傳承碎片',cause:'古代傳承的破碎記憶意外與死囚神魂融合',motive:'傳承機關在特定條件下被啟動',evidence:'殘缺的傳承印記',firstLead:'辨別哪段記憶可以由現實資料驗證'},
+                {theme:'人為移魂',cause:'有人以秘法將部分神魔記憶移入死囚肉身',motive:'以死囚作為秘法承載者',evidence:'死牢藥材與陣法登記',firstLead:'調查看守與最近的牢獄異常'}
+            ]},
+        '落魄少主': {tag:'FALLEN',title:'殘戒故族', question:'家族為何覆滅，古戒與此事有何真正關聯？',
+            goals:['存活、引氣入體並在九州立足','確認家族舊人或相關商隊的線索','追查覆族事件的證據與真正動機'],
+            variants:[
+                {theme:'資源爭奪',cause:'地方勢力為了奪取家族商路或資源契約，策劃襲擊',motive:'侵占長期資產與交通利益',evidence:'滅門前的商隊運輸簿',firstLead:'打聽家族舊交與商隊往來的記錄'},
+                {theme:'家族內亂',cause:'家族內部繼承爭端被外部勢力利用，造成家族覆滅',motive:'爭奪家族控制權',evidence:'宗祠繼承文書與往來書信',firstLead:'尋找失散管事及繼承文書下落'},
+                {theme:'古老契約',cause:'家族為保管一項歷史契約而遭到圍剿',motive:'奪回或湮滅契約上的權利',evidence:'帶有獨特封印的舊契副本',firstLead:'研究古戒紋記與家族保管物的關聯'}
+            ]}
+    });
+    const CUSTOM_FATE_DRIVES = Object.freeze([
+        {id:'trade',words:/經商|商盟|商會|買賣|商人|交易|財富|生意/,title:'萬商行道',question:'如何在風險與利益之間建立可信賴的商業道路？',goal:'建立穩定交易與可信任的人脈'},
+        {id:'protect',words:/父母|家人|守護|保護|孩子|故鄉|家庭/,title:'凡塵守望',question:'怎樣在修行與珍惜的人之間找到自己的道路？',goal:'兼顧修行與重要的親友'},
+        {id:'learn',words:/求知|探索|遊歷|旅行|見識|遺跡|典籍|研究/,title:'行遍九州',question:'九州有什麼值得親自見證與探究？',goal:'尋找能親自驗證的新見聞'},
+        {id:'revenge',words:/復仇|滅門|陷害|背叛|冤屈/,title:'因果未了',question:'過去的恩怨該如何查證、面對或放下？',goal:'取得能查證恩怨的第一份證據'},
+        {id:'craft',words:/丹師|煉丹|煉器|陣法|制符|開宗|創宗|師徒/,title:'百藝證道',question:'如何將一門技藝或傳承從願望變成現實？',goal:'建立第一項可被驗證的技藝成果'},
+        {id:'cultivate',words:/.*/,title:'凡人問道',question:'我希望在這個世界追尋怎樣的修行生活？',goal:'踏出第一步，找尋適合自己的修行之路'}
+    ]);
+    function fateHash(value) {
+        let h=2166136261;
+        for(const ch of String(value||'')){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}
+        return (h>>>0).toString(36);
+    }
+    function fateRandomSeed() {
+        const buffer=new Uint32Array(1);
+        try { crypto.getRandomValues(buffer); return buffer[0]>>>0; }
+        catch(_) { return Math.floor(Math.random()*4294967296)>>>0; }
+    }
+    function fateSanitizeCustom(input) {return String(input||'').replace(/[<>]/g,'').trim().slice(0,450);}
+    function fateCustomFacts(background) {
+        const facts=[];
+        const rules=[
+            [/父母健在|雙親健在/,'開局時父母健在'],
+            [/沒有特殊血脈|無特殊血脈/,'開局沒有特殊血脈'],
+            [/農家|農戶|務農/,'出身農家'],
+            [/家境清寒|家境貧寒|家貧/,'家境清寒'],
+            [/商會學徒|商盟學徒/,'曾是商會學徒'],
+            [/普通少年|平凡少年|凡人少年/,'自認為普通少年'],
+            [/沒有仇|不想復仇|無意復仇/,'開局不以復仇為志向']
+        ];
+        for(const [re,text] of rules) if(re.test(background)) facts.push(text);
+        return facts;
+    }
+    function generateFateArchive(originType, background='', seed=fateRandomSeed()) {
+        const preset=FATE_PRESETS[originType]||null;
+        const custom=fateSanitizeCustom(background);
+        const customWantsMystery=!preset && /(失憶|身世之謎|身分不明|身份不明|記憶缺失|神秘記憶|神祕記憶|不知身世|來歷不明)/.test(custom) && !/(不想追查身世|不要安排身世之謎)/.test(custom);
+        const selectedDrive=customWantsMystery?FATE_CUSTOM_MYSTERY_DRIVE:(CUSTOM_FATE_DRIVES.find(d=>d.words.test(custom))||CUSTOM_FATE_DRIVES.at(-1));
+        const variant=preset?preset.variants[(seed>>>0)%preset.variants.length]:null;
+        const actorNames=['沈懷瑾','顧沉舟','韓晏清','陸玄平','蕭承岳','洛靈薇','杜千衡','段知秋','裴無塵'];
+        const actorName=preset?actorNames[Math.floor((seed>>>3)%actorNames.length)]:null;
+        const knownFacts=preset?[`出身：${originType}`]:fateCustomFacts(custom);
+        const title=preset?preset.title:selectedDrive.title;
+        const question=preset?preset.question:selectedDrive.question;
+        const earlyGoals=preset?preset.goals:[selectedDrive.goal,'逐步釐清自己想過的人生，不必強制擁有祕密'];
+        const canon=preset?{truthType:variant.theme,cause:variant.cause,motive:variant.motive,
+            principalActor:{id:`FATE-ACTOR-${preset.tag}-${((seed>>>3)%actorNames.length)+1}`,name:actorName,
+                role:originType==='奪舍死囚'?'關鍵知情／操作者':originType==='宗門棄子'?'奪骨事件的直接策劃者':'覆族事件的關鍵主使'},
+            initialEvidence:{id:`FATE-EVIDENCE-${preset.tag}-${((seed>>>0)%preset.variants.length)+1}`,
+                description:variant.evidence,
+                originalLocation:originType==='宗門棄子'?'故宗門秘檔室':originType==='奪舍死囚'?'原死牢封存庫':'家族舊產往來檔案',status:'exists'},
+            lead:variant.firstLead}:customWantsMystery?{
+            truthType:'記憶空白',cause:FATE_CUSTOM_MYSTERY_FACTS[(seed>>>0)%3].cause,
+            motive:'追索缺失的過去，而非預設有反派或神祕血統',
+            principalActor:{id:`FATE-WITNESS-ORIGIN-${seed>>>0}`,name:'舊日知情者（身分待查）',role:'曾可能見證失憶前後事件的人'},
+            initialEvidence:{id:`FATE-CUSTOM-MEMORY-${seed>>>0}`,description:FATE_CUSTOM_MYSTERY_FACTS[(seed>>>0)%3].evidence,
+                originalLocation:'舊日旅程記錄的存放處',status:'exists'},
+            lead:'先核對記憶中確定的時間與地點'}:null;
+        const archive={schemaVersion:FATE_SCHEMA_VERSION,
+            id:`FATE-${preset?preset.tag:'CUSTOM'}-${(seed>>>0).toString(36)}`,
+            seed:seed>>>0,originType,title,question,
+            customBackground:preset?'':custom,storyDrive:preset?'origin':selectedDrive.id,
+            knownFacts,lockedTruth:canon,hasMystery:!!preset||customWantsMystery,
+            chapter:1,chapterTitle:'命運起點',openedDay:Number(gameState?.daysPassed)||0,
+            beginningGoals:earlyGoals,discoveries:[],history:[],status:'active'};
+        archive.truthFingerprint=fateHash(JSON.stringify({seed:archive.seed,originType:archive.originType,lockedTruth:archive.lockedTruth,knownFacts:archive.knownFacts,customBackground:archive.customBackground}));
+        return archive;
+    }
+    function validateFateArchive(archive) {
+        if (!archive || typeof archive!=='object'||Array.isArray(archive)||archive.schemaVersion!==1) throw new Error('命運檔案版本無效');
+        if(typeof archive.id!=='string'||!/^FATE-[\w-]+$/.test(archive.id)||!Number.isSafeInteger(archive.seed)||archive.seed<0||archive.seed>4294967295) throw new Error('命運識別無效');
+        const original=generateFateArchive(archive.originType,archive.customBackground,archive.seed);
+        if(archive.id!==original.id || archive.truthFingerprint!==original.truthFingerprint ||
+            JSON.stringify(archive.lockedTruth)!==JSON.stringify(original.lockedTruth) ||
+            JSON.stringify(archive.knownFacts)!==JSON.stringify(original.knownFacts) ||
+            archive.question!==original.question || archive.title!==original.title ||
+            archive.storyDrive!==original.storyDrive)
+            throw new Error('命運真相與開局鎖定內容不一致');
+        if(!Array.isArray(archive.discoveries)||archive.discoveries.length>100||
+           !Array.isArray(archive.history)||archive.history.length>200) throw new Error('命運歷史格式無效');
+        return archive;
+    }
+    function destinyMakeQuest(id,name,progress,scope='destiny',status='進行中') {
+        return {id,name,progress,scope,status,verified:true};
+    }
+    // ===== V6.82 一次整合：五幕命運編年、證據核驗、分支/結局、世界時鐘、敘事導引 =====
+    // 命運真相檔案仍採 V6.82 以種子可重現的鎖定規則；證據只由核心互動承認。
+    const FATE_ACT_TITLES=['命運起點','蛛絲馬跡','命運交錯','真相與代價','命運抉擇'];
+    const FATE_BRANCHES=[
+        ['低調探尋','廣結善緣','修行為先'],
+        ['證據為先','人脈交涉','獨行追查'],
+        ['調停諸方','守護羈絆','承擔風險'],
+        ['揭露秘密','保護知情者','等待時機'],
+        ['公開經歷','守護所得','開創新路']
+    ];
+    const FATE_CUSTOM_MYSTERY_FACTS=Object.freeze([
+      {cause:'過去一次旅途中的神魂震盪導致片段記憶缺失',evidence:'護送者留下的事故行程紀錄'},
+      {cause:'某段記憶曾在療傷時因藥力與傷勢交互作用而模糊',evidence:'當年的醫者處置紀錄'},
+      {cause:'早年的長途遷移導致部分人生經歷無法被完整核對',evidence:'斷續的驛站登記與舊地名冊'}
+    ]);
+    const FATE_CUSTOM_MYSTERY_DRIVE={id:'mystery',title:'舊影迷途',question:'哪些失落記憶可以被現實證據找回，哪些應選擇放下？',goal:'以可驗證的現實線索追查自己的來歷'};
+    const FATE_ENDINGS={
+      DISCARDED:['追究奪骨責任','公開宗門往事','以斷骨之身另闢道途'],
+      PRISONER:['守住自身意志','謹慎承接殘缺傳承','封存神魔殘夢'],
+      FALLEN:['追究家族血案','整頓故族遺存','放下舊怨另立道統'],
+      trade:['建立守信商號','扶持弱勢商旅','獨行九州商路'],
+      protect:['優先守護羈絆','共同建立家園','求道與親情並行'],
+      learn:['整理見聞傳世','守護危險秘密','繼續獨自探索'],
+      revenge:['依法追查責任','嘗試和解','放下仇怨繼續人生'],
+      craft:['公開技藝傳承','建立小型工坊','專注獨行精進'],
+      mystery:['公開已知身世','守住私人記憶','不為過去所拘'],
+      cultivate:['選擇穩健修行','尋求仙門師承','保持散修自由']
+    };
+    function fateBranchOptions(fate,chapter){
+        if(chapter<5)return FATE_BRANCHES[chapter-1];
+        return FATE_ENDINGS[FATE_PRESETS[fate.originType]?.tag||fate.storyDrive]||FATE_ENDINGS.cultivate;
+    }
+    const FATE_CHOICE_EFFECTS={
+      '低調探尋':'降低後續探索留下的風險線索，但不會自動避開所有敵人',
+      '廣結善緣':'已認識的關鍵線索聯絡人信任增加；後續訪談更順利',
+      '修行為先':'以謹慎的自我訓練換取探索判定加成，不直接贈送修為',
+      '證據為先':'後續查閱文書成功率提升',
+      '人脈交涉':'後續訪談成功率提升',
+      '獨行追查':'後續偏遠探索成功率略升，風險也略高',
+      '調停諸方':'降低後續公開爭端的局部風險',
+      '守護羈絆':'增加已登記聯絡人的信任，不保證能避免其死亡',
+      '承擔風險':'提升探索判定能力，失敗時可能有額外傷勢',
+      '揭露秘密':'將已確認的局部證據發布到正式世界紀事，可能影響之後的互動',
+      '保護知情者':'強化知情者的警戒與防禦傾向，但不賦予無敵保護',
+      '等待時機':'暫緩公開行動，讓世界時間與既有自主行動繼續推進'
+    };
+    // 各身世 5 幕、每幕 3 條獨立可行路線。地點屬「前往與查證」的遊戲內路途，不是瞬間傳送。
+    // [短標題, 要調查的途徑, 目的地, 核心確認的證據摘要]
+    const FATE_ARCS=Object.freeze({
+       DISCARDED:[
+        ['葬龍餘生','從棄谷與殘骨記錄求生',[
+          ['搜尋葬龍谷的棄置痕跡','沿谷底踏查被棄置的路線','葬龍谷外圍','舊日搬運痕跡確實存在'],
+          ['查閱附近收容者名冊','向附近隱居者核實棄谷傳聞','葬龍谷山腳','有人曾在相近時日運送一名重傷弟子'],
+          ['核對至尊骨殘痕','請低階醫者辨認舊傷記錄','邊境藥鋪','舊傷與普通外傷的癒合形態不同']]],
+        ['斷骨舊痕','追查宗門留下的處置紀錄',[
+          ['追索外門舊檔','向退役弟子打聽檔案去向','邊境散修市集','舊日宗門處置曾留有可核對的登記'],
+          ['比對人員往來','查看棄谷前後的人員交接線索','山外驛站','交接時間與棄谷事件大致吻合'],
+          ['尋找失散見證人','調查昔日傷者與醫者的去向','舊日醫館','有一位曾接觸傷者的人留下線索']]],
+        ['仙門暗流','辨認不同派系在奪骨事件中的利益',[
+          ['調查弟子名籍變動','查對當年受益弟子的公開經歷','宗門外城','有弟子的修行資源在事發後異常增加'],
+          ['查宗門物資流向','比對宗門補給與秘庫往來','萬寶商盟分號','部分補給紀錄存在難以解釋的交接'],
+          ['探詢宗門派系爭端','向舊門人了解派系立場','山門外坊市','不同派系對當年事件的說法並不一致']]],
+        ['奪骨真相','將證人、紀錄與物證組成責任鏈',[
+          ['比對封存處置令','找到與奪骨相關的正式處置文本','宗門檔案外庫','封存文書揭示了奪骨決策的程序痕跡'],
+          ['核對移骨去向','追尋殘骨與秘法使用紀錄','古修醫所','移骨紀錄與既有目擊者說法可相互印證'],
+          ['求證決策來源','檢視參與者的權限與供述','山門議事遺址','線索已足以推導事件並非單人臨時起意']]],
+        ['我道無骨','面對奪骨事件並選擇自己的道路',[
+          ['保全完整證據','彙整可供外部複核的紀錄','中州公議坊','證據鏈已能支持正式公開調查'],
+          ['查證現任參與者','確認相關人物的現況與活動','山門外城','掌握涉事者目前是否仍具權勢的情報'],
+          ['審視個人道途','尋找能不依賴至尊骨的修行選擇','靜修山谷','已有一條不依賴昔日骨骸的修行思路']]]],
+       PRISONER:[
+        ['死牢驚魂','在牢獄與記憶錯亂中釐清原身處境',[
+          ['辨認囚室刻記','尋找留下的姓名與刑期痕跡','舊牢周邊','囚室記號與一項舊案件存在關聯'],
+          ['打探看守輪值','調查牢獄交班與押解紀錄','監牢外驛站','原身被押送的時日可以獨立核對'],
+          ['驗證記憶片段','核對最普通的一段地名與方言','邊境書肆','部分記憶與現實地理確有對應']]],
+        ['殘夢初醒','比較記憶與客觀事實的差異',[
+          ['尋找古籍對照','查閱神魂與傳承的通用知識','城鎮藏書閣','記憶中的術語與一種古舊傳承相近'],
+          ['比對牢中藥材','查證昔日用藥與異常供給','城內藥鋪','牢獄近期領用藥材記錄存在疑點'],
+          ['訪問前獄卒','打聽當年押解案的替班人員','監牢外坊市','有獄卒曾看見未登記的特殊訪客']]],
+        ['兩魂疑雲','確認原主、記憶與現存意識的關係',[
+          ['整理原身案卷','核對死囚原身遭控罪名','舊日衙門','原身罪案與神魔記憶並無直接的已證實關係'],
+          ['走訪傳承遺址','比對記憶中可辨識的建築細節','荒原古跡','某段建築記憶對應一處真實遺跡'],
+          ['檢視神魂異常','尋求不涉及奪舍的安全檢測','修行醫館','神魂痕跡確有混雜但不能直接推出身份']]],
+        ['神魔之契','查明記憶進入肉身的可驗證機制',[
+          ['重建施術時間','比對案卷、藥材、法陣的使用時點','古牢外庫','證據顯示神魂異常形成於某一可限定時段'],
+          ['核對傳承來源','追查記憶中反覆出現的特定印記','舊傳承藏庫','有一種古法能解釋記憶與肉身的異常相連'],
+          ['辨別代價與風險','請專業修士核實神魂分離的危險','醫修會館','不同處置方式有不同神魂風險，不能保證成功']]],
+        ['我是何人','決定如何處理記憶與自身意志',[
+          ['彙整可證實的來源','保存完整神魂調查證據','中州書院','已能將可驗證記憶與未證實猜想分開'],
+          ['尋找安全處置途徑','比對封印、共存與分離的選擇','醫修議所','存在不只一種處置方向，但各有成本'],
+          ['寫下自己的抉擇','整理這段旅程中真正屬於自己的經歷','靜修石室','已能清楚區分自我意願與記憶中的誘惑']]]],
+       FALLEN:[
+        ['破廟殘生','從家族灰燼與神祕古戒開始求證',[
+          ['尋查避難路徑','勘查自己逃至破廟的路線','荒郊破廟','沿途殘留與家族逃亡時日相符的痕跡'],
+          ['調查附近商旅','向驛站了解事發時途經的隊伍','邊境商旅驛站','家族事發前後確曾有商旅異常往來'],
+          ['辨認古戒外紋','請懂鑑定的人比對外觀而不解封','青石鎮器物攤','古戒外紋與一種家族舊式印記相近']]],
+        ['故人何在','尋找倖存舊人與家族遺留資料',[
+          ['追查舊管事行蹤','訪查舊僕最後現身的商路','青石鎮市集','舊管事曾與某支商隊有過正式往來'],
+          ['比對舊日帳目','查閱可能存於商盟的貨運紀錄','萬寶商盟分號','家族往來帳目中存在事發前異常轉運'],
+          ['尋找宗祠文書','查看家族遺產登記的殘存副本','家族舊產附近','家族文書並非全數在事件中消失']]],
+        ['滅門疑雲','辨認直接襲擊與背後利益的聯繫',[
+          ['查貨物流向','核對滅門前後的物資交接','中州商路','有一批資源在家族覆滅後改變持有人'],
+          ['調查利益受益者','比對事後取得家族資產的勢力','城鎮契約所','有人在家族覆滅後明顯獲得利益'],
+          ['求證不同供述','整理倖存者與商隊說法矛盾','邊境客棧','至少兩份說法在關鍵時間點存在差異']]],
+        ['古戒真相','將資產、人物與古戒的關係釐清',[
+          ['核實保管契據','查找古戒所涉家族契約的來源','舊契保管庫','古戒與家族保管責任具有可查證的聯繫'],
+          ['比對事件責任鏈','核對往來憑證與真正決策者','地方契約公會','完整事件存在可追查的策劃與執行分工'],
+          ['辨識古戒用途','在不強行解封的前提下驗證紋記','器物鑑別坊','古戒的用途與坊間謠傳的萬能寶物並不相同']]],
+        ['故族新生','選擇如何面對真正的家族歷史',[
+          ['保存證據副本','整理可被第三方驗證的家族紀錄','中州公議坊','足以提供外部調查的證據副本已備妥'],
+          ['探查當年相關者','確認責任人的現況與勢力變化','青石鎮市集','涉事者現況與過去並不完全相同'],
+          ['檢視新生活','衡量重建家族與自由修行的代價','荒郊靜修處','已可比較延續家族與開創新生活的具體選擇']]]]
+    });
+    const FATE_CUSTOM_ARCS=Object.freeze({
+      trade:{title:'萬商行道',acts:[['小商初行','以信用、貨源與契約建立第一筆生意','青石鎮商街','可追溯的貨源','交易契約'],['商路浮沉','觀察供需、結識可信任的供貨人','萬寶商盟分號','商道風險','運輸紀錄'],['諸方逐利','比較競爭與合作的成本','中州商市','商會信用','同行口碑'],['九州商脈','建立可負擔的跨區經營方案','跨州驛站','跨區成本','護衛合約'],['富甲有道','決定商會的價值、責任與傳承','商盟議事廳','契約責任','傳承規範']]},
+      protect:{title:'凡塵守望',acts:[['凡心初起','尋找能兼顧家人與修行的起點','青石鎮鄉野','親友近況','生活需求'],['仙凡殊途','理解凡俗年歲和修行日程的差異','鄉鎮醫館','時間安排','照護方式'],['守護之責','處理家庭、住處與外界風險','鄉里集市','地方威脅','家庭支援'],['歲月無情','思考照護、延壽傳聞與真實可行性','城鎮醫修會','延壽條件','現實資源'],['此心安處','面對親友變化並確立人生方向','故鄉舊路','親人意願','長期安排']]},
+      learn:{title:'行遍九州',acts:[['初出山門','準備合理的探索路線與旅途補給','邊境驛站','地圖資料','旅行筆記'],['見聞廣記','辨別地方傳聞與可靠的見聞','古城書肆','地理記載','口述歷史'],['古跡迷蹤','比對遺跡傳說與已知事實','古遺跡外圍','遺跡記錄','安全邊界'],['知與未知','核實不同學派對歷史的解讀','萬法書院外坊','史料差異','研究代價'],['行遍九州','決定公開見聞或延續探索','中州見聞館','見聞編纂','分享責任']]},
+      revenge:{title:'因果未了',acts:[['因果初現','釐清舊日恩怨是否有可核對的源頭','地方舊衙','既有文書','事發時點'],['冤屈成線','比對互相矛盾的說法','邊境商街','證人說法','證據可信度'],['舊怨新局','辨認現存相關者與可能的誤會','中州議事坊','關係變動','利益衝突'],['責任之證','在不憑空指定真兇前提下整理證據','地方公議處','責任界線','正當手段'],['因果有終','選擇追責、和解或走自己的路','靜修山道','反思代價','未來志向']]},
+      craft:{title:'百藝證道',acts:[['初學百藝','了解技藝的基本材料與安全規則','青石鎮工坊','材料規格','工藝入門'],['技藝初成','建立可追蹤的作品與師承紀錄','地方工藝坊','技術筆記','安全流程'],['百家爭鳴','面對不同學派的技藝分歧','中州百藝市集','流派特點','品質驗證'],['傳承取捨','決定如何公開技藝並管理代價','工匠議會','傳承條件','合作成本'],['一藝成道','選擇傳道、經營或繼續精進','自立工坊','作品紀錄','授徒方式']]},
+      mystery:{title:'舊影迷途',acts:[['迷途初醒','確認失落記憶前後的現實時間線','邊境驛站','時間片段','旅行紀錄'],['斷簡殘章','比對曾見過的人和事','城鎮書肆','熟悉地名','古老記載'],['往昔回聲','核對不同知情人的說法','舊日客棧','昔日見聞','人際資料'],['記憶之源','調查記憶空白的真正原因','醫修會館','神魂診斷','證人紀錄'],['此身此道','選擇是否以過去定義自己','靜修山居','個人抉擇','未來志向']]},
+      cultivate:{title:'凡人問道',acts:[['凡心初起','尋找適合自己資質的修煉途徑','青石鎮客棧','引氣方法','修行風險'],['仙凡殊途','了解修行資源與日常生計的矛盾','邊境散修市集','資源行情','前輩經驗'],['道途艱險','選擇宗門、散修或副業發展方式','山門外坊市','門規資訊','生存能力'],['歲月如流','比較閉關與人生羈絆的時間代價','靜修山谷','時間紀錄','人生取捨'],['此心問道','確立自己的修行道途與下一段人生','九州古道','道路選擇','長期追求']]}
+    });
+    function fateArcDefinition(fate){
+        const tag=FATE_PRESETS[fate.originType]?.tag;
+        if(tag&&FATE_ARCS[tag])return {tag,acts:FATE_ARCS[tag],preset:true};
+        const drive=FATE_CUSTOM_ARCS[fate.storyDrive]||FATE_CUSTOM_ARCS.cultivate;
+        return {tag:'CUSTOM',acts:drive.acts.map(([title,goal,place,focusA,focusB],i)=>[title,goal,[
+          [`調查${focusA}`,`以安全方式核對${focusA}的現有紀錄`,place,`經實際查證取得了${focusA}相關的可信資料`],
+          [`走訪${focusB}`,`向符合條件的人士詢問${focusB}`,place,`已將${focusB}的不同觀點整理為可追溯記錄`],
+          ['核對個人選擇',`用自身經歷及已知條件分析「${goal}」`,place,`已核對個人經歷與${goal}相關的現實條件`]
+        ]]),preset:false};
+    }
+    function fateRoute(fate,chapter,index){
+        const arc=fateArcDefinition(fate), act=arc.acts[chapter-1];
+        if(!act||index<0||index>2)return null;
+        const [title,approach,place,summary]=act[2][index];
+        return {id:`${fate.id}:C${chapter}:R${index+1}`,title,approach,place,summary,
+            time:1+(chapter>=3?2:0)+(index===2?1:0)+(/中州|跨州|古遺跡|宗門/.test(place)?7:0),cost:index===2?Math.min(12,2*chapter):0,
+            risk:index===2?0.14:0.05,chapter,index};
+    }
+    function fateRouteAccess(s,r){
+        if(!r)return {ok:false,reason:'無效線索'};
+        if(r.chapter>=3&&r.index===0&&r.chapter>=4&&!(Number(s.level)>=1||s.sect?.joined||fateChapterCount(s.destiny,r.chapter)>=1))
+            return {ok:false,reason:'本項封存資料需有初步證據、正式宗門身分或至少練氣境界才有查閱途徑；可先走第二條線索'};
+        if((Number(s.spiritStone)||0)<r.cost)return {ok:false,reason:`現有靈石不足 ${r.cost} 顆，可先選其他免費線索`};
+        return {ok:true,reason:'可前往調查'};
+    }
+    function fateWitness(s){return s.npcRegistry?.[`NPC-FATE-WITNESS-${s.destiny.id}`]||null;}
+    function fateRecordWitness(s,r){
+        const fate=s.destiny;
+        if(r.index!==1||r.chapter!==1)return;
+        s.npcRegistry=s.npcRegistry||{};
+        const id=`NPC-FATE-WITNESS-${fate.id}`;
+        if(s.npcRegistry[id])return;
+        const candidates=['裴雲生','羅以安','莫清雨','方長寧','余松年','楚若平'];
+        let name=candidates[fate.seed%candidates.length];
+        if(name===fate.lockedTruth?.principalActor?.name)name='沈思遠';
+        const npc={id,name,identity:'地方資料聯絡人',title:'地方線索聯絡人',faction:'LOCAL_FORCES',region:'九州邊境',location:r.place,
+          persistent:true,importance:'important',isImportant:true,is_alive:true,status:'ALIVE',hp:90,
+          relationship:{favorability:8,awe:0,profit:0},trust:12,
+          goals:['維持當地資訊網絡與生計'],knownFacts:[r.summary],secrets:[],resourceLevel:30,information:25,network:15,
+          lastInteractionDay:s.daysPassed,nextAutonomyDay:s.daysPassed+7,createdDay:s.daysPassed};
+        s.npcRegistry[id]=npc;
+        destinyCoreCommit(s,'fate-witness',`與${name}建立可追溯的線索聯絡關係。${name}不是命運事件的固定真兇，人物後續仍會受世界規則影響。`);
+    }
+    function fateStrategyBonus(fate,r){
+        const choices=fate.questEngine.choices.map(c=>c.choice),has=x=>choices.includes(x);
+        let bonus=0;
+        if(r.index===0&&has('證據為先'))bonus+=0.09;
+        if(r.index===1&&(has('廣結善緣')||has('人脈交涉')))bonus+=0.08;
+        if(r.index===2&&(has('修行為先')||has('獨行追查')||has('承擔風險')))bonus+=0.08;
+        return Math.min(.2,bonus);
+    }
+    function fateEnsureRuntime(s){
+        const fate=s?.destiny;if(!fate)return null;
+        validateFateArchive(fate);
+        if(!fate.questEngine){fate.questEngine={version:2,leads:{},attempts:{},choices:[],history:[],worldProgress:[],lastWorldTickDay:Number(s.daysPassed)||0,lifeGoal:'',conclusion:null,chapter:1};}
+        const rt=fate.questEngine;
+        if(rt.version!==2||!rt.leads||typeof rt.leads!=='object'||Array.isArray(rt.leads)||!rt.attempts||typeof rt.attempts!=='object'||!Array.isArray(rt.choices)||!Array.isArray(rt.history)||!Array.isArray(rt.worldProgress))throw new Error('命運主線進度格式無效');
+        if(Object.keys(rt.leads).length>16||Object.keys(rt.attempts).length>15||rt.choices.length>5||rt.history.length>100||rt.worldProgress.length>100)throw new Error('命運進度超出安全上限');
+        for(const id of Object.keys(rt.leads)){if(id==='FATE-TRUTH'){if(!fate.lockedTruth||rt.leads[id]?.source!=='CORE_CORROBORATED'||!rt.leads[id]?.summary.includes(fate.lockedTruth.cause))throw new Error('命運真相資料不一致');continue;}const match=/^.*:C([1-5]):R([1-3])$/.exec(id),rtRoute=match&&fateRoute(fate,Number(match[1]),Number(match[2])-1);if(!rtRoute||rtRoute.id!==id||!rt.leads[id]||rt.leads[id].summary!==rtRoute.summary)throw new Error('命運證據與正式線索不一致');}
+        if(!Number.isInteger(rt.chapter)||rt.chapter<1||rt.chapter>5||fate.chapter!==rt.chapter)throw new Error('命運章節與進度不一致');
+        return rt;
+    }
+    function fateChapterCount(fate,chapter=fate.chapter){const rt=fate.questEngine;return Array.from({length:3},(_,i)=>fateRoute(fate,chapter,i)).filter(r=>rt.leads[r.id]).length;}
+    function fateActiveStory(fate){const arc=fateArcDefinition(fate);return arc.acts[fate.chapter-1];}
+    function destinyInitialize(s, background=''){
+        if(!s?.hasChosenOrigin||s.destiny)return;
+        s.destiny=generateFateArchive(s.originType,background);
+        s.destiny.openedDay=Number(s.daysPassed)||0;
+        if(s.originType==='自訂身世'&&!s.destiny.hasMystery){s.status=(s.status||[]).filter(x=>x!=='身世之謎');if(!s.status.includes('凡途自選'))s.status.push('凡途自選');}
+        s.questLedger={version:2,verified:{},drafts:{},history:[]};
+        ensureWorldMemory(s);
+        fateEnsureRuntime(s);destinySync(s);
+        worldInitSimulation(s); // 新角色從開局建立動態世界；不補造過去歷史。
+    }
+    function destinyMakeQuest(id,name,progress,scope='destiny',status='進行中'){
+        return {id,name,progress,scope,status,verified:true};
+    }
+    function destinySync(s){
+        if(!s||!s.destiny)return;
+        const fate=s.destiny, rt=fateEnsureRuntime(s), act=fateActiveStory(fate);
+        if(!s.questLedger||typeof s.questLedger!=='object')s.questLedger={version:2,verified:{},drafts:{},history:[]};
+        const ledger=s.questLedger;
+        if(!ledger.verified||typeof ledger.verified!=='object')ledger.verified={};
+        if(!ledger.drafts||typeof ledger.drafts!=='object')ledger.drafts={};
+        if(!Array.isArray(ledger.history))ledger.history=[];
+        ledger.version=2;
+        const reachedQi=Number(s.level)>=1;
+        const old=ledger.verified.FATE_FIRST_QI;
+        ledger.verified.FATE_FIRST_QI=destinyMakeQuest('FATE_FIRST_QI','命運起點：踏入修行之路',reachedQi?'已依核心境界判定踏入練氣期':'累積修為，使用正式突破按鈕嘗試引氣入體','destiny',reachedQi?'已完成':'進行中');
+        if(reachedQi){ledger.verified.FATE_FIRST_QI.verifiedCompletedDay=(old?.verifiedCompletedDay ?? (Number(s.daysPassed)||0));}
+        const completed=rt.conclusion!==null||fate.status==='complete';
+        fate.chapterTitle=act[0];
+        ledger.verified.FATE_FIRST_LEAD=destinyMakeQuest('FATE_FIRST_LEAD',`${fate.title}：${act[0]}`,
+            completed?'本段命運已留下正式結局，仍可繼續自由人生':`${act[1]}（已查證 ${fateChapterCount(fate)}/2 項線索）`, 'destiny', completed?'已完成':fate.status==='paused'?'暫停':'進行中');
+        ledger.verified.FATE_LIFE_GOAL=destinyMakeQuest('FATE_LIFE_GOAL','自由人生志向',rt.lifeGoal||fate.beginningGoals[0]||'自由求道','life','進行中');
+        for(let c=1;c<=5;c++){
+          const a=fateArcDefinition(fate).acts[c-1];
+          for(let i=0;i<3;i++){
+            const r=fateRoute(fate,c,i), p=rt.leads[r.id];
+            if(p||c===fate.chapter&&fate.status==='active')ledger.verified[r.id]=destinyMakeQuest(r.id,`${a[0]}：${r.title}`,p?`已獲證據：${p.summary}`:r.approach,'destiny',p?'已完成':'進行中');
+          }
+        }
+        destinyRebuildQuests(s);
+    }
+    function destinyRebuildQuests(s){
+        if(!s.questLedger)return;
+        const ledger=s.questLedger;
+        // 只把活躍正式任務與最近完成的證據顯示在主面板，其餘保留於完整台帳。
+        const official=Object.values(ledger.verified||{});
+        const active=official.filter(q=>q.status==='進行中'||q.id==='FATE_LIFE_GOAL'||q.id==='FATE_FIRST_LEAD');
+        const recent=official.filter(q=>q.status==='已完成'&&!active.includes(q)).slice(-7);
+        const drafts=Object.values(ledger.drafts||{}).sort((a,b)=>(b.lastSeenDay||0)-(a.lastSeenDay||0)).slice(0,5);
+        s.quests=[...active.slice(0,16),...recent,...drafts].slice(0,28);
+    }
+    function destinyAcceptAiQuests(s,rawQuests){
+        if(!s?.destiny||!Array.isArray(rawQuests))return;
+        if(!s.questLedger)destinySync(s);
+        const ledger=s.questLedger,protectedNames=new Set(Object.values(ledger.verified||{}).map(q=>q.name));
+        for(const q of rawQuests.slice(0,12)){
+            if(!q||typeof q!=='object')continue;
+            const name=cleanNameStrict(q.name||q.title||'').slice(0,65);
+            if(!name||protectedNames.has(name)||name.toLowerCase()==='undefined')continue;
+            const key=`DRAFT-${fateHash(name)}`;
+            const previous=ledger.drafts[key];
+            ledger.drafts[key]={id:key,name,scope:'suggestion',verified:false,
+                progress:cleanNameStrict(q.progress||q.desc||'可繼續調查').slice(0,120),status:'待查證',
+                createdDay:(previous?.createdDay ?? (Number(s.daysPassed)||0)),lastSeenDay:Number(s.daysPassed)||0};
+        }
+        if(Object.keys(ledger.drafts).length>16){const entries=Object.entries(ledger.drafts).sort((a,b)=>a[1].lastSeenDay-b[1].lastSeenDay);for(const [id] of entries.slice(0,entries.length-16))delete ledger.drafts[id];}
+        destinyRebuildQuests(s);
+    }
+    function fateLifeGuide(s){
+        if(!s?.destiny)return '';
+        const f=s.destiny,rt=f.questEngine,goal=String(rt?.lifeGoal||f.beginningGoals[0]||'自由求道');
+        const level=Number(s.level)||0,stone=Number(s.spiritStone)||0,npcs=Object.values(s.npcRegistry||{}).filter(n=>n&&n.is_alive!==false&&n.status!=='DEAD'),
+          activeFriends=npcs.filter(n=>(Number(n.trust)||0)>=20).length,receipts=(s.economy?.receipts||[]).length;
+        if(/商|交易|信用|財/.test(goal))return `已有 ${receipts} 筆正式經濟結算，現持 ${stone} 靈石；可先建立可靠貨源、確認報價再批准交易。`;
+        if(/守護|家人|故鄉|羈絆/.test(goal))return `目前 ${activeFriends} 位在世人脈達信任20；先核對親友現況、建立穩定居所，不會憑文字保證他們永遠安全。`;
+        if(/煉丹|煉器|百藝|技藝/.test(goal))return `現有 ${s.kungfu?.length||0} 部心法、${s.skills?.length||0} 門招式；可尋求合規師承、材料及製作確認。`;
+        if(/宗門|傳承/.test(goal))return s.sect?.joined?`現隸屬${s.sect.name}，貢獻${s.sect.contribution||0}；後續可累積資源、人脈與正式宗門地位。`:'尚未正式加入宗門；可查詢門規、引薦與入門考核，不會因一句話直接得到宗主權限。';
+        if(/九州|探索|見聞|遊歷/.test(goal))return `目前位置：${s.location}。可選擇安全可達路線，記錄親身見聞與未解線索。`;
+        if(level===0)return '修為尚在凡人階段；先找到適合修煉的地方累積修為，圓滿後使用正式突破按鈕。';
+        if(s.exp<s.maxExp)return `目前境界 ${s.realm}，修為 ${s.exp}/${s.maxExp}；可修煉、尋找師承或探索其他人生方向。`;
+        return `目前修為已圓滿 (${s.exp}/${s.maxExp})；在安全情況下可嘗試突破，也可以先提升準備。`;
+    }
+    function destinyPublicContext(s=gameState){
+        const fate=s?.destiny;if(!fate)return null;
+        const rt=fateEnsureRuntime(s),act=fateActiveStory(fate);
+        return {id:fate.id,origin:fate.originType,title:fate.title,chapter:fate.chapter,chapterTitle:act[0],
+            question:fate.question,knownFacts:fate.knownFacts,playerStatementUnverified:fate.customBackground,
+            objective:act[1],lifeGoal:rt.lifeGoal||fate.beginningGoals[0],lifeGuidance:fateLifeGuide(s),status:fate.status,
+            // 只提供玩家已取得的證據，絕不暴露未調查的證據摘要、原始位置或完整真相。
+            revealedClues:Object.values(rt.leads).sort((a,b)=>a.day-b.day).slice(-10).map(x=>x.summary),
+            unverifiedLeads:Array.from({length:3},(_,i)=>fateRoute(fate,fate.chapter,i)).filter(r=>!rt.leads[r.id]).map(r=>r.title),
+            recordedDecisions:rt.choices.map(x=>({chapter:x.chapter,choice:x.choice})),
+            ending:rt.conclusion?.title||null};
+    }
+    function showDestinyGuide(){const btn=[...document.querySelectorAll('.tab-btn')].find(el=>el.textContent.includes('社交'));if(btn)switchTab(btn,'tab-social');document.getElementById('ui-destiny')?.scrollIntoView({block:'nearest',behavior:'smooth'});}
+    function fateElement(parent,tag,content,cls=''){
+        const el=document.createElement(tag);if(cls)el.className=cls;
+        if(content!==undefined)el.textContent=String(content);parent.append(el);return el;
+    }
+    function fateButton(parent,title,cb,disabled=false){const b=fateElement(parent,'button',title);b.type='button';b.disabled=disabled;b.addEventListener('click',cb);return b;}
+    function destinyRender(){
+        const panel=document.getElementById('ui-destiny'),ribbon=document.getElementById('destiny-ribbon');
+        if(!panel||!ribbon)return;
+        panel.replaceChildren();
+        const fate=gameState?.destiny;
+        if(!fate){panel.textContent='尚未選定身世。開局後將確立不可隨意改寫的命運真相，並開啟五幕主線。';ribbon.style.display='none';return;}
+        let rt,act;try{rt=fateEnsureRuntime(gameState);act=fateActiveStory(fate);}catch(error){panel.textContent=`命運資料驗證失敗：${error.message}`;ribbon.style.display='none';return;}
+        ribbon.style.display='block';ribbon.replaceChildren();
+        fateElement(ribbon,'strong',`✦ ${fate.title}｜第${fate.chapter}幕：${act[0]}`);
+        fateElement(ribbon,'small',rt.conclusion?`已成就：${rt.conclusion.title}`:`已查證 ${fateChapterCount(fate)}/2 個必要線索｜${act[1]}`);
+        fateElement(panel,'h3',`${fate.title}｜第${fate.chapter}幕：${act[0]}`);
+        fateElement(panel,'div',`核心問題：${fate.question}`,'destiny-focus');
+        fateElement(panel,'div',`當前目的：${act[1]}`,'destiny-line');
+        fateElement(panel,'div',`正式證據：${Object.keys(rt.leads).length} 條｜章節進展：${fateChapterCount(fate)}/2｜狀態：${fate.status}`,'fate-progress');
+        fateElement(panel,'div',`人生志向：${rt.lifeGoal||fate.beginningGoals[0]}`,'destiny-muted');
+        fateElement(panel,'div',`當下方向：${fateLifeGuide(gameState)}`,'destiny-line');
+        const choiceGoal=document.createElement('select');choiceGoal.setAttribute('aria-label','選擇人生志向');choiceGoal.style.cssText='width:100%;min-height:34px;margin:8px 0;background:#171717;color:#f3e0b1;border:1px solid #665431';
+        const goals=[fate.beginningGoals[0]||'自由修行','精進修煉與突破境界','踏遍九州探索見聞','經商建立人脈與信用','守護重要的人與故鄉','鑽研丹道器道等百藝','建立宗門與傳承'];
+        for(const g of [...new Set([rt.lifeGoal,...goals].filter(Boolean))]){const o=document.createElement('option');o.value=g;o.textContent=g;choiceGoal.append(o);}
+        choiceGoal.value=rt.lifeGoal||goals[0];panel.append(choiceGoal);
+        const goalActions=fateElement(panel,'div',undefined,'fate-actions');
+        fateButton(goalActions,'設定人生志向',()=>destinySetLifeGoal(choiceGoal.value));
+        if(!rt.conclusion){fateButton(goalActions,fate.status==='paused'?'繼續追尋主線':'暫時擱置主線',()=>destinyTogglePause());}
+        if(rt.conclusion){
+            fateElement(panel,'div',`✦ 命運篇章已結束：${rt.conclusion.title}`,'fate-act');
+            fateElement(panel,'div',rt.conclusion.summary,'destiny-line');
+            fateElement(panel,'div','主線完成不代表遊戲結束。你可以繼續修煉、加入宗門，或追尋全新人生志向。','destiny-muted');
+            fateElement(panel,'div','✦ 下一段人生：依目前世界狀態可選擇的方向','destiny-focus');
+            fateElement(panel,'div',`修行：目前境界 ${gameState.realm||'未知'}，可繼續累積修為、探求符合條件的突破方法。`,'destiny-line');
+            const openEvents=gameState.worldMemory?.engine?.events?.filter(e=>e.source==='world-simulation'&&e.status==='active').slice(0,2)||[];
+            for(const ev of openEvents)fateElement(panel,'div',`九州事件：${ev.title}（${ev.region||'未知地域'}），可在世界局勢面板查看是否介入。`,'destiny-line');
+            fateElement(panel,'div',`人生志向：${rt.lifeGoal||fate.beginningGoals[0]||'自由求道'}；可在上方切換新志向。`,'destiny-muted');
+        }else{
+            fateElement(panel,'div','✦ 本幕可查證的線索（調查由核心執行，不必耗費 Gemini API）','destiny-focus');
+            for(let i=0;i<3;i++){
+                const r=fateRoute(fate,fate.chapter,i),proof=rt.leads[r.id];
+                const block=fateElement(panel,'div',undefined,'fate-lead');
+                fateElement(block,'strong',`${i+1}. ${r.title}${proof?' ✓ 已查證':''}`);
+                fateElement(block,'small',proof?`正式證據：${proof.summary}`:`途徑：${r.approach}`);
+                fateElement(block,'small',`目的地：${r.place}｜含旅途約 ${r.time} 日｜靈石 ${r.cost}｜${r.risk>.1?'需注意探索風險':'低風險'}`); const access=fateRouteAccess(gameState,r);if(!proof&&!access.ok)fateElement(block,'small',`條件未滿足：${access.reason}`);if(!proof&&i===1&&fateWitness(gameState)?.is_alive===false)fateElement(block,'small','原有線索聯絡人已故，改由當地資料與遺留紀錄尋訪，不會將 NPC 復活。');
+                if(!proof){const ac=fateElement(block,'div',undefined,'fate-actions');fateButton(ac,'正式查證這條線索',()=>destinyInvestigate(i),fate.status!=='active'||isTyping||gameState.isDead||!access.ok);}
+            }
+            if(fateChapterCount(fate)>=2){
+                fateElement(panel,'div',fate.chapter===5?'✦ 命運抉擇：兩條以上證據已查證，選擇如何面對這段人生。':'✦ 章節抉擇：已具備足夠線索，選擇接下來的立場。','destiny-focus');
+                const options=fateBranchOptions(fate,fate.chapter);
+                const actions=fateElement(panel,'div',undefined,'fate-actions');
+                for(let i=0;i<options.length;i++){const opt=fateElement(actions,'div',undefined,'fate-option');fateButton(opt,options[i],()=>destinyChooseBranch(i),fate.status!=='active'||isTyping||gameState.isDead);if(FATE_CHOICE_EFFECTS[options[i]])fateElement(opt,'small',FATE_CHOICE_EFFECTS[options[i]]);}
+            }else fateElement(panel,'div','本幕至少查證 2 條不同途徑的證據，才能選擇命運分支；也可自由探索，不限時間。','destiny-muted');
+        }
+        const found=Object.values(rt.leads).sort((a,b)=>a.day-b.day).slice(-7);
+        if(found.length){fateElement(panel,'div','✦ 已確認的線索（最近七條）','destiny-focus');for(const p of found)fateElement(panel,'div',`第${p.chapter}幕・第${p.day}日：${p.summary}`,'destiny-line');}
+        if(rt.worldProgress.length){fateElement(panel,'div',`歲月變遷：${rt.worldProgress.slice(-3).map(x=>`第${x.day}日${x.note}`).join('；')}`,'destiny-muted');}
+        if(!fate.hasMystery)fateElement(panel,'div','自訂身世只確認可被觀察的經歷與志向，不強制滅門、驚天秘密或仙帝血脈。','destiny-muted');
+        lifeRenderPanel(panel);
+    }
+    function destinyCoreCommit(s,kind,summary,extra={}){
+        const rt=fateEnsureRuntime(s),day=Number(s.daysPassed)||0;
+        rt.history.push({id:`${s.destiny.id}:${kind}:${rt.history.length+1}`,day,kind,summary,...extra});
+        rt.history=rt.history.slice(-100);
+        ensureWorldMemory(s);
+        const engine=s.worldMemory.engine;
+        engine.actionLog.push({id:`FATELOG:${s.destiny.id}:${kind}:${rt.history.length}:${day}`,day,type:'destiny',summary});
+        engine.actionLog=engine.actionLog.slice(-200);
+        const wm=s.worldMemory;
+        wm.chronicle.push({id:`FATE-CHRON-${wm.nextEventId++}`,day,title:`命運：${s.destiny.title}`,fact:summary,status:'confirmed',source:'CORE_DESTINY'});
+        wm.chronicle=wm.chronicle.slice(-200);
+    }
+    function destinyEnsureWorldEvent(s,chapter){
+        ensureWorldMemory(s);
+        const eventId=`FATEWORLD:${s.destiny.id}:C${chapter}`;
+        const evs=s.worldMemory.engine.events;
+        if(!evs.some(e=>e.id===eventId))evs.push({id:eventId,title:`命運故事：${s.destiny.title} 第${chapter}幕`,type:'destiny',status:'active',stage:'investigation',startDay:Number(s.daysPassed)||0,updatedDay:Number(s.daysPassed)||0,nextCheckDay:(Number(s.daysPassed)||0)+30,
+            summary:'角色的命運線索仍在演變，並非世界所有事件都圍繞主角',history:[],actors:[]});
+        return eventId;
+    }
+    function destinyInvestigate(index){
+        if(isTyping||!gameState?.destiny||gameState.isDead)return;
+        if(gameState.pendingEconomyProposal){openGameModal('交易未完成','請先確認或取消交易提案。');return;}
+        if(getEffectiveMode(gameState)==='DANGER'||(gameState.activeThreats||[]).length){openGameModal('危機未解除','先解除眼前威脅，再展開命運調查。');return;}
+        let s;
+        try{
+            s=structuredClone(gameState);
+            const fate=s.destiny,rt=fateEnsureRuntime(s);
+            if(fate.status!=='active')throw new Error('命運主線已暫停或結束。');
+            const r=fateRoute(fate,fate.chapter,index);
+            if(!r||rt.leads[r.id])throw new Error('線索無效或已經查證。');
+            const access=fateRouteAccess(s,r);if(!access.ok)throw new Error(access.reason);
+            // 事前快照、單次時間與資源變動都只在複製狀態中結算。
+            const n=rt.attempts[r.id]||0;
+            const talent=Math.min(0.13,(Number(s.level)||0)*0.013);
+            const witness=fateWitness(s);const witnessBonus=r.index===1&&witness&&witness.is_alive!==false&&witness.status!=='DEAD'?Math.min(.06,Math.max(0,(Number(witness.trust)||0)/350)):0;
+            // 同區域正在發生的真正資源衝突，會略微提高該地查證難度；不泄漏真相或直接判定失敗。
+            const activeLocalConflict=(s.worldMemory.engine.events||[]).some(e=>e.source==='world-simulation'&&e.status==='active'&&e.stage==='active'&&e.region&&r.place.includes(e.region));
+            const worldRisk=activeLocalConflict?.07:0;
+            const chance=Math.min(0.97,Math.max(0.35,0.77-r.risk-worldRisk-(r.chapter-1)*.055+talent+Math.min(0.25,n*0.095)+fateStrategyBonus(fate,r)+witnessBonus));
+            const roll=autonomyHash(`${fate.seed}:${r.id}:ATTEMPT:${n+1}`);
+            const success=roll<chance;
+            rt.attempts[r.id]=n+1;
+            ensureWorldMemory(s);
+            // 經費由既有核心經濟帳本原子結算，提供不可重複套用的正式收據。
+            if(r.cost>0)settleEconomy(s,{kind:'turn',eventId:`FATECOST:${fate.id}:${r.id}:ATTEMPT:${n+1}`,debit:r.cost,credit:0,adds:[],removes:[]},ECONOMY_AUTHORITY);
+            s.daysPassed+=(r.time||1);
+            s.location=r.place;
+            s.practiceFatigue=Math.min(100,Math.max(0,Number(s.practiceFatigue)||0)+2);
+            // 世界先推進，再留下本次結果；失敗不能憑空取得證據。
+            advanceWorldState(s,r.time||1);
+            checkLifeStatus(s);
+            if(s.isDead)throw new Error('旅途耗時導致壽元終結，本次行程未能開始，請檢視角色年齡。');
+            if(success){
+                rt.leads[r.id]={id:r.id,chapter:r.chapter,summary:r.summary,day:s.daysPassed,source:'CORE_INVESTIGATION',attempt:n+1};
+                fateRecordWitness(s,r);
+                fate.discoveries=Object.values(rt.leads).map(x=>({id:x.id,summary:x.summary,revealed:true,day:x.day})).slice(-100);
+                if(fate.chapter===4&&fate.lockedTruth&&fateChapterCount(fate,4)>=2){
+                    const t=fate.lockedTruth;
+                    const finding=`已交叉核對事件原因：${t.cause}。相關動機：${t.motive}。`; // 真正達到證據門檻才揭露
+                    if(!rt.leads['FATE-TRUTH']){
+                      rt.leads['FATE-TRUTH']={id:'FATE-TRUTH',chapter:4,summary:finding,day:s.daysPassed,source:'CORE_CORROBORATED'};
+                      fate.discoveries.push({id:'FATE-TRUTH',summary:finding,revealed:true,day:s.daysPassed});
+                    }
+                }
+                destinyCoreCommit(s,'proof',`正式取得證據「${r.title}」：${r.summary}`,{routeId:r.id});
+            }else{
+                if(r.risk>.1){const heightened=rt.choices.some(c=>c.choice==='承擔風險')?1.7:1;const damage=Math.max(1,Math.min(8,Math.ceil((Number(s.hp)||1)*0.04*heightened)));s.hp=Math.max(1,(Number(s.hp)||1)-damage);}
+                destinyCoreCommit(s,'investigation-failed',`查證「${r.title}」未取得有效證據，已耗費時間${r.time}日及靈石${r.cost}。`,{routeId:r.id});
+            }
+            destinyEnsureWorldEvent(s,fate.chapter);
+            destinySync(s);
+            gameState=s;
+            appendLogData('命運',success?`✦ 【正式線索・第${r.chapter}幕】沿著「${r.approach}」的方向，你前往${r.place}，花了 ${r.time} 日耐心核對。最終確認：${r.summary}。這項資訊已存入正式證據簿；${r.cost?'另支出 '+r.cost+' 顆靈石，':''}目前本幕進度 ${fateChapterCount(fate)}/2。`:`✦ 【調查未果】${r.title} 尚無可靠證據，時間與費用已依核心結算。你可再次調查或改選別的途徑。`,'system',false,true);
+            renderUI();saveGameState();
+        }catch(error){openGameModal('命運調查未執行',String(error.message||error));}
+    }
+    function destinyChooseBranch(index){
+        if(isTyping||!gameState?.destiny||gameState.isDead)return;
+        if(gameState.pendingEconomyProposal){openGameModal('先處理待確認提案','完成交易後再做命運抉擇。');return;}
+        let s;
+        try{
+            s=structuredClone(gameState);
+            const fate=s.destiny,rt=fateEnsureRuntime(s),chapter=fate.chapter;
+            if(fate.status!=='active'||rt.conclusion)throw new Error('命運線目前無法推進。');
+            if(fateChapterCount(fate)<2)throw new Error('至少需要兩條正式證據；純對話或 AI 敘事不構成證據。');
+            const choice=fateBranchOptions(fate,chapter)?.[index];if(!choice||rt.choices.some(c=>c.chapter===chapter))throw new Error('無效或重複的章節抉擇。');
+            rt.choices.push({chapter,choice,day:Number(s.daysPassed)||0});
+            const id=`FATEWORLD:${fate.id}:C${chapter}`;
+            const ev=s.worldMemory.engine.events.find(x=>x.id===id);if(ev){ev.status='resolved';ev.stage='resolution';ev.updatedDay=s.daysPassed;ev.history=(ev.history||[]).concat({day:s.daysPassed,type:'decision',note:choice}).slice(-20);}
+            destinyCoreCommit(s,'chapter-choice',`第${chapter}幕「${fate.chapterTitle}」完成調查，選擇「${choice}」。這是玩家的立場，不等於未經判定的仇敵死亡或勢力覆滅。`);
+            if(['廣結善緣','守護羈絆','保護知情者'].includes(choice)){
+                const w=fateWitness(s);
+                if(w&&w.is_alive!==false&&w.status!=='DEAD'){
+                    w.trust=Math.min(100,(Number(w.trust)||0)+7);
+                    w.relationship=w.relationship||{favorability:0,awe:0,profit:0};
+                    w.relationship.favorability=Math.min(100,(Number(w.relationship.favorability)||0)+3);
+                    w.lastInteractionDay=s.daysPassed;
+                    if(choice==='保護知情者')w.goals=['謹慎保管已知證據並避開不必要的風險'];
+                }
+            }
+            if(choice==='揭露秘密'){
+                const verified=Object.values(rt.leads).filter(e=>e&&e.source==='CORE_INVESTIGATION').slice(-3).map(e=>e.summary);
+                const summary=`角色公開了已驗證的局部調查成果：${verified.join('；')}`;
+                s.worldMemory.worldStateChanges.push({day:s.daysPassed,text:summary,source:'CORE_DESTINY'});
+                s.worldMemory.worldStateChanges=s.worldMemory.worldStateChanges.slice(-100);
+            }
+            if(choice==='等待時機'){
+                const prior=s.daysPassed;
+                s.daysPassed+=7;
+                advanceWorldState(s,7);
+                destinyCoreCommit(s,'wait',`角色選擇額外觀察七日，時間由第${prior}日推進至第${s.daysPassed}日，期間世界自主行動照常結算。`);
+            }
+
+            if(chapter<5){
+                fate.chapter=chapter+1;rt.chapter=chapter+1;
+                fate.chapterTitle=fateActiveStory(fate)[0];
+                destinyEnsureWorldEvent(s,fate.chapter);
+            }else{
+                let title=choice,summary;
+                if(fate.hasMystery){
+                    const actor=fate.lockedTruth?.principalActor;
+                    const revealed=`已掌握當年事件的原因與動機；相關關鍵人物：${actor?.name||'尚無可靠人名'}。`;
+                    // 公開真相不會強制判定殺人、奪回資產、改變宗門控制權等重大事件。
+                    summary=`${revealed}玩家選擇「${choice}」，正式整理可驗證的調查紀錄與個人立場。若要追究責任或改變勢力，仍須另以正式世界行動結算。`;
+                }else summary=`經過五幕的親身經歷，玩家決定「${choice}」。此人生篇章告一段落，往後仍可繼續修煉及轉變志向。`;
+                rt.conclusion={title,summary,day:Number(s.daysPassed)||0,choice,index};
+                fate.status='complete';
+                destinyCoreCommit(s,'fate-conclusion',`${fate.title}命運篇章完成：${summary}`);
+            }
+            destinySync(s);gameState=s;
+            appendLogData('命運',chapter===5?`✦ 【命運篇章完結】${rt.conclusion.summary}`:`✦ 【章節完成】第${chapter}幕結束；你選擇「${choice}」。第${fate.chapter}幕「${fate.chapterTitle}」已開啟。`,'system',false,true);
+            renderUI();saveGameState();
+        }catch(error){openGameModal('命運分支未執行',String(error.message||error));}
+    }
+    function destinyTogglePause(){
+        if(isTyping||!gameState?.destiny||gameState.isDead||gameState.destiny.status==='complete')return;
+        const s=structuredClone(gameState);fateEnsureRuntime(s);
+        s.destiny.status=s.destiny.status==='paused'?'active':'paused';
+        destinyCoreCommit(s,'life-choice',s.destiny.status==='paused'?'玩家暫時擱置個人命運追查，自由人生不受阻':'玩家選擇重新追尋自己的命運主線');
+        destinySync(s);gameState=s;appendLogData('命運',s.destiny.status==='paused'?'✦ 已暫時擱置個人主線，世界仍會自行流轉。':'✦ 已重新追尋個人命運主線。','system',false,true);renderUI();saveGameState();
+    }
+    function destinySetLifeGoal(goal){
+        if(isTyping||!gameState?.destiny||gameState.isDead)return;
+        const allowed=[gameState.destiny.beginningGoals[0]||'自由修行','精進修煉與突破境界','踏遍九州探索見聞','經商建立人脈與信用','守護重要的人與故鄉','鑽研丹道器道等百藝','建立宗門與傳承'];
+        if(gameState.destiny.questEngine?.lifeGoal)allowed.push(gameState.destiny.questEngine.lifeGoal);
+        if(!allowed.includes(goal))return;
+        const s=structuredClone(gameState);const rt=fateEnsureRuntime(s);
+        rt.lifeGoal=goal;destinyCoreCommit(s,'life-goal',`玩家自行選擇人生志向：「${goal}」`);destinySync(s);gameState=s;renderUI();saveGameState();
+    }
+    // 世界每一段經過的月份進入「命運歲月紀錄」；不假造 NPC 生死、資產損失或證據自動蒸發。
+    function destinyWorldTick(s,fromDay,toDay){
+        if(!s?.destiny||toDay<=fromDay)return;
+        const fate=s.destiny,rt=fateEnsureRuntime(s);
+        if(fate.status==='complete')return;
+        const oldCycle=Math.floor(Math.max(0,rt.lastWorldTickDay||0)/30),newCycle=Math.floor(toDay/30);
+        const firstCycle=Math.max(oldCycle+1,newCycle-11);
+        for(let cycle=firstCycle;cycle<=newCycle;cycle++){
+            const tick=cycle*30;
+            rt.worldProgress.push({day:tick,note:'已有歲月流逝；相關人物與勢力可能各自發展，個人真相仍保持鎖定。'});
+        }
+        rt.worldProgress=rt.worldProgress.slice(-36);
+        rt.lastWorldTickDay=toDay;
+    }
+    function destinyGuardNarrative(story,s){
+        if(!s?.destiny)return story;
+        const fate=s.destiny,rt=fateEnsureRuntime(s);
+        if(!fate.hasMystery||rt.conclusion)return story;
+        let out=String(story||'');
+        const trueName=fate.lockedTruth?.principalActor?.name;
+        if(trueName&&!rt.leads['FATE-TRUTH']&&out.includes(trueName))out=out.split(trueName).join('尚待查證的關係人');
+        // Story text is not a settlement source: remove unverified completion declarations.
+        if((fate.chapter<5&&/(真相大白|主線已完成|已正式結束命運|所有疑團都已解開)/.test(out))||(!rt.leads['FATE-TRUTH']&&/(已查明.{0,12}真兇|證實.{0,10}主使|真兇已確認|已確認.{0,12}主使|已經知道.{0,12}真相)/.test(out))){
+            out=out.replace(/[^。！\n]*(?:真相大白|主線已完成|已正式結束命運|所有疑團都已解開|已查明.{0,12}真兇|證實.{0,10}主使|真兇已確認|已確認.{0,12}主使|已經知道.{0,12}真相)[^。！\n]*[。！]?/g,'');
+            out+='\n【命運核對】相關主線尚未完成正式線索與結局結算。';
+        }
+        return out;
+    }
+    function destinySanitizeAiRaw(raw,s){
+        // AI 僅提出敘事／支線；未經命運核心的調查與選擇，不可以把真相、主線結局寫成正史。
+        const fate=s?.destiny;if(!fate||!raw||typeof raw!=='object')return;
+        const rt=fateEnsureRuntime(s),actor=fate.lockedTruth?.principalActor?.name||'';
+        const notSolved=fate.status!=='complete';
+        const unprovenName=!!actor&&!rt.leads['FATE-TRUTH'];
+        const directClaim=/(主線已完成|命運主線已完成|命運真相大白|家族滅門真兇已確認|已證實.*(?:奪骨真兇|家族真兇|幕後主使)|神魔記憶真相已確定)/;
+        const suspect=x=>{const t=typeof x==='string'?x:JSON.stringify(x||'');return directClaim.test(t)||(unprovenName&&t.includes(actor)&&/(兇手|主使|證實|真相|死牢|奪骨|滅門|家族)/.test(t));};
+        if(Array.isArray(raw.worldEvents)&&notSolved)raw.worldEvents=raw.worldEvents.filter(e=>!suspect(e));
+        if(raw.memoryDelta&&typeof raw.memoryDelta==='object'){
+            const md=raw.memoryDelta;
+            if(Array.isArray(md.chronicle)&&notSolved)md.chronicle=md.chronicle.map(e=>{
+                if(e&&typeof e==='object'&&suspect(e))return {...e,status:'unverified'};
+                return e;
+            });
+            if(Array.isArray(md.revealedSecrets)&&notSolved)md.revealedSecrets=md.revealedSecrets.filter(e=>!suspect(e));
+            if(Array.isArray(md.worldStateChanges)&&notSolved)md.worldStateChanges=md.worldStateChanges.filter(e=>!suspect(e));
+        }
+        if(unprovenName&&raw.npcDelta&&typeof raw.npcDelta==='object'){
+            // 不讓模型繞過尚未揭露的關鍵人物真相；不更動一般 NPC。
+            for(const key of ['created','updated','upsert','npcs','killed'])if(Array.isArray(raw.npcDelta[key]))
+                raw.npcDelta[key]=raw.npcDelta[key].filter(x=>(typeof x==='string'?x:(x?.name||''))!==actor);
+        }
+    }
+
+    // ===== end V6.82 =====
+
     function getDefaultGameState() {
         return {
-            version: "6.34",
+            version: "6.77",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, maxHp: 50, hp: 50, exp: 0, maxExp: 100,
             economy: {receipts:[],notifiedIds:[]},
@@ -1257,6 +1945,7 @@
             sceneCacheNpcs: [],
             worldEvents: [],
             worldMemory: { chronicle: [], openThreads: [], revealedSecrets: [], factionRelations: [], recentSummary: "開局初期，尚無足夠劇情可摘要。", nextEventId: 1 },
+            destiny: null, questLedger: null,
             quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
             choices: [...DEFAULT_ORIGIN_CHOICES],
             processedTxIds: [],
@@ -1506,6 +2195,10 @@
 
     // 中央物品定義表：固定 ID/用途/權限優先於名稱推測；未知物品才使用下方相容性解析規則。
     const ITEM_DEFINITIONS = {
+        '古代玉簡': { id:'relic_ancient_jade_slip', type:'misc', category:'典籍', canDisassemble:false, canSell:true, canDrop:true, identified:true, value:18, desc:'一般古代記載玉簡；不是洞府鑰匙，除非另有正式任務鎖定。' },
+        '玉瓶': { id:'container_jade_bottle', type:'misc', category:'凡物', canDisassemble:false, canSell:true, canDrop:true, identified:true, value:5, desc:'普通空玉瓶，可變賣或丟棄；有內容物或任務鎖定時禁止處置。' },
+        '空玉瓶': { id:'container_empty_jade_bottle', type:'misc', category:'凡物', canDisassemble:false, canSell:true, canDrop:true, identified:true, value:4 },
+        '古玉簡': { id:'relic_old_jade_slip', type:'misc', category:'典籍', canDisassemble:false, canSell:true, canDrop:true, identified:true, value:12 },
         '洞府玉簡': { id:'key_cave_token', type:'key', category:'鑰匙／憑證', isQuestItem:true, canDisassemble:false, canSell:false, canDrop:false, desc:'洞府通行憑證；不可參悟、拆解、出售或丟棄。' },
         '洞府令牌': { id:'key_cave_token', type:'key', category:'鑰匙／憑證', isQuestItem:true, canDisassemble:false, canSell:false, canDrop:false },
         '秘境玉簡': { id:'key_secret_realm', type:'key', category:'鑰匙／憑證', isQuestItem:true, canDisassemble:false, canSell:false, canDrop:false },
@@ -2040,6 +2733,13 @@
         }
         const rarity = RARITY_TIERS[tierKey] || RARITY_TIERS['下品'];
         const meta = (type, extra={}) => ({ type, category: ({equipment:'裝備',consumable:'消耗品',material:'材料',misc:'凡物',knowledge:'典籍',key:'鑰匙／憑證',special:'特殊物品',unidentified:'未鑑定物',fragment:'殘片'}[type] || '特殊物品'), name: clean, rarity: rarity.name, rarityColor: rarity.color, value: 10, isQuestItem: false, canDisassemble: false, canSell: true, canDrop: true, desc: '修仙物品', ...extra });
+        // V6.82: Only this explicit medicine has authority to shorten breakthrough recovery.
+        // Generic AI-named pills do not clear cooldown.
+        if(clean === '護脈復元丹') return meta('consumable',{
+            category:'丹藥',value:125,canDisassemble:false,
+            desc:'僅在突破反噬休養期服用，解除剩餘冷卻；不恢復損失的修為，也不保證下次突破成功。',
+            breakthroughRecovery:true
+        });
         const canonical = getCanonicalItemDefinition(isObj ? itemInput : clean);
         if (canonical) { const canonicalType = canonical.type; const canonicalMeta = meta(canonicalType, { ...canonical, name:clean }); if (canonicalType === 'equipment') canonicalMeta.slot = canonical.slot || null; return canonicalMeta; }
 
@@ -2158,10 +2858,11 @@
         const canonical = getCanonicalItemDefinition(item);
         const meta = getItemMeta(item);
         const type = canonical ? ((item.identified === false || canonical.identified === false || canonical.type === 'unidentified') ? 'unidentified' : canonical.type) : meta.type;
-        const locked = Boolean(canonical?.isQuestItem || item.isQuestItem || meta.isQuestItem || item.questLocked);
+        const locked = Boolean(canonical?.isQuestItem || item.isQuestItem || meta.isQuestItem || item.questLocked || (item.contents && (Array.isArray(item.contents) ? item.contents.length>0 : true)) || (Number(item.filledQuantity)||0)>0 || item.containsItem===true || item.isKey===true || item.useType==='key' || item.purpose==='unlock' || Boolean(item.unlockLocation));
         const qualityState = String(item.quality || item.tier || item.rarity || '');
         const identified = item.identified !== false && !/未鑑定|蒙塵/.test(cleanNameStrict(item.name || '')) && !['未鑑定','蒙塵'].includes(qualityState) && type !== 'unidentified';
         const equipped = Boolean(item.isEquipped || item.equipped || item.slotEquipped);
+        const canonicalTradeOverride = Boolean(canonical && ['relic_ancient_jade_slip','container_jade_bottle','container_empty_jade_bottle','relic_old_jade_slip'].includes(canonical.id));
         const base = {
             use: type === 'consumable' && identified,
             equip: type === 'equipment' && Boolean(meta.slot) && identified,
@@ -2169,8 +2870,8 @@
             identify: type === 'unidentified' || item.identified === false || ['未鑑定','蒙塵'].includes(qualityState) || /未鑑定|蒙塵/.test(cleanNameStrict(item.name || '')),
             fuse: type === 'fragment',
             disassemble: type === 'equipment' && item.canDisassemble !== false && meta.canDisassemble !== false && !locked && identified && !equipped,
-            sell: !locked && item.canSell !== false && meta.canSell !== false && !equipped && type !== 'key' && type !== 'special' && type !== 'unidentified' && type !== 'fragment' && !/靈石/.test(cleanNameStrict(item.name || '')),
-            drop: !locked && identified && item.canDrop !== false && meta.canDrop !== false && !['key','special','unidentified','fragment'].includes(type),
+            sell: !locked && (canonicalTradeOverride || item.canSell !== false) && meta.canSell !== false && !equipped && type !== 'key' && type !== 'special' && type !== 'unidentified' && type !== 'fragment' && !/靈石/.test(cleanNameStrict(item.name || '')),
+            drop: !locked && identified && (canonicalTradeOverride || item.canDrop !== false) && meta.canDrop !== false && !['key','special','unidentified','fragment'].includes(type),
             category: meta.category,
             type,
             slot: meta.slot || null
@@ -2968,11 +3669,12 @@
             beginSellDialogue(invItem);
             return;
         } else if (action === 'drop') {
-            const idx = gameState.inventory.indexOf(invItem);
-            if (idx < 0) return;
-            if ((Number(invItem.quantity) || 1) > 1) invItem.quantity -= 1;
-            else gameState.inventory.splice(idx, 1);
-            appendLogData('天道', `你已丟棄【${cleanName}】x1。`, 'system', false, true);
+            const confirmation = document.createElement('button');confirmation.className='modal-btn primary';confirmation.textContent='確定丟棄一件';
+            confirmation.onclick=()=>{closeGameModal();const idx=gameState.inventory.indexOf(invItem);if(idx<0||!getItemPermissions(invItem).drop)return;
+                if((Number(invItem.quantity)||1)>1)invItem.quantity--;else gameState.inventory.splice(idx,1);
+                appendLogData('天道',`你已丟棄【${cleanName}】x1。`,'system',false,true);renderUI();saveGameState();};
+            const cancel=document.createElement('button');cancel.className='modal-btn';cancel.textContent='取消';cancel.onclick=closeGameModal;
+            openGameModal('確認丟棄',`確定丟棄【${cleanName}】一件？此操作無法還原。`,[confirmation,cancel]);return;
         }
         renderUI(); saveGameState();
     }
@@ -3179,19 +3881,21 @@
         if (gameState.hasChosenOrigin) return;
         gameState.hasChosenOrigin = true;
         
-        if (choiceText.includes("1") || choiceText.includes("宗門棄子")) {
+        const originInput=String(choiceText||'').trim();
+        const presetIndex=originInput.match(/^([123])(?:[.．、:：\s]|$)/)?.[1] || '';
+        if (presetIndex==='1' || /^宗門棄子(?:[\s、，。:：]|$)/.test(originInput)) {
             gameState.originType = "宗門棄子";
             gameState.status.push("至尊骨殘痕 (涅槃引子)");
             gameState.originLinggenBonus = "真靈根";
             gameState.originPhysiqueBonus = "涅槃靈體";
             addItemToInventory(gameState.inventory, "至尊骨殘片", 1);
-        } else if (choiceText.includes("2") || choiceText.includes("奪舍死囚")) {
+        } else if (presetIndex==='2' || /^奪舍死囚(?:[\s、，。:：]|$)/.test(originInput)) {
             gameState.originType = "奪舍死囚";
             gameState.status.push("修羅煞氣 (凶戾之氣)");
             gameState.originLinggenBonus = "修羅異靈根";
             gameState.originPhysiqueBonus = "修羅霸體";
             addItemToInventory(gameState.inventory, "獄卒令牌", 1);
-        } else if (choiceText.includes("3") || choiceText.includes("落魄少主")) {
+        } else if (presetIndex==='3' || /^落魄少主(?:[\s、，。:：]|$)/.test(originInput)) {
             gameState.originType = "落魄少主";
             gameState.status.push("家族血脈殘脈");
             gameState.originLinggenBonus = "風雷雙靈根";
@@ -3249,6 +3953,7 @@ ${factionStateText}
 ${npcMemoryText}
 世界自主推進紀錄：
 ${worldChangesText}
+${worldPublicDigest(gameState)}
 已揭露秘密：
 ${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subject || "未知對象"}：${x.fact || x.summary || ""}`).join("\n") || "尚無"}
 
@@ -3379,7 +4084,7 @@ JSON 輸出格式範例：
         const alive=Object.entries(s.npcRegistry).filter(([id,n])=>n&&n.is_alive!==false&&n.status!=="DEAD"&&(n.hp==null||Number(n.hp)>0)&&(Number(n.nextAutonomyDay)||0)<=endDay);
         const actionDefs=[
             {key:"cultivate",label:"閉關修練",match:/修練|變強|突破|修為|功法|境界/,base:3},
-            {key:"gather_info",label:"搜集情報",match:/情報|調查|秘密|追查|尋找|查明/,base:3},
+            {key:"gather_info",label:"搜集情報",match:/情報|調查|秘密|追查|尋找線索|查明/,base:3},
             {key:"gather_resources",label:"尋找資源",match:/資源|靈石|藥材|靈礦|材料|財富/,base:3},
             {key:"build_relation",label:"經營人脈",match:/結盟|交涉|人脈|宗門|合作|交易|勢力/,base:2},
             {key:"recover",label:"休整療傷",match:/療傷|恢復|避風頭|保命|養傷/,base:2}
@@ -3396,7 +4101,8 @@ JSON 輸出格式範例：
             let ranked=actionDefs.map(a=>{
                 let score=a.base+(a.match.test(profile)?8:0);
                 if(a.key==="recover" && hp<70) score+=20;
-                if(a.key==="cultivate" && resources<10) score-=3;
+                if(a.key==="cultivate" && resources<10) score-=12;
+                if(a.key==="gather_resources" && resources<12) score+=(resources<=4?15:10);
                 if(a.key==="gather_info" && info<20) score+=2;
                 if(a.key==="build_relation" && network<20) score+=2;
                 if(fears.length && /危險|追殺|仇敵|死亡|受傷/.test(fears.join(" ")) && a.key==="recover") score+=4;
@@ -3411,6 +4117,20 @@ JSON 輸出格式範例：
             if(selected.key==="cultivate"){
                 npc.cultivationProgress=Math.max(0,Math.min(100,(Number(npc.cultivationProgress)||0)+(success?2+(wisdom>=15?1:0):0)));
                 npc.resourceLevel=Math.max(0,resources-(success?1:2)); cost="耗費時間與修煉資源"; consequence=success?"修煉進度增加，尚未自動視為突破":"修煉受阻，消耗部分資源";
+                // 只有正式登記修為層級的 NPC 才能依資源、進度和機率自主突破；不猜測未知 NPC 境界。
+                const npcLevel=Number.isInteger(npc.cultivationLevel)?npc.cultivationLevel:(Number.isInteger(npc.level)?npc.level:null);
+                if(npcLevel!==null&&npcLevel>=0&&npcLevel<120&&npc.cultivationProgress>=100&&npc.resourceLevel>=8){
+                    const targetLevel=npcLevel+1,attemptId=`NPC:BREAK:${id}:${endDay}`;
+                    const chance=Math.max(.15,Math.min(.88,.72-targetLevel*.005+(wisdom-10)*.008));
+                    const successBreak=autonomyHash(attemptId)<chance;
+                    npc.resourceLevel-=8;
+                    if(successBreak){npc.cultivationLevel=targetLevel;if(Number.isInteger(npc.level))npc.level=targetLevel;
+                        npc.realm=getRealmDef(targetLevel).name;npc.cultivationProgress=0;
+                        consequence=`完成真實資源與機率判定，晉入${npc.realm}`;
+                    }else{npc.cultivationProgress=80;consequence='嘗試突破未成，修為略有回落並消耗資源';}
+                    engine.actionLog.push({id:attemptId,day:endDay,type:'npc-breakthrough',summary:`${npc.name}${consequence}（機率${Math.round(chance*100)}%）`});
+                    npc.nextAutonomyDay=endDay+30;
+                }
             } else if(selected.key==="gather_info"){
                 npc.information=Math.max(0,Math.min(100,info+(success?3:1))); cost="消耗時間與人脈"; consequence=success?"取得一項待驗證線索":"只取得零碎或不可靠的消息"; result=success?"success":"partial";
             } else if(selected.key==="gather_resources"){
@@ -3422,7 +4142,16 @@ JSON 輸出格式範例：
             }
             const summary=`${cleanNameStrict(npc.name||id)}自主採取「${selected.label}」；判定${success?"成功":"未完全成功"}：${consequence}（${cost}）。`;
             settleNpcDiplomacy(s,npc,endDay,selected.key,success);
-            npc.currentPlan=selected.label; npc.lastAutonomyDay=endDay; npc.nextAutonomyDay=endDay+7;
+            // NPC 必須先完成可追蹤行動，才能對所屬勢力產生小幅真實貢獻。
+            const parentFaction=npcFaction(npc);
+            if(parentFaction&&success){
+                const linked=ensureFactionRecord(engine,parentFaction,npc.alignment||'未明',endDay);
+                worldEnsureFactionLedger(linked,endDay);
+                if(selected.key==='gather_resources')linked.ledger.treasury=worldClamp(linked.ledger.treasury+1,0,100000);
+                if(selected.key==='gather_info')linked.ledger.intelligence=worldClamp(linked.ledger.intelligence+1,0,100);
+                if(selected.key==='build_relation')linked.ledger.stability=worldClamp(linked.ledger.stability+.5,0,100);
+            }
+            npc.currentPlan=selected.label; npc.lastAutonomyDay=endDay; npc.nextAutonomyDay=Math.max(Number(npc.nextAutonomyDay)||0,endDay+7);
             npc.lastActionOutcome={day:endDay,action:selected.key,result,cost,consequence,successChance:Math.round(successChance*100),roll:Math.round(roll*100)};
             if(!Array.isArray(npc.actionHistory))npc.actionHistory=[];
             npc.actionHistory.push({day:endDay,action:selected.key,result,cost,consequence,summary}); npc.actionHistory=npc.actionHistory.slice(-12);
@@ -3430,7 +4159,7 @@ JSON 輸出格式範例：
             engine.npcPlans.push({id:planId,npcId:id,npcName:cleanNameStrict(npc.name||id),day:endDay,action:selected.key,summary,status:"resolved",result,cost,consequence,successChance:Math.round(successChance*100)});
             engine.actionLog.push({id:planId,day:endDay,type:"npc-autonomy",summary,result,cost,consequence});
             // 行動引發的世界事件只記錄可支持的後果，不直接捏造死亡、突破或戰爭勝負。
-            if(selected.key==="gather_info"&&success){
+            if(selected.key==="gather_info"&&success&&!engine.events.some(ev=>ev.source==='npc-autonomy'&&ev.actors?.includes(id)&&ev.status==='active')){
                 engine.events.push({id:`NPC-CLUE:${id}:${endDay}`,title:`${cleanNameStrict(npc.name||id)}取得線索`,summary:"NPC取得一項尚待驗證的情報線索。",status:"active",stage:"待驗證",actors:[id],createdDay:endDay,updatedDay:endDay,nextCheckDay:endDay+7,source:"npc-autonomy",history:[{day:endDay,type:"created",note:"由自主情報行動產生"}]});
             }
         }
@@ -3482,6 +4211,7 @@ JSON 輸出格式範例：
 
         // 未結事件每七日只產生一次「檢查點」。若沒有明確條件，不自動輪轉階段或宣告結果。
         engine.events.forEach(ev => {
+            if(ev && ev.source==='world-simulation')return; // 有專屬資源與條件式狀態機處理
             if (!ev || !ev.id || ["resolved", "failed", "cancelled", "suspended"].includes(ev.status)) return;
             const dueDay = Number(ev.nextCheckDay ?? ((Number(ev.updatedDay) || 0) + 7));
             if (endDay < dueDay) return;
@@ -3516,6 +4246,7 @@ JSON 輸出格式範例：
                 }
             }
         });
+        if(s.hasChosenOrigin)worldSimulationTick(s,endDay);
         engine.lastProcessedDay = endDay;
         engine.processedIds = engine.processedIds.slice(-300);
         engine.actionLog = engine.actionLog.slice(-200);
@@ -3895,16 +4626,13 @@ JSON 輸出格式範例：
 
         advanceWorldState(s, elapsedDays, rawState.memoryDelta && rawState.memoryDelta.worldStateChanges);
 
-        if (Array.isArray(rawState.quests) && rawState.quests.length > 0) {
-            s.quests = rawState.quests
-                .filter(q => q && typeof q === 'object')
-                .map(q => ({
-                    ...q,
-                    name: cleanNameStrict(q.name) || "未命名任務",
-                    progress: cleanNameStrict(q.progress) || "尚無進度說明",
-                    status: ["進行中", "已完成", "已失敗", "已放棄"].includes(q.status) ? q.status : "進行中"
-                }))
-                .slice(0, 30);
+        if(s.destiny) {
+            // 正式任務由核心驗證；AI 每回合只能新增「待查證」的支線提案，不能覆寫正式主線。
+            destinyAcceptAiQuests(s,rawState.quests||[]);
+            destinySync(s);
+        } else if (Array.isArray(rawState.quests) && rawState.quests.length > 0) {
+            s.quests = rawState.quests.filter(q=>q&&typeof q==='object')
+                .map(q=>({...q,name:cleanNameStrict(q.name)||'未命名任務',progress:cleanNameStrict(q.progress)||'尚無進度說明',status:['進行中','已完成','已失敗','已放棄'].includes(q.status)?q.status:'進行中'})).slice(0,30);
         }
 
         if (Array.isArray(rawState.choices) && rawState.choices.length > 0) s.choices = rawState.choices;
@@ -3950,7 +4678,7 @@ JSON 輸出格式範例：
         const valid = raw && typeof raw === "object" && !Array.isArray(raw);
         const normalized = normalizeGameStateLegacy(valid ? structuredClone(raw) : raw);
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
-        s.version = "6.40";
+        s.version = "6.77";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -3974,6 +4702,11 @@ JSON 輸出格式範例：
         // The legacy clamp used the realm HP instead of equipped maximum HP.
         if (valid && !s.isDead && Number.isFinite(Number(raw.hp))) s.hp = Math.max(0, Math.min(s.maxHp, Number(raw.hp)));
         ensureWorldMemory(s);
+        // V6.82: 既有存檔不憑空創造過去的真相；只有新開局成功時鎖定。
+        if(s.destiny) {
+            validateFateArchive(s.destiny);
+            destinySync(s);
+        } else {s.destiny=null;s.questLedger=null;}
         if(!s.economy) s.economy={receipts:[],notifiedIds:[]};
         if(!Array.isArray(s.economy.receipts) || !Array.isArray(s.economy.notifiedIds)) throw new Error("存檔帳本格式無效。");
         for(const c of s.bountyContracts || []) if(c.outcome === "成功" && c.settled !== true) {
@@ -4097,12 +4830,646 @@ JSON 輸出格式範例：
         }
         return true;
     }
+    // ===== V6.82 自主世界與任務雙向因果引擎 =====
+    // 所有數值均為遊戲世界的抽象資源點，非玩家靈石；不修改固定 WORLD_BIBLE。
+    const WORLD_SIM_SITES=Object.freeze([
+        {id:'NORTH_VEIN',name:'中州北境寒晶靈脈',region:'中州',type:'resource_conflict',owner:'天衡劍宗',challenger:'玄冥魔宗',income:3,defense:16},
+        {id:'EAST_HERBS',name:'東靈州青木靈植供應權',region:'東靈州',type:'herb_supply',owner:'百草會',challenger:'青蓮丹谷',income:2,defense:12},
+        {id:'CLOUD_ROUTE',name:'東南雲州通海商路',region:'東南雲州',type:'trade_route',owner:'渡海行',challenger:'萬寶商盟',income:3,defense:14}
+    ]);
+    const WORLD_SIM_STAGE=Object.freeze(['rumor','investigation','preparation','active','resolution','resolved']);
+    const WORLD_SIM_LABEL=Object.freeze({rumor:'風聲',investigation:'情報調查',preparation:'人手籌備',active:'執行中',resolution:'結果結算',resolved:'已結束',suspended:'暫時中止',failed:'計畫失敗',cancelled:'已取消'});
+    function worldClamp(x,min,max){return Math.max(min,Math.min(max,Number.isFinite(Number(x))?Number(x):min));}
+    function worldFactionByName(s,name){return s.worldMemory.engine.factions.find(f=>f&&f.name===name)||null;}
+    function worldEnsureFactionLedger(f,day){
+        if(!f||typeof f!=='object')return;
+        const seed=autonomyHash(`WORLD-FACTION:${f.id||f.name}`);
+        if(!f.ledger || typeof f.ledger!=='object')f.ledger={
+            treasury:Math.floor(95+seed*70),supplies:Math.floor(55+seed*45),
+            manpower:Math.floor(35+seed*35),intelligence:Math.floor(12+seed*22),
+            defense:Math.floor(20+seed*20),income:Math.floor(8+seed*5),
+            upkeep:Math.floor(5+seed*4),stability:Math.floor(55+seed*30),
+            lastSettlementDay:day,history:[]
+        };
+        const l=f.ledger;
+        for(const key of ['treasury','supplies','manpower','intelligence','defense','income','upkeep','stability']) l[key]=worldClamp(l[key],0,100000);
+        if(!Array.isArray(l.history))l.history=[];
+        f.history=Array.isArray(f.history)?f.history:[];
+    }
+    function worldNewEvent(s,site,day,cycle=1){
+        const sim=s.worldMemory.engine.simulation;
+        if(!site||!sim||sim.assets[site.id]===undefined)return null;
+        const owner=sim.assets[site.id].controller;
+        const attacker=(site.challenger===owner?site.owner:site.challenger);
+        if(owner===attacker)return null;
+        const id=`SIM:${site.id}:${cycle}`;
+        if(s.worldMemory.engine.events.some(e=>e.id===id))return null;
+        const evt={id,title:`${site.name}之爭`,type:site.type,siteId:site.id,
+          summary:`${attacker}與${owner}對${site.name}的利益出現分歧；尚未判定最終歸屬。`,
+          region:site.region,actors:[attacker,owner],attacker,defender:owner,
+          stage:'rumor',status:'active',source:'world-simulation',createdDay:day,updatedDay:day,
+          nextCheckDay:day+14,checks:0,failures:0,investigation:0,preparation:0,opposition:0,
+          playerSupport:{},actionHistory:[],history:[{day,type:'created',note:'存在可追蹤資產、雙方利益及初始行動者；目前只形成待查證風聲'}]};
+        s.worldMemory.engine.events.push(evt);
+        sim.eventSerial=Math.max(sim.eventSerial,cycle+1);
+        sim.activeBySite[site.id]=id;
+        sim.opportunities[id]={eventId:id,title:evt.title,region:evt.region,side:null,contributions:0,status:'available',createdDay:day};
+        return evt;
+    }
+    function worldInitSimulation(s){
+        ensureWorldMemory(s);
+        const e=s.worldMemory.engine,day=Math.max(0,Number(s.daysPassed)||0);
+        if(e.simulation && e.simulation.version===2)return e.simulation;
+        const sim={version:2,initializedDay:day,lastEconomyDay:day,nextEconomyDay:day+30,
+            nextReviewDay:day+90,eventSerial:1,assets:{},activeBySite:{},opportunities:{},
+            receipts:{},notifications:[],history:[]};
+        e.simulation=sim;
+        for(const def of WORLD_BIBLE.factions.filter(f=>/^ORTHO|^DEMON|^NEUTRAL/.test(f.id))){
+            const f=ensureFactionRecord(e,def.name,def.alignment,day);
+            f.id=def.id;f.region=def.region;f.group=def.group;
+            worldEnsureFactionLedger(f,day);
+        }
+        for(const site of WORLD_SIM_SITES){sim.assets[site.id]={id:site.id,name:site.name,region:site.region,controller:site.owner,income:site.income,defense:site.defense,history:[]};}
+        worldNewEvent(s,WORLD_SIM_SITES[0],day,1);
+        worldNewEvent(s,WORLD_SIM_SITES[1],day,1);
+        return sim;
+    }
+    function worldLog(s,id,day,summary,type='world-simulation'){
+        const e=s.worldMemory.engine;
+        if(e.actionLog.some(r=>r.id===id))return false;
+        e.actionLog.push({id,day,type,summary});e.actionLog=e.actionLog.slice(-200);
+        if(e.simulation){e.simulation.history.push({id,day,type,summary});e.simulation.history=e.simulation.history.slice(-100);}
+        return true;
+    }
+    function worldNotify(s,id,day,note,siteId){
+        const sim=s.worldMemory.engine.simulation;
+        if(!sim||sim.notifications.some(r=>r.id===id))return;
+        sim.notifications.push({id,day,note,siteId});sim.notifications=sim.notifications.slice(-35);
+        s.worldMemory.worldStateChanges.push({day,text:note,source:'CORE_WORLD',relatedThreadId:siteId});
+        s.worldMemory.worldStateChanges=s.worldMemory.worldStateChanges.slice(-100);
+        // 僅對玩家實際身處同區域、或已主動接觸的世界事件，更新個人命運的「已知局勢」。
+        // 這不是主線證據，也不能直接使章節完成。
+        if(s.destiny){
+            const region=WORLD_SIM_SITES.find(x=>x.id===siteId)?.region||'';
+            const involved=Object.values(sim.opportunities||{}).some(o=>o.region===region&&['accepted','completed','failed'].includes(o.status));
+            if(involved||(region&&String(s.location||'').includes(region))){
+                const rt=fateEnsureRuntime(s);
+                if(!rt.worldProgress.some(x=>x.id===id)){
+                    rt.worldProgress.push({id,day,note:`九州局勢：${note}`,source:'CORE_WORLD'});
+                    rt.worldProgress=rt.worldProgress.slice(-36);
+                }
+            }
+        }
+        worldLog(s,id,day,note);
+    }
+    function worldNpcLifecycleTick(s,day){
+        // 只在 NPC 明確持有數值年齡與壽元時執行；缺少資料不能擅自判定死亡。
+        for(const [id,n] of Object.entries(s.npcRegistry||{})){
+            if(!n||n.is_alive===false||n.status==='DEAD')continue;
+            const age=Number(n.age),cap=Number(n.maxAge ?? n.lifespanYears);
+            if(!Number.isFinite(age)||age<0||age>100000)continue;
+            if(!Number.isFinite(Number(n.birthDay)))n.birthDay=day-Math.floor(age*365);
+            const currentAge=Math.max(0,Math.floor((day-n.birthDay)/365));
+            n.age=Math.max(age,currentAge);
+            if(Number.isFinite(cap)&&cap>0&&currentAge>=cap){
+                n.deathDay=day;
+                finalizeNpcDeath(s,id,'壽元耗盡','world-lifecycle');
+                worldLog(s,`NPC:AGE:${id}:${day}`,day,`${n.name}因明確登記壽元耗盡而身故；相關事件與任務將依實際死亡狀態調整。`,'npc-lifecycle');
+            }
+        }
+    }
+    function worldMonthFinance(s,day){
+        const e=s.worldMemory.engine,sim=e.simulation;
+        if(!sim||day<sim.nextEconomyDay)return;
+        // 世界收益由既有據點產出，必須同時扣除駐防與營運開銷。
+        for(const f of e.factions){
+            if(!f||!f.ledger)continue;
+            const l=f.ledger;
+            const sites=Object.values(sim.assets).filter(x=>x.controller===f.name);
+            const assetIncome=sites.reduce((t,a)=>t+a.income,0);
+            const income=l.income+assetIncome,upkeep=l.upkeep+Math.max(0,Math.floor(l.manpower/32));
+            const costs=Math.min(l.treasury+income,upkeep);
+            l.treasury=worldClamp(l.treasury+income-costs,0,100000);
+            const supplyNeed=Math.max(2,Math.floor(l.manpower/20));
+            const supplyConsumption=Math.min(l.supplies,supplyNeed);
+            l.supplies=worldClamp(l.supplies+Math.max(1,Math.floor(income/4))-supplyConsumption,0,100000);
+            // V6.82: 長期供應再平衡。補給不能靠免費生成：庫存偏低時，
+            // 必須以已結算的真實勢力財政購買；缺錢者仍可能陷入資源危機。
+            const stockTarget=Math.max(60,Math.ceil(l.manpower/3));
+            const supplyShortfall=Math.max(0,stockTarget-l.supplies);
+            const sustainableBudget=Math.max(0,Math.floor((income-upkeep)*0.8))+Math.max(0,Math.floor((l.treasury-120)/100));
+            const purchase=Math.min(8,supplyShortfall,Math.max(0,Math.floor(l.treasury-18)),sustainableBudget);
+            if(purchase>0){l.treasury-=purchase;l.supplies=worldClamp(l.supplies+purchase,0,100000);}
+            if(costs<upkeep||supplyConsumption<supplyNeed){
+                l.stability=worldClamp(l.stability-3,0,100);
+                l.manpower=worldClamp(l.manpower-1,0,10000);
+            }else l.stability=worldClamp(l.stability+0.25,0,100);
+            l.lastSettlementDay=day;
+            l.history.push({day,income,upkeep,costs,assetIncome,supplyPurchased:purchase,supplyCost:purchase,treasury:l.treasury,supplies:l.supplies});
+            l.history=l.history.slice(-18);
+        }
+        worldNpcLifecycleTick(s,day);
+        sim.lastEconomyDay=day;
+        sim.nextEconomyDay=day+30;
+        worldLog(s,`SIM:FINANCE:${day}`,day,'勢力完成月度收入、駐防開銷、供應消耗與財政穩定度結算。','faction-economy');
+    }
+    function worldEventAction(s,ev,day){
+        const sim=s.worldMemory.engine.simulation;
+        if(!sim||!ev||ev.source!=='world-simulation'||ev.status!=='active'||day<(Number(ev.nextCheckDay)||0))return;
+        const site=WORLD_SIM_SITES.find(x=>x.id===ev.siteId),att=worldFactionByName(s,ev.attacker),def=worldFactionByName(s,ev.defender);
+        if(!site||!att||!def||!att.ledger||!def.ledger){ev.status='suspended';ev.stage='suspended';return;}
+        const a=att.ledger,d=def.ledger;
+        ev.checks=(Number(ev.checks)||0)+1;
+        const receipt=`SIM:EVSTEP:${ev.id}:${ev.checks}`;
+        if(sim.receipts[receipt])return;
+        const before=ev.stage;
+        let note='',cost=0,success=false;
+        const has=(treasury,supplies)=>a.treasury>=treasury&&a.supplies>=supplies;
+        if(ev.stage==='rumor'){
+            if(has(2,1)){a.treasury-=2;a.supplies-=1;cost=2;ev.stage='investigation';note='出資建立情報渠道，調查開始';success=true;}
+            else note='缺乏最低調查資源，無法行動';
+        }else if(ev.stage==='investigation'){
+            if(has(5,2)){
+                a.treasury-=5;a.supplies-=2;cost=5;
+                const chance=worldClamp(.58+(a.intelligence-d.intelligence)/150,0.2,0.9);
+                success=autonomyHash(receipt)<chance;
+                ev.investigation=worldClamp(ev.investigation+(success?1:0),0,5);
+                a.intelligence=worldClamp(a.intelligence+(success?2:0),0,100);
+                d.intelligence=worldClamp(d.intelligence+1,0,100);
+                note=success?'取得可驗證的目標情報':'情報未核實，守方已提高警戒';
+                if(ev.investigation>=2)ev.stage='preparation';
+            }else note='情報預算或補給不足，調查延宕';
+        }else if(ev.stage==='preparation'){
+            if(has(10,5)&&a.manpower>=8){
+                a.treasury-=10;a.supplies-=5;cost=10;
+                ev.preparation=worldClamp(ev.preparation+1,0,5);
+                // 守方發現準備後也須投入真正成本，不能免費加無限防禦。
+                if(d.treasury>=5&&d.supplies>=2){d.treasury-=5;d.supplies-=2;ev.opposition=worldClamp(ev.opposition+1,0,5);}
+                note='籌集人手、補給並安排守方反制；各方資產已扣除';success=true;
+                if(ev.preparation>=2)ev.stage='active';
+            }else note='籌備所需的人手或財政不足';
+        }else if(ev.stage==='active'){
+            if(has(12,6)&&a.manpower>=8){
+                a.treasury-=12;a.supplies-=6;cost=12;
+                if(d.treasury>=7&&d.supplies>=3){d.treasury-=7;d.supplies-=3;}
+                const bonus=Number(ev.playerSupport[ev.attacker]||0)-Number(ev.playerSupport[ev.defender]||0);
+                const odds=worldClamp(.48+(a.manpower-d.manpower)/220+(a.intelligence-d.intelligence)/250+(ev.preparation-ev.opposition)*.035+bonus*.02,0.08,.88);
+                const roll=autonomyHash(`${receipt}:battle`);
+                ev.outcomeRoll=roll;ev.outcomeChance=odds;
+                ev.result=roll<odds?'attacker-win':'defender-win';
+                a.manpower=worldClamp(a.manpower-(roll<odds?2:5),0,10000);
+                d.manpower=worldClamp(d.manpower-(roll<odds?5:2),0,10000);
+                ev.stage='resolution';success=true;
+                note='交涉／衝突完成，按雙方人手、情報、資源與玩家介入判定，等待正式結果確認';
+            }else note='實際執行能力不足，行動推遲';
+        }else if(ev.stage==='resolution'){
+            if(ev.result==='attacker-win'){
+                const asset=sim.assets[site.id],old=asset.controller;
+                if(old!==ev.attacker){asset.controller=ev.attacker;asset.history.push({day,from:old,to:ev.attacker,eventId:ev.id});asset.history=asset.history.slice(-20);}
+                note=`${site.name}的經營／控制權由${old}轉為${ev.attacker}，附帶資源成本與交涉紀錄`;
+            }else note=`${ev.defender}保住${site.name}的既有權利，挑戰者承受前期投入損失`;
+            ev.stage='resolved';ev.status='resolved';ev.resolvedDay=day;success=true;
+            const delta=ev.result==='attacker-win'?-6:-3;
+            applyFactionEvent(s,{id:`SIM-REL:${ev.id}`,a:ev.attacker,b:ev.defender,delta,reason:`${site.name}經已結算的資源競爭事件改變雙方利益`});
+            worldNotify(s,`SIM-RESULT:${ev.id}`,day,note,site.id);
+            delete sim.activeBySite[site.id];
+            const op=sim.opportunities[ev.id];if(op){
+                op.closedDay=day;
+                op.status=op.status==='accepted'?(op.contributions>0&&((op.side===ev.attacker&&ev.result==='attacker-win')||(op.side===ev.defender&&ev.result==='defender-win'))?'completed':'failed'):'expired';
+                worldSyncOpportunityQuest(s,op);
+            }
+        }
+        if(!success){
+            ev.failures=(Number(ev.failures)||0)+1;
+            // V6.82: 失敗先改變策略，調查不足改進情報、補給不足採購或等待財政恢復。
+            // 所有額外資源均由現有庫存扣除，不能憑空補給；第八次仍無解才中止。
+            if(ev.failures>=2&&ev.failures<8){
+                if(a.supplies<13&&a.treasury>=18){
+                    const purchase=Math.min(8,Math.max(0,Math.floor(a.treasury-12)));
+                    a.treasury-=purchase;a.supplies=worldClamp(a.supplies+purchase,0,100000);
+                    ev.strategy='paid-resupply';note+=`；改採財政補給，支出${purchase}資源點`;
+                }else if(ev.stage==='investigation'&&a.treasury>=3&&a.intelligence<90){
+                    a.treasury-=3;a.intelligence=worldClamp(a.intelligence+3,0,100);
+                    ev.strategy='intelligence-recruitment';note+='；支出3財政點增加調查能力';
+                }else{ev.strategy='wait-and-reassess';note+='；改採觀望與財政整備，不無條件重試';}
+            }
+            if(ev.failures>=8){ev.status='suspended';ev.stage='suspended';note+='；長期條件不足，計畫中止並保留因果';delete sim.activeBySite[site.id];}
+        }else ev.failures=0;
+        ev.updatedDay=day;ev.nextCheckDay=day+(ev.strategy==='wait-and-reassess'?45:14);
+        ev.history=Array.isArray(ev.history)?ev.history:[];
+        ev.history.push({day,type:'core-action',from:before,to:ev.stage,cost,note,receipt});ev.history=ev.history.slice(-30);
+        sim.receipts[receipt]={day,result:ev.stage,cost};
+        // 限制收據成長；已完成事件不會再被執行，因此跨長期存檔可採事件歷史佐證。
+        if(Object.keys(sim.receipts).length>300){const keys=Object.keys(sim.receipts);for(const k of keys.slice(0,keys.length-300))delete sim.receipts[k];}
+        worldLog(s,receipt,day,`${ev.title}：${note}`,'world-event-action');
+        if(ev.stage!==before)worldNotify(s,`${receipt}:STAGE`,day,`${ev.title}進入「${WORLD_SIM_LABEL[ev.stage]||ev.stage}」階段。`,site.id);
+    }
+    function worldMaybeSpawn(s,day){
+        const sim=s.worldMemory.engine.simulation;
+        if(!sim||day<sim.nextReviewDay)return;
+        sim.nextReviewDay=day+90;
+        for(const site of WORLD_SIM_SITES){
+            const live=s.worldMemory.engine.events.some(e=>e.source==='world-simulation'&&e.siteId===site.id&&e.status==='active');
+            if(live)continue;
+            const last=[...s.worldMemory.engine.events].reverse().find(e=>e.source==='world-simulation'&&e.siteId===site.id);
+            if(last&&day-Number(last.updatedDay||0)<90)continue;
+            const owner=sim.assets[site.id]?.controller;
+            const rival=owner===site.challenger?site.owner:site.challenger;
+            const challenger=worldFactionByName(s,rival);
+            if(challenger&&challenger.ledger?.treasury>=85&&challenger.ledger?.supplies>=42)worldNewEvent(s,site,day,sim.eventSerial++);
+        }
+    }
+    function worldSyncOpportunityQuest(s,op){
+        if(!s.questLedger||!op||!['accepted','completed','failed'].includes(op.status))return;
+        const ev=s.worldMemory.engine.events.find(e=>e.id===op.eventId);
+        const id=`WORLDQUEST:${op.eventId}`;
+        s.questLedger.verified[id]={id,name:`九州局勢：${op.title}`,scope:'world',verified:true,worldEventId:op.eventId,
+          progress:op.status==='accepted'?`已介入${op.side}一方；目前貢獻${op.contributions}次，世界事件仍會自行推進`:
+            op.status==='completed'?'玩家貢獻已正式結算，所支持勢力的目標達成':'世界結果與玩家目標未吻合（或未投入有效貢獻）',
+          status:op.status==='accepted'?'進行中':op.status==='completed'?'已完成':'已失敗',resolvedDay:op.closedDay||null};
+    }
+    function worldOfferOpportunity(s,event){
+        const sim=s.worldMemory.engine.simulation;
+        if(!event||event.status!=='active'||event.source!=='world-simulation')return;
+        if(!sim.opportunities[event.id])sim.opportunities[event.id]={eventId:event.id,title:event.title,region:event.region,side:null,contributions:0,status:'available',createdDay:Number(s.daysPassed)||0};
+    }
+    function worldSimulationTick(s,day){
+        const sim=worldInitSimulation(s);
+        worldMonthFinance(s,day);
+        for(const ev of s.worldMemory.engine.events)if(ev.source==='world-simulation'&&ev.status==='active'){
+            worldEventAction(s,ev,day);
+            worldOfferOpportunity(s,ev);
+        }
+        worldMaybeSpawn(s,day);
+        for(const ev of s.worldMemory.engine.events)if(ev.source==='world-simulation'&&ev.status==='active')worldOfferOpportunity(s,ev);
+        lifeWorldTick(s,day);
+        // 世界事件可使已接受任務失效；不能由 AI 敘事自行宣告成功。
+        if(s.destiny&&s.questLedger)destinySync(s);
+    }
+    function worldAcceptOpportunity(eventId,side){
+        if(isTyping||gameState?.isDead||!gameState?.hasChosenOrigin)return;
+        try{
+            const s=structuredClone(gameState);ensureWorldMemory(s);const sim=worldInitSimulation(s);
+            const ev=s.worldMemory.engine.events.find(e=>e.id===eventId&&e.source==='world-simulation'&&e.status==='active');
+            if(!ev||!['attacker','defender'].includes(side))throw new Error('該世界事件已不再開放介入。');
+            worldOfferOpportunity(s,ev);const op=sim.opportunities[eventId];
+            if(op.status==='accepted')throw new Error('已經接受本事件，不能重複選邊。');
+            if(op.status!=='available')throw new Error('事件已結束或失效。');
+            op.status='accepted';op.side=ev[side];op.acceptedDay=s.daysPassed;
+            worldSyncOpportunityQuest(s,op);if(s.destiny)destinySync(s);
+            gameState=s;renderUI();saveGameState();
+            appendLogData('九州',`你決定關注「${ev.title}」，選擇支援${op.side}。這只是玩家的立場，尚未達成任何世界結果。`,'system',false,true);
+        }catch(err){openGameModal('無法接取世界任務',String(err.message||err));}
+    }
+    function worldContribute(eventId){
+        if(isTyping||gameState?.isDead||!gameState?.hasChosenOrigin)return;
+        try{
+            const s=structuredClone(gameState);ensureWorldMemory(s);const sim=worldInitSimulation(s);
+            const ev=s.worldMemory.engine.events.find(e=>e.id===eventId&&e.status==='active'&&e.source==='world-simulation');
+            const op=sim.opportunities[eventId];if(!ev||!op||op.status!=='accepted')throw new Error('需要先接取尚在進行的世界事件。');
+            if(!String(s.location||'').includes(ev.region))throw new Error(`請先實際前往${ev.region}；當前位置無法遠距離提供現場支援。`);
+            if((Number(s.spiritStone)||0)<4)throw new Error('準備物資與情報需要至少 4 顆下品靈石。');
+            if(s.pendingEconomyProposal)throw new Error('請先結清待確認的交易。');
+            const id=`SIM:PLAYER:${ev.id}:${op.contributions+1}`;
+            settleEconomy(s,{kind:'turn',eventId:id,debit:4,credit:0,adds:[],removes:[]},ECONOMY_AUTHORITY);
+            const f=worldFactionByName(s,op.side);if(!f)throw new Error('支援勢力資料不存在。');
+            f.ledger.treasury+=3;f.ledger.supplies+=1;
+            ev.playerSupport[op.side]=Math.min(8,(Number(ev.playerSupport[op.side])||0)+1);
+            op.contributions++;op.lastContributionDay=s.daysPassed;
+            const prevDay=s.daysPassed;s.daysPassed+=2;
+            advanceWorldState(s,2);
+            const next=sim.opportunities[eventId];if(next&&next.status==='accepted')worldSyncOpportunityQuest(s,next);
+            if(s.destiny)destinySync(s);
+            worldLog(s,id,prevDay,`玩家在${ev.region}為${op.side}提供已結算的物資，消耗4靈石與2日；勢力資源增加且影響事件判定。`,'player-world-contribution');
+            gameState=s;renderUI();saveGameState();
+            appendLogData('九州',`你在${ev.region}將實際籌備的物資交給${op.side}，支出 4 顆靈石、經過 2 日。勢力收到資源，世界事件仍依雙方條件自行發展。`,'system',false,true);
+        }catch(err){openGameModal('支援未執行',String(err.message||err));}
+    }
+    function worldRenderPanel(){
+        const root=document.getElementById('ui-world-engine');if(!root)return;
+        root.replaceChildren();
+        if(!gameState?.hasChosenOrigin){root.textContent='選定身世後，九州各勢力將依遊戲時間自主發展。';return;}
+        ensureWorldMemory(gameState);
+        const sim=gameState.worldMemory.engine.simulation;
+        if(!sim){root.textContent='世界模擬會在角色開始、時間推進時建立。';return;}
+        const line=(container,txt,cls)=>{const el=document.createElement('div');el.textContent=txt;if(cls)el.className=cls;container.appendChild(el);return el;};
+        const title=document.createElement('div');title.style.fontWeight='bold';title.textContent=`九州自主局勢｜第 ${Number(gameState.daysPassed)||0} 日`;
+        root.appendChild(title);
+        const sites=Object.values(sim.assets||{});
+        for(const a of sites)line(root,`${a.name}｜目前掌控：${a.controller}｜據點產能 ${a.income}/月`,'destiny-muted');
+        const active=gameState.worldMemory.engine.events.filter(e=>e.source==='world-simulation'&&e.status==='active').slice(-6);
+        if(!active.length)line(root,'目前沒有待處理的重大公開爭端，宗門仍會持續進行收入、支出與自主行動。','destiny-muted');
+        for(const ev of active){
+            const card=document.createElement('div');card.className='destiny-line';card.style.margin='8px 0';card.style.border='1px solid #67563b';card.style.padding='9px';card.style.borderRadius='6px';root.appendChild(card);
+            line(card,`${ev.title}｜${WORLD_SIM_LABEL[ev.stage]||ev.stage}`);
+            line(card,`${ev.attacker} ↔ ${ev.defender}｜${ev.region}｜下次檢查第${ev.nextCheckDay}日`,'destiny-muted');
+            const op=sim.opportunities[ev.id];
+            if(op?.status==='available'){
+                const wrap=document.createElement('div');wrap.style.display='flex';wrap.style.gap='6px';wrap.style.flexWrap='wrap';card.appendChild(wrap);
+                for(const side of ['attacker','defender']){const btn=document.createElement('button');btn.className='choice-btn';btn.textContent=`關注／支援 ${ev[side]}`;btn.disabled=isTyping||gameState.isDead;btn.onclick=()=>worldAcceptOpportunity(ev.id,side);wrap.appendChild(btn);}
+            }else if(op?.status==='accepted'){
+                line(card,`已選擇支援${op.side}｜有效物資貢獻 ${op.contributions} 次`,'destiny-muted');
+                const btn=document.createElement('button');btn.className='choice-btn';btn.textContent='提供補給（4 靈石／2 日；需人在當地）';btn.disabled=isTyping||gameState.isDead||Number(gameState.spiritStone)<4;btn.onclick=()=>worldContribute(ev.id);card.appendChild(btn);
+            }
+        }
+        const allWorldEvents=gameState.worldMemory.engine.events.filter(e=>e.source==='world-simulation');
+        const activeCount=allWorldEvents.filter(e=>e.status==='active').length;
+        const finishedCount=allWorldEvents.filter(e=>e.status==='resolved').length;
+        line(root,`世界進程｜進行中 ${activeCount} 件／已結算 ${finishedCount} 件／歷來 ${allWorldEvents.length} 件`,'destiny-muted');
+        const recent=sim.notifications.slice(-5).reverse();if(recent.length){line(root,'近期已確認的世界變化：','destiny-focus');for(const n of recent)line(root,`第${n.day}日・${n.note}`,'destiny-muted');}
+        const f=gameState.worldMemory.engine.factions.filter(x=>x?.ledger).slice(0,6);
+        if(f.length){line(root,'勢力財政（抽象資源點，不是玩家靈石）：','destiny-focus');for(const x of f)line(root,`${x.name}｜庫存 ${Math.floor(x.ledger.treasury)}｜補給 ${Math.floor(x.ledger.supplies)}｜人手 ${Math.floor(x.ledger.manpower)}｜穩定 ${Math.round(x.ledger.stability)}`,'destiny-muted');}
+    }
+
+    // V6.82: 後半生、動態委託與重要 NPC 人生專案。世界和任務只有一份正式來源。
+    const LIFE_CAREERS={
+      cultivation:{name:'大道求索',goal:'以正式修為、突破和修行準備開闢自己的道途',cost:0,days:5},
+      sect:{name:'宗門與傳承',goal:'累積可信任的人脈、宗門貢獻及實際據點',cost:3,days:5},
+      commerce:{name:'九州商道',goal:'累積可追溯交易、商業信用和經營能力',cost:3,days:4},
+      craft:{name:'百藝傳承',goal:'研究工藝與材料，發展專長與師承',cost:2,days:5},
+      bonds:{name:'人間羈絆',goal:'協助重要的在世人物完成個人計畫',cost:2,days:3},
+      exploration:{name:'九州遊歷',goal:'以實際旅行、情報與事件見聞拓展閱歷',cost:2,days:6}
+    };
+    function lifeCareerType(s){
+      const g=String(s?.destiny?.questEngine?.lifeGoal||s?.destiny?.beginningGoals?.[0]||'');
+      if(/商|交易|信用|財富/.test(g))return 'commerce';
+      if(/宗門|傳承|勢力/.test(g))return 'sect';
+      if(/丹|器|百藝|技藝|符|陣/.test(g))return 'craft';
+      if(/守護|家人|羈絆|故鄉|親友/.test(g))return 'bonds';
+      if(/遊|探索|見聞|九州|旅行/.test(g))return 'exploration';
+      return 'cultivation';
+    }
+    function lifeEnsure(s){
+      if(!s?.hasChosenOrigin)return null;
+      ensureWorldMemory(s);
+      const sim=worldInitSimulation(s);
+      if(!sim.lifeV677||sim.lifeV677.version!==1)sim.lifeV677={version:1,startedDay:Number(s.daysPassed)||0,lastNpcDay:Number(s.daysPassed)||0,careers:{},missions:{},npcProjects:{},history:[],receipts:{},knownSites:{}};
+      const life=sim.lifeV677;
+      for(const key of ['careers','missions','npcProjects','receipts','knownSites'])if(!life[key]||typeof life[key]!=='object'||Array.isArray(life[key]))life[key]={};
+      if(!Array.isArray(life.history))life.history=[];
+      if(!life.caravans||typeof life.caravans!=='object'||Array.isArray(life.caravans))life.caravans={};
+      for(const type of Object.keys(LIFE_CAREERS))if(!life.careers[type])life.careers[type]={xp:0,completed:0,stage:0,lastDay:life.startedDay};
+      return life;
+    }
+    function lifeRecord(life,id,day,note){
+      if(life.receipts[id])return false;
+      life.receipts[id]={day,note};life.history.push({id,day,note});
+      if(life.history.length>120)life.history=life.history.slice(-120);
+      // Only receipt IDs for completed self-contained actions are needed. Stable milestone receipts retained.
+      return true;
+    }
+    function lifeNpcProjectKind(n){
+      const goals=Array.isArray(n.goals)?n.goals.map(x=>typeof x==='string'?x:(x?.type||x?.title||'')).join(' '):String(n.goal||'');
+      const role=String(n.role||'')+' '+String(n.name||'')+' '+goals;
+      return /丹|藥|醫|療/.test(role)?'medicinal':/商|店|貿易|交易/.test(role)?'commerce':/宗|門|盟|長老/.test(role)?'sect':/情報|調查|探查/.test(role)?'information':'cultivation';
+    }
+    function lifeSyncNpcProjects(s,day){
+      const life=lifeEnsure(s);if(!life)return;
+      // Only persistent important NPCs; no new named NPC fabricated for content.
+      const entries=Object.entries(s.npcRegistry||{}).filter(([id,n])=>n&&n.is_alive!==false&&n.status!=='DEAD'&&n.importance!=='minor'&&n.persistent!==false).slice(0,24);
+      for(const [id,n] of entries){
+        if(!life.npcProjects[id])life.npcProjects[id]={npcId:id,name:String(n.name||id),kind:lifeNpcProjectKind(n),progress:0,completed:0,lastDay:day,nextDay:day+30+Math.floor(autonomyHash('LIFE-NPC:'+id)*25),history:[]};
+        const p=life.npcProjects[id];
+        if(n.is_alive===false||n.status==='DEAD'){p.status='ended';continue;}
+        p.status='active';p.name=String(n.name||p.name);
+        // Catch up due milestones when player closes for years; bounded to prevent pathological save CPU usage.
+        let rounds=0;
+        while(day>=Number(p.nextDay||Infinity)&&rounds++<60){
+          const actionDay=p.nextDay;
+          const wallet=Number(n.resources?.spiritStones);
+          // Legacy NPCs without an explicit financial ledger have only an abstract plan;
+          // recorded resources must be paid before a formal milestone can advance.
+          const funded=Number.isFinite(wallet)&&wallet>=1;
+          p.lastDay=actionDay;p.nextDay=actionDay+45;
+          if(!funded){p.status='waiting_resources';p.history.push({day:actionDay,type:'blocked',text:`${p.name}缺乏已登記資源，長期計畫暫緩`});p.history=p.history.slice(-8);continue;}
+          n.resources.spiritStones=wallet-1;
+          const gain=1+Math.floor(autonomyHash('LIFE-NPC-TICK:'+id+':'+actionDay)*2);
+          p.progress+=gain;
+          if(p.progress>=6){p.progress-=6;p.completed++;p.history.push({day:actionDay,type:'milestone',text:`${p.name}消耗資源完成一次${p.kind}方向的長期準備`});p.history=p.history.slice(-8);}
+        }
+      }
+    }
+    function lifeSyncMissions(s,day){
+      const life=lifeEnsure(s);if(!life)return;
+      const events=s.worldMemory.engine.events.filter(e=>e?.source==='world-simulation');
+      for(const ev of events){
+        const id='LIFE:EVENT:'+ev.id;
+        if(!life.missions[id]&&ev.status==='active')life.missions[id]={id,eventId:ev.id,kind:'world',title:`介入${ev.title}`,region:ev.region,openedDay:day,status:'offered',stake:ev.type,source:'world-simulation'};
+        const m=life.missions[id];if(!m)continue;
+        if(ev.status!=='active'&&['offered','accepted'].includes(m.status)){
+          m.status=m.status==='accepted'?'closed':'expired';m.closedDay=day;m.outcome=ev.result||ev.status;
+          lifeRecord(life,`LIFE-CLOSE:${id}`,day,`${m.title}隨世界結果${m.outcome}結束；不虛構獎勵。`);
+        }
+      }
+      // Important NPCs already in registry can create a real, state-checked personal commission.
+      for(const [id,p] of Object.entries(life.npcProjects)){
+        if(p.status!=='active'||p.completed<1)continue;
+        const qid=`LIFE:NPC:${id}:${p.completed}`;
+        if(!life.missions[qid])life.missions[qid]={id:qid,npcId:id,kind:'npc',title:`協助${p.name}的${p.kind}計畫`,openedDay:day,status:'offered',cost:2,days:3,source:'npc-autonomy'};
+      }
+      // Bound active offers; older offered missions naturally expire, accepted remain until source closes.
+      const offers=Object.values(life.missions).filter(x=>x.status==='offered').sort((a,b)=>a.openedDay-b.openedDay);
+      for(const m of offers.slice(0,Math.max(0,offers.length-16))){m.status='expired';m.closedDay=day;}
+    }
+    function lifeWorldTick(s,day){
+      if(!s?.hasChosenOrigin||!s.destiny)return;
+      const life=lifeEnsure(s);if(!life)return;
+      if(day>=life.lastNpcDay+25){lifeSyncNpcProjects(s,day);life.lastNpcDay=day;}
+      lifeSyncMissions(s,day);
+      lifeSettleCaravans(s,day);
+      if(s.questLedger){
+        for(const m of Object.values(life.missions)){
+          if(m.status!=='accepted')continue;
+          const qid='LIFEQUEST:'+m.id;
+          s.questLedger.verified[qid]={id:qid,name:m.title,scope:'life',verified:true,progress:'已接取，依實際世界狀態和資源完成',status:'進行中',worldEventId:m.eventId||null};
+        }
+      }
+    }
+    // V6.82: economic production: only explicit verified inputs produce goods or investment returns.
+    const LIFE_RECIPES={
+      healing:{name:'療傷丹',ingredients:[{name:'基礎靈材碎屑',quantity:3}],cost:3,days:7,product:'療傷丹'},
+      ration:{name:'辟穀丹',ingredients:[{name:'基礎靈材碎屑',quantity:2}],cost:2,days:5,product:'辟穀丹'},
+      recovery:{name:'護脈復元丹',ingredients:[{name:'基礎靈材碎屑',quantity:8}],cost:24,days:14,product:'護脈復元丹'}
+    };
+    function lifeCraft(recipeId){
+      if(isTyping||gameState?.isDead)return;
+      try{
+        const spec=LIFE_RECIPES[recipeId];if(!spec)throw new Error('未知的工藝配方。');
+        const s=structuredClone(gameState),life=lifeEnsure(s),day=Math.floor(Number(s.daysPassed)||0);
+        if(s.pendingEconomyProposal)throw new Error('必須先處理待結算交易。');
+        // Both materials and actual balance are validated atomically by the economy ledger.
+        const c=life.careers.craft;
+        const id=`LIFE:CRAFT:${recipeId}:${c.completed+1}:${day}`;
+        if(life.receipts[id])throw new Error('製作已結算。');
+        settleEconomy(s,{kind:'turn',eventId:id,debit:spec.cost,credit:0,
+          removes:spec.ingredients,adds:[{name:spec.product,quantity:1}]},ECONOMY_AUTHORITY);
+        c.xp+=4;c.completed++;c.stage=Math.min(10,Math.floor(Math.sqrt(c.xp/8)));
+        lifeRecord(life,id,day,`按正式配方製作${spec.name}：消耗材料與${spec.cost}靈石，成品已入庫。`);
+        s.daysPassed=day+spec.days;advanceWorldState(s,spec.days);destinySync(s);
+        gameState=s;renderUI();saveGameState();
+        appendLogData('百藝',`製作${spec.name}成功，耗時${spec.days}日；原料已扣、成品已入背包。`,'system',false,true);
+      }catch(err){openGameModal('百藝製作未完成',String(err.message||err));}
+    }
+    function lifeStartCaravan(){
+      if(isTyping||gameState?.isDead)return;
+      try{
+        const s=structuredClone(gameState),life=lifeEnsure(s),day=Math.floor(Number(s.daysPassed)||0);
+        if(s.pendingEconomyProposal)throw new Error('請先結清其他交易。');
+        if(Object.values(life.caravans||{}).some(x=>x.status==='enroute'))throw new Error('目前已有一支商隊在途；需等結算後才能再派出。');
+        if((Number(s.spiritStone)||0)<15)throw new Error('商隊最低本金為15靈石。');
+        if(!String(s.location||'').trim())throw new Error('必須具有明確的出發地。');
+        const count=Object.keys(life.caravans||{}).length+1,id=`LIFE:CARAVAN:${count}`;
+        // Capital is locked by settlement, not spendable while travelling. No risk-free or fabricated wealth.
+        settleEconomy(s,{kind:'turn',eventId:id+':capital',debit:15,credit:0,adds:[],removes:[]},ECONOMY_AUTHORITY);
+        const duration=25+Math.floor(autonomyHash(id+':duration')*16);
+        const route=s.worldMemory?.engine?.simulation?.assets?.CLOUD_ROUTE;
+        const controller=route?.controller||'未確認';
+        const guild=worldFactionByName(s,controller);
+        const riskShift=guild?.ledger?.stability<40?0.15:guild?.ledger?.stability>75?-0.08:0;
+        life.caravans[id]={id,origin:String(s.location).slice(0,90),startedDay:day,dueDay:day+duration,capital:15,status:'enroute',result:null,routeController:controller,routeRisk:riskShift};
+        lifeRecord(life,id,day,`商隊從${s.location}出發，本金15靈石封存，預計第${day+duration}日結算。`);
+        s.daysPassed=day+1;advanceWorldState(s,1);destinySync(s);
+        gameState=s;renderUI();saveGameState();
+        appendLogData('商道',`商隊已啟程，投入15靈石；商路控制：${controller}，當前已記錄風險修正 ${Math.round(riskShift*100)}%；第${day+duration}日後正式結算。`,'system',false,true);
+      }catch(err){openGameModal('商隊未能啟程',String(err.message||err));}
+    }
+    function lifeSettleCaravans(s,day){
+      const life=lifeEnsure(s);if(!life)return;
+      for(const car of Object.values(life.caravans||{})){
+        if(car.status!=='enroute'||day<car.dueDay)continue;
+        const r=autonomyHash(car.id+':'+car.startedDay+':'+car.origin);
+        // Formal world-controlled trade-route security changes caravan outcome.
+        // The risk snapshot is taken at dispatch, so a delayed settlement cannot be manipulated.
+        const routeRisk=Number.isFinite(Number(car.routeRisk))?Number(car.routeRisk):0;
+        const risk=worldClamp(0.20+routeRisk,0.06,0.48);
+        const proceeds=r<risk?Math.floor(car.capital*.4):r<risk+0.35?car.capital:car.capital+Math.floor(car.capital*.25);
+        const transactionId=car.id+':return';
+        settleEconomy(s,{kind:'turn',eventId:transactionId,debit:0,credit:proceeds,adds:[],removes:[]},ECONOMY_AUTHORITY);
+        car.status='resolved';car.closedDay=day;car.returned=proceeds;car.result=proceeds<car.capital?'運輸損失':proceeds===car.capital?'收支平衡':'商貿獲利';
+        const c=life.careers.commerce;c.xp+=proceeds>car.capital?4:2;c.completed++;c.stage=Math.min(10,Math.floor(Math.sqrt(c.xp/8)));
+        lifeRecord(life,transactionId,day,`商隊${car.result}：本金${car.capital}，回收${proceeds}，淨額${proceeds-car.capital}。`);
+      }
+    }
+    function lifeDoCareer(type){
+      if(isTyping||gameState?.isDead||!LIFE_CAREERS[type]||!gameState?.hasChosenOrigin)return;
+      try{
+        const s=structuredClone(gameState),life=lifeEnsure(s),spec=LIFE_CAREERS[type],day=Number(s.daysPassed)||0;
+        if(type==='sect'&&!s.sect?.joined)throw new Error('尚未正式加入宗門，不能取得宗門職務進展。');
+        if(type==='bonds'&&!Object.values(s.npcRegistry||{}).some(n=>n&&n.is_alive!==false&&n.status!=='DEAD'&&Number(n.trust)>=10))throw new Error('請先建立實際存在且具有基本信任的人脈。');
+        if(type==='craft'&&!((s.inventory||[]).length||Object.keys(s.skills||{}).length))throw new Error('至少需要已有物品、材料或技藝基礎。');
+        if(type==='exploration'&&!s.location)throw new Error('目前沒有可確認的所在地。');
+        if((Number(s.spiritStone)||0)<spec.cost)throw new Error(`需要至少 ${spec.cost} 顆靈石。`);
+        if(s.pendingEconomyProposal)throw new Error('請先結清待確認的交易，才能執行人生專案。');
+        // A real member of a simulated sect spends sect supplies on training / duties.
+        // A merely narrated/unregistered sect cannot conjure treasury, supplies or rank.
+        const formalSect=type==='sect'?worldFactionByName(s,s.sect?.name):null;
+        if(formalSect?.ledger && formalSect.ledger.supplies<1)throw new Error('所屬宗門現有補給不足，暫時無法安排宗門事務。');
+        const c=life.careers[type],id=`LIFE:CAREER:${type}:${c.completed+1}:${day}`;
+        if(life.receipts[id])throw new Error('這次成長已結算。');
+        if(spec.cost>0)settleEconomy(s,{kind:'turn',eventId:id,debit:spec.cost,credit:0,adds:[],removes:[]},ECONOMY_AUTHORITY);
+        if(formalSect?.ledger){
+          formalSect.ledger.supplies-=1;
+          s.sect.contribution=Math.max(0,Number(s.sect.contribution)||0)+1;
+          formalSect.ledger.history.push({day,kind:'player-sect-duty',costSupplies:1,contributionAwarded:1,sourceId:id});
+          formalSect.ledger.history=formalSect.ledger.history.slice(-18);
+        }
+        // The activity creates career experience only, not realm, inventory, money or fictitious sect title.
+        c.xp+=2;c.completed++;c.stage=Math.min(10,Math.floor(Math.sqrt(c.xp/8)));c.lastDay=day+spec.days;
+        lifeRecord(life,id,day,`${spec.name}完成第${c.completed}次正式準備，消耗${spec.cost}靈石、${spec.days}日，職涯閱歷+2。`);
+        s.daysPassed=day+spec.days;advanceWorldState(s,spec.days);
+        if(s.destiny)destinySync(s);
+        gameState=s;renderUI();saveGameState();
+        appendLogData('人生',`${spec.name}：你投入${spec.days}日與${spec.cost}靈石，完成一次可追溯的長期準備（不等於直接突破或取得物品）。`,'system',false,true);
+      }catch(err){openGameModal('人生專案未能執行',String(err.message||err));}
+    }
+    function lifeAcceptMission(id){
+      if(isTyping||gameState?.isDead)return;
+      try{const s=structuredClone(gameState),life=lifeEnsure(s),m=life.missions[id];
+        if(!m||m.status!=='offered')throw new Error('委託不再開放。');
+        if(m.kind==='world'){
+          const ev=s.worldMemory.engine.events.find(x=>x.id===m.eventId&&x.status==='active');
+          if(!ev)throw new Error('相關世界事件已結束。');
+          // Reuse the only authoritative world event acceptance pathway, do not create parallel side data.
+          const op=s.worldMemory.engine.simulation.opportunities[ev.id];
+          if(op?.status==='accepted')throw new Error('請在九州局勢面板完成已選勢力的支援。');
+          throw new Error('世界委託請先在九州局勢面板選擇支援陣營。');
+        }
+        const npc=s.npcRegistry?.[m.npcId];if(!npc||npc.is_alive===false||npc.status==='DEAD')throw new Error('委託人已無法執行委託。');
+        m.status='accepted';m.acceptedDay=Number(s.daysPassed)||0;lifeWorldTick(s,s.daysPassed);
+        if(s.destiny)destinySync(s);gameState=s;renderUI();saveGameState();
+      }catch(err){openGameModal('無法接受委託',String(err.message||err));}
+    }
+    function lifeCompleteMission(id){
+      if(isTyping||gameState?.isDead)return;
+      try{const s=structuredClone(gameState),life=lifeEnsure(s),m=life.missions[id],day=Number(s.daysPassed)||0;
+        if(!m||m.status!=='accepted'||m.kind!=='npc')throw new Error('沒有可正式結算的個人委託。');
+        const npc=s.npcRegistry?.[m.npcId];if(!npc||npc.is_alive===false||npc.status==='DEAD')throw new Error('委託 NPC 已不在世，不能完成。');
+        if(!String(s.location||'').trim())throw new Error('必須具有有效所在地。');
+        if(s.pendingEconomyProposal)throw new Error('請先結清待確認的交易。');
+        if((Number(s.spiritStone)||0)<2)throw new Error('需要 2 顆靈石進行委託準備。');
+        const receipt='LIFE:NPC:SETTLE:'+id;if(life.receipts[receipt])throw new Error('委託已結算，不能重複領取。');
+        settleEconomy(s,{kind:'turn',eventId:receipt,debit:2,credit:0,adds:[],removes:[]},ECONOMY_AUTHORITY);
+        m.status='completed';m.closedDay=day;m.outcome='資源支援完成';
+        life.careers.bonds.xp+=2;life.careers.bonds.completed++;life.careers.bonds.stage=Math.min(10,Math.floor(Math.sqrt(life.careers.bonds.xp/8)));
+        npc.trust=Math.min(100,(Number(npc.trust)||0)+2);
+        lifeRecord(life,receipt,day,`實際提供${npc.name||m.npcId}的長期計畫支援；費用2靈石，信任+2。`);
+        s.daysPassed+=3;advanceWorldState(s,3);if(s.destiny)destinySync(s);
+        if(s.questLedger?.verified['LIFEQUEST:'+id]){s.questLedger.verified['LIFEQUEST:'+id].status='已完成';s.questLedger.verified['LIFEQUEST:'+id].progress='正式資源支援已結算';}
+        gameState=s;renderUI();saveGameState();
+        appendLogData('人脈',`完成${m.title}，支出2靈石、經過3日；${npc.name}信任+2。`,'system',false,true);
+      }catch(err){openGameModal('委託未能結算',String(err.message||err));}
+    }
+    function lifeRenderPanel(root){
+      if(!root||!gameState?.destiny)return;
+      const life=lifeEnsure(gameState);if(!life)return;
+      const line=(p,tag,txt)=>{const e=document.createElement(tag);e.textContent=txt;p.append(e);return e;};
+      line(root,'h3','✦ 第二人生：長期志向與成長');
+      line(root,'div',`目前志向：${gameState.destiny.questEngine?.lifeGoal||'自由求道'}；可自由調整，不因主線進度受限。`);
+      const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:8px;margin:10px 0';root.append(grid);
+      for(const [type,spec] of Object.entries(LIFE_CAREERS)){
+        const c=life.careers[type],card=document.createElement('div');card.className='destiny-line';card.style.cssText='padding:9px;border:1px solid #665431;border-radius:6px';grid.append(card);
+        line(card,'strong',`${spec.name}｜閱歷${c.xp}・階段${c.stage}`);
+        line(card,'div',spec.goal).className='destiny-muted';
+        const button=line(card,'button',`投入準備：${spec.cost}靈石／${spec.days}日`);button.type='button';button.className='choice-btn';button.disabled=isTyping||gameState.isDead;button.onclick=()=>lifeDoCareer(type);
+      }
+      line(root,'h3','✦ 真實經營與百藝製作');
+      const trade=line(root,'button','派遣商隊｜投入15靈石，約25～40日後結算');trade.type='button';trade.className='choice-btn';trade.disabled=isTyping||gameState.isDead;trade.onclick=lifeStartCaravan;
+      for(const specId of Object.keys(LIFE_RECIPES)){
+        const rec=LIFE_RECIPES[specId],btn=line(root,'button',`煉製${rec.name}｜${rec.ingredients.map(x=>x.quantity+'×'+x.name).join('、')}＋${rec.cost}靈石`);
+        btn.type='button';btn.className='choice-btn';btn.disabled=isTyping||gameState.isDead;btn.onclick=()=>lifeCraft(specId);
+      }
+      for(const caravan of Object.values(life.caravans||{}).slice(-5))line(root,'div',`商隊 ${caravan.id}｜${caravan.status==='enroute'?'在途，預計第'+caravan.dueDay+'日':caravan.result+'，回收'+caravan.returned+'靈石'}`).className='destiny-muted';
+      const missions=Object.values(life.missions).filter(x=>['offered','accepted'].includes(x.status)).slice(-8);
+      line(root,'h3',`✦ 世界衍生委託（${missions.length} 件可追蹤）`);
+      if(!missions.length)line(root,'div','目前沒有符合已確認世界狀況的委託；可以繼續修行、探索或等待世界改變。');
+      for(const m of missions){
+        const block=document.createElement('div');block.className='destiny-line';block.style.cssText='margin:7px 0;padding:8px;border:1px solid #665431';root.append(block);
+        line(block,'strong',`${m.title}｜${m.status==='accepted'?'已接取':'可接受'}`);
+        line(block,'div',m.kind==='world'?`實際事件：${m.region}，請到九州自主局勢選擇支援陣營`:'重要 NPC 自主計畫產生的委託；需2靈石、3日且 NPC 存活').className='destiny-muted';
+        if(m.kind==='npc'){
+          const btn=line(block,'button',m.status==='offered'?'接受委託':'完成資源支援');btn.type='button';btn.className='choice-btn';btn.disabled=isTyping||gameState.isDead;btn.onclick=()=>m.status==='offered'?lifeAcceptMission(m.id):lifeCompleteMission(m.id);
+        }
+      }
+      const projects=Object.values(life.npcProjects).filter(x=>x.status==='active').slice(0,5);
+      if(projects.length){line(root,'h3','✦ 熟識人物的長期動向');for(const p of projects)line(root,'div',`${p.name}｜${p.kind}計畫｜準備${p.progress}/6・已完成${p.completed}輪｜下次自主行動第${p.nextDay}日`).className='destiny-muted';}
+      line(root,'div',`後半生正式活動：${life.history.length} 筆｜所有費用與任務結算均保留收據；任務結束不會憑空產生靈石或高階物品。`).className='destiny-muted';
+    }
+
+    function worldPublicDigest(s){
+        const sim=s?.worldMemory?.engine?.simulation;if(!sim)return '世界自主系統尚未開始。';
+        const running=s.worldMemory.engine.events.filter(x=>x.source==='world-simulation'&&x.status==='active').slice(-4)
+            .map(e=>`${e.title}（${e.stage}；${e.attacker}與${e.defender}；${e.region}）`);
+        const notices=sim.notifications.slice(-5).map(x=>`第${x.day}日${x.note}`);
+        return ['世界正式動態：',...running,'已確認結果：',...notices].join('\n').slice(0,1300);
+    }
+
     function advanceWorldState(s, elapsedDays=0, aiChanges=[]) {
         if (!s) return;
         ensureWorldMemory(s);
         const target=Number(s.daysPassed)||0, engine=s.worldMemory.engine;
         const start=Number(engine.lastProcessedDay)||0;
         if (target<=start) return;
+        if(s.hasChosenOrigin)worldInitSimulation(s);
         if(target-start>3660) throw new RangeError("單次世界補算不得超過3660日，請分段推進；未丟棄待辦。");
         // Reconcile zero HP before autonomy; explicit zero must never fall back to 100 HP.
         for(const [id,n] of Object.entries(s.npcRegistry||{})) if(n && (n.is_alive===false || n.status==="DEAD" || (n.hp!=null && Number(n.hp)<=0))) {
@@ -4119,11 +5486,13 @@ JSON 輸出格式範例：
                 for(const n of Object.values(s.npcRegistry||{})) if(n && n.is_alive!==false && n.status!=="DEAD") nextDue(n.nextAutonomyDay || 0);
                 for(const job of engine.scheduler) if(job && job.status!=="cancelled" && job.status!=="processed") nextDue(job.dueDay);
                 for(const ev of engine.events) if(ev && !["resolved","failed","cancelled","suspended"].includes(ev.status)) nextDue(ev.nextCheckDay ?? ((Number(ev.updatedDay)||0)+7));
+                if(engine.simulation) {nextDue(engine.simulation.nextEconomyDay);nextDue(engine.simulation.nextReviewDay);}
                 if(s.worldMemory.openThreads.some(t=>t && !engine.events.some(ev=>ev.id===t.id))) nextDue(cursor+1);
                 s.daysPassed=day;
                 advanceWorldStateOneDay(s,day-cursor,day===target?aiChanges:[]);
                 cursor=day;
             }
+            destinyWorldTick(s,start,target);
         } finally {s.daysPassed=target;}
     }
 
@@ -4387,7 +5756,7 @@ JSON 輸出格式範例：
         const item = nameOrItem && typeof nameOrItem === 'object'
             ? ((s.inventory||[]).includes(nameOrItem) ? nameOrItem : null)
             : (s.inventory||[]).find(i=>cleanNameStrict(i.name)===cleanNameStrict(nameOrItem));
-        if(!item || !getItemPermissions(item).sell || item.isQuestItem || item.canSell===false || item.isEquipped || item.equipped || /\u9748\u77f3/.test(item.name))throw new Error("此物品不可出售。");
+        if(!item || !getItemPermissions(item).sell || item.isQuestItem || (item.canSell===false && !['relic_ancient_jade_slip','container_jade_bottle','container_empty_jade_bottle','relic_old_jade_slip'].includes(getCanonicalItemDefinition(item)?.id)) || item.isEquipped || item.equipped || /\u9748\u77f3/.test(item.name))throw new Error("此物品不可出售。");
         return {id:newEconomyId("SELL"),item_name:cleanNameStrict(item.name),quantity:economyInteger(quantity,"quantity",1,item.quantity),itemId:String(item.itemId || `legacy:${cleanNameStrict(item.name)}`),identified:item.identified !== false,grade:item.grade || item.rank || null,tier:item.tier || item.quality || item.rarity || getItemMeta(item).rarity || null,location:String(s.location||""),inventorySnapshot:inventorySnapshot(s)};
     }
     function bindSellQuote(s,offer,meta) {
@@ -4426,15 +5795,20 @@ JSON 輸出格式範例：
         const wm=gameState.worldMemory||{};
         const canon=JSON.stringify(WORLD_BIBLE);
         const npcs=Object.values(gameState.npcRegistry||{}).filter(n=>n&&n.is_alive!==false&&n.status!=="DEAD")
-            .slice(-15).map(n=>({id:n.id,name:n.name,title:n.title,location:n.location,trust:n.trust,relationship:n.relationship,knownFacts:(n.knownFacts||[]).slice(-3),goals:(n.goals||[]).slice(0,2)}));
+            .slice(-15).map(n=>({id:n.id,name:n.name,title:n.title,location:n.location,realm:n.realm||n.cultivation?.realm||null,level:n.level??n.cultivation?.level??null,combatPower:n.combatPower??n.cultivation?.combatPower??null,trust:n.trust,relationship:n.relationship,alert:gameState.worldMemory?.engine?.npcContestHistory?.[n.id]?.alert||0,knownFacts:(n.knownFacts||[]).slice(-3),goals:(n.goals||[]).slice(0,2)}));
         const recent=(wm.chronicle||[]).slice(-8);
         const threads=(wm.openThreads||[]).slice(-8);
         const inv=(gameState.inventory||[]).map(i=>({name:i.name,quantity:i.quantity,identified:i.identified})).slice(0,45);
-        const snap={realm:gameState.realm,level:gameState.level,exp:gameState.exp,maxExp:gameState.maxExp,hp:gameState.hp,maxHp:getMaxHp(gameState),origin:gameState.originType,linggen:gameState.linggen,physique:gameState.physique,stones:gameState.spiritStone,sect:gameState.sect,location:gameState.location,mode:gameState.scenarioMode,threats:gameState.activeThreats,inventory:inv,npcs,quests:(gameState.quests||[]).slice(-10),pendingSellIntent:gameState.pendingSellIntent||null};
+        const snap={realm:gameState.realm,level:gameState.level,exp:gameState.exp,maxExp:gameState.maxExp,hp:gameState.hp,maxHp:getMaxHp(gameState),origin:gameState.originType,linggen:gameState.linggen,physique:gameState.physique,stones:gameState.spiritStone,sect:gameState.sect,location:gameState.location,mode:gameState.scenarioMode,threats:gameState.activeThreats,inventory:inv,npcs,quests:(gameState.quests||[]).filter(q=>q?.verified===true||!gameState.destiny).slice(-10),questSuggestions:(gameState.quests||[]).filter(q=>q?.scope==='suggestion').slice(-4).map(q=>q.name),pendingSellIntent:gameState.pendingSellIntent||null};
         return `你是《九州裂天錄》修仙 RPG 的敘事 AI。繁體中文、因果嚴謹、不討好玩家、不憑空送物；遊戲核心資料是唯一真實來源，故事只描寫結果且不得擅自結算。
 【固定世界】${canon}
 【近期真實記憶】${String(wm.recentSummary||'').slice(0,550)}；紀事:${JSON.stringify(recent)}；未結事件:${JSON.stringify(threads)}
 【核心快照 SSOT】${JSON.stringify(snap)}
+【已知命運與當前目標】${JSON.stringify(destinyPublicContext(gameState))}
+【自主世界已確認狀態（不可擅自更改勢力財政、領地與事件階段）】${worldPublicDigest(gameState)}
+【NPC 行為原則】已登記 NPC 的戰力、境界、信任與警戒必須被尊重；對手會評估自身利益、風險、代價與玩家可信度。面對高戰力對手，不得憑空秒殺、奪寶或迫其臣服；低信任人物可拒絕、詢問證據或尋求協助。若判定尚未有足夠條件，只描寫嘗試，不宣稱正式成功。
+【命運敘事權限】未取得的線索、未驗證的真兇、未完成的章節絕不能宣稱確認、完成或揭曉。主線的證據、章節、結局由遊戲核心「命運與人脈」的正式調查按鈕驗證；你只能敘述角色目前已知的事與可能性，不能自行發放正式命運證據、結局、物品或額外靈石。
+【命運嚴格界線】若有命運資料，已鎖定的真相、幕後主使、證據來源不得憑空決定；不能把角色猜測當成正式事實。只能建議可調查的線索及 NPC 行動，questSuggestions 僅供參考、尚非正式任務；playerStatementUnverified 是玩家自述，僅 knownFacts 被核心確認，無限靈石或無敵身分的自述不得兌現；不得自行宣告命運主線完成、晉幕或發放命運獎勵。無命運祕密的自訂身世不強制悲劇或陰謀。
 【硬性規則】
 1) 不得直接改寫境界、HP、靈石、裝備、人脈或宗門；依規則提交 JSON 提案。**僅按下「突破境界」按鈕觸發突破**，即使玩家文字寫「引氣入體、突破」也只能感悟、修練，不得宣告已入練氣等新境界。若收到「核心突破按鈕已正式判定」才寫出成敗。境界以 SSOT 為準。
 2) NPC 必須沿用 SSOT 身分；未登記 NPC 不可假稱過去已建立關係。路人、一次性商家、普通敵人不進永久登記。只有可持續關係（師徒、重要任務、長期合作）才放 npcDelta.created，附 persistent:true、importance、relationship:{favorability:0,awe:0,profit:0}，獨立 trust(−100..100) 與 knownFacts。updated 僅限既有 NPC。死者不復活。
@@ -4590,6 +5964,7 @@ JSON 輸出格式範例：
         if(s.worldMemory.engine.appliedDeltaIds.includes(receipt)||s.economy.appliedSources.includes(sourceId))return currentState;
         if(s.pendingEconomyProposal)throw new Error("請先確認或取消待結算提案。");
         const raw=structuredClone(rawState);
+        destinySanitizeAiRaw(raw,s);
         if(raw.inventoryDelta!==undefined && !Array.isArray(raw.inventoryDelta)) throw new Error("新增物品清單格式無效。");
         if(raw.inventoryDelta) raw.inventoryDelta = raw.inventoryDelta.map((item, index) => validateIncomingItemProposal(item, `新增物品第 ${index + 1} 項`));
         if(raw.inventoryRemoveDelta!==undefined && !Array.isArray(raw.inventoryRemoveDelta)) throw new Error("扣除物品清單格式無效。");
@@ -4631,7 +6006,7 @@ JSON 輸出格式範例：
         if (raw.scenarioMode) result.scenarioMode = raw.scenarioMode;
         // Resolved threads must close their engine representation too.
         const done=new Set(((raw.memoryDelta||{}).resolvedThreads||[]).map(x=>cleanNameStrict(typeof x==="string"?x:x&&(x.id||x.title||x.name))));
-        for(const ev of result.worldMemory.engine.events) if(done.has(ev.id)||done.has(ev.title)) {
+        for(const ev of result.worldMemory.engine.events) if(ev.source!=='world-simulation'&&(done.has(ev.id)||done.has(ev.title))) {
             ev.status="resolved";ev.updatedDay=result.daysPassed;
         }
         for(const [id,n] of Object.entries(result.npcRegistry||{})) if(n && (n.is_alive===false || n.status==="DEAD" || (n.hp!=null && Number(n.hp)<=0))) finalizeNpcDeath(result,id,"UNKNOWN","state-delta");
@@ -4660,7 +6035,7 @@ JSON 輸出格式範例：
         }
         if(result.pendingTradeOffer?.type==="SELL")bindSellQuote(result,result.pendingTradeOffer,eventMeta);
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
-        result.version="6.72";
+        result.version="6.77";
         finishEconomySummary(result,currentState,sourceId);
         return result;
     }
@@ -4729,8 +6104,121 @@ JSON 輸出格式範例：
         return __liveQaText;
     }
 
+
+    // ===== V6.82: deterministic NPC contest adjudication =====
+    // These rules constrain AI proposals; they are not a full tactical combat simulator.
+    function npcContestTargets(state, text) {
+        const npcs=Object.values(state.npcRegistry||{}).filter(n=>n&&n.name&&n.is_alive!==false&&n.status!=='DEAD');
+        const named=npcs.filter(n=>String(text||'').includes(n.name));
+        if(named.length===1)return named;
+        if(named.length>1)return []; // multiple opponents require explicit mechanical resolution
+        const candidates=npcs.filter(n=>{
+            const place=String(n.location||'');
+            const here=String(state.location||'');
+            return place&&here&&(place===here||place.includes(here)||here.includes(place));
+        });
+        if(candidates.length!==1)return [];
+        const ref=/(那位|這位|眼前|面前|此人|對方|該名|那名|此名)(?:.{0,8})(?:長老|掌櫃|修士|弟子|前輩|老者|對手|敵人|道友)|(?:向|對|與)(?:那位|這位|眼前|面前|對方)/;
+        return ref.test(String(text||''))?candidates:[];
+    }
+    function npcContestReadiness(s,npc){
+        const lv=Number(npc.level??npc.cultivation?.level);
+        const cp=Number(npc.combatPower??npc.cultivation?.combatPower);
+        const knownLv=Number.isFinite(lv)&&lv>=0;
+        const knownCp=Number.isFinite(cp)&&cp>0;
+        const realms=['凡人','練氣','築基','金丹','元嬰','化神','返虛','大乘','真仙','太乙','聖道','主宰'];
+        const rank=name=>realms.findIndex(x=>String(name||'').includes(x));
+        const nr=rank(npc.realm||npc.cultivation?.realm),pr=rank(s.realm);
+        const levelGap=knownLv?lv-(Number(s.level)||0):null;
+        const powerRatio=knownCp?cp/Math.max(1,calculateCombatPower(s)):null;
+        const realmGap=nr>=0&&pr>=0?nr-pr:null;
+        return {levelGap,powerRatio,realmGap,overwhelming:(levelGap!==null&&levelGap>=5)||(powerRatio!==null&&powerRatio>=3)||(realmGap!==null&&realmGap>=2),
+            favorable:(levelGap!==null&&levelGap<=-5)||(powerRatio!==null&&powerRatio<=0.33)||(realmGap!==null&&realmGap<=-2)};
+    }
+    function enforceNpcRationality(state,delta,story,actionText,eventMeta){
+        if(!state?.hasChosenOrigin||!delta||typeof delta!=='object')return {delta,story};
+        const text=String(actionText||'');
+        const combat=/(攻擊|砍|斬|決鬥|交戰|挑戰|擊殺|毆打|殺死|出手|偷襲|一劍|秒殺|擒拿)/.test(text);
+        const social=/(說服|哄騙|忽悠|詐騙|欺騙|冒充|謊稱|我乃|我就是|騙取|威脅|恐嚇|跪拜|跪下|交出|聽命|臣服|投降|屈服)/.test(text);
+        if(!combat&&!social)return {delta,story};
+        const targets=npcContestTargets(state,text);
+        if(targets.length!==1)return {delta,story};
+        const npc=targets[0],nd=structuredClone(delta),power=npcContestReadiness(state,npc);
+        const trust=Math.max(-100,Math.min(100,Number(npc.trust)||0));
+        const favor=Math.max(-100,Math.min(100,Number(npc.relationship?.favorability)||0));
+        const awe=Math.max(0,Math.min(100,Number(npc.relationship?.awe)||0));
+        const host=state.worldMemory?.engine?.npcContestHistory||{};
+        const history=host[npc.id]||{};
+        const guarded=(Number(history.alert)||0)>=2;
+        const claimedKill=Array.isArray(nd.npcDelta?.killed)&&nd.npcDelta.killed.some(x=>{
+            const v=String(typeof x==='object'?(x.name||x.id):(x||''));return v===String(npc.id)||v===String(npc.name);
+        });
+        const claimedGoods=(Array.isArray(nd.inventoryDelta)&&nd.inventoryDelta.length>0)||Number(nd.spiritStonesDelta||0)>0;
+        const claimedSubmission=/(臣服|跪地|跪下|交出|完全相信|毫無條件|任你差遣|認你為主|一招擊敗|秒殺|當場斬殺)/.test(String(story||''));
+        const outcome=nd.actionOutcome&&typeof nd.actionOutcome==='object'?nd.actionOutcome:{};
+        const socialHard=trust<45||favor<35||guarded;
+        const socialOverreach=social&&socialHard&&(outcome.result==='success'||claimedGoods||claimedSubmission);
+        const combatOverreach=combat&&power.overwhelming&&(outcome.result==='success'||claimedKill||claimedGoods||claimedSubmission);
+        const sociallyDangerous=social&&/(威脅|恐嚇|騙取|欺騙|冒充|謊稱|忽悠|詐騙|跪下|臣服)/.test(text);
+        const block=combatOverreach||socialOverreach;
+        if(!block&&!sociallyDangerous&&!combat)return {delta:nd,story};
+        let storyOut=String(story||'');
+        if(block){
+            outcome.result=combatOverreach?'failure':'partial';
+            outcome.risk=combatOverreach?'high':'medium';
+            outcome.reason=combatOverreach?'正式紀錄中的境界或戰力明顯懸殊，未提供可驗證的特殊反制條件，核心不准直接宣告勝利。':'對方的利益、信任及警戒不足以支持無條件讓步；交涉僅可能取得進一步討論的機會。';
+            nd.actionOutcome=outcome; // must work even if model omitted actionOutcome
+            if(nd.npcDelta&&typeof nd.npcDelta==='object'){
+                nd.npcDelta.killed=(nd.npcDelta.killed||[]).filter(x=>{
+                    const v=String(typeof x==='object'?(x.name||x.id):(x||''));return v!==String(npc.id)&&v!==String(npc.name);
+                });
+                for(const key of ['updated','upsert','npcs','created'])if(Array.isArray(nd.npcDelta[key])){
+                    nd.npcDelta[key]=nd.npcDelta[key].map(entry=>{
+                        if(!entry||(entry.id!==npc.id&&entry.name!==npc.name))return entry;
+                        const x={...entry};
+                        for(const k of ['is_alive','status','deathDay','relationship','trust','combatPower','level','realm','cultivation','resources','inventory'])delete x[k];
+                        return x;
+                    });
+                }
+            }
+            for(const key of ['inventoryDelta','inventoryRemoveDelta','lostItems','worldEvents','quests'])if(Array.isArray(nd[key]))nd[key]=[];
+            nd.spiritStonesDelta=0;
+            nd.tradeOffer=null;
+            if(nd.memoryDelta&&typeof nd.memoryDelta==='object'){
+                for(const key of ['chronicle','resolvedThreads','revealedSecrets','worldStateChanges'])nd.memoryDelta[key]=[];
+                nd.memoryDelta.recentSummary='此交涉或戰鬥尚未取得正式可驗證的成果。';
+            }
+            if(nd.economyOperation?.kind==='reward')nd.economyOperation=null;
+            if(combatOverreach){
+                const maxHp=Math.max(1,Number(getMaxHp(state))||100);
+                nd.hpDelta=-Math.max(Math.abs(Math.min(0,Number(nd.hpDelta)||0)),Math.ceil(maxHp*0.12));
+                nd.hpReason='向實力明顯超過自身的已知對手動武，遭到反制';
+            }
+            storyOut=storyOut.split(/(?<=[。！？\n])/).filter(sentence=>!/(輕易|立即|當場|成功|一招|毫無反抗|完全).{0,35}(擊敗|斬殺|殺死|臣服|屈服|交出|答應)|(?:擊敗|斬殺|殺死|臣服|屈服|交出).{0,35}(成功|輕易|立即)/.test(sentence)).join('').trim();
+            storyOut+=(storyOut?'\n':'')+`【核心判定】${outcome.reason}`;
+        }
+        // Alertness is recorded only after an actually hostile/deceptive or physically aggressive action.
+        if(sociallyDangerous||combat){
+            nd.__npcContestAlert={npcId:String(npc.id),name:String(npc.name),alertDelta:combat?2:1,day:Number(state.daysPassed)||0,reason:combat?'主動交戰':'威脅或欺瞞'};
+        }
+        return {delta:nd,story:storyOut};
+    }
+    function commitNpcContestAlert(s,proposal,actionId){
+        if(!proposal||!s?.npcRegistry?.[proposal.npcId])return;
+        ensureWorldMemory(s);
+        const e=s.worldMemory.engine;
+        if(!e.npcContestHistory||typeof e.npcContestHistory!=='object')e.npcContestHistory={};
+        if(!Array.isArray(e.npcContestAppliedIds))e.npcContestAppliedIds=[];
+        const id=String(actionId||'');
+        if(id&&e.npcContestAppliedIds.includes(id))return;
+        const prev=e.npcContestHistory[proposal.npcId]||{alert:0,incidents:0};
+        e.npcContestHistory[proposal.npcId]={alert:Math.min(10,Math.max(0,Number(prev.alert)||0)+(Number(proposal.alertDelta)||0)),incidents:Math.min(10000,(Number(prev.incidents)||0)+1),lastDay:Number(s.daysPassed)||0,lastReason:String(proposal.reason||'')};
+        if(id){e.npcContestAppliedIds.push(id);if(e.npcContestAppliedIds.length>256)e.npcContestAppliedIds.splice(0,e.npcContestAppliedIds.length-256);}
+    }
+
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
+        if(v682State().battle){openGameModal("正式戰鬥進行中","請先在團隊戰鬥面板完成回合，不得透過 AI 文字直接結算。 ");return;}
         if(gameState.pendingEconomyProposal){openGameModal("待確認提案","請先確認或取消物資提案。");return;}
 
         ensureWorldMemory(gameState);
@@ -4784,6 +6272,7 @@ JSON 輸出格式範例：
                 ({storyText,parsedState}=fixed);repairedThisTurn=true;
             }
             parsedState = normalizeSceneDelta(parsedState);
+            if(parsedState && typeof parsedState==='object') delete parsedState.__npcContestAlert;
             if (!hasCompleteScene(parsedState)) {
                 // Repair before any fees, time, inventory or state are committed.
                 const originalDelta = parsedState;
@@ -4822,6 +6311,9 @@ JSON 輸出格式範例：
                 if(adjustedTrade.story && adjustedTrade.story!==parsedState.story)storyText=adjustedTrade.story;
                 parsedState=adjustedTrade;
             }
+            // NPC rationality is enforced before any NPC, HP or economy changes are committed.
+            if(parsedState){const checked=enforceNpcRationality(gameState,parsedState,storyText,actionText,eventMeta);
+                parsedState=checked.delta;storyText=checked.story;}
             // 預設事件已由核心明確推進時間時，忽略同一回合 AI 的天數欄位，避免重複計算。
             if (parsedState && eventMeta && Number(eventMeta.addDays) > 0) {
                 delete parsedState.daysPassedDelta;
@@ -4891,8 +6383,12 @@ JSON 輸出格式範例：
                             appendLogData("天道", `✦ 引氣入體成功！天地靈氣洗髓伐骨，靈根與體質正式顯化為：【${gameState.linggen}】與【${gameState.physique}】！（已套用出身保底與天道機緣「取孰高」機制）`, "system", false, true);
                         }
                     } else {
+                        // V6.82: genuine failed breakthrough costs HP, cultivation EXP and recovery time.
+                        // Keep a deficit even if AI attempts to award EXP in this same turn.
                         gameState.hp = Math.max(1, Math.floor(gameState.hp * 0.5));
+                        gameState.exp = Math.max(0, Math.floor(Math.min(gameState.exp,gameState.maxExp) - gameState.maxExp*0.22));
                         gameState.breakthroughCdDays=(Number(gameState.daysPassed)||0)+30;
+                        gameState.lastBreakthroughPenalty={day:Number(gameState.daysPassed)||0,expLost:Math.ceil(gameState.maxExp*0.22),hpRemaining:gameState.hp,cooldownDays:30};
                     }
                 }
             }
@@ -4917,9 +6413,15 @@ JSON 輸出格式範例：
                     gameState = applyStateDelta(gameState, parsedState, inferredMeta);
                     repairedThisTurn=true;
                 }
+                commitNpcContestAlert(gameState,parsedState.__npcContestAlert,inferredMeta.eventId);
                 // AI 不得直接改寫境界、生命等權威狀態；靈石則由 applyStateDelta 的結構化獎勵結算。
                 // 重要：不可在此把 spiritStone 還原成舊值，否則剛由 inventoryDelta 入帳的靈石會被覆蓋。
                 for (const [k, v] of Object.entries(authoritativeBeforeAI)) gameState[k] = v;
+                if(eventMeta?.isBreakthrough && !eventMeta.breakthroughSuccess){
+                    gameState.exp=Math.min(gameState.exp,Math.max(0,Math.floor(gameState.maxExp*0.78)));
+                    gameState.hp=Math.min(gameState.hp,Math.max(1,Math.floor((Number(stateBeforeAction.hp)||1)*0.5)));
+                    gameState.breakthroughCdDays=Math.max(Number(gameState.breakthroughCdDays)||0,(Number(gameState.daysPassed)||0)+30);
+                }
                 // 防禦性處理：若結算流程未明確變更靈石，保留原餘額；合法 inventoryDelta 入帳則保留新餘額。
 
             }
@@ -4949,10 +6451,12 @@ JSON 輸出格式範例：
                 const successLabel = eventMeta.firstQiEntry ? "✦ 首次引氣入體判定成功" : "✦ 突破判定成功";
                 appendLogData("天道", eventMeta.breakthroughSuccess
                     ? `${successLabel}：已進入【${gameState.realm}】(Lv.${gameState.level})。`
-                    : `✦ 突破判定失敗：境界維持【${gameState.realm}】(Lv.${gameState.level})，氣血受損。`, "system", false, true);
+                    : `✦ 突破失敗：境界維持【${gameState.realm}】(Lv.${gameState.level})；損失22%修為上限的經驗、當前HP減半，30日不能再衝關（護脈復元丹可解除冷卻，但不能恢復修為）。`, "system", false, true);
             }
+            if(isDoingOrigin && gameState.hasChosenOrigin) destinyInitialize(gameState,actionText);
+            if(gameState.destiny) destinySync(gameState);
             finishEconomySummary(gameState,stateBeforeAction,eventMeta.sourceId);
-            storyText=projectNarrative(storyText,gameState);
+            storyText=destinyGuardNarrative(projectNarrative(storyText,gameState),gameState);
             conversationHistory.push({ role: "assistant", content: JSON.stringify({story:storyText,coreSettlement:gameState.lastEconomySummary,pendingEconomyProposal:gameState.pendingEconomyProposal||null}) });
             appendLogData("天道", storyText, "ai", false, true);
             for(const r of gameState.economy?.receipts || []) if(!(stateBeforeAction.economy?.receipts||[]).some(old=>old.id===r.id)) publishEconomyReceipt(r);
@@ -5010,7 +6514,302 @@ JSON 輸出格式範例：
         for (const [id] of disposable) { if (excess <= 0) break; delete s.npcRegistry[id]; excess--; }
     }
 
+
+    // V6.82: authoritative, turn-based encounter; no AI narrative may settle this battle.
+    const TACTIC_TYPES = ['strike','guard','feint','retreat'];
+    function tacticalState(s=gameState) {
+        ensureWorldMemory(s);
+        const e=s.worldMemory.engine;
+        if(!e.tacticalV681 || typeof e.tacticalV681!=='object') e.tacticalV681={battle:null,history:[],social:[]};
+        return e.tacticalV681;
+    }
+    function tacticalNpcAtLocation(s=gameState){
+        return Object.values(s.npcRegistry||{}).filter(n=>n&&n.is_alive!==false&&n.status!=='DEAD'&&n.name&&String(n.location||'')===String(s.location||''));
+    }
+    function combatRating(s, isPlayer=true){
+        const level=Math.max(0,Number(isPlayer?s.level:(s.level??s.cultivation?.level))||0);
+        const raw=isPlayer?calculateCombatPower(s):Number(s.combatPower??s.cultivation?.combatPower);
+        return Math.max(3, Number.isFinite(raw)&&raw>0?Math.floor(raw):12+level*12);
+    }
+    function battleStart(npcId){
+        if(isTyping||gameState.isDead)return false;
+        const t=tacticalState(),npc=gameState.npcRegistry?.[npcId];
+        if(t.battle||!npc||npc.is_alive===false||npc.status==='DEAD'||String(npc.location)!==String(gameState.location))return false;
+        const p=combatRating(gameState),e=combatRating(npc,false);
+        t.battle={id:`BATTLE681:${Date.now()}:${Math.random().toString(36).slice(2,8)}`,npcId,location:gameState.location,turn:0,playerGuard:false,npcGuard:false,stamina:100,npcStamina:100,npcHp:Math.max(30,Math.floor(e*3)),npcMaxHp:Math.max(30,Math.floor(e*3)),last:'戰鬥開始。對方不會因玩家宣稱勝利就自動戰敗。',status:'active'};
+        appendLogData('天道',`【正式戰鬥】與${npc.name}進入回合制對峙。你可以攻擊、守禦、佯攻或撤退。`, 'system', false,true);
+        renderUI();saveGameState();return true;
+    }
+    function battleTurn(action){
+        if(!TACTIC_TYPES.includes(action)||isTyping||gameState.isDead)return false;
+        const t=tacticalState(),b=t.battle;
+        if(!b||b.status!=='active')return false;
+        const npc=gameState.npcRegistry?.[b.npcId];
+        if(!npc||npc.is_alive===false||npc.status==='DEAD'||String(gameState.location)!==b.location){b.status='cancelled';t.battle=null;renderUI();saveGameState();return false;}
+        const pc=combatRating(gameState),ec=combatRating(npc,false);
+        const ratio=pc/Math.max(1,ec);
+        const alert=Math.max(0,Number(gameState.worldMemory.engine.npcContestHistory?.[b.npcId]?.alert)||0);
+        const note=[];b.turn++;
+        // retreat is not guaranteed under overwhelming pursuit
+        if(action==='retreat') {
+            const escape=Math.max(.15,Math.min(.92,.61+(pc-ec)/(pc+ec)*.32-(alert*.025)));
+            if(Math.random()<escape){b.status='retreated';note.push('你成功拉開距離，脫離交戰。');}
+            else note.push('撤退路線被封住，對手趁勢反擊。');
+        } else if(action==='guard') {b.playerGuard=true;b.stamina=Math.min(100,b.stamina+12);note.push('你收斂氣息守禦，減少本回合傷害。');}
+        else {
+            const cost=action==='feint'?11:16;
+            if(b.stamina<cost){note.push('體力不足，強行出手失去準頭。');b.stamina=Math.min(100,b.stamina+6);}
+            else {
+                b.stamina-=cost;
+                const chance=Math.max(.04,Math.min(.92,(action==='feint'?.63:.68)+(pc-ec)/(pc+ec)*.42-(b.npcGuard?.21:0)));
+                if(Math.random()<chance){
+                    let amount=Math.max(1,Math.floor(pc*(action==='feint'?.12:.19)*(.8+Math.random()*.45)));
+                    if(b.npcGuard)amount=Math.max(1,Math.floor(amount*.45));
+                    b.npcHp=Math.max(0,b.npcHp-amount);note.push(`你命中對手，造成 ${amount} 點傷害。`);
+                }else note.push('攻勢被看穿或閃避，沒有造成傷害。');
+            }
+        }
+        b.npcGuard=false;
+        if(b.npcHp<=0){
+            // Never mark named NPC dead from a single damage number. They fall unconscious and remain canonical alive.
+            b.status='subdued';note.push(`${npc.name}已失去戰鬥能力，但並未被判定死亡。`);
+            npc.hp=1; npc.wounded=true;
+        }
+        if(b.status==='active'){
+            const wounded=b.npcHp/b.npcMaxHp<.32, underdog=ec<pc*.5;
+            const strategy=wounded?'retreat':b.npcStamina<15?'guard':underdog&&Math.random()<.35?'retreat':b.playerGuard?'feint':Math.random()<.22?'guard':'strike';
+            b.npcStrategy=strategy;
+            if(strategy==='retreat'){
+                const chance=Math.max(.22,Math.min(.9,.55+(ec-pc)/(ec+pc)*.3));
+                if(Math.random()<chance){b.status='npc_retreat';note.push(`${npc.name}判斷風險過高，成功撤離。`);} else note.push(`${npc.name}尋求撤退，但暫時未能脫身。`);
+            }else if(strategy==='guard'){b.npcGuard=true;b.npcStamina=Math.min(100,b.npcStamina+15);note.push(`${npc.name}調整步法，採取守勢。`);}
+            else {
+                b.npcStamina=Math.max(0,b.npcStamina-(strategy==='feint'?10:16));
+                const hit=Math.max(.05,Math.min(.94,.66+(ec-pc)/(pc+ec)*.43-(b.playerGuard?.12:0)));
+                if(Math.random()<hit){const d=Math.max(1,Math.floor(ec*(strategy==='feint'?.12:.18)*(.8+Math.random()*.5)*(b.playerGuard?.35:1)));
+                    gameState.hp=Math.max(0,Number(gameState.hp||0)-d);note.push(`${npc.name}反擊造成 ${d} 點傷害。`);
+                }else note.push(`${npc.name}的攻勢落空。`);
+            }
+        }
+        b.playerGuard=false;b.last=note.join(' ');
+        gameState.daysPassed=Math.max(0,Number(gameState.daysPassed)||0)+.05;
+        if(gameState.hp<=0){b.status='player_defeated';note.push('你已失去戰鬥能力。');}
+        if(b.status!=='active'){
+            t.history.push({id:b.id,npcId:b.npcId,turns:b.turn,result:b.status,day:gameState.daysPassed});
+            t.history=t.history.slice(-100);t.battle=null;
+        }
+        appendLogData('天道',`【回合 ${b.turn}】${note.join(' ')}`,'system',false,true);
+        renderUI();saveGameState();return true;
+    }
+    function diplomacyQuote(npc,kind){
+        const t=tacticalState(),h=gameState.worldMemory.engine.npcContestHistory?.[npc.id]||{};
+        const trust=Number(npc.trust)||0,favor=Number(npc.relationship?.favorability)||0;
+        const alert=Number(h.alert)||0;
+        const offer=kind==='cooperate'?12:kind==='information'?8:kind==='apology'?6:20;
+        const cost=Math.max(1,Math.floor(offer+(Math.max(0,alert)*3)));
+        const advantage=(combatRating(gameState)-combatRating(npc,false))/(combatRating(gameState)+combatRating(npc,false));
+        const chance=Math.max(.05,Math.min(.85,(kind==='apology'?.62:.30)+trust*.003+favor*.002-alert*.035+advantage*.08));
+        return {kind,cost,chance,trust,favor,alert};
+    }
+    function diplomacyTry(npcId,kind){
+        if(!['cooperate','information','apology'].includes(kind)||isTyping||gameState.isDead)return false;
+        const npc=gameState.npcRegistry?.[npcId],t=tacticalState();
+        if(t.battle||!npc||npc.is_alive===false||npc.status==='DEAD'||String(npc.location)!==String(gameState.location))return false;
+        const q=diplomacyQuote(npc,kind);
+        if((Number(gameState.spiritStone)||0)<q.cost){openGameModal('交涉失敗','你的靈石不足，沒有進行交涉結算。');return false;}
+        const button=document.createElement('button');button.className='modal-btn primary';button.textContent='支付代價並交涉';
+        button.onclick=()=>{
+            closeGameModal();if(isTyping||t.battle||!gameState.npcRegistry?.[npcId])return;
+            const latest=diplomacyQuote(gameState.npcRegistry[npcId],kind);
+            if(gameState.spiritStone<latest.cost)return;
+            const id=`SOC681:${Date.now()}:${Math.random().toString(36).slice(2,9)}`;
+            const success=Math.random()<latest.chance;
+            gameState.spiritStone-=latest.cost;
+            const e=gameState.worldMemory.engine;
+            if(!e.npcContestHistory)e.npcContestHistory={};
+            const old=e.npcContestHistory[npcId]||{alert:0,incidents:0};
+            e.npcContestHistory[npcId]={...old,alert:Math.max(0,(Number(old.alert)||0)+(success&&kind==='apology'?-1:success?0:1)),incidents:(Number(old.incidents)||0)+1,lastReason:kind};
+            if(success){
+                npc.relationship=npc.relationship||{};
+                if(kind==='apology')npc.relationship.favorability=Math.min(100,(Number(npc.relationship.favorability)||0)+3);
+                else if(kind==='cooperate')npc.trust=Math.min(100,(Number(npc.trust)||0)+2);
+                else {npc.knownFacts=npc.knownFacts||[];npc.knownFacts.push(`第${Math.floor(gameState.daysPassed)}日與玩家進行有代價的情報交涉`);}
+            }
+            gameState.daysPassed=(Number(gameState.daysPassed)||0)+.1;
+            t.social.push({id,npcId,kind,cost:latest.cost,success,day:gameState.daysPassed});
+            t.social=t.social.slice(-150);
+            appendLogData('天道',`【正式交涉】你付出 ${latest.cost} 靈石，與${npc.name}進行${kind==='cooperate'?'合作談判':kind==='information'?'情報交涉':'修復關係'}；${success?'對方有限度接受條件':'對方拒絕或暫不信任你'}。${success?'沒有憑空轉移物品或揭露未知秘密。':'對方警戒提高。'}`,'system',false,true);
+            renderUI();saveGameState();
+        };
+        const cancel=document.createElement('button');cancel.className='modal-btn';cancel.textContent='取消';cancel.onclick=closeGameModal;
+        openGameModal('正式交涉評估',`${npc.name}｜成本 ${q.cost} 靈石｜估計接受率 ${Math.round(q.chance*100)}%。交涉成功僅影響關係或建立有限接洽，不保證取得裝備、秘密或忠誠。`,[button,cancel]);return true;
+    }
+    function renderTacticalPanel(){
+        const tab=document.getElementById('tab-social');if(!tab)return;
+        let panel=document.getElementById('v681-tactics');
+        if(!panel){panel=document.createElement('section');panel.id='v681-tactics';panel.style.cssText='margin:12px 0;padding:12px;border:1px solid #746343;border-radius:9px;background:#15171d';tab.insertBefore(panel,tab.firstChild);}
+        panel.replaceChildren();
+        const heading=document.createElement('h3');heading.textContent='⚔ 正式戰鬥與理性交涉';panel.appendChild(heading);
+        const b=tacticalState().battle;
+        function btn(label,fn){const el=document.createElement('button');el.className='choice-btn';el.textContent=label;el.style.cssText='margin:4px;padding:7px 10px;width:auto;display:inline-block';el.onclick=fn;panel.appendChild(el);}
+        if(b){const npc=gameState.npcRegistry?.[b.npcId];const info=document.createElement('p');info.textContent=`${npc?.name||'對手'}｜第 ${b.turn+1} 回合｜對手 HP ${b.npcHp}/${b.npcMaxHp}｜體力 ${b.stamina}/100｜${b.last}`;panel.appendChild(info);
+            btn('攻擊',()=>battleTurn('strike'));btn('防禦',()=>battleTurn('guard'));btn('佯攻',()=>battleTurn('feint'));btn('撤退',()=>battleTurn('retreat'));
+        }else{
+            const list=tacticalNpcAtLocation();if(!list.length){const info=document.createElement('p');info.textContent='當前地點沒有可辨識的已登記 NPC。遇見 NPC 並登記後，可開始正式互動。';panel.appendChild(info);}
+            list.slice(0,5).forEach(n=>{const line=document.createElement('div');line.textContent=`${n.name}｜${n.realm||n.cultivation?.realm||'境界未知'}｜信任 ${Number(n.trust)||0}`;panel.appendChild(line);
+                btn(`與${n.name}交涉`,()=>diplomacyTry(n.id,'cooperate'));btn('詢問情報',()=>diplomacyTry(n.id,'information'));btn('修復關係',()=>diplomacyTry(n.id,'apology'));btn('正式挑戰',()=>battleStart(n.id));});
+        }
+    }
+
+    // V6.82: independent, authoritative multi-party combat and executable agreements.
+    function v682State(s=gameState){
+      const t=tacticalState(s);
+      if(!t.teamV682 || typeof t.teamV682!=='object') t.teamV682={battle:null,contracts:[],roundLog:[]};
+      return t.teamV682;
+    }
+    function v682Rating(entity,player=false){
+      const base=combatRating(entity,player);
+      const eq=player?Object.values(entity.equipment||{}):Object.values(entity.equipment||{});
+      let gear=0;for(const it of eq){if(!it)continue;const v=typeof it==='object'?it:{};const idx=Math.max(0,Math.min(11,Number(v.gradeIndex)||0));gear+=Math.min(150,idx*9+Math.max(0,Number(v.combatPower)||0));}
+      const skills=Array.isArray(entity.skills)?entity.skills:[];
+      const kungfu=Array.isArray(entity.kungfu)?entity.kungfu:[];
+      let arts=0;for(const k of [...skills,...kungfu]){const v=k||{};arts+=Math.min(75,8+Math.floor(Math.max(0,Number(v.proficiency)||0)/15));}
+      return Math.max(5,Math.floor(base+gear+Math.min(180,arts)));
+    }
+    function v682LegalNpc(n){return Boolean(n&&n.id&&n.is_alive!==false&&n.status!=='DEAD'&&String(n.location||'')===String(gameState.location||''));}
+    function v682StartTeamBattle(enemyIds,allyIds=[]){
+      if(isTyping||gameState.isDead||v682State().battle||tacticalState().battle)return false;
+      const ids=[...new Set(enemyIds)].slice(0,4);
+      if(!ids.length||ids.some(id=>!v682LegalNpc(gameState.npcRegistry?.[id])))return false;
+      const allies=[...new Set(allyIds)].filter(id=>!ids.includes(id)).slice(0,2);
+      if(allies.some(id=>!v682LegalNpc(gameState.npcRegistry?.[id])))return false;
+      const units=[{id:'PLAYER',team:'player',name:'你',power:v682Rating(gameState,true),hp:Math.max(1,Number(gameState.hp)||1),maxHp:Math.max(1,Number(gameState.maxHp)||Number(gameState.hp)||1),guard:false,stamina:100}];
+      for(const id of allies){const n=gameState.npcRegistry[id];const cp=v682Rating(n);units.push({id,team:'player',name:n.name,power:cp,hp:Math.max(20,Number(n.hp)||cp*2),maxHp:Math.max(20,Number(n.hp)||cp*2),guard:false,stamina:100});}
+      for(const id of ids){const n=gameState.npcRegistry[id];const cp=v682Rating(n);units.push({id,team:'enemy',name:n.name,power:cp,hp:Math.max(20,Number(n.hp)||cp*2),maxHp:Math.max(20,Number(n.hp)||cp*2),guard:false,stamina:100});}
+      const b={id:'TEAM682:'+Date.now()+':'+Math.random().toString(36).slice(2),location:String(gameState.location),turn:0,units,actions:[],status:'active',last:'雙方進入戰鬥；NPC 依狀況選擇集火、防禦、救援或撤退。'};
+      v682State().battle=b;appendLogData('天道',`【團隊戰鬥】${units.filter(u=>u.team==='enemy').map(u=>u.name).join('、')}進入交戰。`,'system',false,true);renderUI();saveGameState();return true;
+    }
+    function v682Turn(tactic='attack',targetId=null,skillIndex=-1){
+      const v=v682State(),b=v.battle;if(!b||b.status!=='active'||isTyping||gameState.isDead)return false;
+      if(b.location!==String(gameState.location)){b.status='cancelled';v.battle=null;renderUI();saveGameState();return false;}
+      const self=b.units.find(u=>u.id==='PLAYER'),living=(team)=>b.units.filter(u=>u.team===team&&u.hp>0&&!u.fled);
+      if(!self||self.hp<=0)return false;
+      const log=[];b.turn++;
+      const skill=(Array.isArray(gameState.skills)&&Number.isInteger(skillIndex))?gameState.skills[skillIndex]:null;
+      function attack(att,target,type='attack',boost=0){
+        if(!target||att.hp<=0||att.fled)return;
+        const ratio=att.power/Math.max(1,target.power);
+        const cost=type==='skill'?25:type==='feint'?12:16;
+        if(att.stamina<cost){att.stamina=Math.min(100,att.stamina+8);log.push(`${att.name}體力不足，只能調息。`);return;}
+        att.stamina-=cost;
+        const hit=Math.max(.04,Math.min(.94,.63+Math.log(Math.max(.03,ratio))*.17+(type==='feint'?.07:0)-(target.guard?.18:0)));
+        if(Math.random()<hit){let damage=Math.max(1,Math.floor(att.power*(type==='skill'?.22:type==='feint'?.11:.15)*(1+boost)*(.8+Math.random()*.4)));
+          if(target.guard)damage=Math.max(1,Math.floor(damage*.43));
+          target.hp=Math.max(0,target.hp-damage);log.push(`${att.name}${type==='skill'?'施展武學':'攻擊'}${target.name}，造成 ${damage} 傷害。`);
+        }else log.push(`${att.name}的攻擊未命中${target.name}。`);
+      }
+      for(const u of b.units)u.guard=false;
+      if(tactic==='retreat'){
+        const enemyPower=living('enemy').reduce((a,u)=>a+u.power,0),friendPower=living('player').reduce((a,u)=>a+u.power,0);
+        const chance=Math.max(.12,Math.min(.85,.6+(friendPower-enemyPower)/(friendPower+enemyPower||1)*.35));
+        if(Math.random()<chance){b.status='retreated';log.push('隊伍成功脫離戰鬥。');}else log.push('撤退路線遭封鎖。');
+      }else if(tactic==='guard'){self.guard=true;self.stamina=Math.min(100,self.stamina+16);log.push('你採取防守架勢。');}
+      else {const opponents=living('enemy');const target=opponents.find(u=>u.id===targetId)||opponents[0];
+        const boosted=skill?Math.min(.5,.07+Math.max(0,Number(skill.proficiency)||0)/800):0;
+        attack(self,target,skill?'skill':tactic,boosted);
+      }
+      if(b.status==='active'){
+        // Ally AI: protect weak comrades, focus the most injured enemy, do not teleport or invent skills.
+        for(const ally of living('player').filter(u=>u.id!=='PLAYER')){
+          const foes=living('enemy');if(!foes.length)break;
+          if(ally.hp/ally.maxHp<.27){ally.guard=true;ally.stamina=Math.min(100,ally.stamina+12);log.push(`${ally.name}傷重轉為守勢。`);}
+          else attack(ally,foes.sort((a,c)=>a.hp/a.maxHp-c.hp/c.maxHp)[0],'attack');
+        }
+        // Enemy AI: threat evaluation and focused fire; wounded enemies may retreat.
+        for(const enemy of living('enemy')){
+          const friends=living('player');if(!friends.length)break;
+          if(enemy.hp/enemy.maxHp<.16&&Math.random()<.65){enemy.fled=true;log.push(`${enemy.name}判斷不利，退出戰場。`);continue;}
+          if(enemy.stamina<20||enemy.hp/enemy.maxHp<.35){enemy.guard=true;enemy.stamina=Math.min(100,enemy.stamina+15);log.push(`${enemy.name}守禦調息。`);continue;}
+          const target=friends.sort((a,c)=>(a.hp/a.maxHp)-(c.hp/c.maxHp))[0];
+          attack(enemy,target,Math.random()<.16?'feint':'attack');
+        }
+      }
+      gameState.hp=Math.max(0,self.hp);
+      for(const u of b.units.filter(u=>u.id!=='PLAYER')){const npc=gameState.npcRegistry?.[u.id];if(npc){npc.hp=Math.max(1,Math.floor(u.hp));if(u.hp<=0)npc.wounded=true;}}
+      if(b.status==='active'&&!living('enemy').length)b.status='won';
+      if(b.status==='active'&&!living('player').length)b.status='lost';
+      if(b.status!=='active'){
+        v.roundLog.push({id:b.id,turn:b.turn,result:b.status,day:gameState.daysPassed,units:b.units.map(u=>({id:u.id,hp:u.hp,fled:!!u.fled}))});
+        v.roundLog=v.roundLog.slice(-100);v.battle=null;
+      }
+      b.last=log.join(' ');gameState.daysPassed=(Number(gameState.daysPassed)||0)+.05;
+      appendLogData('天道',`【團戰第 ${b.turn} 回合】${b.last}${b.status!=='active'?'｜結果：'+b.status:''}`,'system',false,true);
+      renderUI();saveGameState();return true;
+    }
+    function v682DraftContract(npcId,kind,stake){
+      const n=gameState.npcRegistry?.[npcId],v=v682State();
+      if(!v682LegalNpc(n)||v.battle||tacticalState().battle||!['service','supplies','escort'].includes(kind))return false;
+      const amount=Math.floor(Number(stake));if(!Number.isFinite(amount)||amount<5||amount>500||amount>Number(gameState.spiritStone||0))return false;
+      // Offer is not a guaranteed agreement. NPC must be willing and able to deliver the pledged service.
+      const alert=Number(gameState.worldMemory?.engine?.npcContestHistory?.[npcId]?.alert)||0;
+      const trust=Number(n.trust)||0,fee=Math.max(2,Math.ceil(amount*.1));
+      const chance=Math.max(.06,Math.min(.82,.35+trust*.004-alert*.065+(kind==='supplies'?.06:0)));
+      const accept=Math.random()<chance;
+      const id='CONTRACT682:'+Date.now()+':'+Math.random().toString(36).slice(2,9);
+      if(!accept){appendLogData('天道',`【契約協商】${n.name}拒絕${kind}契約；未移轉靈石或物資。`,'system',false,true);renderUI();return false;}
+      const contract={id,npcId,kind,stake:amount,fee,status:'active',day:Number(gameState.daysPassed)||0,dueDay:(Number(gameState.daysPassed)||0)+({service:7,supplies:14,escort:21}[kind]),location:String(gameState.location),reward:0};
+      // Escrowed stake is consumed at acceptance. Resolve exactly once; no imaginary trade goods.
+      gameState.spiritStone-=amount;
+      v.contracts.push(contract);
+      appendLogData('天道',`【正式契約】${n.name}接受${kind}契約，已託管 ${amount} 靈石；第 ${Math.ceil(contract.dueDay)} 日到期，需主動核對履約。`,'system',false,true);
+      renderUI();saveGameState();return true;
+    }
+    function v682SettleContract(id){
+      const v=v682State(),c=v.contracts.find(x=>x.id===id);
+      if(!c||c.status!=='active'||Number(gameState.daysPassed)<c.dueDay)return false;
+      const npc=gameState.npcRegistry?.[c.npcId],available=npc&&npc.is_alive!==false&&npc.status!=='DEAD';
+      const alert=Number(gameState.worldMemory?.engine?.npcContestHistory?.[c.npcId]?.alert)||0;
+      const success=Boolean(available&&Math.random()<Math.max(.12,Math.min(.87,.68-alert*.05)));
+      const refund=success?Math.max(0,c.stake-c.fee):Math.floor(c.stake*.55);
+      // Settlement returns escrow or partial recovery; only a fulfilled contract generates modest verified compensation.
+      const benefit=0;
+      if(success&&npc){npc.trust=Math.min(100,(Number(npc.trust)||0)+1);npc.knownFacts=Array.isArray(npc.knownFacts)?npc.knownFacts:[];npc.knownFacts.push(`完成第${Math.floor(gameState.daysPassed)}日的${c.kind}契約`);}
+      c.status=success?'fulfilled':'breached';c.reward=benefit;c.refund=refund;c.closedDay=Number(gameState.daysPassed)||0;
+      gameState.spiritStone=Math.max(0,Number(gameState.spiritStone)||0)+refund+benefit;
+      appendLogData('天道',`【履約核對】${npc?.name||'契約對手'}：${success?'完成交付':'未能履約'}；託管返還 ${refund}、履約服務費 ${c.fee} 靈石（若違約則僅返還部分託管款）。合約已封存，不可再次結算。`,'system',false,true);
+      renderUI();saveGameState();return true;
+    }
+    function v682RenderAdvanced(){
+      const root=document.getElementById('v681-tactics');if(!root)return;
+      let section=document.getElementById('v682-advanced');if(!section){section=document.createElement('div');section.id='v682-advanced';root.appendChild(section);}
+      section.replaceChildren();
+      const title=document.createElement('h4');title.textContent='⚔ V6.82 多人戰術・武學・契約';section.appendChild(title);
+      function add(label,fn){const b=document.createElement('button');b.className='choice-btn';b.style.cssText='width:auto;margin:3px;padding:7px';b.textContent=label;b.onclick=fn;section.appendChild(b);}
+      const v=v682State(),battle=v.battle;
+      if(battle){const p=document.createElement('p');p.textContent=`第 ${battle.turn+1} 回合｜${battle.units.map(u=>`${u.name} ${Math.round(u.hp)}/${Math.round(u.maxHp)}${u.fled?'(撤退)':''}`).join('｜')}`;section.appendChild(p);
+        const enemy=battle.units.find(u=>u.team==='enemy'&&u.hp>0&&!u.fled);
+        add('團戰攻擊',()=>v682Turn('attack',enemy?.id));add('防守',()=>v682Turn('guard'));add('佯攻',()=>v682Turn('feint',enemy?.id));add('撤退',()=>v682Turn('retreat'));
+        (gameState.skills||[]).slice(0,3).forEach((sk,i)=>add(`武學：${sk.name||'招式'}`,()=>v682Turn('skill',enemy?.id,i)));
+      }else if(!tacticalState().battle){
+        const npcs=tacticalNpcAtLocation();if(npcs.length){
+          add('多人交戰：挑戰同地點 NPC',()=>v682StartTeamBattle(npcs.slice(0,3).map(n=>n.id)));
+          const friends=npcs.filter(n=>(Number(n.trust)||0)>=40);const enemies=npcs.filter(n=>(Number(n.trust)||0)<40);
+          if(friends.length&&enemies.length)add(`呼叫${friends[0].name}協戰`,()=>v682StartTeamBattle(enemies.slice(0,3).map(n=>n.id),[friends[0].id]));
+          for(const npc of npcs.slice(0,3)){
+            add(`服務契約：${npc.name}（10靈石）`,()=>v682DraftContract(npc.id,'service',10));
+            add(`補給契約：${npc.name}（15靈石）`,()=>v682DraftContract(npc.id,'supplies',15));
+            add(`護送契約：${npc.name}（20靈石）`,()=>v682DraftContract(npc.id,'escort',20));
+          }
+        }
+      }
+      for(const c of v.contracts.filter(c=>c.status==='active').slice(-5))add(`履約查核 ${c.kind}（第${Math.ceil(c.dueDay)}日）`,()=>{if(!v682SettleContract(c.id))openGameModal('尚未履約','尚未到期或契約狀態不符，沒有重複結算。');});
+    }
+
     function renderUI() {
+        renderTacticalPanel();
+        v682RenderAdvanced();
+        destinyRender();
+        worldRenderPanel();
         pruneNpcRegistry(gameState, 100);
         renderActionTelemetry();
         renderEconomyProposal();
@@ -5430,13 +7229,14 @@ JSON 輸出格式範例：
                 gameState.quests.forEach(q => {
                     const div = document.createElement("div");
                     div.style.marginBottom = "4px";
-                    if (typeof q === 'string') {
-                        div.innerHTML = `?? ${q}`;
-                    } else if (q && typeof q === 'object') {
-                        const qName = q.name || q.title || "未知任務";
-                        const qProg = q.progress || q.desc || "進行中";
-                        const qStatus = q.status || "進行中";
-                        div.innerHTML = `?? <b>${qName}</b>：${qProg} <span style="color:#888;">[${qStatus}]</span>`;
+                    if (typeof q === 'string') { div.textContent = `✦ ${q}`; }
+                    else if (q && typeof q === 'object') {
+                        const qName = q.name || q.title || '未知任務';
+                        const qProg = q.progress || q.desc || '進行中';
+                        const qStatus = q.status || '進行中';
+                        const title = document.createElement('b');title.textContent=qName;
+                        const status = document.createElement('span');status.style.color='#aaa';status.textContent=` [${qStatus}]`;
+                        div.append('✦ ',title,`：${qProg}`,status);
                     }
                     questsEl.appendChild(div);
                 });
@@ -5530,7 +7330,7 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.72"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.81"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
         const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         try {
@@ -5563,12 +7363,12 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.72"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.81"; gameState.maxHp = getMaxHp(gameState);
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v672_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v682_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
@@ -5598,7 +7398,7 @@ JSON 輸出格式範例：
         const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
             content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.72"; state.maxHp = getMaxHp(state);
+        state.version = "6.77"; state.maxHp = getMaxHp(state);
         return {state, logs: structuredClone(pkg.logs || []), history};
     }
     function importSave(e) {
@@ -5807,7 +7607,7 @@ JSON 輸出格式範例：
             const successful=rt.rounds.filter(r=>r.succeeded).length;
             const failures=rt.rounds.length-successful;
             const repairs=rt.rounds.filter(r=>r.apiCalls>1).length;
-            __liveQaReport={tool:'九州裂天錄 V6.72 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+            __liveQaReport={tool:'九州裂天錄 V6.82 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
                 fixtures:{startingStones:300,breakthroughExpReady:true,notes:'測試開始前注入 300 靈石；僅短期測試可用。突破前將修為設滿，須按按鈕並接受機率判定。長期測試不使用這些注入。'},
                 httpRequests:rt.httpEvents,skippedRounds:rt.skipped,
                 startedAt:rt.startedAt,finishedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
@@ -5836,37 +7636,60 @@ JSON 輸出格式範例：
     }
 
     // V6.71: 1,000+ round REAL Gemini endurance run. Stored checkpoints contain no API key.
-    const LONG_QA_CHECKPOINT_KEY='blade_long_gemini_checkpoint_v670';
-    const LONG_QA_BACKUP_KEY='blade_long_gemini_player_backup_v670';
+    const LONG_QA_CHECKPOINT_KEY='blade_mixed_gemini_checkpoint_v682';
+    const LONG_QA_BACKUP_KEY='blade_mixed_gemini_player_backup_v682';
     let __longQaRuntime=null;
     let __longQaResult=null;
     function longQaText(value){const el=document.getElementById('long-qa-progress');if(el)el.textContent=value;}
     function longQaControl(running){for(const id of ['long-qa-new','long-qa-resume']){
         const b=document.getElementById(id);if(b)b.disabled=running;
     }const stop=document.getElementById('long-qa-stop');if(stop)stop.disabled=!running;}
-    function longQaRoundPlan(s,n){
+    // V6.82 MIXED QA: goal-oriented schedule, not a sequence of 80% cultivation.
+    const MIX_QA_TARGETS={cultivate:300,social:160,gather:140,combat:120,economy:120,quest:120,other:40};
+    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'social',world:'quest'})[t]||t;}
+    function mixedQaPlan(s,data){
+        const count=data?.actionCounts||{};
+        const t=Number(data?.completedTurns||0), n=Number(data?.rounds?.length||0);
         if(!s.hasChosenOrigin)return {type:'origin',action:'3 落魄少主。選擇出身，從荒郊破廟開始。'};
-        if(getEffectiveMode(s)==='DANGER'||(s.activeThreats||[]).length)
-            return {type:'retreat',action:'先護住性命，謹慎撤退到附近已知安全地點。成功脫離才清空 activeThreats，依實際受傷扣HP。'};
-        if(['DIALOGUE','HAZARD'].includes(getEffectiveMode(s)))
-            return {type:'depart',action:'禮貌結束當前交談或避開危險地形，返回可閉關的安全地帶，保留已知NPC關係。'};
-        if(getLocationModifier(s.location).expPerDay<=0)
-            return {type:'relocate',action:'我離開不利修行的破廟或險地，沿安全官道前往最近的青石鎮客棧住下。只有實際抵達才更新位置，不憑空增加修為或物資。'};
-        if(s.exp>=s.maxExp){
-            if((Number(s.breakthroughCdDays)||0)>(Number(s.daysPassed)||0))return {type:'cultivate',action:'閉關休養30天等待突破冷卻'};
-            return {type:'breakthrough',action:'【真正按鈕】突破境界'};
+        if(s.pendingEconomyProposal)return {type:'pending',action:'待確認交易必須先由核心處理，不得以自由文字跳過'};
+        if(s.isDead)return {type:'dead',action:'角色死亡，停止測試'};
+        if(getEffectiveMode(s)==='DANGER'||(s.activeThreats||[]).length)return {type:'retreat',action:'評估傷勢和敵人，沿已知路線謹慎撤退，不宣稱必然脫離戰鬥。'};
+        if(['DIALOGUE','HAZARD'].includes(getEffectiveMode(s)))return {type:'depart',action:'以符合情境的方式結束對話或離開危險地點，不自行清空警戒與人脈。'};
+        const cd=Number(s.breakthroughCdDays)||0,day=Number(s.daysPassed)||0;
+        if(s.exp>=s.maxExp&&day>=cd&&Number(s.hp||0)>(Number(s.maxHp||getMaxHp(s))*.35))return {type:'breakthrough',action:'【真正按鈕】突破境界'};
+        if(Number(s.hp||0)<getMaxHp(s)*.3)return {type:'recover',action:'我受傷嚴重，先在安全地點治療或休養；不可憑空回滿血量。'};
+        const opts=[
+          {type:'cultivate',action:'【閉關修練30天】'},
+          {type:'social',action:'與所在地一位可接觸的修士正式結識，詢問姓名、修為、需求與立場；若對方願意，按照正式人脈規則登錄，不得虛構信任。'},
+          {type:'gather',action:'探索附近可抵達的地區、採集普通靈草，若有實際取得，按核心合法來源與背包權限結算。'},
+          {type:'combat',action:'謹慎尋找與自身實力相近、願意切磋的對手。只建立可驗證的遭遇與交手條件；正式勝負須由戰鬥核心裁定，不可憑文字秒殺。'},
+          {type:'economy',action:'尋找附近有根據的商鋪或委託，詢問普通藥草的市價或百藝材料來源。買賣需有報價及本人確認，不得憑空收取靈石。'},
+          {type:'quest',action:'推進落魄少主身世線索，從已有任務簿、人物與世界事件尋找一個具體下一步；不得無證據改寫命運真相。'},
+          {type:'other',action:'按照當前任務與周圍情境，前往合理可抵達的新地點，必要時安排短期休息；只有實際抵達才改位置。'}
+        ];
+        // Deficit-based weighted interleaving; prioritize deficits but never force impossible actions.
+        let ranked=opts.map((o,i)=>({o,score:((t+1)*MIX_QA_TARGETS[o.type]/1000-(count[o.type]||0))/(Math.max(1,MIX_QA_TARGETS[o.type]))*1000+(((n*17+i*7)%13)/100)}));
+        if(cd>day){ranked=ranked.filter(x=>x.o.type!=='cultivate'||Number(s.exp||0)<Number(s.maxExp||0));}
+        if(getLocationModifier(s.location).expPerDay<=0)ranked=ranked.map(x=>({...x,score:x.o.type==='other'?x.score+3:x.score}));
+        ranked.sort((a,b)=>b.score-a.score);
+        return ranked[0].o;
+    }
+    function mixedQaAudit(before,after,plan,game){
+        const issues=[];
+        for(const key of ['exp','maxExp','hp','maxHp','stones','days','level'])if(!Number.isFinite(Number(after[key])))issues.push('P0_NONFINITE_'+key);
+        if(after.hp<0||after.maxHp<=0||after.exp<0||after.maxExp<=0||after.stones<0||after.days<before.days)issues.push('P0_INVALID_NUMERIC_STATE');
+        if(after.level===before.level && after.maxHp>before.maxHp*2.0)issues.push('P0_HP_JUMP_WITHOUT_LEVEL');
+        if(after.level>before.level+1)issues.push('P0_MULTILEVEL_SINGLE_TURN');
+        if(plan.type==='breakthrough' && after.level===before.level && after.hp<before.hp){
+          if(after.exp>=before.exp)issues.push('P0_BREAKTHROUGH_FAILED_NO_EXP_LOSS');
+          if(!((Number(game.breakthroughCdDays)||0)>Number(after.days)))issues.push('P0_BREAKTHROUGH_FAILED_NO_COOLDOWN');
         }
-        // High proportion of ordinary cultivation, with natural interaction and occasional hazard exposure.
-        const cycle=n%20;
-        if(cycle===7)return {type:'gather',action:'在附近安全可達的地點尋找普通草藥，若成功才依來源結算入庫，不可憑空給靈石。'};
-        if(cycle===14)return {type:'social',action:'訪問附近可信的修士，討論修行心得或參加一項不需支付費用的交流；不擅自建立永久人脈。'};
-        if(cycle===18)return {type:'explore',action:'在自身境界能力範圍內探索安全路線與合理機緣；若遭遇威脅請讓我有機會撤離。'};
-        return {type:'cultivate',action:'【閉關修練30天】'};
+        return issues;
     }
     function longQaBefore(s){return {level:s.level,realm:s.realm,exp:Math.floor(s.exp||0),maxExp:Math.floor(s.maxExp||0),
         hp:s.hp,maxHp:getMaxHp(s),stones:s.spiritStone,days:s.daysPassed,dead:Boolean(s.isDead),
         npcs:Object.keys(s.npcRegistry||{}).length,items:(s.inventory||[]).reduce((a,x)=>a+Number(x.quantity||0),0),
-        location:String(s.location||''),mode:getEffectiveMode(s),pending:Boolean(s.pendingEconomyProposal)};}
+        location:String(s.location||''),mode:getEffectiveMode(s),pending:Boolean(s.pendingEconomyProposal),breakthroughCdDays:Number(s.breakthroughCdDays||0),telemetryCompleted:Number(s.actionTelemetry?.completed||0),telemetryFailed:Number(s.actionTelemetry?.failed||0)};}
     function longQaCheckpoint(data){
         // Last-turn progress is compact, so even 3,000 rounds can be resumed from localStorage.
         localStorage.setItem(LONG_QA_CHECKPOINT_KEY,JSON.stringify(data));
@@ -5896,7 +7719,8 @@ JSON 輸出格式範例：
         const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
         longQaText([`完成 ${data.completedTurns??arr.filter(r=>r.success).length}/${data.target} 個有效回合（已嘗試 ${arr.length} 次） | Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
             `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
-            `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；目前 HP ${p.hp??'?'}，靈石 ${p.spiritStone??'?'}`,
+            `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；P0/P1 警示 ${data.auditIssues?.length||0}`,
+            `均衡分類 ${Object.entries(data.actionCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；NPC ${Object.keys(p.npcRegistry||{}).length}；HP ${p.hp??'?'}；靈石 ${p.spiritStone??'?'}`, 
             `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
     }
     async function startLongGeminiQA(resume=false){
@@ -5908,7 +7732,7 @@ JSON 輸出格式範例：
         if(!resume&&oldText&&!confirm('現有長期測試進度將被新的測試覆蓋。若需要舊報告請先匯出。確定重開？'))return;
         const requested=Number(document.getElementById('long-qa-turns').value||1000);
         const delayMs=Number(document.getElementById('long-qa-delay').value||60000);
-        if(!confirm(`即將${resume?'接續':'開始'}真正 Gemini 長期測試，至少 1,000 回合；每回合使用付費／限額 API，可能持續數小時。角色可能死亡，突破並不保證成功。會備份並還原正式遊戲。是否執行？`))return;
+        if(!confirm(`即將${resume?'接續':'開始'}真正 Gemini 均衡混合測試，目標 1,000 個成功結算回合；每回合使用付費／限額 API，可能持續數小時。角色可能死亡，突破並不保證成功。會備份並還原正式遊戲。是否執行？`))return;
         let snapshot;
         try {
             snapshot=liveQaSnapshot();
@@ -5919,14 +7743,14 @@ JSON 輸出格式範例：
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V6.72 真實Gemini千回合成長測試',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V6.82 真實Gemini千回合均衡測試',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
-                    target:requested,delayMs,rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    target:requested,delayMs,protocol:'P0-P2 balanced V1.0',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
             data.target=Math.max(data.target||1000,requested);
             data.completedTurns ??= (data.rounds||[]).filter(r=>r.success).length;
-            data.quotaPauses ??= 0;
+            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.actionTargets??=MIX_QA_TARGETS;
             if(resume && data.nextAllowedAt && Date.now()<data.nextAllowedAt){
                 const until=new Date(data.nextAllowedAt).toLocaleString();
                 openGameModal('Gemini 配額尚未恢復',`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
@@ -5943,7 +7767,7 @@ JSON 輸出格式範例：
             for(let n=data.rounds.length;data.completedTurns<data.target;n++){
                 if(rt.stop){data.status='paused by user';break;}
                 if(gameState.isDead){data.status='character died';break;}
-                const plan=longQaRoundPlan(gameState,n);
+                const plan=mixedQaPlan(gameState,data);
                 const before=longQaBefore(gameState);
                 const completedBefore=Number(gameState.actionTelemetry?.completed||0);
                 const failedBefore=Number(gameState.actionTelemetry?.failed||0);
@@ -5973,13 +7797,14 @@ JSON 輸出格式範例：
                 const success=Number(gameState.actionTelemetry?.completed||0)>completedBefore;
                 const failure=!success?(gameState.actionTelemetry?.recent||[]).slice(-1)[0]?.reason||'操作未完成':'';
                 const deltas=rt.httpEvents.slice(httpBefore);
-                const record={turn:n+1,type:plan.type,action:plan.action,success,elapsedMs:Date.now()-began,
+                const record={turn:n+1,type:plan.type,bucket:mixedQaBucket(plan.type),coverage: ['combat','social','economy','quest','gather','other','recover'].includes(plan.type)?'Gemini自由文字情境（非正式核心按鈕驗收）':'正式核心操作',action:plan.action,success,elapsedMs:Date.now()-began,
                     apiCalls:rt.currentCalls-callsBefore,httpAttempts:deltas.length,apiMs:deltas.reduce((a,b)=>a+b.durationMs,0),
                     httpCodes:deltas.map(e=>e.status),before,after,levelDelta:after.level-before.level,
                     failure:liveQaSanitize(quotaLimit?.message||failure),rateLimited:Boolean(quotaLimit),breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
                     breakthroughSuccess:plan.type==='breakthrough'&&success?Boolean(after.level>before.level):null,date:new Date().toISOString()};
                 data.rounds.push(record);data.apiCalls+=record.apiCalls;data.httpAttempts+=record.httpAttempts;
-                if(!success){data.failures++;streak++;}else {streak=0;data.completedTurns++;}
+                if(!success){data.failures++;streak++;}else {streak=0;data.completedTurns++;data.actionCounts[record.bucket]=(data.actionCounts[record.bucket]||0)+1;}
+                record.auditIssues=mixedQaAudit(before,after,plan,gameState);if(record.auditIssues.length){data.auditIssues.push({turn:record.turn,issues:record.auditIssues});if(record.auditIssues.some(x=>x.startsWith('P0_'))){data.status='P0 blocker: '+record.auditIssues.join(', ');rt.stop=true;}}
                 if(quotaLimit){
                     data.quotaPauses++;
                     data.nextAllowedAt=Date.now()+Math.max(60000,Number(quotaLimit.retryAfterMs)||60000);
@@ -6021,7 +7846,7 @@ JSON 輸出格式範例：
         const {state,history,logs,...safeReport}=data; // Explicitly exclude checkpoint internals and all API secrets.
         const blob=new Blob([JSON.stringify({...safeReport,currentState:longQaBefore(state||getDefaultGameState())},null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_千回合Gemini境界成長_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V6.82_千回合Gemini均衡遊玩_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
     document.addEventListener('DOMContentLoaded',longQaStartupRestore);
