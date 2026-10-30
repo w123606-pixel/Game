@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 突破權限與千回合真實測試版 V6.70</title>
+    <title>九州裂天錄 - 配額管理與千回合可靠性修正版 V6.71</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -341,8 +341,9 @@
               </select>
               <label for="long-qa-delay">API 回合間隔（避免過度頻繁呼叫）：</label>
               <select id="long-qa-delay" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
-                <option value="1000">1 秒</option><option value="3000" selected>3 秒（建議）</option><option value="6000">6 秒</option><option value="12000">12 秒</option>
+                <option value="3000">3 秒（僅配額充足）</option><option value="15000">15 秒</option><option value="30000">30 秒</option><option value="60000" selected>60 秒（建議起點）</option><option value="120000">120 秒</option>
               </select>
+              <p style="font-size:.74rem;color:#e4c889;">遇到 HTTP 429（配額／限流）會立即暫停並保存檢查點，不會同一回合連續重送。請先查看 Google AI Studio 的配額。目標回合只計算成功完成的遊戲回合。</p>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
                 <button id="long-qa-new" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(false)">▶ 新測試</button>
                 <button id="long-qa-resume" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(true)">↻ 接續</button>
@@ -3163,7 +3164,7 @@
         const linggenMeta = getLinggenMeta(gameState.linggen || "真靈根");
         const insightBonus = Math.min(0.35, Math.max(0, Number(gameState.breakthroughInsight) || 0));
         const baseRate = Math.max(0.12, Math.min(0.88, (Number(nextDef.baseRate) || 0.5) + (Number(linggenMeta.breakBonus) || 0) + insightBonus));
-        // V6.70: even first qi entry is a genuine probability roll; words in the input never grant permission.
+        // V6.71: even first qi entry is a genuine probability roll; words in the input never grant permission.
         const firstQi = gameState.hasChosenOrigin === true && Number(gameState.level) === 0 && gameState.realm === "凡人";
         const effectiveRate = baseRate;
         const isSuccess = Math.random() < effectiveRate;
@@ -3664,7 +3665,8 @@ JSON 輸出格式範例：
             const values = Object.values(s.npcRegistry);
             const hasPersistentSignal = entry => {
                 if (!entry || typeof entry !== "object") return false;
-                const importance = String(entry.importance || entry.persistenceTier || "").toLowerCase();
+                const rawImportance = entry.importance ?? entry.persistenceTier ?? "";
+                const importance = ({'1':'normal','2':'important','3':'core'})[String(rawImportance)] || String(rawImportance).toLowerCase();
                 const rel = entry.relationship || {};
                 const favor = Math.abs(Number(rel.favorability) || 0);
                 const awe = Number(rel.awe) || 0;
@@ -3693,7 +3695,7 @@ JSON 輸出格式範例：
                 const isDead = prev.is_alive === false || prev.status === "DEAD";
                 s.npcRegistry[key] = {
                     ...prev, ...entry, id: key, name, persistent: true,
-                    importance: entry.importance || entry.persistenceTier || prev.importance || (entry.isImportant || entry.important ? "important" : "normal"),
+                    importance: ({'1':'normal','2':'important','3':'core'})[String(entry.importance ?? entry.persistenceTier ?? '')] || entry.importance || entry.persistenceTier || prev.importance || (entry.isImportant || entry.important ? "important" : "normal"),
                     createdDay: prev.createdDay ?? (Number(s.daysPassed)||0), lastInteractionDay: Number(s.daysPassed)||0,
                     title: cleanNameStrict(entry.title || prev.title || "未知身份"),
                     location: cleanNameStrict(entry.location || prev.location || s.location),
@@ -4400,7 +4402,7 @@ JSON 輸出格式範例：
         }
         confirmTradeOfferV629();if(!gameState.pendingTradeOffer)gameState.pendingSellIntent=null;
     }
-    // V6.70: concise, bounded authoritative context reduces repeated input tokens while retaining SSOT.
+    // V6.71: concise, bounded authoritative context reduces repeated input tokens while retaining SSOT.
     function getSystemPrompt() {
         ensureWorldMemory(gameState);
         const wm=gameState.worldMemory||{};
@@ -4427,7 +4429,7 @@ JSON 輸出格式範例：
     }
 
 
-    // V6.70: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
+    // V6.71: 單次有限結算格式修補，只接受 AI 修正操作類型；物資、價格、對象與其他狀態皆凍結。
     const REPAIRABLE_SETTLEMENT_ERRORS = [
         "經濟提案須明確指定操作類型", "經濟操作格式無效", "製作或交換不可偽裝為免費獎勵", "純獎勵不可扣材料或費用"
     ];
@@ -4493,7 +4495,7 @@ JSON 輸出格式範例：
         el.textContent=lines.join("\n");
     }
 
-    // V6.70: Narration and memories are not allowed to promote the player. Canonical realm/level is only changed by an authorized button action.
+    // V6.71: Narration and memories are not allowed to promote the player. Canonical realm/level is only changed by an authorized button action.
     function guardUnauthorizedBreakthrough(story,delta,s,attempted=false) {
         const out=structuredClone(delta||{});
         const forbidden=/(?:突破(?:成功|至|到|為|境界)|成功(?:突破|晉級|晉升|引氣入體)|(?:正式|終於|已經|已然|順利|一舉|就此|成功).{0,24}(?:踏入|跨入|晉入|突破|晉升|晉級|進入|邁入|成為).{0,18}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙|境界|修士)|(?:踏入|跨入|晉升|突破至|升到).{0,10}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙)|(?:不再是凡人|由凡入仙|已成修士|完成引氣入體|踏入修仙門檻))/;
@@ -4645,7 +4647,7 @@ JSON 輸出格式範例：
         return result;
     }
 
-    // V6.70: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
+    // V6.71: 單次有限的格式／場景／HP／經濟操作類型修補 + 使用者友善診斷。
     // V6.67: 提案自動結算僅限無成本純獎勵；購買、拍賣、交換、製作、損失仍需玩家確認。
     async function callGeminiApi(apiKey, sceneRepair = null, repairKind = 'scene') {
         if (__liveQaRuntime?.active) __liveQaRuntime.currentCalls++;
@@ -4668,6 +4670,7 @@ JSON 輸出格式範例：
         const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
         let res=null,lastNetworkError=null;
         const requestSize=JSON.stringify(bodyData).length;
+        // 429 must never be hammered: detect quota errors and let the long-run controller checkpoint/pause.
         for(let attempt=0;attempt<3;attempt++){
             const began=performance.now();
             let outcome='network';
@@ -4680,9 +4683,25 @@ JSON 輸出格式範例：
             if(__liveQaRuntime?.active)__liveQaRuntime.httpEvents.push(event);
             recordGeminiTiming(event);
             if(res?.ok)break;
-            if(res && ![429,500,502,503,504].includes(res.status))
+            if(res && res.status === 429){
+                let payload = null;
+                try { payload = await res.clone().json(); } catch (_) {}
+                const message=String(payload?.error?.message||'').slice(0,320);
+                const quotaDaily=/per day|requests per day|daily|rpd|quota exhausted/i.test(message);
+                const retryHeader=res.headers?.get('Retry-After');
+                const retrySeconds=retryHeader && /^\d+(?:\.\d+)?$/.test(retryHeader.trim()) ? Number(retryHeader) : null;
+                const retryDate=retryHeader && retrySeconds===null ? Date.parse(retryHeader) : NaN;
+                const recommendedMs=quotaDaily?86400000 : Math.min(86400000,Math.max(60000,
+                    retrySeconds!==null ? retrySeconds*1000 : Number.isFinite(retryDate) ? retryDate-Date.now() : 60000));
+                const error=new Error(`Gemini HTTP 429（${quotaDaily?'每日配額可能用盡':'頻率或額度限制'}）${message ? '：'+message : ''}`);
+                error.code='GEMINI_RATE_LIMIT';error.retryAfterMs=recommendedMs;error.quotaDaily=quotaDaily;
+                error.httpStatus=429;
+                if(__liveQaRuntime?.active)__liveQaRuntime.rateLimit={retryAfterMs:recommendedMs,quotaDaily,message};
+                throw error;
+            }
+            if(res && ![500,502,503,504].includes(res.status))
                 throw new Error(`天道反噬 (API 請求失敗，狀態碼：${res.status})`);
-            if(attempt<2)await new Promise(resolve=>setTimeout(resolve,650*(2**attempt)));
+            if(attempt<2)await new Promise(resolve=>setTimeout(resolve,2000*(2**attempt)));
         }
         if(!res)throw new Error(`網路連線失敗，重試後仍無法取得回應 (${String(lastNetworkError?.message||"網路中斷").slice(0,100)})`);
         if(!res.ok)throw new Error(`AI 服務暫時繁忙，重試後仍回傳狀態碼 ${res.status}。`);
@@ -4705,7 +4724,7 @@ JSON 輸出格式範例：
         let actionText = choiceText || inputEl.value.trim();
         if (!actionText) return;
 
-        // V6.70: narrative actions cannot grant breakthrough permission. Only the button supplies authorized metadata.
+        // V6.71: narrative actions cannot grant breakthrough permission. Only the button supplies authorized metadata.
         if (eventMeta?.isBreakthrough && eventMeta.fromBreakthroughButton !== true)
             {openGameModal("✦ 突破權限不足", "請使用『突破境界』按鈕。 ");return;}
         if (eventMeta?.isBreakthrough && (gameState.exp < gameState.maxExp || !gameState.hasChosenOrigin ||
@@ -5770,7 +5789,7 @@ JSON 輸出格式範例：
             const successful=rt.rounds.filter(r=>r.succeeded).length;
             const failures=rt.rounds.length-successful;
             const repairs=rt.rounds.filter(r=>r.apiCalls>1).length;
-            __liveQaReport={tool:'九州裂天錄 V6.70 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
+            __liveQaReport={tool:'九州裂天錄 V6.71 真實 Gemini 隔離測試',source:'real Gemini generateContent through game code',
                 fixtures:{startingStones:300,breakthroughExpReady:true,notes:'測試開始前注入 300 靈石；僅短期測試可用。突破前將修為設滿，須按按鈕並接受機率判定。長期測試不使用這些注入。'},
                 httpRequests:rt.httpEvents,skippedRounds:rt.skipped,
                 startedAt:rt.startedAt,finishedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
@@ -5798,7 +5817,7 @@ JSON 輸出格式範例：
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
 
-    // V6.70: 1,000+ round REAL Gemini endurance run. Stored checkpoints contain no API key.
+    // V6.71: 1,000+ round REAL Gemini endurance run. Stored checkpoints contain no API key.
     const LONG_QA_CHECKPOINT_KEY='blade_long_gemini_checkpoint_v670';
     const LONG_QA_BACKUP_KEY='blade_long_gemini_player_backup_v670';
     let __longQaRuntime=null;
@@ -5850,17 +5869,17 @@ JSON 輸出格式範例：
                 longQaText('上次長期測試意外中斷：已先恢復正式角色存檔。長期測試檢查點仍保留，請按「接續」。');
             }else{
                 const c=localStorage.getItem(LONG_QA_CHECKPOINT_KEY);
-                if(c){const d=JSON.parse(c);longQaText(`可接續的測試：${d.rounds?.length||0}/${d.target} 回合，最高境界 ${d.maxRealm||'凡人'}，目前境界 ${d.state?.realm||'凡人'}。`);}
+                if(c){const d=JSON.parse(c);longQaText(`可接續的測試：${d.completedTurns??(d.rounds||[]).filter(r=>r.success).length}/${d.target} 有效回合，最高境界 ${d.maxRealm||'凡人'}，目前境界 ${d.state?.realm||'凡人'}。`);}
             }
         }catch(e){longQaText('備份還原異常：'+String(e.message));}
     }
     function longQaProgress(data){
         const arr=data.rounds||[],last=arr[arr.length-1],p=data.state||{};
         const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
-        longQaText([`回合 ${arr.length}/${data.target} | 真實 Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
+        longQaText([`完成 ${data.completedTurns??arr.filter(r=>r.success).length}/${data.target} 個有效回合（已嘗試 ${arr.length} 次） | Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
             `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
             `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；目前 HP ${p.hp??'?'}，靈石 ${p.spiritStone??'?'}`,
-            `執行狀態：${data.status||'執行中'}，已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
+            `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
     }
     async function startLongGeminiQA(resume=false){
         if(__longQaRuntime?.active||__liveQaRuntime?.active||isTyping)return;
@@ -5870,7 +5889,7 @@ JSON 輸出格式範例：
         if(resume&&!oldText){openGameModal('沒有進度','尚無長期測試檢查點，請按「新測試」。');return;}
         if(!resume&&oldText&&!confirm('現有長期測試進度將被新的測試覆蓋。若需要舊報告請先匯出。確定重開？'))return;
         const requested=Number(document.getElementById('long-qa-turns').value||1000);
-        const delayMs=Number(document.getElementById('long-qa-delay').value||3000);
+        const delayMs=Number(document.getElementById('long-qa-delay').value||60000);
         if(!confirm(`即將${resume?'接續':'開始'}真正 Gemini 長期測試，至少 1,000 回合；每回合使用付費／限額 API，可能持續數小時。角色可能死亡，突破並不保證成功。會備份並還原正式遊戲。是否執行？`))return;
         let snapshot;
         try {
@@ -5882,19 +5901,28 @@ JSON 輸出格式範例：
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V6.70 真實Gemini千回合成長測試',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V6.71 真實Gemini千回合成長測試',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
                     target:requested,delayMs,rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
-                    apiCalls:0,httpAttempts:0,maxLevel:0,maxRealm:'凡人',status:'running'};
+                    apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
-            data.target=Math.max(data.target||1000,requested);data.delayMs=delayMs;data.status='running';
+            data.target=Math.max(data.target||1000,requested);
+            data.completedTurns ??= (data.rounds||[]).filter(r=>r.success).length;
+            data.quotaPauses ??= 0;
+            if(resume && data.nextAllowedAt && Date.now()<data.nextAllowedAt){
+                const until=new Date(data.nextAllowedAt).toLocaleString();
+                openGameModal('Gemini 配額尚未恢復',`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
+                liveQaRestore(snapshot);longQaRestoreBackup();return;
+            }
+            data.delayMs=delayMs;data.status='running';
             renderUI();renderStoryLogs();
             const rt={active:true,stop:false,responses:[],httpEvents:[],currentCalls:0};
             __longQaRuntime=rt;
             __liveQaRuntime=rt;  // Reuse existing Gemini HTTP instrumentation, but discard raw responses immediately after each turn.
             longQaControl(true);
             let streak=0;
-            for(let n=data.rounds.length;n<data.target;n++){
+            // n is the attempt number; only successful settled actions advance completedTurns.
+            for(let n=data.rounds.length;data.completedTurns<data.target;n++){
                 if(rt.stop){data.status='paused by user';break;}
                 if(gameState.isDead){data.status='character died';break;}
                 const plan=longQaRoundPlan(gameState,n);
@@ -5903,6 +5931,7 @@ JSON 輸出格式範例：
                 const failedBefore=Number(gameState.actionTelemetry?.failed||0);
                 const callsBefore=rt.currentCalls,httpBefore=rt.httpEvents.length;
                 const began=Date.now();
+                let quotaLimit=null;
                 try {
                     if(plan.type==='breakthrough') await attemptBreakthrough();
                     else if(plan.type==='cultivate') await quickHeal(30,'long');
@@ -5917,7 +5946,11 @@ JSON 輸出格式範例：
                             try {cancelEconomyProposal(p.id);}catch(_e){gameState.pendingEconomyProposal=null;}
                         }
                     }
-                }catch(e){/* Model request or settlement error is recorded, no fabricated game result. */}
+                }catch(e){
+                    if(e?.code==='GEMINI_RATE_LIMIT')quotaLimit={retryAfterMs:e.retryAfterMs||60000,quotaDaily:Boolean(e.quotaDaily),message:String(e.message).slice(0,360)};
+                    // No fabricated game result: settlement and telemetry still decide success.
+                }
+                if(rt.rateLimit)quotaLimit={...rt.rateLimit};
                 const after=longQaBefore(gameState);
                 const success=Number(gameState.actionTelemetry?.completed||0)>completedBefore;
                 const failure=!success?(gameState.actionTelemetry?.recent||[]).slice(-1)[0]?.reason||'操作未完成':'';
@@ -5925,10 +5958,17 @@ JSON 輸出格式範例：
                 const record={turn:n+1,type:plan.type,action:plan.action,success,elapsedMs:Date.now()-began,
                     apiCalls:rt.currentCalls-callsBefore,httpAttempts:deltas.length,apiMs:deltas.reduce((a,b)=>a+b.durationMs,0),
                     httpCodes:deltas.map(e=>e.status),before,after,levelDelta:after.level-before.level,
-                    failure:liveQaSanitize(failure),breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
+                    failure:liveQaSanitize(quotaLimit?.message||failure),rateLimited:Boolean(quotaLimit),breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
                     breakthroughSuccess:plan.type==='breakthrough'&&success?Boolean(after.level>before.level):null,date:new Date().toISOString()};
                 data.rounds.push(record);data.apiCalls+=record.apiCalls;data.httpAttempts+=record.httpAttempts;
-                if(!success){data.failures++;streak++;}else streak=0;
+                if(!success){data.failures++;streak++;}else {streak=0;data.completedTurns++;}
+                if(quotaLimit){
+                    data.quotaPauses++;
+                    data.nextAllowedAt=Date.now()+Math.max(60000,Number(quotaLimit.retryAfterMs)||60000);
+                    data.lastQuotaError=liveQaSanitize(quotaLimit.message||'HTTP 429');
+                    data.status=quotaLimit.quotaDaily?'paused: possible daily quota exhausted':'paused: HTTP 429 rate limit';
+                    rt.stop=true;
+                }else{data.nextAllowedAt=null;rt.rateLimit=null;}
                 if(plan.type==='breakthrough'&&success){
                     if(after.level>before.level){data.breakthroughs.success++;data.milestones.push({turn:n+1,realm:after.realm,level:after.level,days:after.days,rate:Number(gameState.lastBreakthroughAttempt?.rate)||null});}
                     else data.breakthroughs.failed++;
@@ -5943,9 +5983,9 @@ JSON 輸出格式範例：
                 if((n+1)%10===0||n<2||!success||plan.type==='breakthrough')longQaProgress(data);
                 if(streak>=5){data.status='paused after 5 consecutive failures';break;}
                 if(rt.stop){data.status=data.status==='running'?'paused by user':data.status;break;}
-                if(n+1<data.target&&delayMs>0)await new Promise(resolve=>setTimeout(resolve,delayMs));
+                if(data.completedTurns<data.target&&delayMs>0)await new Promise(resolve=>setTimeout(resolve,delayMs));
             }
-            if(data.rounds.length>=data.target)data.status='target reached';
+            if(data.completedTurns>=data.target)data.status='target reached';
             if(gameState.isDead)data.status='character died';
         } catch(e){if(data){data.status='unexpected error';data.unexpectedError=liveQaSanitize(String(e?.message||e));}}
         finally {
