@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 - 第二人生、世界動態委託與 NPC 長期故事 V6.82</title>
+    <title>九州裂天錄 V6.86｜財產所有權、司法、正式履約與團隊戰鬥</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -234,6 +234,19 @@
             <div class="stat-item"><span class="stat-label">靈石貨幣 (折算下品)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0 顆</span></div>
             <div class="stat-item"><span class="stat-label">宗門歸屬與貢獻</span><span class="stat-value" style="color:var(--hl-gold)" id="ui-sect-info">散修 (無門派)</span></div>
 
+            <section id="uepce-panel" style="border:1px solid #bba15b;border-radius:8px;padding:12px;margin:12px 0;">
+              <div style="font-weight:bold;color:#ffd994;margin-bottom:8px;">V6.86｜統一資產所有權、履約、司法與交易核心</div>
+              <div style="font-size:12px;opacity:.8;margin-bottom:8px;">玩家指定行為與實際已登錄的 NPC；正式交易先確認，犯罪僅確認嘗試，並由核心裁定。無 NPC 財產則不憑空產生贓款。</div>
+              <select id="ue-kind" style="max-width:100%;margin:3px;"><option value="service_payment">支付服務／登記費</option><option value="currency_transfer">靈石贈與</option><option value="commission">委託費</option><option value="toll">通行／傳送費</option><option value="deposit">押金／訂金</option><option value="refund">退還押金</option><option value="loan">提供借款</option><option value="repayment">收回借款</option><option value="borrow">向 NPC 借款</option><option value="payback">償還所借款項</option><option value="compensation">賠償</option><option value="pickpocket">扒手</option><option value="theft">偷盜</option><option value="robbery">搶劫</option><option value="fraud">欺騙取財</option><option value="extortion">勒索</option><option value="detain">企圖拘禁 NPC</option><option value="rescue">解救被拘禁 NPC</option><option value="release">釋放被拘禁 NPC</option><option value="recover_asset">追還遭竊物品</option></select>
+              <input id="ue-asset" type="text" style="width:148px" placeholder="特定物品名稱（可空）">
+              <input id="ue-amount" type="number" min="1" max="1000000000" value="10" style="width:100px" placeholder="靈石數量">
+              <input id="ue-target" type="text" style="width:130px" placeholder="NPC ID／姓名（可空）">
+              <input id="ue-purpose" type="text" style="width:180px" placeholder="用途／訂單識別，例如青蓮丹谷考核" value="青蓮丹谷考核登記">
+              <button onclick="ueProposeFromPanel()">建立正式提案</button>
+              <div id="ue-pending" style="padding:6px 0;line-height:1.6;"></div>
+              <div id="ue-status" style="font-size:12px;opacity:.8;"></div>
+              <div style="font-size:11px;opacity:.75;">履約：請在已付款憑證下方選擇「執行／參加考核」；正式資格與成績由核心裁定。</div>
+            </section>
             <div id="ui-economy-receipt" style="font-size:0.78rem;color:#8fdde5;white-space:pre-line;margin:8px 0;"></div>
             <h2 style="margin-top: 10px;">✦ 六維屬性 (基礎 + 外力/狀態加成)</h2>
             <div class="radar-container"><canvas id="radarCanvas" width="160" height="160"></canvas></div>
@@ -625,7 +638,9 @@
             }
             const permissions = getItemPermissions(item);
             const key = `${item.itemId}|${item.definitionId || ''}|${isEquipment ? `E:${gradeIndex}:${item.sealLevel || 0}` : `N:${item.type}:${meta.category}:${item.tier || meta.rarity || ''}:${item.identified === false ? 'U' : 'I'}`}|${item.questLocked ? 'L' : ''}|${permissions.sell ? 'S' : 'NS'}|${permissions.drop ? 'D' : 'ND'}|${permissions.disassemble ? 'DS' : 'NDS'}|${permissions.use ? 'U' : 'NU'}|${permissions.comprehend ? 'C' : 'NC'}`;
-            const existing = result.find(i => i.itemId === item.itemId && cleanNameStrict(i.name) === name && i.__stackKey === key);
+            const instanceTag=String(item.ueUnitId||item.ueLotId||'');
+            const existing = result.find(i => i.itemId === item.itemId && cleanNameStrict(i.name) === name && i.__stackKey === key &&
+                String(i.ueUnitId||i.ueLotId||'')===instanceTag);
             if (existing) {
                 existing.quantity = Math.min(9999, existing.quantity + qty);
                 existing.isQuestItem = existing.isQuestItem || isQuestItem;
@@ -656,7 +671,10 @@
         const incomingIdentified = !(isObj && (itemObjOrName.identified === false || ['未鑑定','蒙塵'].includes(String(itemObjOrName.quality || itemObjOrName.tier || itemObjOrName.rarity || ''))));
         const incomingQuest = Boolean(canonicalDef?.isQuestItem || (isObj && (itemObjOrName.isQuestItem || itemObjOrName.questLocked)) || meta.isQuestItem);
         const incomingItemId = stableItemIdentity(itemObjOrName, canonicalDef, name);
-        const existing = inv.find(i => cleanNameStrict(i.name) === name && (i.itemId || `legacy:${cleanNameStrict(i.name)}`) === incomingItemId && (isEquipment
+        const instanceTag=String(isObj&&(itemObjOrName.ueUnitId||itemObjOrName.ueLotId)||'');
+        const existing = inv.find(i => cleanNameStrict(i.name) === name &&
+            String(i.ueUnitId||i.ueLotId||'')===instanceTag &&
+            (i.itemId || `legacy:${cleanNameStrict(i.name)}`) === incomingItemId && (isEquipment
             ? getEquipmentGradeIndex(i) === gradeIndex && Number(i.sealLevel || 0) === Number((isObj && itemObjOrName.sealLevel) || 0) && getItemPermissions(i).disassemble === incomingPermissions.disassemble
             : (i.tier || i.quality || i.rarity || getItemMeta(i).rarity) === incomingTier && getItemMeta(i).type === meta.type && (i.identified !== false) === incomingIdentified && getItemPermissions(i).sell === incomingPermissions.sell && getItemPermissions(i).drop === incomingPermissions.drop && getItemPermissions(i).use === incomingPermissions.use && getItemPermissions(i).comprehend === incomingPermissions.comprehend && Boolean(i.isQuestItem || i.questLocked || getItemMeta(i).isQuestItem) === incomingQuest));
         if (existing) {
@@ -895,6 +913,25 @@
         }
         const receipt={id,parentId:request.parentId||id,sourceKey:request.sourceKey||id,kind,reason,day:Number(s.daysPassed)||0,before,credit,debit,gained:credit-debit,after,removed,added,status:"settled"};
         const ledger={...structuredClone(old),receipts:[...structuredClone(old.receipts),receipt]};
+        // V6.85: bridge all old shop/auction/craft/reward/gift settlements to the common provenance ledger.
+        // Fungible lots use event-level provenance, never claim an unverified unique physical identity.
+        const property=ledger.uepce&&typeof ledger.uepce==='object'?ledger.uepce:{};
+        property.assetLedger=Array.isArray(property.assetLedger)?property.assetLedger:[];
+        const originKind=kind==='trade'?(trade.type==='BUY'?'purchase':'sale'):kind;
+        for(const [direction,items] of [['acquired',added],['disposed',removed]]){
+            for(let k=0;k<items.length;k++){
+                const lot=items[k],traceId=`LOT:${id}:${direction}:${k}`;
+                if(property.assetLedger.some(x=>x.id===traceId))throw new Error('財產來源事件重複，結算未提交');
+                property.assetLedger.push({id:traceId,eventId:id,name:lot.name,quantity:lot.quantity,
+                    ownerId:direction==='acquired'?'PLAYER':null,holderId:direction==='acquired'?'PLAYER':null,
+                    priorOwnerId:direction==='acquired'?null:'PLAYER',status:direction,sourceKind:originKind,
+                    day:receipt.day,isFungibleLot:true});
+            }
+        }
+        ledger.uepce=property;
+        const reconciled={...s,inventory,economy:ledger};
+        ueSyncAssetRegistry(reconciled,id); // staged with inventory and ledger; throws before live commit.
+        ueApplyOldDisposition(reconciled,id,kind,trade?.type,request.targetId||null);
         // No validation or fallible application code after this synchronous commit boundary.
         s.spiritStone=after;
         s.inventory=inventory;s.economy=ledger;s.lastEconomyReceipt=receipt;s.lastStoneReceipt=receipt;
@@ -903,7 +940,9 @@
         return receipt;
     }
     function formatEconomyReceipt(r) {
-        const items=(label,list)=>list.length?`；${label}：${list.map(i=>`[${i.tier || i.rarity || i.quality || "未標示品階"}]${i.name}×${i.quantity}`).join("、")}`:"";
+        const items=(label,list=[])=>list.length?`；${label}：${list.map(i=>`[${i.tier || i.rarity || i.quality || "未標示品階"}]${i.name}×${i.quantity}`).join("、")}`:"";
+        if(!Number.isFinite(Number(r.before)) || r.before==null)
+            return `【核心結算｜${r.kind||'財產行動'}】${r.reason||'已登錄結果'}；${r.assetName?'目標物品 '+r.assetName+'；':''}${r.success?'判定成功':'未取得財產'}。`;
         return `【核心結算｜${r.reason}】收入 ${r.credit}、支出 ${r.debit} 顆下品靈石；餘額 ${r.before} → ${r.after}${items("實際扣除",r.removed)}${items("實際新增",r.added)}。`;
     }
     function publishEconomyReceipt(r) {
@@ -982,7 +1021,11 @@
         executeTradeSettlement(tradeOffer) {
             if(isTyping) return {success:false,reason:"回合處理中，請稍後確認交易。"};
             try {
-                const receipt=settleEconomy(gameState,{eventId:`TRADE:${tradeOffer?.tx_nonce || ""}`,kind:"trade",offer:tradeOffer},ECONOMY_AUTHORITY);
+                const staging=structuredClone(gameState);
+                const receipt=settleEconomy(staging,{eventId:`TRADE:${tradeOffer?.tx_nonce || ""}`,kind:"trade",offer:tradeOffer},ECONOMY_AUTHORITY);
+                const audit=ueAuditProperty(staging);
+                if(audit.issues.length)throw new Error('物品所有權稽核未通過：'+audit.issues.join(','));
+                Object.assign(gameState,staging);
                 return {success:true,receipt,message:formatEconomyReceipt(receipt)};
             } catch(error){return {success:false,reason:error.message};}
         },
@@ -2409,10 +2452,12 @@
             storyLogData = []; conversationHistory = [];
             let dropTarget = gameState.inventory[0];
             interactInventoryItem(dropTarget, 'drop');
+            document.querySelector('#modal-actions-area .modal-btn.primary')?.click();
             check('E2E｜實際丟棄一件只扣堆疊數量', gameState.inventory.length===1 && gameState.inventory[0].quantity===1,
                 `背包=${JSON.stringify(gameState.inventory.map(i=>({name:i.name,quantity:i.quantity})))}`);
             dropTarget = gameState.inventory[0];
             interactInventoryItem(dropTarget, 'drop');
+            document.querySelector('#modal-actions-area .modal-btn.primary')?.click();
             check('E2E｜實際丟棄最後一件會移除物品', !gameState.inventory.some(i=>i.itemId==='material_demon_core'));
 
             // B. 真正執行裝備、替換與卸裝，檢查舊裝備回包且 metadata 不丟失。
@@ -3967,7 +4012,7 @@ ${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subjec
 
 ?? AI 必須嚴格遵守的【八大鐵律】：
 1. [結算與因果]：每回合必須回傳 expDelta、daysPassedDelta、inventoryDelta，但允許 expDelta=0、daysPassedDelta=0、inventoryDelta=[]。不得為了讓玩家開心而保證成功、送出獎勵或憑空增加物品；高風險行動可成功、部分成功、失敗，必須符合能力、情報、準備與代價。失敗也要推進合理後果，不可無故懲罰。
-2. [物品與交易硬鎖]：背包快照中有物品才可使用！一般買賣若處於詢價／議價階段，僅回傳完整 tradeOffer 等待玩家點擊報價確認；若是玩家已明確下單且有成交價格的購買、拍賣，改用 economyOperation(kind:purchase/auction, fee:成交總價) 搭配 inventoryDelta 提出待確認結算，不得同時回傳 tradeOffer。不得直接修改靈石。若玩家要求交付材料給煉器師/煉丹師打造、以物易物、交任務物品或任何背包物品移轉，必須同時回傳 inventoryRemoveDelta（例如 [{"name":"粗鐵","quantity":3}]）與 inventoryDelta（實際交付的成品/換得物品）；核心會先驗證全部材料及數量，材料不足或格式錯誤時整筆物品移轉都不會執行。不得只在 story 宣稱已交付、打造或交換而漏掉 inventoryRemoveDelta，也不得在未實際扣除材料時發放成品。只有「詢價／議價」回合不得同時移轉物資；購買／拍賣結算提案則必須有 inventoryDelta 的成交物品與 economyOperation 的正數費用，並等待玩家點選確認。下品靈石是貨幣，不得作為買賣的商品物品。tradeOffer 必須使用以下欄位：{"type":"SELL" 或 "BUY", "item_name":"背包中物品的完整名稱", "quantity":1, "total_gold":10, "item_type":"material", "tier":"下品"}。total_gold 必須是整筆交易的總價，必須是非負數字；不得省略、不得用 undefined/null/文字代替。若無法確定價格，tradeOffer 回傳 null，不提出付費物品轉移；先向玩家詢問，不可敘述交易已完成。特別注意：開局身世初始裝備已由系統前端發放，首輪 JSON 嚴禁重複回傳 inventoryDelta 避免古戒重複發放！
+2. [考核費／服務費] 若玩家明確支付宗門審查費、入門考核費或登記費，這是服務支出而非商品買賣：使用 economyOperation={"kind":"service","fee":玩家明確同意的靈石數量}，不得 tradeOffer、不得將靈石當成 inventoryDelta 商品、不得在未按確認時宣稱已完成支付或通過考核。不得擅自提高收費或憑空創造收費。\n2A. [物品與交易硬鎖]：背包快照中有物品才可使用！一般買賣若處於詢價／議價階段，僅回傳完整 tradeOffer 等待玩家點擊報價確認；若是玩家已明確下單且有成交價格的購買、拍賣，改用 economyOperation(kind:purchase/auction, fee:成交總價) 搭配 inventoryDelta 提出待確認結算，不得同時回傳 tradeOffer。不得直接修改靈石。若玩家要求交付材料給煉器師/煉丹師打造、以物易物、交任務物品或任何背包物品移轉，必須同時回傳 inventoryRemoveDelta（例如 [{"name":"粗鐵","quantity":3}]）與 inventoryDelta（實際交付的成品/換得物品）；核心會先驗證全部材料及數量，材料不足或格式錯誤時整筆物品移轉都不會執行。不得只在 story 宣稱已交付、打造或交換而漏掉 inventoryRemoveDelta，也不得在未實際扣除材料時發放成品。只有「詢價／議價」回合不得同時移轉物資；購買／拍賣結算提案則必須有 inventoryDelta 的成交物品與 economyOperation 的正數費用，並等待玩家點選確認。下品靈石是貨幣，不得作為買賣的商品物品。tradeOffer 必須使用以下欄位：{"type":"SELL" 或 "BUY", "item_name":"背包中物品的完整名稱", "quantity":1, "total_gold":10, "item_type":"material", "tier":"下品"}。total_gold 必須是整筆交易的總價，必須是非負數字；不得省略、不得用 undefined/null/文字代替。若無法確定價格，tradeOffer 回傳 null，不提出付費物品轉移；先向玩家詢問，不可敘述交易已完成。特別注意：開局身世初始裝備已由系統前端發放，首輪 JSON 嚴禁重複回傳 inventoryDelta 避免古戒重複發放！
 3. [世界紀事標準]：worldEvents 僅限記錄「大境界突破、宗門覆滅、強敵身死、獲得天階/仙品古寶」等影響九州格局的大事，日常對話小事嚴禁寫入，必須回傳空陣列 []！
 4. [NPC 人格與死人鎖]：嚴禁讓 status 為 "DEAD" 的已死 NPC 復活或說話！外在言語由敬畏/利益決定，內心由好感決定。
 5. [NPC 去重與分級登記]：同一場合出現的角色必須沿用 SSOT 快照中的 NPC 實體，嚴禁捏造新姓氏替代已有 NPC。重要規則：遇見、看見、聽見姓名、一般對話一次、普通買賣一次、路人或普通敵人，均不得因此加入永久 npcRegistry；這些人物只寫在 story 或當前場景。只有對後續有持續影響的人物才可提交 npcDelta.created/upsert，例如建立師徒/道侶/仇敵/恩情等持續關係、加入隊伍、承接或發布任務、成為重要線索持有人、重要劇情角色或多次互動後成為固定聯絡人。新增人物必須明確回傳 persistent:true 與 importance（normal/important/core）或相應的 questId、relationshipType、isCompanion 等可驗證的持續關聯欄位；不得只因有全名、title、goals 或 knownFacts 就登記。npcDelta.updated 只能更新 SSOT 中已存在的人物，不得用 updated 偷渡新增。已知人物必須優先沿用既有 id；已死人物不得被 upsert 復活。
@@ -4180,6 +4225,7 @@ JSON 輸出格式範例：
         // NPC依世界時間自主採取可追溯的日常行動；重大戰果仍需事件條件或明確結算。
         resolveFactionInteractions(s, endDay);
         advanceNpcAutonomyOneDay(s, startDay, endDay);
+        ueWorldAutonomyTick(s,startDay,endDay);
         resolveFactionInteractions(s, endDay);
 
         // 把舊版未結事件同步成結構化事件；只遷移已有資料，不憑空創造劇情事實。
@@ -4678,7 +4724,7 @@ JSON 輸出格式範例：
         const valid = raw && typeof raw === "object" && !Array.isArray(raw);
         const normalized = normalizeGameStateLegacy(valid ? structuredClone(raw) : raw);
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
-        s.version = "6.77";
+        s.version = "6.86";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -4701,6 +4747,7 @@ JSON 輸出格式範例：
         s.maxHp = getMaxHp(s);
         // The legacy clamp used the realm HP instead of equipped maximum HP.
         if (valid && !s.isDead && Number.isFinite(Number(raw.hp))) s.hp = Math.max(0, Math.min(s.maxHp, Number(raw.hp)));
+        ueSyncAssetRegistry(s); // migrate legacy holdings as unknown provenance, without inventing historic owners.
         ensureWorldMemory(s);
         // V6.82: 既有存檔不憑空創造過去的真相；只有新開局成功時鎖定。
         if(s.destiny) {
@@ -5608,6 +5655,737 @@ JSON 輸出格式範例：
         for(const k of ["receipts","notifiedIds","appliedSources","claimedSources"])if(!Array.isArray(s.economy[k]))s.economy[k]=[];
         return s.economy;
     }
+
+    // ===== V6.83 UEPCE: player-authorized property, finance and contested actions =====
+    // The engine never accepts Gemini-authored ledger effects. All changes commit on a detached state.
+    const UEPCE_KINDS = Object.freeze({
+        service_payment:'支付服務／登記費', currency_transfer:'靈石贈與／轉帳', commission:'委託費',
+        toll:'通行／傳送費', deposit:'支付押金／訂金', refund:'退還押金', loan:'提供借款',
+        repayment:'收回借款', borrow:'向 NPC 借款', payback:'償還所借款項', compensation:'支付賠償', pickpocket:'扒手', theft:'偷盜',
+        robbery:'搶劫', fraud:'欺騙取財', extortion:'勒索', detain:'拘禁嘗試', rescue:'解救人物', release:'釋放人物', recover_asset:'追回失竊物品'
+    });
+    const UEPCE_ILLEGAL = new Set(['pickpocket','theft','robbery','fraud','extortion','detain']);
+    const UEPCE_PAY = new Set(['service_payment','currency_transfer','commission','toll','deposit','loan','payback','compensation']);
+    function ueEnsure(s){
+        ensureEconomyState(s);
+        const e=s.economy;
+        if(!e.uepce||typeof e.uepce!=='object')e.uepce={nextId:1,pending:null,events:[],claims:[],evidence:[],assetTitles:{}};
+        const u=e.uepce;
+        if(!Number.isSafeInteger(u.nextId)||u.nextId<1)u.nextId=1;
+        for(const k of ['events','claims','evidence','custody','entitlements','assetLedger','battleClaims','judicialCases','serviceHistory','propertyChanges'])if(!Array.isArray(u[k]))u[k]=[];
+        if(!u.assetTitles||typeof u.assetTitles!=='object')u.assetTitles={};
+        if(!u.assetRegistry||typeof u.assetRegistry!=='object')u.assetRegistry={};
+        if(!Array.isArray(u.visitedLocations))u.visitedLocations=[];
+        if(!Number.isSafeInteger(u.nextAsset)||u.nextAsset<1)u.nextAsset=1;
+        if(!Number.isSafeInteger(u.treasury)||u.treasury<0)u.treasury=0;
+        return u;
+    }
+    function ueWallet(n){
+        const value=n?.ueWallet??n?.spiritStone??0;
+        return economyInteger(value,'NPC可支配靈石',0,1e12);
+    }
+    function ueHash(v){let h=2166136261>>>0;for(const c of String(v)){h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;}return h/4294967296;}
+    function ueValidateCandidate(s,x){
+        const kind=String(x?.kind||'');if(!Object.hasOwn(UEPCE_KINDS,kind))throw new Error('未登記的財產行為');
+        const amount=economyInteger(x?.amount,'數量',1,1e9);
+        const assetName=String(x?.assetName||'').trim().slice(0,90);
+        const targetId=String(x?.targetId||'').trim();
+        const purpose=String(x?.purpose||'').trim().slice(0,120);
+        if(!purpose)throw new Error('請指定服務、物品或事件用途');
+        if((UEPCE_ILLEGAL.has(kind)||['rescue','release','recover_asset'].includes(kind)) && !targetId)throw new Error('非法取得必須指定具體目標');
+        const npc=targetId?findNpc(s,targetId):null;
+        if(targetId&&(!npc||npc.is_alive===false||npc.status==='DEAD'))throw new Error('NPC目標不存在或已死亡');
+        if(npc && String(npc.location||'')!==String(s.location||''))throw new Error('NPC不在同一地點，不能進行資產交割或侵害');
+        if((UEPCE_ILLEGAL.has(kind)||['rescue','release','recover_asset'].includes(kind))&&(!npc||!npc.id))throw new Error('未登錄的NPC不能作為非法取得目標');
+        if((UEPCE_PAY.has(kind)||kind==='refund')&&s.pendingEconomyProposal)throw new Error('請先處理原有交易提案');
+        if((UEPCE_PAY.has(kind)||kind==='refund')&&s.pendingTradeOffer)throw new Error('請先處理現有商店報價');
+        if(UEPCE_ILLEGAL.has(kind)&&(getEffectiveMode(s)==='BATTLE'||v682State(s).battle))throw new Error('正式戰鬥期間須先完成戰鬥核心');
+        if(UEPCE_PAY.has(kind)&&economyInteger(s.spiritStone,'玩家靈石',0,1e12)<amount)throw new Error('靈石不足，未產生交易提案');
+        if(['borrow','payback','loan','repayment'].includes(kind)&&!npc)throw new Error('借貸必須指定已在場的具名 NPC');
+        if(assetName && !['theft','pickpocket','robbery','recover_asset'].includes(kind))throw new Error('本行為不接受指定物品');
+        if(['rescue','release','detain'].includes(kind)&&assetName)throw new Error('人物不是可交易物品');
+        return {kind,amount,targetId:targetId||null,purpose,assetName};
+    }
+    function ueDraft(s,x){
+        const u=ueEnsure(s);if(u.pending)throw new Error('請先確認或取消上一筆財產行動');
+        const v=ueValidateCandidate(s,x);
+        if(x.quoteId){if(!u.dialogueQuote||u.dialogueQuote.id!==x.quoteId||u.dialogueQuote.amount!==v.amount||u.dialogueQuote.location!==String(s.location||''))throw new Error('前次服務報價已過期');}
+        const id=`UE:${u.nextId++}`;
+        // A pending attempt is a proposal, not a completed asset transfer.
+        u.pending={...v,id,day:Number(s.daysPassed)||0,location:String(s.location||''),balance:s.spiritStone,status:'pending',
+            targetWallet:v.targetId?ueWallet(findNpc(s,v.targetId)):null,approved:false,
+            targetAssetSnapshot:v.targetId?JSON.stringify(findNpc(s,v.targetId)?.inventory||[]):null};
+        return u.pending;
+    }
+    function ueExecute(s,id){
+        const u=ueEnsure(s),p=u.pending;
+        if(!p||p.id!==id)throw new Error('提案不存在或已失效');
+        if(u.events.some(e=>e.id===id)||s.economy.receipts.some(r=>r.id===id))throw new Error('已結算交易，禁止再次提交');
+        if(p.location!==String(s.location||'')||p.balance!==s.spiritStone)throw new Error('提案已過期，未移轉資產');
+        const v=ueValidateCandidate(s,p),n=v.targetId?findNpc(s,v.targetId):null;
+        if(n&&p.targetWallet!==ueWallet(n))throw new Error('對方財產已變更，請重新提案');
+        if(n&&p.assetName&&p.targetAssetSnapshot!==JSON.stringify(n.inventory||[]))throw new Error('目標物品狀態已改變');
+        if(['detain','rescue','release','recover_asset'].includes(v.kind)||v.assetName||v.kind==='robbery')return ueExecuteExtended(s,id,v,n);
+        if(v.kind==='refund'){
+            const origin=u.claims.find(c=>c.kind==='deposit'&&c.targetId===v.targetId&&c.purpose===v.purpose&&c.open===true);
+            if(!origin||origin.amount<v.amount)throw new Error('找不到足額且尚未退還的押金');
+            if(n?ueWallet(n)<v.amount:u.treasury<v.amount)throw new Error('對方或世界服務金庫不足以退還押金');
+        }
+        if(v.kind==='repayment'||v.kind==='payback'){
+            const origin=u.claims.find(c=>c.kind===(v.kind==='payback'?'borrow':'loan')&&c.targetId===v.targetId&&c.purpose===v.purpose&&c.open===true);
+            if(!origin||origin.amount<v.amount)throw new Error('無相應未清償借款紀錄');
+        }
+        if((v.kind==='repayment'||v.kind==='borrow')&&ueWallet(n)<v.amount)throw new Error('NPC可支用資金不足');
+        // Cores alone determine contested-action outcome, not Gemini prose.
+        let success=true, reason=UEPCE_KINDS[v.kind],credit=0,debit=0,alert=0;
+        if(UEPCE_ILLEGAL.has(v.kind)){
+            const actor=Number(s.stats?.agi)||10, wis=Number(s.stats?.wis)||10;
+            const defender=Number(n?.stats?.wis)||12, guard=Number(n?.level)||0;
+            const offense=v.kind==='fraud'?(wis*1.4+actor*.2):(actor*1.25+Number(s.level||0)*2);
+            const defense=defender*1.3+guard*2.5+(Number(n?.ueAlert)||0)*6;
+            const chance=Math.max(.03,Math.min(.85,.45+(offense-defense)/110));
+            success=ueHash(id+':'+v.kind+':'+v.targetId+':'+String(s.daysPassed))<chance;
+            alert= v.kind==='robbery'||v.kind==='extortion'?3:success?1:2;
+            if(success && ueWallet(n)<v.amount){success=false;reason+='（目標財產不足）';}
+            if(success)credit=v.amount;
+        }else if(['refund','repayment','borrow'].includes(v.kind)){credit=v.amount;}else{debit=v.amount;}
+        const before=economyInteger(s.spiritStone,'玩家靈石',0,1e12);
+        const after=before+credit-debit;
+        if(!Number.isSafeInteger(after)||after<0||after>1e12)throw new Error('結算後餘額超限');
+        if(n){
+            const newWallet=ueWallet(n)+debit-credit;
+            if(!Number.isSafeInteger(newWallet)||newWallet<0||newWallet>1e12)throw new Error('NPC結算額超限');
+            n.ueWallet=newWallet;
+            if(alert)n.ueAlert=Math.min(100,(Number(n.ueAlert)||0)+alert);
+        }
+        if(!n&&(debit||credit)){
+            const newTreasury=u.treasury+debit-credit;
+            if(!Number.isSafeInteger(newTreasury)||newTreasury>1e12)throw new Error('世界金庫超過上限');
+            u.treasury=newTreasury;
+        }
+        s.spiritStone=after;
+        const receipt={id,sourceKey:id,reason,kind:v.kind,before,after,debit,credit,removed:[],added:[],day:Number(s.daysPassed)||0,
+            targetId:v.targetId,purpose:v.purpose,success,contested:UEPCE_ILLEGAL.has(v.kind)};
+        s.economy.receipts.push(receipt);
+        if(['deposit','loan','borrow'].includes(v.kind))u.claims.push({id,kind:v.kind,targetId:v.targetId,purpose:v.purpose,amount:v.amount,open:true});
+        if(['refund','repayment','payback'].includes(v.kind)){
+            const origin=u.claims.find(c=>c.kind===(v.kind==='refund'?'deposit':v.kind==='payback'?'borrow':'loan')&&c.targetId===v.targetId&&c.purpose===v.purpose&&c.open);
+            origin.amount-=v.amount;if(origin.amount===0)origin.open=false;
+        }
+        if(UEPCE_ILLEGAL.has(v.kind)){
+            ueOpenJudicialCase(s,id,v.kind,v.targetId,'PLAYER');
+            u.evidence.push({id,targetId:v.targetId,kind:v.kind,day:Number(s.daysPassed)||0,
+            success,knownToTarget:!success||v.kind==='robbery'||v.kind==='extortion',alert});}
+        u.events.push({id,kind:v.kind,targetId:v.targetId,amount:v.amount,success,day:Number(s.daysPassed)||0});
+        if(success)ueIssueEntitlement(s,receipt);
+        u.pending=null;
+        if(u.dialogueQuote&&v.kind==='service_payment'&&v.purpose===u.dialogueQuote.purpose)u.dialogueQuote.status='paid';
+        if(u.events.length>3000)u.events.splice(0,u.events.length-3000);
+        if(u.evidence.length>1000)u.evidence.splice(0,u.evidence.length-1000);
+        return receipt;
+    }
+    // V6.84: property titles, formal battle claims, custody and entitlements. Never model people as inventory.
+    function ueRecordedAsset(s,npc,assetName){
+        const list=Array.isArray(npc?.inventory)?npc.inventory:[];
+        const index=list.findIndex(it=>String(it?.name||'').trim()===assetName && Number(it.quantity||1)>=1);
+        if(index<0)throw new Error('目標沒有正式登錄此物品；不能憑 AI 敘事憑空偷取');
+        return {index,item:list[index]};
+    }
+    function ueVerifiedLoot(s,n,itemName,receiptId){
+        const u=ueEnsure(s);
+        ueSyncAssetRegistry(s); // Sync before transfer: old equipment/stack provenance never invented.
+        const found=ueRecordedAsset(s,n,itemName),source=found.item,originalHolder=n.id;
+        if(source.canDrop===false||source.questLocked||source.soulbound||source.bound===true)throw new Error('該物品綁定或受任務限制，不可移轉');
+        const qty=Math.max(1,Math.floor(Number(source.quantity)||1));
+        const unitId=source.ueUnitId || (Array.isArray(source.ueUnitIds)&&source.ueUnitIds[0]) || source.ueLotId;
+        if(!unitId)throw new Error('原物品缺少經核驗的持有來源');
+        const targetRecord=u.assetRegistry[unitId];
+        if(!targetRecord||targetRecord.holderId!==originalHolder||targetRecord.name!==itemName)throw new Error('物品權屬與實際持有不一致');
+        const one={...structuredClone(source),quantity:1,ueUnitId:qty===1?(source.ueUnitId||null):null,ueLotId:qty===1?(source.ueLotId||null):`LOT:UE:${u.nextAsset++}`,
+            ueStolenFrom:targetRecord.ownerId||originalHolder,ueOriginalAssetId:unitId,ueOriginEvent:receiptId,ueLegalStatus:'stolen'};
+        delete one.ueUnitIds;
+        if(qty===1)n.inventory.splice(found.index,1);
+        else source.quantity=qty-1;
+        s.inventory=Array.isArray(s.inventory)?s.inventory:[];
+        if(qty===1){
+            targetRecord.holderId='PLAYER';targetRecord.status='stolen';targetRecord.lastEventId=receiptId;
+        }else{
+            targetRecord.quantity=qty-1;
+            const childId=one.ueLotId;
+            u.assetRegistry[childId]={id:childId,name:itemName,quantity:1,ownerId:targetRecord.ownerId||originalHolder,
+                holderId:'PLAYER',status:'stolen',originEventId:targetRecord.originEventId||null,parentLotId:unitId,lastEventId:receiptId};
+        }
+        s.inventory.push(one);
+        const movedId=one.ueUnitId||one.ueLotId;
+        u.assetLedger.push({id:`TRANSFER:${receiptId}`,assetId:movedId,eventId:receiptId,name:itemName,quantity:1,
+            ownerId:targetRecord.ownerId||originalHolder,holderId:'PLAYER',priorHolderId:originalHolder,status:'stolen',day:Number(s.daysPassed)||0});
+        return one;
+    }
+    function ueIssueEntitlement(s,receipt){
+        if(!['service_payment','toll','commission'].includes(receipt.kind))return;
+        const p=String(receipt.purpose||'');
+        const serviceType=/(考核|入門|報名|登記|號牌)/.test(p)?'admission_registration':/(傳送|通行)/.test(p)?'transport':/(住宿|客棧)/.test(p)?'lodging':/(醫療|療傷|看病|醫館)/.test(p)?'medical':/(鑑定)/.test(p)?'appraisal':/(授課|指導|教學)/.test(p)?'training':'generic_service';
+        const u=ueEnsure(s),key=`${serviceType}:${receipt.targetId||'WORLD'}:${p}:${String(s.location||'')}`;
+        if(u.entitlements.some(e=>e.receiptId===receipt.id))return;
+        const record={id:`RIGHT:${receipt.id}`,key,receiptId:receipt.id,type:serviceType,description:p,issuerId:receipt.targetId||'WORLD',location:String(s.location||''),status:'active',day:Number(s.daysPassed)||0};
+        u.entitlements.push(record);
+        u.events.push({id:record.id,kind:'entitlement_issued',receiptId:receipt.id,status:record.status,day:Number(s.daysPassed)||0});
+        if(serviceType==='admission_registration'){
+            record.registrationNumber=`EXAM-${receipt.id.replace(/\W/g,'')}`;
+            record.examAttempts=0;record.maxExamAttempts=3;record.sectName=(p.match(/([\u4e00-\u9fff]{2,12})(?:外門|入門|考核|登記)/)||[])[1]||'未指定宗門';
+            record.status='registered'; // Registration only; passing the examination is still a separate action.
+            s.questLedger=s.questLedger&&typeof s.questLedger==='object'?s.questLedger:{};
+            s.questLedger.verified=s.questLedger.verified&&typeof s.questLedger.verified==='object'?s.questLedger.verified:{};
+            const questId=`ADMISSION:${record.id}`;
+            s.questLedger.verified[questId]={id:questId,name:`宗門考核：${p}`,scope:'admission',verified:true,
+                status:'進行中',progress:`登記費已繳，號牌 ${record.registrationNumber} 已核發；尚未完成考核`,
+                registrationRightId:record.id,receiptId:receipt.id};
+        }
+    }
+    function ueRegisterThirdPartyCustody(s,eventId,victimId,captorId,evidenceSource){
+        const u=ueEnsure(s),id=String(eventId||'');
+        if(!/^WORLD-|^NPC-|^EVENT-/.test(id)||!evidenceSource)throw new Error('第三方拘禁須有正式世界事件證據');
+        if(u.events.some(e=>e.id===id))throw new Error('人物事件已處理');
+        const victim=findNpc(s,victimId),captor=findNpc(s,captorId);
+        if(!victim||!captor||victim.id===captor.id||victim.is_alive===false||captor.is_alive===false)
+            throw new Error('拘禁人物或行為者不合法');
+        if(String(victim.location||'')!==String(captor.location||''))throw new Error('拘禁事件雙方須在同地點');
+        if(u.custody.some(c=>c.targetId===victim.id&&c.status==='detained'))throw new Error('人物已存在尚未解除之拘禁事件');
+        const c={id:`CUSTODY:${id}`,targetId:victim.id,captorId:captor.id,status:'detained',
+            location:String(victim.location),sourceEventId:id,evidenceSource:String(evidenceSource).slice(0,160),day:Number(s.daysPassed)||0};
+        u.custody.push(c);victim.ueCustodyStatus='detained';
+        ueOpenJudicialCase(s,id,'kidnapping',victim.id,captor.id);
+        u.events.push({id,kind:'npc_custody',targetId:victim.id,captorId:captor.id,status:'detained',day:c.day});
+        return c;
+    }
+    function ueConsumeEntitlement(s,rightId){
+        const u=ueEnsure(s),right=u.entitlements.find(x=>x.id===rightId);
+        if(!right||!['active','registered'].includes(right.status))throw new Error('服務憑證不存在或已使用');
+        if(right.type==='admission_registration'){
+            // Registration guarantees eligibility and number, never exam pass.
+            right.status='exam_pending';
+            const q=s.questLedger?.verified?.[`ADMISSION:${right.id}`];
+            if(q)q.progress=`持號牌 ${right.registrationNumber} 已報到；考核結果尚待正式驗證`;
+        }else right.status='used';
+        right.consumedDay=Number(s.daysPassed)||0;
+        u.events.push({id:`ENTITLEMENT_USE:${right.id}`,kind:'entitlement_used',rightId:right.id,day:Number(s.daysPassed)||0});
+        return right;
+    }
+    function ueAcceptRegistration(id){
+        if(isTyping)return;
+        try{const draft=structuredClone(gameState),r=ueConsumeEntitlement(draft,id);Object.assign(gameState,draft);
+            appendLogData('系統',`✦ 已持 ${r.registrationNumber||r.id} 進入考核候選流程；尚未判定考核結果。`,'system',false,true);
+            renderUI();saveGameState();
+        }catch(e){openGameModal('考核資格未生效',String(e.message||e));}
+    }
+    function ueExecuteExtended(s,id,v,n){
+        const u=ueEnsure(s),p=u.pending;
+        if(!p||p.id!==id||u.events.some(e=>e.id===id))throw new Error('行動已完成或提案不存在');
+        const illegal=UEPCE_ILLEGAL.has(v.kind);
+        const custody=v.kind==='rescue'?u.custody.find(x=>x.targetId===v.targetId&&x.status==='detained'):null;
+        const thirdPartyRescue=Boolean(custody&&custody.captorId!=='PLAYER');
+        const battleNeeded=['robbery','detain'].includes(v.kind)||thirdPartyRescue;
+        const b=v682State(s).battle;
+        if(battleNeeded){
+            // Stage a claim and use the actual team battle resolver; never grant loot on draft confirmation.
+            if(b)throw new Error('另一場正式戰鬥尚在進行');
+            if(!n)throw new Error('缺少戰鬥對象');
+            let opponentId=n.id;
+            if(thirdPartyRescue){
+                const captor=findNpc(s,custody.captorId);
+                if(!captor||captor.is_alive===false||String(captor.location||'')!==String(s.location||''))
+                    throw new Error('拘禁者不在現場，無法憑空發起救援戰鬥；請先尋找拘禁者');
+                opponentId=captor.id;
+            }
+            u.battleClaims.push({id,targetId:n.id,opponentId,kind:v.kind,assetName:v.assetName,amount:v.amount,location:String(s.location||''),status:'awaiting_battle'});
+            u.pending=null;
+            const r={id,kind:v.kind,success:false,staged:true,reason:'已建立正式團隊戰鬥待裁決事件',debit:0,credit:0,targetId:opponentId};
+            u.events.push({id,kind:v.kind,status:'awaiting_battle',day:Number(s.daysPassed)||0});
+            return r;
+        }
+        let success=false,reason='',transfer=null;
+        if(['theft','pickpocket'].includes(v.kind)&&v.assetName){
+            ueRecordedAsset(s,n,v.assetName);
+            const chance=Math.max(.03,Math.min(.78,.43+((Number(s.stats?.agi)||10)-(Number(n.stats?.wis)||12))/100-(Number(n.ueAlert)||0)*.04));
+            success=ueHash(id+':item:'+n.id+':'+String(s.daysPassed))<chance;
+            if(success)transfer=ueVerifiedLoot(s,n,v.assetName,id);
+            n.ueAlert=Math.min(100,(Number(n.ueAlert)||0)+(success?1:3));
+            reason=success?'成功取得目標已登錄物品，失主所有權仍保留':'偷竊未成功；NPC 提高警戒';
+        }else if(v.kind==='detain')throw new Error('拘禁必須通過正式戰鬥；不能直接結算');
+        else if(v.kind==='rescue'||v.kind==='release'){
+            const c=u.custody.find(x=>x.targetId===n.id&&x.status==='detained');
+            if(!c)throw new Error('沒有正式拘禁中的人物事件');
+            if(v.kind==='release'&&c.captorId!=='PLAYER')throw new Error('只有拘禁方可以主動釋放');
+            if(v.kind==='rescue'&&c.captorId!=='PLAYER')throw new Error('解救第三方須完成對抗或授權；不得文字秒救');
+            c.status=v.kind==='release'?'released':'rescued';c.closedDay=Number(s.daysPassed)||0;
+            n.ueCustodyStatus='free';success=true;reason='人物已恢復自由，保留歷史事件與追責紀錄';
+            ueUpdateJudicialCase(s,c.sourceEventId||c.id,'victim_released',id);
+        }else if(v.kind==='recover_asset'){
+            ueSyncAssetRegistry(s);
+            const index=(s.inventory||[]).findIndex(x=>x.name===v.assetName&&x.ueStolenFrom===n.id&&x.ueLegalStatus==='stolen');
+            if(index<0)throw new Error('玩家未持有屬於指定失主的正式贓物');
+            const it=s.inventory[index],idTag=it.ueUnitId||it.ueLotId,record=u.assetRegistry[idTag];
+            if(!record||record.holderId!=='PLAYER'||record.ownerId!==n.id)throw new Error('贓物持有權紀錄不一致');
+            s.inventory.splice(index,1);n.inventory=Array.isArray(n.inventory)?n.inventory:[];
+            n.inventory.push({...it,quantity:1,ueLegalStatus:'recovered',ueStolenFrom:null});
+            record.holderId=n.id;record.status='recovered';record.lastEventId=id;
+            u.assetLedger.push({id:`RETURN:${id}`,assetId:idTag,eventId:id,name:v.assetName,quantity:1,
+                ownerId:n.id,holderId:n.id,priorHolderId:'PLAYER',status:'recovered',day:Number(s.daysPassed)||0});
+            success=true;reason='已返還失主';
+        }else throw new Error('不支援的擴充財產操作');
+        const receipt={id,kind:v.kind,success,reason,debit:0,credit:0,assetName:v.assetName||null,day:Number(s.daysPassed)||0,targetId:v.targetId};
+        s.economy.receipts.push(receipt);
+        u.events.push({id,kind:v.kind,success,assetName:v.assetName||null,day:Number(s.daysPassed)||0});
+        if(illegal){u.evidence.push({id,targetId:v.targetId,kind:v.kind,success,assetName:v.assetName||null,day:Number(s.daysPassed)||0,knownToTarget:!success});ueOpenJudicialCase(s,id,v.kind,v.targetId,'PLAYER');}
+        u.pending=null;
+        return receipt;
+    }
+    function ueFinalizeBattle(s,b){
+        const u=ueEnsure(s);const claims=u.battleClaims.filter(c=>c.status==='awaiting_battle'&&c.location===b.location&&b.units.some(x=>x.id===(c.opponentId||c.targetId)&&x.team==='enemy'));
+        for(const c of claims){
+            const n=findNpc(s,c.targetId);c.status=b.status==='won'?'won':'failed';c.battleId=b.id;c.closedDay=Number(s.daysPassed)||0;
+            // No forced NPC captivity on surrender unless the defeated NPC is still present.
+            if(b.status==='won'&&n&&c.kind==='detain'&&n.is_alive!==false){
+                if(!u.custody.some(x=>x.targetId===n.id&&x.status==='detained')){
+                    u.custody.push({id:`CUSTODY:${c.id}`,targetId:n.id,captorId:'PLAYER',status:'detained',day:Number(s.daysPassed)||0,sourceBattleId:b.id});
+                    n.ueCustodyStatus='detained';
+                }
+            }
+            if(b.status==='won'&&n&&c.kind==='rescue'){
+                const custody=u.custody.find(x=>x.targetId===n.id&&x.status==='detained');
+                if(custody&&custody.captorId===c.opponentId){
+                    custody.status='rescued';custody.closedDay=Number(s.daysPassed)||0;
+                    custody.rescueBattleId=b.id;n.ueCustodyStatus='free';c.result='rescued';
+                    ueUpdateJudicialCase(s,custody.sourceEventId||custody.id,'victim_rescued',b.id);
+                    u.evidence.push({id:c.id+':RESCUE',kind:'rescue',targetId:n.id,captorId:c.opponentId,battleId:b.id,day:Number(s.daysPassed)||0});
+                }else c.result='no_matching_custody';
+            }
+            if(b.status==='won'&&n&&c.kind==='robbery'){
+                try{
+                    if(c.assetName){ueVerifiedLoot(s,n,c.assetName,c.id);c.result='asset_taken';}
+                    else {const sum=Math.min(c.amount,ueWallet(n));if(sum>0 && Number(s.spiritStone)+sum<=1e12){n.ueWallet=ueWallet(n)-sum;s.spiritStone+=sum;c.result='currency_taken';c.credit=sum;}else c.result='no_funds';}
+                }catch(e){c.result='no_verified_loot';c.reason=String(e.message||e);}
+            }
+            const battleReceipt={id:c.id,kind:c.kind,success:b.status==='won',battleId:b.id,assetName:c.assetName||null,credit:c.credit||0,debit:0,reason:c.result||b.status,targetId:c.targetId,day:Number(s.daysPassed)||0};
+            if(!s.economy.receipts.some(r=>r.id===c.id))s.economy.receipts.push(battleReceipt);
+            const ev=u.events.find(e=>e.id===c.id);if(ev){ev.status=c.status;ev.success=b.status==='won';ev.battleId=b.id;}
+            u.evidence.push({id:c.id,kind:c.kind,targetId:c.targetId,success:b.status==='won',battleId:b.id,day:Number(s.daysPassed)||0,knownToTarget:true});
+            if(['robbery','detain'].includes(c.kind))ueOpenJudicialCase(s,c.id,c.kind,c.targetId,'PLAYER');
+        }
+    }
+    function ueParseFreeTextLegacy(s,text){
+        const raw=String(text||'').trim(),u=ueEnsure(s);
+        if(!raw)return null;
+        if(u.pending){
+            if(/^(?:好|同意|確認|付錢|繳納|給他|支付|成交)[！!。\s]*$/.test(raw))return {confirmPending:u.pending.id};
+            return null;
+        }
+        const name=(raw.match(/(?:向|對|從|偷|搶|給|支付給|交給)([^，。\s]{2,18})/)||[])[1]||'';
+        const npc=name?findNpc(s,name):null;
+        const near=Object.values(s.npcRegistry||{}).filter(n=>n&&n.location===s.location&&n.is_alive!==false);
+        const target=npc||(near.length===1?near[0]:null);
+        const amt=raw.match(/([一二三四五六七八九十百千\d]+)\s*枚?\s*(?:下品)?靈石/);
+        const recent=conversationHistory.slice(-8).map(x=>String(x.content||'')).join('。');
+        const context=(/^(?:繳納|給他|支付|付錢|好|同意)[！!。\s]*$/.test(raw)) && /(考核|登記|入門|號牌)/.test(recent)
+            ?recent.match(/([一二三四五六七八九十百千\d]+)\s*枚?\s*(?:下品)?靈石/):null;
+        const cn={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+        function chineseNumber(v){
+            const parsed=ueChineseNumber(v);if(Number.isFinite(parsed))return parsed;
+            if(/^\d+$/.test(v))return Number(v);
+            if(v==='十')return 10;
+            const bits=String(v).split('十');
+            if(bits.length===2)return (bits[0]?cn[bits[0]]:1)*10+(bits[1]?cn[bits[1]]:0);
+            return cn[v]||0;
+        }
+        const amount=(amt||context)?chineseNumber((amt||context)[1]):0;
+        let kind=null;
+        if(/偷|扒手|竊取/.test(raw))kind=/扒手/.test(raw)?'pickpocket':'theft';
+        else if(/搶劫|打劫|強奪/.test(raw))kind='robbery';
+        else if(/勒索/.test(raw))kind='extortion';
+        else if(/欺騙|騙取|詐騙/.test(raw))kind='fraud';
+        else if(/拘禁|綁架|擄走/.test(raw))kind='detain';
+        else if(/釋放/.test(raw))kind='release';
+        else if(/解救/.test(raw))kind='rescue';
+        else if(/退還押金|退押金/.test(raw))kind='refund';
+        else if(/還款|償還/.test(raw))kind='repayment';
+        else if(/借給|借出/.test(raw))kind='loan';
+        else if(/押金|訂金/.test(raw))kind='deposit';
+        else if(/捐贈|贈送靈石|給.*靈石/.test(raw))kind='currency_transfer';
+        else if(/委託.*(費|靈石)|支付.*工錢/.test(raw))kind='commission';
+        else if(/傳送|過路費|通行費/.test(raw)&&/付|繳|支付/.test(raw))kind='toll';
+        else if(/繳納|繳交|支付|付給|交出/.test(raw)&&/考核|入門|登記|客棧|住宿|鑑定|費/.test(raw))kind='service_payment';
+        if(!kind&&context&&amount)kind='service_payment';
+        if(!kind)return null;
+        // No guesswork for missing price, target, or item: ask for explicit details instead of calling the model repeatedly.
+        const namedAsset=(raw.match(/(?:偷取|偷走|盜取|扒走|搶走|取回|歸還)(?:一(?:件|把|枚|個))?([^，。\s]{2,22})(?:的|從|給|。|$)/)||[])[1]||'';
+        if(!amount&&!namedAsset&&!['detain','release','rescue'].includes(kind))return {error:'請明確指定金額或改用財產面板指定物品'};
+        if(UEPCE_ILLEGAL.has(kind)&&!target)return {error:'請指定一名當地已登錄 NPC，不能憑敘事生成目標'};
+        if(['rescue','release'].includes(kind)&&!target)return {error:'請指定要解救或釋放的已登錄 NPC'};
+        return {kind,amount:amount||1,targetId:target?.id||null,purpose:raw.slice(0,100),assetName:namedAsset&&['theft','pickpocket','robbery','recover_asset'].includes(kind)?namedAsset:''};
+    }
+    function ueConfirm(id){
+        if(isTyping)return;
+        try{
+            const draft=structuredClone(gameState),r=ueExecute(draft,id);
+            if(r.staged){
+                const enemy=findNpc(gameState,r.targetId);
+                if(!enemy||String(enemy.location||'')!==String(gameState.location||'')||v682State(gameState).battle||tacticalState().battle)
+                    throw new Error('正式團戰不可開始，財產提案未提交');
+            }
+            Object.assign(gameState,draft);
+            if(r.staged){
+                if(!v682StartTeamBattle([r.targetId]))openGameModal('戰鬥啟動未成功','提案已暫存，請從系統診斷檢查團戰入口，勿重複付款。');
+            }else publishEconomyReceipt(r);
+            appendLogData('系統',r.staged?'✦ 已進入正式團隊戰鬥；戰鬥勝負決定是否取得財物或產生拘禁事件。':r.contested?(r.success?'✦ 非法取得判定成功；已登錄贓款來源與追查事件。':'✦ 非法取得判定失敗；已登錄失敗與 NPC 警戒。'):'✦ 財產交割正式完成；相關契約／服務權利以收據記錄。','system',false,true);
+            saveGameState();renderUI();
+        }catch(e){openGameModal('財產行動未提交',String(e.message||e));}
+    }
+    function ueCancel(id){const u=ueEnsure(gameState);if(u.pending?.id!==id||isTyping)return;u.pending=null;saveGameState();renderUI();}
+    function ueProposeFromPanel(){
+        if(isTyping)return;
+        try{
+            const kind=document.getElementById('ue-kind').value,
+                  amount=Number(document.getElementById('ue-amount').value),
+                  targetId=document.getElementById('ue-target').value.trim(),
+                  purpose=document.getElementById('ue-purpose').value.trim(),
+                  assetName=document.getElementById('ue-asset').value.trim();
+            ueDraft(gameState,{kind,amount,targetId,purpose,assetName});saveGameState();renderUI();
+        }catch(e){openGameModal('無法建立財產行動',String(e.message||e));}
+    }
+    function ueRender(){
+        const panel=document.getElementById('uepce-panel');if(!panel)return;
+        const u=ueEnsure(gameState),p=u.pending;
+        const offer=document.getElementById('ue-pending');
+        if(offer){
+            offer.textContent='';
+            if(p){
+                const msg=document.createElement('div');msg.textContent=`待確認 ${p.id}｜${UEPCE_KINDS[p.kind]}｜${p.assetName?'物品 '+p.assetName+' ×1':p.amount+' 靈石'}｜${p.purpose}｜目標 ${p.targetId||'世界服務'}。${UEPCE_ILLEGAL.has(p.kind)?'確認後只執行嘗試，不保證成功。':'確認後正式移轉資產。'}`;
+                const yes=document.createElement('button');yes.textContent='確認執行';yes.onclick=()=>ueConfirm(p.id);
+                const no=document.createElement('button');no.textContent='取消';no.onclick=()=>ueCancel(p.id);
+                offer.append(msg,yes,no);
+            }
+        }
+        const status=document.getElementById('ue-status');
+        if(status){
+            status.textContent=`財產事件 ${u.events.length}｜世界金庫 ${u.treasury}｜債權／押金 ${u.claims.filter(x=>x.open).length}｜犯罪證據 ${u.evidence.length}`;
+            const rights=document.createElement('div');rights.style.marginTop='8px';
+            for(const r of u.entitlements.filter(x=>['active','registered','exam_pending'].includes(x.status)).slice(-8)){
+                const line=document.createElement('div');line.textContent=`憑證 ${r.registrationNumber||r.id}｜${r.description}｜${r.status}`;
+                if(['registered','exam_pending','active'].includes(r.status)){
+                    const button=document.createElement('button');
+                    button.textContent=r.status==='registered'?'持號牌報到':r.type==='admission_registration'?'參加正式考核':'履行／使用服務';
+                    button.onclick=()=>ueFulfilFromUI(r.id);line.appendChild(button);
+                }
+                rights.appendChild(line);
+            }
+            status.appendChild(rights);
+        }
+    }
+    // ===== V6.86: one authoritative property registry / fulfilment / autonomous justice =====
+    // An itemId is a *definition*, NOT a physical serial. Equipments are tracked as individual units.
+    // Fungibles are tracked by actual held lots; a split creates a child with the same original owner.
+    function ueSyncAssetRegistry(s,eventId='LEGACY_IMPORT'){
+        const u=ueEnsure(s),registry=u.assetRegistry,seen=new Set(),sources=[];
+        // Each physical equipment item receives an independent serial (not just a shared item definition).
+        const physicalBags=[s.inventory||[],...Object.values(s.npcRegistry||{}).filter(Boolean).map(n=>n.inventory||[])];
+        for(const bag of physicalBags)if(Array.isArray(bag))for(let i=bag.length-1;i>=0;i--){
+            const it=bag[i];if(!it||typeof it!=='object')continue;
+            const meta=getItemMeta(it),qty=Math.floor(Number(it.quantity)||1);
+            if((meta.type==='equipment'||meta.slot)&&qty>1&&qty<=9999){
+                const main={...it,quantity:1,ueUnitId:it.ueUnitId||it.ueLotId||null};delete main.ueLotId;
+                const pieces=[main];
+                for(let j=1;j<qty;j++)pieces.push({...it,quantity:1,ueUnitId:null,ueLotId:null});
+                bag.splice(i,1,...pieces);
+            }
+        }
+        if(s.location&&!u.visitedLocations.includes(String(s.location)))u.visitedLocations.push(String(s.location));
+        if(u.visitedLocations.length>300)u.visitedLocations.splice(0,u.visitedLocations.length-300);
+        const bags=[['PLAYER',s.inventory||[]],...Object.values(s.npcRegistry||{}).filter(Boolean).map(n=>[n.id,n.inventory||[]])];
+        if(s.equipment&&typeof s.equipment==='object')for(const eq of Object.values(s.equipment))if(eq&&typeof eq==='object')sources.push(['PLAYER',eq,true]);
+        for(const [holder,bag] of bags)for(const item of Array.isArray(bag)?bag:[])sources.push([holder,item,false]);
+        for(const [holder,item,equipped] of sources){
+            if(!item||typeof item!=='object'||!item.name)continue;
+            const qty=Math.floor(Number(item.quantity)||1);if(qty<1||qty>9999)throw new Error('持有物品數量不合法');
+            const meta=getItemMeta(item),single=(meta.type==='equipment'||Boolean(meta.slot)||equipped)&&qty===1;
+            const field=single?'ueUnitId':'ueLotId';
+            // Version 6.85 stored ueAssetId on stolen items; migrate without changing origin history.
+            if(!item[field]&&item.ueAssetId)item[field]=String(item.ueAssetId);
+            if(!item[field])item[field]=`${single?'UNIT':'LOT'}:686:${u.nextAsset++}`;
+            const id=String(item[field]);
+            if(seen.has(id))throw new Error(`發現雙重持有物品實體 ${id}，拒絕提交`);
+            seen.add(id);
+            const r=registry[id];
+            if(r){
+                if(r.name!==item.name)throw new Error(`資產識別與品名不一致 ${id}`);
+                if(r.holderId!==holder){
+                    // A legitimate move must be evidenced by a transfer event; otherwise mark disputed,
+                    // not silently reassign legal ownership.
+                    r.previousHolderId=r.holderId;r.holderId=holder;
+                    r.status=r.status==='stolen'?'stolen':'disputed';
+                    r.lastEventId=eventId;
+                }
+                if(r.quantity!==qty){r.quantity=qty;r.lastEventId=eventId;}
+            }else registry[id]={id,name:String(item.name),definitionId:String(item.itemId||''),quantity:qty,
+                ownerId:item.ueStolenFrom||holder,holderId:holder,status:item.ueLegalStatus||'unverified_legacy',
+                originEventId:eventId==='LEGACY_IMPORT'?null:eventId,lastEventId:eventId};
+            // An id is authoritative for this stack; never accept foreign owner claims from narrative text.
+        }
+        for(const [id,record] of Object.entries(registry))if(!seen.has(id)&&
+            (record.holderId==='PLAYER'||Object.hasOwn(s.npcRegistry||{},record.holderId))){
+            record.holderId='DISPOSED';record.lastEventId=eventId;
+            record.status=record.status==='stolen'?'stolen_disposed':'disposed';
+        }
+        return u;
+    }
+    function ueApplyOldDisposition(s,eventId,kind,tradeType=null,targetId=null){
+        const u=ueEnsure(s),marketId=`MARKET:${String(s.location||'UNKNOWN')}`;
+        const disposition=kind==='trade'&&tradeType==='SELL'?'sold_to_market':kind==='gift'?'gifted':kind==='fusion'?'consumed':'disposed';
+        for(const r of Object.values(u.assetRegistry)){
+            if(r.lastEventId!==eventId)continue;
+            if(r.holderId==='DISPOSED'){
+                if(disposition==='sold_to_market'){
+                    r.previousOwnerId=r.ownerId;r.ownerId=marketId;r.holderId=marketId;
+                }else if(disposition==='gifted'&&targetId){r.previousOwnerId=r.ownerId;r.ownerId=targetId;r.holderId=targetId;}
+                r.status=disposition;
+            }else if(r.holderId==='PLAYER'&&r.originEventId===eventId){
+                r.status=kind==='trade'?'purchased':kind==='turn'?'earned':kind==='craft'?'crafted':'acquired';
+                r.sourceKind=kind;
+            }
+        }
+    }
+    function ueAuditProperty(s){
+        const u=ueSyncAssetRegistry(s),issues=[],counts={};
+        const bags=[['PLAYER',s.inventory||[]],...Object.values(s.npcRegistry||{}).filter(Boolean).map(n=>[n.id,n.inventory||[]])];
+        if(s.equipment)for(const eq of Object.values(s.equipment))if(eq&&typeof eq==='object')bags.push(['PLAYER',[eq]]);
+        for(const [holder,bag] of bags)for(const it of bag||[]){
+            const key=it.ueUnitId||it.ueLotId;
+            if(!key)issues.push('missing_asset_tag');
+            if(key){counts[key]=(counts[key]||0)+1;const rec=u.assetRegistry[key];
+                if(!rec||rec.holderId!==holder||rec.quantity!==Math.floor(Number(it.quantity)||1))issues.push('asset_registry_mismatch:'+key);
+            }
+        }
+        for(const [id,num] of Object.entries(counts))if(num!==1)issues.push('duplicate_asset:'+id);
+        return {checked:Object.keys(counts).length,issues};
+    }
+    function ueOpenJudicialCase(s,sourceId,crime,victimId,suspectId){
+        const u=ueEnsure(s),id=`CASE:${sourceId}`;
+        if(u.judicialCases.some(c=>c.id===id))return u.judicialCases.find(c=>c.id===id);
+        const c={id,crime,victimId,suspectId,sourceId,status:'reported',evidence:[sourceId],
+            createdDay:Number(s.daysPassed)||0,lastDay:Number(s.daysPassed)||0,findings:[]};
+        u.judicialCases.push(c);return c;
+    }
+    function ueUpdateJudicialCase(s,sourceId,disposition,evidenceId){
+        const u=ueEnsure(s),c=u.judicialCases.find(c=>c.sourceId===sourceId||c.id===`CASE:${sourceId}`);
+        if(c&&!c.findings.some(f=>f.id===evidenceId)){c.findings.push({id:evidenceId,disposition,day:Number(s.daysPassed)||0});
+            c.lastDay=Number(s.daysPassed)||0;if(disposition==='victim_rescued'||disposition==='victim_released')c.status='pending_prosecution';}
+        return c;
+    }
+    function ueWorldAutonomyTick(s,from,to){
+        const u=ueEnsure(s),engine=s.worldMemory?.engine;
+        if(!engine)return;
+        // Derive one explicit autonomous intention from an NPC's recorded goals, only when a named target exists.
+        const namedNpcs=Object.values(s.npcRegistry||{}).filter(n=>n&&n.id&&n.is_alive!==false);
+        for(const actor of namedNpcs){
+            if(actor.ueCriminalPlan||actor.ueRescuePlan)continue;
+            const goals=Array.isArray(actor.goals)?actor.goals.map(String):[];
+            for(const g of goals.slice(0,5)){
+                const target=namedNpcs.find(n=>n.id!==actor.id&&n.name&&g.includes(n.name)&&n.location===actor.location);
+                if(!target)continue;
+                if(/(?:擄走|綁架|拘禁|劫持|囚禁)/.test(g)){
+                    actor.ueCriminalPlan={id:`GOAL:${actor.id}:${target.id}:${Math.floor(to/7)}`,kind:'detain',targetId:target.id,
+                        status:'planned',notBeforeDay:to,sourceGoal:g.slice(0,100)};break;
+                }
+                if(/(?:解救|營救|救出)/.test(g)){
+                    actor.ueRescuePlan={id:`GOAL:RESCUE:${actor.id}:${target.id}:${Math.floor(to/7)}`,targetId:target.id,
+                        status:'planned',notBeforeDay:to,sourceGoal:g.slice(0,100)};break;
+                }
+            }
+        }
+        // Only structured, already-authorized autonomous plans can cause captivity. No random NPC victim fabrication.
+        // The plan may be produced by a *real world event* or a named NPC's explicit goal record.
+        for(const npc of Object.values(s.npcRegistry||{})){
+            const plan=npc?.ueCriminalPlan;
+            if(!plan||plan.status!=='planned'||plan.kind!=='detain'||!plan.targetId)continue;
+            const victim=findNpc(s,plan.targetId);
+            if(!victim||victim.id===npc.id||victim.is_alive===false||npc.is_alive===false||victim.location!==npc.location){plan.status='blocked';continue;}
+            if(Number(plan.notBeforeDay||0)>to)continue;
+            const eventId=`NPC-AUTO:${npc.id}:${plan.targetId}:${String(plan.id||'plan')}`;
+            const attack=v682Rating(npc),defense=v682Rating(victim),chance=Math.max(.05,Math.min(.75,.35+(attack-defense)/(attack+defense)*.5));
+            const success=ueHash(eventId+':'+to)<chance;
+            plan.status=success?'executed':'failed';plan.resolvedDay=to;
+            if(success){
+                try{ueRegisterThirdPartyCustody(s,eventId,victim.id,npc.id,'registered NPC autonomous criminal plan');
+                    u.events.push({id:eventId+':autonomy',kind:'autonomous_abduction',targetId:victim.id,captorId:npc.id,day:to});
+                }catch(e){plan.status='blocked';plan.reason=String(e.message||e);}
+            }else {u.events.push({id:eventId,kind:'failed_abduction',targetId:victim.id,captorId:npc.id,day:to});
+                ueOpenJudicialCase(s,eventId,'attempted_kidnapping',victim.id,npc.id);}
+        }
+        // Another named NPC can independently try rescuing a prisoner from an explicit saved plan.
+        for(const ally of Object.values(s.npcRegistry||{})){
+            const plan=ally?.ueRescuePlan;if(!plan||plan.status!=='planned'||!plan.targetId)continue;
+            if(Number(plan.notBeforeDay||0)>to)continue;
+            const hostage=findNpc(s,plan.targetId),c=u.custody.find(c=>c.targetId===plan.targetId&&c.status==='detained');
+            if(!hostage||!c){plan.status='closed_no_hostage';continue;}
+            const captor=findNpc(s,c.captorId);
+            if(!captor||ally.id===captor.id||ally.is_alive===false||captor.is_alive===false||ally.location!==captor.location){
+                plan.status='blocked';continue;
+            }
+            const eventId=`NPC-RESCUE:${ally.id}:${hostage.id}:${plan.id||'plan'}`;
+            const rating=v682Rating(ally),guard=v682Rating(captor);
+            const success=ueHash(eventId+':'+to)<Math.max(.04,Math.min(.80,.48+(rating-guard)/(rating+guard)*.65));
+            plan.status=success?'rescued':'failed';plan.resolvedDay=to;
+            u.events.push({id:eventId,kind:'npc_autonomous_rescue',rescuerId:ally.id,targetId:hostage.id,captorId:captor.id,success,day:to});
+            if(success){c.status='rescued';c.closedDay=to;c.rescuerId=ally.id;hostage.ueCustodyStatus='free';
+                ueUpdateJudicialCase(s,c.sourceEventId||c.id,'npc_rescue',eventId);
+            }else{captor.ueAlert=Math.min(100,(Number(captor.ueAlert)||0)+1);}
+        }
+        // Autonomous justice has evidence-based stages; reports do not guarantee arrest or conviction.
+        for(const c of u.judicialCases){
+            if(c.status==='reported'&&to-c.createdDay>=3){c.status='investigating';c.lastDay=to;}
+            else if(c.status==='investigating'&&to-c.lastDay>=7){
+                const suspect=findNpc(s,c.suspectId),victim=findNpc(s,c.victimId);
+                if(suspect&&victim&&c.evidence.length>=1){c.status='warrant_issued';c.lastDay=to;
+                    u.events.push({id:`WARRANT:${c.id}`,kind:'warrant_issued',caseId:c.id,suspectId:c.suspectId,day:to});}
+            }
+            else if(c.status==='warrant_issued'&&to-c.lastDay>=7&&c.suspectId!=='PLAYER'){
+                const suspect=findNpc(s,c.suspectId);
+                const guard=Object.values(s.npcRegistry||{}).find(n=>n&&n.id!==c.suspectId&&n.is_alive!==false&&
+                    String(n.location||'')===String(suspect?.location||'')&&/(守衛|執法|巡捕|戒律|巡查)/.test(String(n.title||n.identity||n.name||'')));
+                if(suspect&&guard){
+                    const ep=`ARREST:${c.id}:${guard.id}`,a=v682Rating(guard),b=v682Rating(suspect);
+                    const success=ueHash(ep+':'+to)<Math.max(.05,Math.min(.85,.50+(a-b)/(a+b)*.55));
+                    c.lastDay=to;c.arrestAttempts=(c.arrestAttempts||0)+1;
+                    u.events.push({id:ep+':'+c.arrestAttempts,kind:'guard_arrest_attempt',suspectId:c.suspectId,guardId:guard.id,success,day:to});
+                    if(success){c.status='awaiting_trial';c.guardId=guard.id;
+                        if(!u.custody.some(x=>x.targetId===suspect.id&&x.status==='detained')){
+                            u.custody.push({id:`COURT_CUSTODY:${ep}`,targetId:suspect.id,captorId:guard.id,status:'detained',day:to,sourceEventId:ep});
+                            suspect.ueCustodyStatus='detained';
+                        }
+                    }
+                }
+            }else if(c.status==='awaiting_trial'&&to-c.lastDay>=7){
+                const suspect=findNpc(s,c.suspectId),evidenceCount=c.evidence.length+c.findings.length;
+                c.verdict=evidenceCount>=1?'liable':'insufficient_evidence';c.status='adjudicated';c.lastDay=to;
+                if(c.verdict==='liable'&&suspect){
+                    const fine=Math.min(10,ueWallet(suspect));
+                    suspect.ueWallet=ueWallet(suspect)-fine;u.treasury+=fine;c.fine=fine;
+                }
+                u.events.push({id:`VERDICT:${c.id}`,kind:'judicial_verdict',caseId:c.id,verdict:c.verdict,fine:c.fine||0,day:to});
+            }
+        }
+    }
+    function ueCaptureQuotedFee(s,story){
+        const u=ueEnsure(s),text=String(story||'');
+        const match=text.match(/(?:須先|需先|需|須|收取|繳納|支付|費用為|費用是)[^。\n]{0,55}?([零一二三四五六七八九十百千萬\d]+)\s*枚?\s*(?:下品)?靈石/);
+        if(!match)return null;
+        const amount=ueChineseNumber(match[1]);if(!Number.isSafeInteger(amount)||amount<1||amount>1e9)return null;
+        const kind=/(入門|考核|登記|號牌|審查)/.test(text)?'service_payment':/(傳送|通行|關卡)/.test(text)?'toll':'service_payment';
+        const purpose=(text.match(/[^。\n]{0,45}(?:入門考核|考核登記|號牌|傳送|住宿|入城|鑑定)[^。\n]{0,45}/)||[])[0]||'已報價服務';
+        const quote={id:`QUOTE:${u.nextId++}`,kind,amount,purpose:purpose.slice(0,110),
+            location:String(s.location||''),day:Number(s.daysPassed)||0,status:'open'};
+        u.dialogueQuote=quote;return quote;
+    }
+    function ueChineseNumber(v){
+        const raw=String(v||'').trim();if(/^\d+$/.test(raw))return Number(raw);
+        const digit={'零':0,'〇':0,'一':1,'二':2,'兩':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+        let total=0,section=0,num=0;
+        for(const ch of raw){if(ch in digit)num=digit[ch];
+            else if(ch==='十'||ch==='百'||ch==='千'){const scale={'十':10,'百':100,'千':1000}[ch];section+=(num||1)*scale;num=0;}
+            else if(ch==='萬'){total+=(section+num)*10000;section=0;num=0;}
+            else return NaN;}
+        return total+section+num;
+    }
+    function ueParseFreeText(s,text){
+        const raw=String(text||'').trim(),u=ueEnsure(s);
+        if(!raw)return null;
+        if(u.pending){
+            if(/^(?:好|好的|同意|確認|接受|付錢|繳納|給他|給她|支付|成交|就這樣)[！!。\s]*$/.test(raw))return {confirmPending:u.pending.id};
+            if(/^(?:不要|取消|拒絕|不付|算了)[！!。\s]*$/.test(raw))return {cancelPending:u.pending.id};
+            return {error:`已有待確認交易 ${u.pending.id}，請先確認或取消，避免重複付款`};
+        }
+        const quote=u.dialogueQuote;
+        const words=/^(?:好|好的|同意|確認|付錢|繳納|給他|給她|支付|交給他|交給她|付給守山弟子|領號牌)[！!。\s]*$/;
+        const explicit=/(?:支付|繳納|交出|交給|付給|給他|給她|付款|付錢)/.test(raw);
+        if(quote&&quote.status==='open'&&quote.location===String(s.location||'')&&
+            Number(s.daysPassed)-Number(quote.day)<10&&
+            (words.test(raw)||(explicit&&/(考核|入門|登記|號牌)/.test(raw)))){
+            const numeric=raw.match(/([零〇一二三四五六七八九十百千萬\d]+)\s*枚?\s*(?:下品)?靈石/);
+            if(numeric&&ueChineseNumber(numeric[1])!==quote.amount)return {error:`報價為 ${quote.amount} 枚靈石，請明確確認該金額`};
+            return {kind:quote.kind,amount:quote.amount,targetId:null,purpose:quote.purpose,quoteId:quote.id};
+        }
+        // Multi-step obligations cannot be compressed into a single blind immediate settlement.
+        if(/(?:然後|再|同時|順便|接著)/.test(raw)&&/(?:付|買|借|還|押金|偷|搶|賣)/.test(raw))
+            return {error:'複合交易請分步建立正式提案，每一步有獨立確認與收據'};
+        const routed=ueParseFreeTextLegacy(s,raw);
+        if(!routed)return null;
+        if(routed.error){
+            // Do not infer missing amounts or NPC identities from unrelated story turns.
+            return routed;
+        }
+        return routed;
+    }
+    function ueFulfilService(s,rightId){
+        const u=ueEnsure(s),r=u.entitlements.find(x=>x.id===rightId);
+        if(!r||!['registered','exam_pending','active'].includes(r.status))throw new Error('找不到有效履約憑證');
+        if(r.location!==String(s.location||''))throw new Error('須回到已付款服務地點才能履行');
+        const day=Number(s.daysPassed)||0,claimId=`FULFIL:${r.id}:${r.examAttempts||0}`;
+        if(u.serviceHistory.some(x=>x.id===claimId))throw new Error('本次履約已提交，不得重複執行');
+        if(r.type==='admission_registration'){
+            if(r.status==='registered'){ueConsumeEntitlement(s,r.id);return {status:'reported',rightId:r.id,number:r.registrationNumber};}
+            if(r.status!=='exam_pending')throw new Error('請先持號牌報到');
+            if(Number(r.nextExamDay||0)>day)throw new Error(`考核重試須等到第 ${r.nextExamDay} 日`);
+            if(s.sect?.joined)throw new Error('已有正式宗門身份，不能重複領取入門身份');
+            if(Number(r.examAttempts||0)>=3)throw new Error('本次考核資格重試次數已用完');
+            const score=Math.round(Math.max(0,Number(s.stats?.wis)||10)*2.5+Math.max(0,Number(s.stats?.con)||10)*1.4+
+                Math.max(0,Number(s.level)||0)*4+ueHash(r.id+':EXAM:'+r.examAttempts)*23);
+            const pass=score>=65; r.examAttempts=(r.examAttempts||0)+1;
+            r.examScore=score;r.examHistory=Array.isArray(r.examHistory)?r.examHistory:[];
+            r.examHistory.push({attempt:r.examAttempts,score,passed:pass,day});
+            if(pass){r.status='fulfilled';r.fulfilledDay=day;
+                const sectName=r.sectName&&r.sectName!=='未指定宗門'?r.sectName:'青蓮丹谷';
+                s.sect={...s.sect,joined:true,id:`SECT:${sectName}`,name:sectName,rank:'外門弟子',position:'外門弟子'};
+            }else{r.status='exam_pending';r.nextExamDay=day+30;}
+            const q=s.questLedger?.verified?.[`ADMISSION:${r.id}`];
+            if(q){q.status=pass?'已完成':'進行中';q.progress=pass?`正式考核 ${score} 分，通過並登錄外門弟子身份`:`正式考核 ${score} 分未過，須第 ${r.nextExamDay} 日後重試`;}
+            u.serviceHistory.push({id:claimId,kind:'admission_exam',rightId:r.id,score,passed:pass,day});
+            return {status:pass?'admitted':'failed',score,day,sect:s.sect?.name};
+        }
+        if(r.type==='transport'){
+            // Require a previously discovered canonical destination, no arbitrary teleportation.
+            const dest=(r.description.match(/(?:目的地|前往|傳送至|送往)\s*[：:]?\s*([^，。\n ]{2,36})/)||[])[1];
+            const places=new Set([String(s.location),...(u.visitedLocations||[]),...(s.worldMemory?.visitedLocations||[]),...(s.discoveredLocations||[])]);
+            if(!dest||!places.has(dest))throw new Error('傳送目的地尚未登錄為已知地點，不能憑服務費瞬移');
+            s.location=dest;
+        }else if(r.type==='lodging'){
+            s.daysPassed=day+1;s.hp=Math.min(getMaxHp(s),Number(s.hp||0)+Math.max(5,Math.floor(getMaxHp(s)*.2)));
+        }else if(r.type==='medical'){
+            s.hp=Math.min(getMaxHp(s),Math.max(0,Number(s.hp)||0)+Math.max(10,Math.floor(getMaxHp(s)*.5)));
+        }else if(r.type==='training'){
+            s.daysPassed=day+1;s.exp=Math.min(Number(s.maxExp||100),Math.max(0,Number(s.exp)||0)+Math.min(20,Math.ceil(Number(s.maxExp||100)*.05)));
+        }else if(r.type==='appraisal'){
+            const targetName=(r.description.match(/(?:鑑定|辨識)(?:一[枚件把]?|這[枚件把]?)?([^，。\n ]{2,32})/)||[])[1];
+            const target=(s.inventory||[]).find(it=>it.identified===false&&it.name===targetName);
+            if(!target)throw new Error('鑑定服務尚未指定且持有對應未鑑定物品，不能憑空獲得物品知識');
+            target.identified=true;target.type=getItemMeta(target).type;
+        }else if(r.type==='generic_service'){
+            // No irreversible world reward without a service-specific contract.
+            r.status='awaiting_provider';return {status:'awaiting_provider',rightId:r.id};
+        }
+        r.status='fulfilled';r.fulfilledDay=day;
+        u.serviceHistory.push({id:claimId,kind:r.type,rightId:r.id,day});
+        return {status:'fulfilled',rightId:r.id,type:r.type};
+    }
+    function ueFulfilFromUI(rightId){
+        if(isTyping)return;
+        try{const d=structuredClone(gameState),result=ueFulfilService(d,rightId);
+            Object.assign(gameState,d);appendLogData('系統',`✦ 履約結果：${JSON.stringify(result)}`,'system',false,true);
+            saveGameState();renderUI();}
+        catch(e){openGameModal('履約條件未滿足',String(e.message||e));}
+    }
+    // ===== end V6.86 =====
+
+    // ===== end V6.83 UEPCE =====
+
     // V6.33: AI proposes, player confirms, core settles atomically.
     function finishEconomySummary(s,beforeState,parentId) {
         ensureEconomyState(s);
@@ -5638,6 +6416,51 @@ JSON 輸出格式範例：
             return {...structuredClone(x),name:cleanNameStrict(x.name),quantity:economyInteger(x.quantity,label+" quantity",1,9999)};
         });
     }
+    // V6.82 P1: Player-initiated admissions/registration fees are services, NOT BUY/SELL goods.
+    // The proposed amount is bounded by the player's explicit instruction; no free-form AI deduction.
+    function explicitAdmissionPayment(action) {
+        const t=String(action||'');
+        if(!/(繳納|繳交|支付|付給|交出|交付|給他|給予|付費|付錢)/.test(t))return null;
+        const priorScene=(typeof storyLogData!== 'undefined' && Array.isArray(storyLogData))
+            ? storyLogData.slice(-5).filter(x=>x && (x.type==='ai'||x.role==='天道'||x.role==='系統'||x.role==='assistant'||x.role==='system')).map(x=>String(x.content||x.text||'')).join(' ').slice(-1800)
+            : '';
+        const scene=/(考核|入門|宗門|山門|登記|審查|號牌|青蓮丹谷)/.test(t)
+            || /(考核|入門|登記|審查|號牌)[^。\n]{0,120}(?:靈石|守山)|(?:靈石|守山)[^。\n]{0,120}(?:考核|入門|登記|審查|號牌)/.test(priorScene);
+        if(!scene)return null;
+        let m=t.match(/(?:繳納|繳交|支付|付給|交出|交付|給他|給予|付費|付錢)[^。；，\n]{0,30}?(\d{1,7})\s*(?:枚|顆|塊)?\s*(?:下品)?靈石/);
+        if(!m)m=t.match(/(?:繳納|繳交|支付|交出|付費)[^。；，\n]{0,20}?(十|二十|三十|五十|一百)\s*(?:枚|顆)?\s*(?:下品)?靈石/);
+        const cn={'十':10,'二十':20,'三十':30,'五十':50,'一百':100};
+        let amount=m?(cn[m[1]]||Number(m[1])):null;
+        // Short commands (「繳納」「給他」) inherit ONLY a recently narrated, explicit entrance fee.
+        if(amount===null && /^(?:我)?(?:繳納|繳交|支付|交出|給他|給予|付費|付錢)[！!。 ]*$/.test(t.trim())) {
+            const quoted=priorScene.match(/(?:需先|必須|須|要|收取|繳納|繳交|支付)[^。；\n]{0,45}?(\d{1,7}|十|二十|三十|五十|一百)\s*(?:枚|顆|塊)?\s*(?:下品)?靈石/);
+            if(quoted)amount=cn[quoted[1]]||Number(quoted[1]);
+        }
+        return Number.isSafeInteger(amount)&&amount>0&&amount<=100000?amount:null;
+    }
+    function normalizeAdmissionFeeResponse(raw,meta) {
+        const amount=explicitAdmissionPayment(meta?.actionText);
+        if(amount===null)return raw;
+        const out=structuredClone(raw);
+        const fee=Number(out.economyOperation?.fee||0);
+        const delta=Number(out.spiritStonesDelta||0);
+        // Only translate a *matching* proposed debit; a conflicting amount must fail safely.
+        if((fee>0&&fee!==amount)||(delta<0&&-delta!==amount))throw new Error('考核費與玩家明確授權金額不符，沒有扣款。');
+        // An admission ticket is not a purchased item and must not be faked as inventory.
+        if(out.tradeOffer && /(考核|登記|入門|號牌|審查)/.test(String(out.tradeOffer.item_name||''))) {
+            if(Number(out.tradeOffer.total_gold)!==amount)throw new Error('考核報價和玩家授權金額不符。');
+            out.tradeOffer=null;
+        }
+        if(out.tradeOffer)throw new Error('考核費不可同時夾帶一般商品報價。');
+        if((out.inventoryDelta||[]).length||(out.inventoryRemoveDelta||[]).length||(out.lostItems||[]).length)
+            throw new Error('考核繳費不得同時假造物品交割，請先單獨繳費。');
+        if(Number(out.spiritStonesDelta||0)>0)throw new Error('考核繳費不能同時產生靈石收入。');
+        // Exact amount was stated by the player; retain only a pending, manually approved debit.
+        out.spiritStonesDelta=0;
+        out.economyOperation={kind:'service',fee:amount,purpose:'admission_registration'};
+        if(out.actionOutcome?.result==='failure')out.actionOutcome={...out.actionOutcome,result:'partial',reason:'繳費須待玩家確認'};
+        return out;
+    }
     function prepareEconomyProposal(s,raw,meta,sourceId,credit) {
         for(const key of ["inventoryRemoveDelta","lostItems"])if(raw[key]!==undefined&&!Array.isArray(raw[key]))throw new Error("扣除物品清單必須為陣列，不能自動忽略錯誤資料。");
         const adds=strictProposalItems((raw.inventoryDelta||[]).filter(i=>!/\u9748\u77f3/.test(String(i?.name||""))),"Output");
@@ -5649,7 +6472,7 @@ JSON 輸出格式範例：
         const fee=op?.fee===undefined?0:economyInteger(op.fee,"fee");
         if(raw.actionOutcome?.result==="failure"&&op?.kind!=="consolation")return null;
         if(!adds.length&&!removes.length&&!credit&&!delta&&!fee)return null;
-        if(!["reward","consolation","exchange","craft","loss","purchase","auction"].includes(op?.kind))throw new Error("經濟提案須明確指定操作類型。");
+        if(!["reward","consolation","exchange","craft","loss","purchase","auction","service"].includes(op?.kind))throw new Error("經濟提案須明確指定操作類型。");
         if(/\u7149|\u70bc|\u6253\u9020|\u5408\u6210|\u88fd\u4f5c|\u5236\u4f5c|\u514c\u63db|\u5151\u6362|\u4ea4\u63db|\u4ea4\u6362/.test(String(meta.actionText||""))&&!["exchange","craft"].includes(op.kind))throw new Error("製作或交換不可偽裝為免費獎勵。");
         if(["reward","consolation"].includes(op.kind)&&(removes.length||delta<0||fee))
             throw new Error("純獎勵不可扣材料或費用；請使用正確的交換或製作操作類型。");
@@ -5658,6 +6481,13 @@ JSON 輸出格式範例：
             if(!adds.length || removes.length || credit || delta<0 || fee<=0) throw new Error("購買／拍賣必須同時包含明確物品、正數成交價，且不得夾帶出售或獎勵。");
             if(adds.some(i=>/靈石/.test(i.name))) throw new Error("拍賣物品不可為靈石貨幣。");
             if(!economyTradeContext(s)) throw new Error("目前不在可進行購買或拍賣交易的場景。");
+        }
+        if(op.kind==="service") {
+            const explicit=explicitAdmissionPayment(meta.actionText);
+            if(explicit===null || fee!==explicit || delta!==0 || credit || adds.length || removes.length)
+                throw new Error("服務／入門登記費必須由玩家明確指定金額，且不得夾帶物品或獎勵。");
+            if((s.economy?.serviceFeesPaid||[]).includes(`admission:${String(s.location||'').trim()}:${fee}`))
+                throw new Error("此處的入門審查費已繳納，請直接進行考核，不能重複扣款。");
         }
         if(op.kind==="loss"&&(adds.length||credit))throw new Error("損失事件不可夾帶獎勵。");
         if(raw.tradeOffer)throw new Error("報價回合不可同時移轉物資。");
@@ -5669,22 +6499,32 @@ JSON 輸出格式範例：
         if((s.economy.claimedSources||[]).includes(sourceKey))throw new Error("同一業務來源已領取，不得更換事件編號重複領獎。");
         const request={eventId:"PROPOSAL:"+sourceId,sourceKey:"CLAIM:"+sourceKey,parentId:sourceId,kind:"turn",credit,debit:economyInteger((delta<0?-delta:0)+fee,"total debit"),adds,removes};
         settleEconomy(structuredClone(s),request,ECONOMY_AUTHORITY);
-        const operationLabel={reward:"回合獎勵",consolation:"失敗補償",exchange:"物品交換",craft:"材料製作",loss:"物品／靈石損失",purchase:"購買",auction:"拍賣競標"}[op.kind]||op.kind;
-        return {id:request.eventId,sourceKey,operation:operationLabel,kind:op.kind,request,location:String(s.location||""),inventorySnapshot:inventorySnapshot(s),balance:s.spiritStone,status:"pending"};
+        const operationLabel={reward:"回合獎勵",consolation:"失敗補償",exchange:"物品交換",craft:"材料製作",loss:"物品／靈石損失",purchase:"購買",auction:"拍賣競標",service:"宗門考核／登記費（須確認）"}[op.kind]||op.kind;
+        return {id:request.eventId,sourceKey,operation:operationLabel,kind:op.kind,request,location:String(s.location||""),inventorySnapshot:inventorySnapshot(s),balance:s.spiritStone,status:"pending",
+            ...(op.kind==='service'?{serviceKey:`admission:${String(s.location||'').trim()}:${fee}`}:{})};
     }
     function approveEconomyProposal(s,id) {
         const p=s.pendingEconomyProposal;
         if(!p||p.id!==id||p.status!=="pending")throw new Error("提案不存在或已處理。");
         if(p.location!==String(s.location||"")||p.inventorySnapshot!==inventorySnapshot(s)||p.balance!==s.spiritStone)throw new Error("提案已過期，請取消後重新提出。");
         if((s.economy.claimedSources||[]).includes(p.sourceKey))throw new Error("此來源已領取。");
+        if(p.kind==='service' && (s.economy?.serviceFeesPaid||[]).includes(p.serviceKey))
+            throw new Error('此考核費已成功繳納，不可重複支付。');
         const draft=structuredClone(s),r=settleEconomy(draft,p.request,ECONOMY_AUTHORITY);
+        if(p.kind==='service'){
+            draft.economy.serviceFeesPaid=draft.economy.serviceFeesPaid||[];
+            draft.economy.serviceFeesPaid.push(p.serviceKey);
+            ueIssueEntitlement(draft,{id:p.id,kind:'service_payment',purpose:'入門考核登記：'+String(draft.location||''),targetId:null});
+        }
         draft.economy.claimedSources=draft.economy.claimedSources||[];
         draft.economy.claimedSources.push(p.sourceKey);draft.pendingEconomyProposal=null;
         finishEconomySummary(draft,s,p.request.parentId);Object.assign(s,draft);return r;
     }
     function confirmEconomyProposal(id) {
         if(isTyping)return;
-        try{const r=approveEconomyProposal(gameState,id);publishEconomyReceipt(r);saveGameState();renderUI();}
+        try{const wasService=gameState.pendingEconomyProposal?.kind==='service';const r=approveEconomyProposal(gameState,id);publishEconomyReceipt(r);
+            if(wasService)appendLogData('系統','✦ 已正式繳納登記／考核費。僅代表支付成功，尚未通過考核；可繼續向守山弟子要求領牌並參加考核。','system',false,true);
+            saveGameState();renderUI();}
         catch(e){openGameModal("\u63d0\u6848\u672a\u57f7\u884c",e.message);}
     }
     function cancelEconomyProposal(id) {
@@ -5799,11 +6639,16 @@ JSON 輸出格式範例：
         const recent=(wm.chronicle||[]).slice(-8);
         const threads=(wm.openThreads||[]).slice(-8);
         const inv=(gameState.inventory||[]).map(i=>({name:i.name,quantity:i.quantity,identified:i.identified})).slice(0,45);
-        const snap={realm:gameState.realm,level:gameState.level,exp:gameState.exp,maxExp:gameState.maxExp,hp:gameState.hp,maxHp:getMaxHp(gameState),origin:gameState.originType,linggen:gameState.linggen,physique:gameState.physique,stones:gameState.spiritStone,sect:gameState.sect,location:gameState.location,mode:gameState.scenarioMode,threats:gameState.activeThreats,inventory:inv,npcs,quests:(gameState.quests||[]).filter(q=>q?.verified===true||!gameState.destiny).slice(-10),questSuggestions:(gameState.quests||[]).filter(q=>q?.scope==='suggestion').slice(-4).map(q=>q.name),pendingSellIntent:gameState.pendingSellIntent||null};
+        const snap={realm:gameState.realm,level:gameState.level,exp:gameState.exp,maxExp:gameState.maxExp,hp:gameState.hp,maxHp:getMaxHp(gameState),origin:gameState.originType,linggen:gameState.linggen,physique:gameState.physique,stones:gameState.spiritStone,sect:gameState.sect,location:gameState.location,mode:gameState.scenarioMode,threats:gameState.activeThreats,inventory:inv,npcs,quests:(gameState.quests||[]).filter(q=>q?.verified===true||!gameState.destiny).slice(-10),questSuggestions:(gameState.quests||[]).filter(q=>q?.scope==='suggestion').slice(-4).map(q=>q.name),pendingSellIntent:gameState.pendingSellIntent||null,
+          confirmedEntitlements:(gameState.economy?.uepce?.entitlements||[]).filter(r=>['active','registered','exam_pending'].includes(r.status)).slice(-8)
+            .map(r=>({id:r.id,type:r.type,description:r.description,registrationNumber:r.registrationNumber||null,status:r.status,location:r.location})),
+          custodyEvents:(gameState.economy?.uepce?.custody||[]).filter(r=>r.status==='detained').slice(-8)
+            .map(r=>({targetId:r.targetId,captorId:r.captorId,status:r.status}))};
         return `你是《九州裂天錄》修仙 RPG 的敘事 AI。繁體中文、因果嚴謹、不討好玩家、不憑空送物；遊戲核心資料是唯一真實來源，故事只描寫結果且不得擅自結算。
 【固定世界】${canon}
 【近期真實記憶】${String(wm.recentSummary||'').slice(0,550)}；紀事:${JSON.stringify(recent)}；未結事件:${JSON.stringify(threads)}
 【核心快照 SSOT】${JSON.stringify(snap)}
+【財產／考核權利】已核發的號牌與資格必須被承認，不可要求同一筆考核再次繳費；已登記不等於通過考核。正式資產移轉與拘禁救援由財產面板及團戰核心裁決，禁止敘事憑空改寫。
 【已知命運與當前目標】${JSON.stringify(destinyPublicContext(gameState))}
 【自主世界已確認狀態（不可擅自更改勢力財政、領地與事件階段）】${worldPublicDigest(gameState)}
 【NPC 行為原則】已登記 NPC 的戰力、境界、信任與警戒必須被尊重；對手會評估自身利益、風險、代價與玩家可信度。面對高戰力對手，不得憑空秒殺、奪寶或迫其臣服；低信任人物可拒絕、詢問證據或尋求協助。若判定尚未有足夠條件，只描寫嘗試，不宣稱正式成功。
@@ -5971,7 +6816,8 @@ JSON 輸出格式範例：
         if(raw.lostItems!==undefined && !Array.isArray(raw.lostItems)) throw new Error("遺失物品清單格式無效。");
         if(raw.inventoryRemoveDelta && raw.lostItems && raw.lostItems.length) throw new Error("扣除清單重複，請只使用inventoryRemoveDelta。");
         validateEconomicQuote(raw.tradeOffer);
-        const normalizedTrade = reconcileQuoteVersusSettlement(raw,eventMeta.actionText||'');
+        const normalizedFee=normalizeAdmissionFeeResponse(raw,eventMeta);
+        const normalizedTrade = reconcileQuoteVersusSettlement(normalizedFee,eventMeta.actionText||'');
         const stoneExpected=validateStoneRewards(normalizedTrade);
         const proposal=prepareEconomyProposal(s,normalizedTrade,eventMeta,sourceId,stoneExpected);
         raw.inventoryDelta=[];raw.inventoryRemoveDelta=[];raw.lostItems=[];raw.spiritStonesDelta=0;
@@ -6031,7 +6877,15 @@ JSON 輸出格式範例：
                 result.lastAutoEconomyReceipt = { operation: proposal.operation,
                     credit: proposal.request.credit, adds: structuredClone(proposal.request.adds),
                     eventId: proposal.id };
-            } else result.pendingEconomyProposal = proposal;
+            } else {
+                if(proposal.kind==='service'){
+                    // A scene can move on the initial request; the confirmation must bind to the committed scene.
+                    proposal.location=String(result.location||'');
+                    proposal.inventorySnapshot=inventorySnapshot(result);
+                    proposal.balance=result.spiritStone;
+                }
+                result.pendingEconomyProposal = proposal;
+            }
         }
         if(result.pendingTradeOffer?.type==="SELL")bindSellQuote(result,result.pendingTradeOffer,eventMeta);
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
@@ -6219,6 +7073,7 @@ JSON 輸出格式範例：
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         if(v682State().battle){openGameModal("正式戰鬥進行中","請先在團隊戰鬥面板完成回合，不得透過 AI 文字直接結算。 ");return;}
+        if(ueEnsure(gameState).pending){openGameModal('待確認財產行動','請先確認或取消目前財產操作。');return;}
         if(gameState.pendingEconomyProposal){openGameModal("待確認提案","請先確認或取消物資提案。");return;}
 
         ensureWorldMemory(gameState);
@@ -6241,8 +7096,21 @@ JSON 輸出格式範例：
             customPromptText = `【核心突破按鈕已正式判定：${eventMeta.breakthroughSuccess?'成功':'失敗'}。${eventMeta.firstQiEntry?'首次引氣入體也須依核心機率判定，不保底。':''}只描寫當次判定，不改動天道數值與靈石。】`;
         }
         eventMeta = { ...(eventMeta || {}), eventId: (eventMeta && eventMeta.eventId) || `ACTION:${Date.now()}:${Math.random().toString(36).slice(2,12)}` };
-        let promptToSend = customPromptText || actionText;
+        // V6.85: declare origin state before it is referenced (previous build triggered TDZ ReferenceError).
         const isDoingOrigin = !gameState.hasChosenOrigin;
+        // Deterministic free-text router: explicit property operations never require Gemini to invent ledger effects.
+        if(!isDoingOrigin && !eventMeta.qaTest){
+            const routed=ueParseFreeText(gameState,actionText);
+            if(routed){
+                if(routed.confirmPending){ueConfirm(routed.confirmPending);return;}
+                if(routed.cancelPending){ueCancel(routed.cancelPending);return;}
+                if(routed.error){openGameModal('財產行動需要補充條件',routed.error);return;}
+                try{ueDraft(gameState,routed);appendLogData('系統','已建立正式財產提案，請於系統頁籤確認或取消。','system',false,true);renderUI();saveGameState();}
+                catch(e){openGameModal('財產提案未成立',String(e.message||e));}
+                return;
+            }
+        }
+        let promptToSend = customPromptText || actionText;
 
         appendLogData("異世旅者", actionText, "player", false, true);
         conversationHistory.push({ role: "user", content: promptToSend });
@@ -6457,6 +7325,9 @@ JSON 輸出格式範例：
             if(gameState.destiny) destinySync(gameState);
             finishEconomySummary(gameState,stateBeforeAction,eventMeta.sourceId);
             storyText=destinyGuardNarrative(projectNarrative(storyText,gameState),gameState);
+            ueCaptureQuotedFee(gameState,storyText);
+            if(gameState.pendingEconomyProposal?.kind==='service')
+                storyText+='\n\n【核心結算】登記費尚未支付，請按下方「✓ 接受結算」確認扣款；確認前不能視為已領牌或通過考核。';
             conversationHistory.push({ role: "assistant", content: JSON.stringify({story:storyText,coreSettlement:gameState.lastEconomySummary,pendingEconomyProposal:gameState.pendingEconomyProposal||null}) });
             appendLogData("天道", storyText, "ai", false, true);
             for(const r of gameState.economy?.receipts || []) if(!(stateBeforeAction.economy?.receipts||[]).some(old=>old.id===r.id)) publishEconomyReceipt(r);
@@ -6739,6 +7610,7 @@ JSON 輸出格式範例：
       if(b.status==='active'&&!living('enemy').length)b.status='won';
       if(b.status==='active'&&!living('player').length)b.status='lost';
       if(b.status!=='active'){
+        ueFinalizeBattle(gameState,b);
         v.roundLog.push({id:b.id,turn:b.turn,result:b.status,day:gameState.daysPassed,units:b.units.map(u=>({id:u.id,hp:u.hp,fled:!!u.fled}))});
         v.roundLog=v.roundLog.slice(-100);v.battle=null;
       }
@@ -6813,6 +7685,7 @@ JSON 輸出格式範例：
         pruneNpcRegistry(gameState, 100);
         renderActionTelemetry();
         renderEconomyProposal();
+        ueRender();
         checkLifeStatus(gameState);
 
         const modeBadgeEl = document.getElementById("ui-scenario-mode");
@@ -7330,10 +8203,11 @@ JSON 輸出格式範例：
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState); gameState.version = "6.81"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.86"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
-        const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
         try {
+            ueSyncAssetRegistry(gameState,"SAVE_SYNC");
+            const payload = { state: gameState, logs: storyLogData, history: conversationHistory };
             localStorage.setItem("blade_v600_save", JSON.stringify(payload));
             return true;
         } catch (error) {
@@ -7363,12 +8237,12 @@ JSON 輸出格式範例：
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState); gameState.version = "6.81"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState); gameState.version = "6.86"; gameState.maxHp = getMaxHp(gameState);ueSyncAssetRegistry(gameState,"EXPORT_SYNC");
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v682_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v686_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
