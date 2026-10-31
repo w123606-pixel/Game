@@ -22,11 +22,11 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "微軟正黑體", "Noto Sans TC", sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 8px; min-height: 100vh; overflow-x: hidden; }
-        
+
         .game-container { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 900px; }
         .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { color: var(--border-gold); font-size: 0.95rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 4px; margin-bottom: 8px; text-align: center; }
-        
+
         .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 10px; overflow-x: auto; }
         .tab-btn { flex: 1; min-width: 70px; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.3s; min-height: 44px; }
         .tab-btn.active { color: var(--border-gold); border-bottom: 2px solid var(--border-gold); }
@@ -38,7 +38,7 @@
         .stat-value { font-weight: bold; text-align: right; transition: color 0.3s; }
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
         .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.5; white-space: pre-line; margin-bottom: 10px; }
-        
+
         .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 6px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 8px; min-height: 170px; }
         .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.8rem; margin-bottom: 8px; }
 
@@ -47,7 +47,7 @@
 
         .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; overflow: hidden; }
         .story-header { background: #12141d; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
-        
+
         #story-log { 
             padding: 12px; font-size: 0.95rem; line-height: 1.6; 
             min-height: 220px;
@@ -62,10 +62,10 @@
         .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 8px; background: rgba(2, 136, 209, 0.05); }
         .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
         .story-block.system { border-left: 3px solid var(--accent-red); padding-left: 8px; background: rgba(255, 82, 82, 0.05); color: #ccc; font-size: 0.85rem; }
-        
+
         .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); }
         .dynamic-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-bottom: 8px; min-height: 48px; }
-        
+
         .choice-btn, .quick-btn, .sys-btn { 
             background: #1a1d2a; border: 1px solid #444; color: var(--border-gold); 
             padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-align: center; 
@@ -76,18 +76,18 @@
             .choice-btn:hover:not(:disabled), .sys-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
         }
         .choice-btn:active:not(:disabled), .sys-btn:active:not(:disabled) { background: var(--border-gold); color: #000; }
-        
+
         .input-group { display: flex; gap: 6px; }
         input[type="text"], select.fusion-select { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
         input[type="text"]:focus, select.fusion-select:focus { border-color: var(--border-gold); }
         button.primary-btn { background: var(--border-gold); color: #000; min-width: 90px; border: none; font-weight: bold; border-radius: 4px; min-height: 44px; cursor: pointer;}
         button.primary-btn:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none; }
-        
+
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 6px; margin-top: 6px; }
         .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-size: 0.85rem; }
         .api-config input, .api-config select { width: 100%; padding: 8px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
-        
+
         .sect-badge { font-size:0.75rem; background: rgba(197, 160, 89, 0.1); border:1px solid var(--border-gold); padding: 2px 6px; border-radius: 3px; color: var(--border-gold); margin-left:6px;}
         .mode-badge { font-size:0.75rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 4px; }
         .mode-idle { background: rgba(67, 160, 71, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green); }
@@ -100,7 +100,7 @@
         .equip-card .slot-title { color: #888; }
         .equip-card .item-name { font-weight: bold; }
         .equip-card .item-desc { font-size: 0.72rem; color: #aaa; margin-top: 2px; }
-        
+
         .item-row { background: #1a1d2a; border: 1px solid #2a2d3d; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
         .item-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .item-actions { display: flex; gap: 6px; align-self: flex-end; flex-wrap: wrap; }
@@ -185,7 +185,7 @@
         <div class="controls-area" id="controls-area">
             <div id="trade-offer-container" style="display:none;"></div>
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
-            
+
             <div id="death-action-container" style="display:none; margin-bottom: 8px;">
                 <button class="choice-btn" style="width:100%; background:#4a1515; color:#fff; border:1px solid #ff5252; text-align:center; font-weight:bold; padding:12px; font-size:0.95rem; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="resetGame()">
                     &#10022; 肉身已隕，神魂俱滅 — 點此輪迴重修
@@ -233,7 +233,7 @@
             <div class="stat-item"><span class="stat-label">體質天賦 (點擊詳解)</span><span class="stat-value clickable-tag" id="ui-physique" onclick="showPhysiqueModal()">凡體</span></div>
             <div class="stat-item"><span class="stat-label">靈石貨幣 (折算下品)</span><span class="stat-value" style="color:var(--hl-cyan)" id="ui-spiritStone">0 顆</span></div>
             <div class="stat-item"><span class="stat-label">宗門歸屬與貢獻</span><span class="stat-value" style="color:var(--hl-gold)" id="ui-sect-info">散修 (無門派)</span></div>
-            
+
             <div id="ui-economy-receipt" style="font-size:0.78rem;color:#8fdde5;white-space:pre-line;margin:8px 0;"></div>
             <h2 style="margin-top: 10px;">✦ 六維屬性 (基礎 + 外力/狀態加成)</h2>
             <div class="radar-container"><canvas id="radarCanvas" width="160" height="160"></canvas></div>
@@ -309,7 +309,7 @@
             <div id="ui-destiny" class="destiny-pane" aria-live="polite"></div>
             <h2>✦ 當前任務</h2>
             <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);"></div>
-            
+
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <h2 style="margin:0;">✦ 當前人脈 (Tier 3 實體 NPC)</h2>
             </div>
@@ -418,7 +418,7 @@
             for (let sub = 1; sub <= 10; sub++) {
                 const subName = sub === 10 ? "圓滿" : `${sub}層`;
                 const fullName = isNascentOrHigher ? `${baseName}${subName} (天劫)` : `${baseName}${subName}`;
-                
+
                 let baseHp = Math.floor(80 * Math.pow(1.4, currentLvl));
                 // 分段式成長：前期升級較快，中後期持續增加但不再指數爆炸。
                 const expGrowth = currentLvl <= 20
@@ -936,7 +936,7 @@
 
     const TransactionEngine = {
         isLocked: false,
-        
+
         processDisassembly(targetItem) {
             const cleanName = cleanNameStrict(targetItem.name);
             const itemMeta = getItemMeta(targetItem);
@@ -1934,7 +1934,7 @@
             hasChosenOrigin: false, originType: "未明", turn_count: 1,
             originLinggenBonus: "真靈根",
             originPhysiqueBonus: "靈體",
-            
+
             sect: { joined: false, id: null, name: "無", rank: "散修", contribution: 0, totalContribution: 0, position: "無" },
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], 
@@ -3028,7 +3028,7 @@
         Object.values(s.equipment || {}).forEach(eq => { const ring = getAncientRingBonus(eq, true); if (ring) eqHp += ring.hp; });
         const phyMeta = getPhysiqueMeta(s.physique);
         let rawHp = Math.floor((realmDef.maxHp + kfHp + eqHp) * (phyMeta.hpMult || 1.0));
-        
+
         const toxin = Math.min(10, Math.max(0, Number(s.danToxin) || 0));
         const toxinPenalty = Math.floor(rawHp * (toxin * 0.04));
         return Math.max(10, rawHp - toxinPenalty);
@@ -3330,7 +3330,7 @@
 
     function openFusionModal() {
         if (gameState.isDead) return;
-        
+
         const container = document.createElement("div");
         container.style.display = "flex";
         container.style.flexDirection = "column";
@@ -3777,7 +3777,7 @@
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
         if (mode === "DIALOGUE" || mode === "DANGER") { openGameModal("✦ 追殺中", "當前無法前往醫館！"); return; }
-        
+
         const daysSinceLast = gameState.daysPassed - safeNumber(gameState.lastHospitalDay, -999, -1e9, 1e9);
         const priorVisitCount = daysSinceLast > 30 ? 0 : safeNumber(gameState.hospitalVisitCount, 0, 0, 1e6);
         const visitCount = priorVisitCount + 1;
@@ -3880,7 +3880,7 @@
     function applyOriginInitialization(choiceText) {
         if (gameState.hasChosenOrigin) return;
         gameState.hasChosenOrigin = true;
-        
+
         const originInput=String(choiceText||'').trim();
         const presetIndex=originInput.match(/^([123])(?:[.．、:：\s]|$)/)?.[1] || '';
         if (presetIndex==='1' || /^宗門棄子(?:[\s、，。:：]|$)/.test(originInput)) {
@@ -5699,19 +5699,19 @@ JSON 輸出格式範例：
             el.setAttribute("aria-live", "polite"); 
             document.getElementById("story-log").before(el);
         }
-        
+
         const p = gameState?.pendingEconomyProposal;
         if (!p) {
             el.style.display = 'none';
             el.replaceChildren();
             return;
         }
-        
+
         el.style.display = 'block';
         el.replaceChildren();
-        
+
         const r = p.request;
-        
+
         const contentDiv = document.createElement("div");
         contentDiv.innerHTML = `
             <div style="font-weight:bold; color:var(--border-gold); margin-bottom:8px; border-bottom:1px solid #3a3d52; padding-bottom:6px;">
@@ -6059,7 +6059,7 @@ JSON 輸出格式範例：
         }
         const bodyData = {system_instruction:{parts:[{text:getSystemPrompt()}]},contents,
             generationConfig:{responseMimeType:'application/json',temperature:0.65,maxOutputTokens:4096}};
-        
+
         const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
         let res=null,lastNetworkError=null;
         const requestSize=JSON.stringify(bodyData).length;
@@ -6319,7 +6319,7 @@ JSON 輸出格式範例：
                 delete parsedState.daysPassedDelta;
                 delete parsedState.daysPassed;
             }
-            
+
             if(eventMeta.deductStone!==undefined){
                 const purpose=eventMeta.isHospital?"hospital":eventMeta.isDetox?"detox":"message";
                 settleEconomy(gameState,{eventId:`FEE:${eventMeta.eventId}`,kind:"service",purpose,amount:eventMeta.deductStone},ECONOMY_AUTHORITY);
@@ -7103,7 +7103,7 @@ JSON 輸出格式範例：
                     span.textContent = `✦ [${itemCategory}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
                     span.style.color = itemRank ? getItemRankColor(itemRank) : (meta.rarityColor || '#c5a059');
                     span.title = itemRank ? `裝備境界階：${itemRank}｜類型：${meta.category || '裝備'}` : `物品類型：${meta.category || meta.type || '雜項'}`;
-                    
+
                     let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
                     const permissions = getItemPermissions(item);
@@ -7145,7 +7145,7 @@ JSON 輸出格式範例：
         if (npcsBox && deadNpcsBox) {
             npcsBox.innerHTML = "";
             deadNpcsBox.innerHTML = "";
-            
+
             const registry = Object.values(gameState.npcRegistry).filter(n => n && (n.is_alive === false || n.status === "DEAD" || n.is_alive === true));
             let aliveCount = 0;
             let deadCount = 0;
@@ -7177,7 +7177,7 @@ JSON 輸出格式範例：
                 if (n.is_alive !== false && n.status !== "DEAD") {
                     aliveCount++;
                     const actions = document.createElement("div"); actions.className = "item-actions";
-                    
+
                     if (fav < 0) {
                         if (nearby) {
                             const ambBtn = document.createElement("button"); ambBtn.style.background = "#4a1515"; ambBtn.textContent = "✦ 當面伏擊";
@@ -7647,11 +7647,26 @@ JSON 輸出格式範例：
     // V6.82 MIXED QA: goal-oriented schedule, not a sequence of 80% cultivation.
     const MIX_QA_TARGETS={cultivate:300,social:160,gather:140,combat:120,economy:120,quest:120,other:40};
     function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'social',world:'quest'})[t]||t;}
+    // V6.82 QA hotfix: observe effective progress, not only HTTP 200 / telemetry.
+    function mixedQaProgressed(before,after){
+        return before.days!==after.days || before.level!==after.level || before.exp!==after.exp ||
+            before.hp!==after.hp || before.stones!==after.stones || before.npcs!==after.npcs ||
+            before.items!==after.items || before.mode!==after.mode || before.location!==after.location;
+    }
+    function mixedQaClearStaleCommerce(s, data, reason){
+        // Only the isolated disposable QA character; never execute the trade or alter inventory/stone balances.
+        const keys=[];
+        if(s.pendingSellIntent && !s.pendingTradeOffer){s.pendingSellIntent=null;keys.push('pendingSellIntent');}
+        if(keys.length){
+            (data.diagnostics??=[]).push({attempt:(data.rounds||[]).length+1,kind:'QA_STALE_TRADE_CLEANUP',reason,keys});
+        }
+        return keys.length;
+    }
     function mixedQaPlan(s,data){
         const count=data?.actionCounts||{};
         const t=Number(data?.completedTurns||0), n=Number(data?.rounds?.length||0);
         if(!s.hasChosenOrigin)return {type:'origin',action:'3 落魄少主。選擇出身，從荒郊破廟開始。'};
-        if(s.pendingEconomyProposal)return {type:'pending',action:'待確認交易必須先由核心處理，不得以自由文字跳過'};
+        if(s.pendingEconomyProposal||s.pendingTradeOffer)return {type:'pending',action:'待確認交易必須先由核心處理，不得以自由文字跳過'};
         if(s.isDead)return {type:'dead',action:'角色死亡，停止測試'};
         if(getEffectiveMode(s)==='DANGER'||(s.activeThreats||[]).length)return {type:'retreat',action:'評估傷勢和敵人，沿已知路線謹慎撤退，不宣稱必然脫離戰鬥。'};
         if(['DIALOGUE','HAZARD'].includes(getEffectiveMode(s)))return {type:'depart',action:'以符合情境的方式結束對話或離開危險地點，不自行清空警戒與人脈。'};
@@ -7663,12 +7678,14 @@ JSON 輸出格式範例：
           {type:'social',action:'與所在地一位可接觸的修士正式結識，詢問姓名、修為、需求與立場；若對方願意，按照正式人脈規則登錄，不得虛構信任。'},
           {type:'gather',action:'探索附近可抵達的地區、採集普通靈草，若有實際取得，按核心合法來源與背包權限結算。'},
           {type:'combat',action:'謹慎尋找與自身實力相近、願意切磋的對手。只建立可驗證的遭遇與交手條件；正式勝負須由戰鬥核心裁定，不可憑文字秒殺。'},
-          {type:'economy',action:'尋找附近有根據的商鋪或委託，詢問普通藥草的市價或百藝材料來源。買賣需有報價及本人確認，不得憑空收取靈石。'},
+          {type:'economy',action:'探查附近商鋪與合法委託，了解普通藥草價格及百藝材料來源；本回合僅收集情報，不提出出售、不建立 tradeOffer、不移轉靈石與物品。真正出售必須先在背包選定物品，建立正式出售意圖及報價。'},
           {type:'quest',action:'推進落魄少主身世線索，從已有任務簿、人物與世界事件尋找一個具體下一步；不得無證據改寫命運真相。'},
           {type:'other',action:'按照當前任務與周圍情境，前往合理可抵達的新地點，必要時安排短期休息；只有實際抵達才改位置。'}
         ];
         // Deficit-based weighted interleaving; prioritize deficits but never force impossible actions.
-        let ranked=opts.map((o,i)=>({o,score:((t+1)*MIX_QA_TARGETS[o.type]/1000-(count[o.type]||0))/(Math.max(1,MIX_QA_TARGETS[o.type]))*1000+(((n*17+i*7)%13)/100)}));
+        const noEconomyUntil=Number(data?.qaAvoidEconomyUntil||0);
+        const available=opts.filter(o => !(o.type==='economy' && n<noEconomyUntil));
+        let ranked=available.map((o,i)=>({o,score:((t+1)*MIX_QA_TARGETS[o.type]/1000-(count[o.type]||0))/(Math.max(1,MIX_QA_TARGETS[o.type]))*1000+(((n*17+i*7)%13)/100)}));
         if(cd>day){ranked=ranked.filter(x=>x.o.type!=='cultivate'||Number(s.exp||0)<Number(s.maxExp||0));}
         if(getLocationModifier(s.location).expPerDay<=0)ranked=ranked.map(x=>({...x,score:x.o.type==='other'?x.score+3:x.score}));
         ranked.sort((a,b)=>b.score-a.score);
@@ -7719,7 +7736,7 @@ JSON 輸出格式範例：
         const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
         longQaText([`完成 ${data.completedTurns??arr.filter(r=>r.success).length}/${data.target} 個有效回合（已嘗試 ${arr.length} 次） | Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
             `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
-            `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；P0/P1 警示 ${data.auditIssues?.length||0}`,
+            `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；稽核警示 ${data.auditIssues?.length||0}；連續危險撤退 ${data.qaRetreatStall||0}/3`,
             `均衡分類 ${Object.entries(data.actionCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；NPC ${Object.keys(p.npcRegistry||{}).length}；HP ${p.hp??'?'}；靈石 ${p.spiritStone??'?'}`, 
             `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
     }
@@ -7750,7 +7767,7 @@ JSON 輸出格式範例：
             }
             data.target=Math.max(data.target||1000,requested);
             data.completedTurns ??= (data.rounds||[]).filter(r=>r.success).length;
-            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.actionTargets??=MIX_QA_TARGETS;
+            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaCommerceFailureStreak??=0;
             if(resume && data.nextAllowedAt && Date.now()<data.nextAllowedAt){
                 const until=new Date(data.nextAllowedAt).toLocaleString();
                 openGameModal('Gemini 配額尚未恢復',`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
@@ -7767,6 +7784,13 @@ JSON 輸出格式範例：
             for(let n=data.rounds.length;data.completedTurns<data.target;n++){
                 if(rt.stop){data.status='paused by user';break;}
                 if(gameState.isDead){data.status='character died';break;}
+                // Clean orphaned sale intents left by a rejected AI quote. The QA agent never confirms a sale.
+                mixedQaClearStaleCommerce(gameState,data,'before next action');
+                if(gameState.pendingTradeOffer){
+                    data.status='P1 blocker: unresolved trade quotation';
+                    data.auditIssues.push({turn:n+1,issues:['P1_UNRESOLVED_TRADE_OFFER']});
+                    break;
+                }
                 const plan=mixedQaPlan(gameState,data);
                 const before=longQaBefore(gameState);
                 const completedBefore=Number(gameState.actionTelemetry?.completed||0);
@@ -7795,16 +7819,45 @@ JSON 輸出格式範例：
                 if(rt.rateLimit)quotaLimit={...rt.rateLimit};
                 const after=longQaBefore(gameState);
                 const success=Number(gameState.actionTelemetry?.completed||0)>completedBefore;
+                const progressed=mixedQaProgressed(before,after);
                 const failure=!success?(gameState.actionTelemetry?.recent||[]).slice(-1)[0]?.reason||'操作未完成':'';
                 const deltas=rt.httpEvents.slice(httpBefore);
                 const record={turn:n+1,type:plan.type,bucket:mixedQaBucket(plan.type),coverage: ['combat','social','economy','quest','gather','other','recover'].includes(plan.type)?'Gemini自由文字情境（非正式核心按鈕驗收）':'正式核心操作',action:plan.action,success,elapsedMs:Date.now()-began,
                     apiCalls:rt.currentCalls-callsBefore,httpAttempts:deltas.length,apiMs:deltas.reduce((a,b)=>a+b.durationMs,0),
                     httpCodes:deltas.map(e=>e.status),before,after,levelDelta:after.level-before.level,
                     failure:liveQaSanitize(quotaLimit?.message||failure),rateLimited:Boolean(quotaLimit),breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
-                    breakthroughSuccess:plan.type==='breakthrough'&&success?Boolean(after.level>before.level):null,date:new Date().toISOString()};
+                    breakthroughSuccess:plan.type==='breakthrough'&&success?Boolean(after.level>before.level):null,date:new Date().toISOString(),progressed};
                 data.rounds.push(record);data.apiCalls+=record.apiCalls;data.httpAttempts+=record.httpAttempts;
                 if(!success){data.failures++;streak++;}else {streak=0;data.completedTurns++;data.actionCounts[record.bucket]=(data.actionCounts[record.bucket]||0)+1;}
-                record.auditIssues=mixedQaAudit(before,after,plan,gameState);if(record.auditIssues.length){data.auditIssues.push({turn:record.turn,issues:record.auditIssues});if(record.auditIssues.some(x=>x.startsWith('P0_'))){data.status='P0 blocker: '+record.auditIssues.join(', ');rt.stop=true;}}
+                // Distinguish successful settlement from meaningful world/player progression.
+                // A retreat that changes scenery but remains in danger still counts as an unsuccessful escape.
+                if(plan.type==='retreat' && success && after.mode==='DANGER'){
+                    data.qaRetreatStall=(data.qaRetreatStall||0)+1;
+                    record.retreatOutcome='still_in_danger';
+                }else if(plan.type==='retreat'&&after.mode!=='DANGER'){
+                    data.qaRetreatStall=0;
+                    record.retreatOutcome='escaped';
+                }else if(after.mode!=='DANGER') data.qaRetreatStall=0;
+                if(plan.type==='economy'&&!success && /出售報價|報價.*過期|sell.*quote/i.test(failure)){
+                    data.qaCommerceFailureStreak=(data.qaCommerceFailureStreak||0)+1;
+                    mixedQaClearStaleCommerce(gameState,data,'stale sell quotation failure');
+                    data.qaAvoidEconomyUntil=n+1+Math.min(20,8*data.qaCommerceFailureStreak);
+                    record.commerceRecovery='cleared orphan intent and temporarily avoided repeated quote requests';
+                }else if(plan.type==='economy'&&success)data.qaCommerceFailureStreak=0;
+                record.auditIssues=mixedQaAudit(before,after,plan,gameState);
+                if(success&&!progressed && plan.type!=='origin') record.auditIssues.push('P2_NO_MEANINGFUL_STATE_CHANGE');
+                if(plan.type==='retreat'&&data.qaRetreatStall>=3){
+                    record.auditIssues.push('P1_DANGER_RETREAT_LIVELOCK');
+                    data.status='P1 blocker: 3 retreats still in DANGER; requires manual inspection of threats / battle state';
+                    rt.stop=true;
+                }
+                if(data.qaCommerceFailureStreak>=2){
+                    record.auditIssues.push('P1_REPEATED_STALE_SELL_QUOTE');
+                    data.status='P1 blocker: 2 stale sale quote failures; inspect intent / quote flow';
+                    rt.stop=true;
+                }
+                if(!success && !record.auditIssues.length)record.auditIssues.push('P1_SETTLEMENT_FAILED:'+String(failure).slice(0,100));
+                if(record.auditIssues.length){data.auditIssues.push({turn:record.turn,issues:record.auditIssues});if(record.auditIssues.some(x=>x.startsWith('P0_'))){data.status='P0 blocker: '+record.auditIssues.join(', ');rt.stop=true;}}
                 if(quotaLimit){
                     data.quotaPauses++;
                     data.nextAllowedAt=Date.now()+Math.max(60000,Number(quotaLimit.retryAfterMs)||60000);
