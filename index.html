@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.09｜真實 AI 回合自動稽核版</title>
+    <title>九州裂天錄 V7.10｜七項實玩問題整合修正版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -306,26 +306,15 @@
         </div>
 
         <div id="tab-social" class="tab-content">
-            <h2>✦ 命運與人生志向</h2>
-            <div id="ui-destiny" class="destiny-pane" aria-live="polite"></div>
-            <h2>✦ 交易與憑證紀錄</h2>
-            <div id="dialogue-ledger" class="scroll-list" style="max-height:160px;overflow:auto;white-space:pre-wrap;"></div>
-            <div id="sect-core-panel" class="destiny-pane" aria-live="polite"></div>
             <h2>✦ 當前任務</h2>
-            <div id="ui-quests" class="scroll-list" style="color: var(--hl-gold);"></div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <h2 style="margin:0;">✦ 當前人脈 (Tier 3 實體 NPC)</h2>
-            </div>
+            <div id="ui-quests" class="scroll-list" style="color:var(--hl-gold);"></div>
+            <h2>✦ 當前人脈</h2>
             <div id="ui-npcs-list" style="margin-bottom:10px;"></div>
-
-            <h2 style="margin-top:10px; color:#aaa;">✦ 故人/仇敵錄 (已身死 NPC 隔離區)</h2>
-            <div id="ui-dead-npcs-list" style="margin-bottom:10px;"></div>
-
-            <h2 style="margin-top:10px; color:#ffd700;">✦ 九州自主世界局勢與委託</h2>
-            <div id="ui-world-engine" class="destiny-pane" aria-live="polite"></div>
-            <h2 style="margin-top:10px; color:#ffd700;">✦ 世界紀事 (世界大事錨點 · 50條上限)</h2>
-            <div id="ui-world-events" class="scroll-list" style="color: #c5a059;"></div>
+            <h2>✦ 世界紀事</h2>
+            <div id="ui-world-events" class="scroll-list" style="color:#c5a059;"></div>
+            <!-- Retain hidden output nodes used by legacy modules, without presenting six unrelated social panels. -->
+            <div hidden aria-hidden="true"><div id="ui-destiny"></div><div id="dialogue-ledger"></div>
+            <div id="sect-core-panel"></div><div id="ui-dead-npcs-list"></div><div id="ui-world-engine"></div></div>
         </div>
 
         <div id="tab-sys" class="tab-content">
@@ -341,28 +330,10 @@
                     <button onclick="clearApiKey()" style="flex:1; min-height:36px; background:#4a1515;">✦ 清除 Key</button>
                 </div>
             </div>
-            <h2 style="margin-top:10px;">▣ 開發診斷</h2>
-            <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showItemLifecycleE2EResults()">✦ 執行物品生命週期 E2E 測試</button>
-            <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showSaveTradeRegressionResults()">✦ V6.61 存檔往返／交易異常測試</button>
-            <button class="sys-btn" style="width:100%;margin-bottom:8px;" onclick="showLongTermStressResults()">✦ V6.63 多角色長期壓力測試（400 筆交易）</button>
-            <section id="live-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #a78649;border-radius:8px;background:#171922;">
-  <h2 style="margin:0 0 8px;color:#ffd27a;">✦ 真實 Gemini 連續遊玩驗證</h2>
-  <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;margin:4px 0 9px;">直接呼叫 Gemini 模型。隔離角色在<strong>測試開始前</strong>取得 300 顆測試靈石；突破前設定修為圓滿，但<strong>仍必須走突破按鈕且接受機率判定</strong>。每次 HTTP 嘗試與耗時都會記錄；測試結束後恢復原存檔。可能產生 API 用量／費用；請勿同時多分頁操作。</p>
-  <label for="live-qa-turns" style="font-size:.8rem">測試長度：</label>
-  <select id="live-qa-turns" style="margin-bottom:8px;width:100%;padding:7px;border:1px solid #555;background:#242834;color:#fff;">
-    <option value="8">8 回合：出身、劇情、NPC、戰鬥、採集</option>
-    <option value="12" selected>12 回合：加測商店交易與後續狀態</option>
-  </select>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;">
-    <button id="live-qa-start" class="sys-btn" style="flex:2;min-width:120px;" onclick="startLiveGeminiQA()">▶ 開始真實測試</button>
-    <button id="live-qa-stop" class="sys-btn" style="flex:1;min-width:80px;" onclick="stopLiveGeminiQA()" disabled>停止</button>
-    <button id="live-qa-export" class="sys-btn" style="flex:1;min-width:100px;" onclick="exportLiveGeminiQA()" disabled>↧ 匯出報告</button>
-  </div>
-  <div id="live-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.79rem;line-height:1.6;padding:8px;margin-top:8px;border-radius:5px;background:#0d1019;color:#c8ddcc;max-height:260px;overflow:auto;">尚未執行。請先在上方設定 API Key 與模型。</div>
-</section>
+            <h2 style="margin-top:10px;">▣ AI 測試與自動稽核</h2>
             <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
-              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ 1,000 回合真實 Gemini 均衡遊玩測試（P0–P2）</h2>
-              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。測試包含修煉、NPC、探索、經濟、任務與交手情境；僅正式按鈕操作才算相應核心功能覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。</p>
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ 真實 Gemini 均衡遊玩測試＋逐回合自動稽核</h2>
+              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。測試包含修煉、NPC、探索、經濟、任務與交手情境；僅正式按鈕操作才算相應核心功能覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。每回合自動稽核提案、資產、正式收據與最終敘事，警示一起納入報告。</p>
               <label for="long-qa-turns">目標回合：</label>
               <select id="long-qa-turns" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
                 <option value="1000" selected>1,000 回合</option><option value="1200">1,200 回合</option><option value="1500">1,500 回合</option><option value="2000">2,000 回合</option><option value="3000">3,000 回合</option>
@@ -382,20 +353,15 @@
               <p style="font-size:.74rem;color:#b4ced0;">中途關閉或重整頁面後，重新開啟此檔並按「接續」，從最近一回合檢查點恢復。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
             </section>
 
-            <section id="v709-audit-ui" style="margin:14px 0;padding:11px;border:1px solid #5a9cb1;border-radius:8px;background:#111d27;">
-              <h2 style="margin:0 0 7px;color:#91ddef;">✦ V7.09 真實 AI 回合自動稽核</h2>
-              <p style="font-size:.79rem;line-height:1.65;color:#c7d8de;margin:5px 0;">正式遊玩的每次 AI 回合，自動核對原始提案、核心事件收據、靈石／物品／NPC 餘額與最終敘事。稽核紀錄僅保留在本機瀏覽器，可手動匯出 JSON；不會上傳到其他服務。紅色警示須人工檢查，未經驗證的敘事不等於正式結算。</p>
-              <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;margin:8px 0;"><input type="checkbox" id="v709-audit-enable" checked onchange="v709AuditToggle(this.checked)"> 啟用正式 AI 回合自動稽核（預設啟用）</label>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:7px 0;">
-                <button class="sys-btn" type="button" onclick="v709AuditRender()">↻ 更新稽核摘要</button>
-                <button class="sys-btn" type="button" onclick="v709AuditExport()">↧ 匯出完整稽核 JSON</button>
-                <button class="sys-btn" type="button" onclick="v709AuditClear()" style="background:#4c3030">清除本機稽核紀錄</button>
-              </div>
-              <div id="v709-audit-status" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.79rem;line-height:1.6;padding:9px;border-radius:5px;background:#0b141a;color:#d4e9ea;max-height:320px;overflow:auto;">尚無自動稽核紀錄。</div>
-              <p style="font-size:.75rem;color:#aac9cf;">保留最近 80 回合，原始模型回應每次最多 12,000 字元；HTTP 狀態與修補回應也會記錄。請勿在角色指令中貼入密碼或 API Key。匯出的日誌包含遊戲對話，請謹慎分享。</p>
+            <section id="v709-audit-ui" style="margin:8px 0;padding:11px;border:1px solid #5a9cb1;border-radius:8px;background:#111d27;">
+                <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;margin:8px 0;"><input type="checkbox" id="v709-audit-enable" checked onchange="v709AuditToggle(this.checked)"> 正常遊玩及 1,000 回合測試皆啟用 AI 自動稽核</label>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="sys-btn" type="button" onclick="v709AuditExport()">↧ 匯出完整稽核 JSON</button>
+                    <button class="sys-btn" type="button" onclick="v709AuditClear()">清除稽核紀錄</button>
+                </div>
+                <div id="v709-audit-status" style="font-size:.79rem;line-height:1.6;padding:9px;margin-top:7px;border-radius:5px;background:#0b141a;color:#d4e9ea;max-height:250px;overflow:auto;white-space:pre-wrap;">尚無稽核紀錄。</div>
+                <p style="font-size:.74rem;color:#aac9cf;">最近 80 回合儲存在本機；報告會包含玩家與 AI 對話，但不含 API Key。正式測試可能消耗 API 配額。</p>
             </section>
-            <h2 style="margin-top:10px;">▣ 行動結算診斷</h2>
-            <div id="action-diagnostic-panel" style="padding:9px;margin:8px 0;border:1px solid #414456;border-radius:6px;font-size:0.78rem;color:#bdc3d2;white-space:pre-wrap;overflow-wrap:anywhere;">尚無測試紀錄。</div>
             <h2 style="margin-top:10px;">▣ 存檔管理</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
                 <button class="sys-btn" onclick="exportSave()">↧ 匯出存檔</button>
@@ -2294,7 +2260,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.99",
+            version: "7.10",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, maxHp: 50, hp: 50, exp: 0, maxExp: 100,
             economy: {receipts:[],notifiedIds:[]},
@@ -2317,6 +2283,7 @@
             worldEvents: [],
             worldMemory: { chronicle: [], openThreads: [], revealedSecrets: [], factionRelations: [], recentSummary: "開局初期，尚無足夠劇情可摘要。", nextEventId: 1 },
             destiny: null, questLedger: null,
+            v710Employment:{contracts:[],settled:{},audit:[]},v710CompletedQuests:[],
             quests: [{ name: "身世問心", progress: "選擇身世，踏入修仙界", status: "進行中" }],
             choices: [...DEFAULT_ORIGIN_CHOICES],
             processedTxIds: [],
@@ -2606,7 +2573,7 @@
     function getCanonicalItemDefinition(itemInput) {
         const isObj = itemInput && typeof itemInput === 'object';
         const id = isObj ? String(itemInput.itemId || itemInput.definitionId || '') : '';
-        const name = cleanNameStrict(isObj ? itemInput.name : itemInput);
+        const name = cleanNameStrict(isObj ? itemInput.name : itemInput).replace(/^神秘古戒/, '神祕古戒');
         // 名稱命中固定登錄項目時優先採用該定義；避免舊存檔/AI 錯誤 itemId 將物品映射成另一用途。
         if (name && ITEM_DEFINITIONS[name]) return ITEM_DEFINITIONS[name];
         if (id && ITEM_DEFINITIONS_BY_ID[id]) return ITEM_DEFINITIONS_BY_ID[id];
@@ -3095,7 +3062,7 @@
     function getItemMeta(itemInput) {
         const isObj = itemInput && typeof itemInput === 'object';
         const rawName = isObj ? (itemInput.name || '') : String(itemInput || '');
-        const clean = cleanNameStrict(rawName);
+        const clean = cleanNameStrict(rawName).replace(/^神秘古戒/,'神祕古戒');
         const explicitType = isObj ? String(itemInput.type || itemInput.category || '').toLowerCase() : '';
         const explicitTier = isObj ? (itemInput.tier || itemInput.rarity || (Object.keys(RARITY_TIERS).includes(itemInput.quality) ? itemInput.quality : '')) : '';
         const validTiers = Object.keys(RARITY_TIERS);
@@ -3304,7 +3271,7 @@
 
     // V6.67 古戒：未鑑定時提供微弱的血脈共鳴；鑑定裝備後依封印階段增強。
     function getAncientRingBonus(item, equipped = false) {
-        if (!item || !['神祕古戒','神祕古戒古寶','遠古戒指古寶'].includes(cleanNameStrict(item.name))) return null;
+        if (!item || !['神祕古戒','神祕古戒古寶','遠古戒指古寶'].includes(cleanNameStrict(item.name).replace(/^神秘古戒/,'神祕古戒'))) return null;
         if (item.identified === false || item.type === 'unidentified') {
             return { str:0, con:1, agi:0, int:0, wis:1, luk:1, hp:5, stage:0 };
         }
@@ -3314,7 +3281,7 @@
     }
     function getAncientRingPassive(s) {
         // 未鑑定戒指只給一次被動效果；鑑定後必須裝備才會得到較強的屬性。
-        const ring = (s.inventory || []).find(i => cleanNameStrict(i.name) === '神祕古戒' && i.identified === false);
+        const ring = (s.inventory || []).find(i => cleanNameStrict(i.name).replace(/^神秘古戒/,'神祕古戒') === '神祕古戒' && i.identified === false);
         return ring ? getAncientRingBonus(ring) : null;
     }
     function getStatBreakdown(s = gameState) {
@@ -4127,9 +4094,25 @@
         if (mode === "DIALOGUE" || mode === "DANGER" || mode === "HAZARD") {
             openGameModal("✦ 無法閉關", "當前情勢不允許分心閉關！"); return;
         }
-        openGameModal("✦ 閉關修練", `選擇修練方式。當前修為：${Math.floor(gameState.exp).toLocaleString()} / ${Math.floor(gameState.maxExp).toLocaleString()}。<br><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(10,'short')">短期閉關｜10天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'long')">長期閉關｜30天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'death')">突破死關｜30天</button>`);
+        openGameModal("✦ 閉關修練", `選擇修練方式。當前修為：${Math.floor(gameState.exp).toLocaleString()} / ${Math.floor(gameState.maxExp).toLocaleString()}。<br><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(10,'short')">短期閉關｜10天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'long')">長期閉關｜30天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'death')">突破死關｜30天</button><br><button class="modal-btn primary" onclick="closeGameModal();v710FatigueRest(3)">調息休養｜3天（降疲勞）</button><br><button class="modal-btn primary" onclick="closeGameModal();v710FatigueRest(7)">靜養恢復｜7天（大幅降疲勞）</button>`);
     }
 
+    function v710FatigueEfficiency(fatigue){
+        const f=Math.max(0,Math.min(100,Number(fatigue)||0));
+        if(f<=30)return 1;
+        if(f<=60)return 1-(f-30)*0.012; // 60 => 64%
+        if(f<=80)return .64-(f-60)*0.017; // 80 => 30%
+        return Math.max(.08,.30-(f-80)*0.011); // 100 => 8%
+    }
+    function v710CultivationEfficiency(start,added){
+        const end=Math.min(100,start+added);
+        return (v710FatigueEfficiency(start)+2*v710FatigueEfficiency((start+end)/2)+v710FatigueEfficiency(end))/4;
+    }
+    function v710FatigueRest(days=3){
+        if(gameState.isDead||['DANGER','HAZARD','DIALOGUE'].includes(getEffectiveMode(gameState))){openGameModal('無法調息','當前無法安全休息。');return;}
+        const d=days===7?7:3;
+        return sendAction(`【暫停修煉，安靜調息休養 ${d} 天】`,{isPresetEvent:true,addDays:d,fatigueRecovery:d===7?55:26});
+    }
     function quickHeal(days, cultivationMode = 'short') {
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
@@ -4141,9 +4124,13 @@
         const expBase = locMod.expPerDay * days * (isDeathSeclusion ? 1.15 : 1);
         const fatigue = isDeathSeclusion ? Math.min(100, locMod.fatigueCost + 15) : locMod.fatigueCost;
         const insightGain = isDeathSeclusion ? 0.05 : 0;
+        const existingFatigue=Math.max(0,Number(gameState.practiceFatigue)||0);
+        const efficiency=v710CultivationEfficiency(existingFatigue,fatigue);
+        if(existingFatigue>=90 && isDeathSeclusion){openGameModal('疲勞過高','疲勞達 90 以上，不可強行閉死關；請先調息。');return;}
+        const actualExp=Math.max(0,Math.floor(expBase*efficiency));
         return sendAction(`【在「${gameState.location}」${isDeathSeclusion ? '閉死關衝擊瓶頸' : '閉關打坐'} ${days} 天】`, {
-            isPresetEvent: true, addDays: days, addExp: expBase, addFatigue: fatigue,
-            isDeathSeclusion, breakthroughInsightGain: insightGain
+            isPresetEvent: true, addDays: days, addExp: actualExp, addFatigue: fatigue,
+            fatigueEfficiency:efficiency,isDeathSeclusion, breakthroughInsightGain: insightGain
         });
     }
 
@@ -4243,7 +4230,8 @@
         const baseRate = Math.max(0.12, Math.min(0.88, (Number(nextDef.baseRate) || 0.5) + (Number(linggenMeta.breakBonus) || 0) + insightBonus));
         // V6.71: even first qi entry is a genuine probability roll; words in the input never grant permission.
         const firstQi = gameState.hasChosenOrigin === true && Number(gameState.level) === 0 && gameState.realm === "凡人";
-        const effectiveRate = baseRate;
+        const fatiguePenalty=Math.min(.30,(Math.max(0,Number(gameState.practiceFatigue)||0)/100)*.30);
+        const effectiveRate=Math.max(.05,baseRate-fatiguePenalty);
         const isSuccess = Math.random() < effectiveRate;
         return sendAction(`【按下突破按鈕，盤膝運功衝擊「${nextDef.name}」；核心成功率 ${Math.round(effectiveRate * 100)}%】`, {
             isBreakthrough:true,breakthroughSuccess:isSuccess,breakthroughRate:effectiveRate,
@@ -4713,8 +4701,19 @@ JSON 輸出格式範例：
         if (rawState.originPhysiqueBonus) s.originPhysiqueBonus = cleanNameStrict(rawState.originPhysiqueBonus);
 
         const actionFailed = !!(rawState.actionOutcome && rawState.actionOutcome.result === "failure");
-        if (rawState.expDelta !== undefined && !(actionFailed && Number(rawState.expDelta) > 0)) {
-            applyCultivationExp(rawState.expDelta, s);
+        // V7.10: close the free-text retreat loophole. The core fatigue modifier
+        // applies to both the button and AI-proposed meditation, and an approved
+        // preset cultivation event must not receive a second AI EXP award.
+        const cultivationIntent=/(?:閉關|打坐|修煉|修練|吐納|靜修|練功|練氣)/.test(String(eventMeta?.v710ActionText||''));
+        const aiPractice=Boolean(cultivationIntent && !eventMeta?.isPresetEvent && !eventMeta?.fromBreakthroughButton);
+        const rawPracticeGain=Number(rawState.expDelta)||0;
+        if (rawState.expDelta !== undefined && !(actionFailed && rawPracticeGain>0)) {
+            let allowedExp=rawState.expDelta;
+            if(cultivationIntent && eventMeta?.isPresetEvent && Number(eventMeta.addExp)>=0)
+                allowedExp=0;
+            else if(aiPractice&&rawPracticeGain>0)
+                allowedExp=Math.floor(rawPracticeGain*v710FatigueEfficiency(Number(eventMeta?.v710FatigueAtTurnStart)||0));
+            applyCultivationExp(allowedExp, s);
         }
         // 靈石是核心經濟狀態：忽略 AI 回傳的 spiritStoneDelta。
         // 靈石只能由經驗證的遊戲核心流程修改，例如交易結算、系統服務費或明確的核心獎勵。
@@ -4730,6 +4729,8 @@ JSON 輸出格式範例：
             s.daysPassed = rawState.daysPassed;
         }
         if (elapsedDays > 0) s.practiceFatigue = Math.max(0, (s.practiceFatigue || 0) - Math.floor(elapsedDays * 2));
+        if(aiPractice&&rawPracticeGain>0)
+            s.practiceFatigue=Math.min(100,(Number(s.practiceFatigue)||0)+Math.min(24,8+Math.floor(elapsedDays/3)));
 
         // Inventory and currency are settled exclusively by settleEconomy.
         if (rawState.tradeOffer) {
@@ -5068,7 +5069,7 @@ JSON 輸出格式範例：
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
         // Retain V6.90 membership metadata that the legacy normalizer does not know.
         if(valid && raw.sect && typeof raw.sect==='object')s.sect={...raw.sect,...normalized.sect};
-        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.07";
+        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.10";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -5107,7 +5108,7 @@ JSON 輸出格式範例：
             }
         }
         sect690Core(s);
-        v701Migrate(s);
+        v701Migrate(s);v710EmploymentState(s);
         return s;
     }
     function npcFaction(npc) {
@@ -7112,9 +7113,11 @@ JSON 輸出格式範例：
     // V6.71: Narration and memories are not allowed to promote the player. Canonical realm/level is only changed by an authorized button action.
     function guardUnauthorizedBreakthrough(story,delta,s,attempted=false) {
         const out=structuredClone(delta||{});
-        const forbidden=/(?:突破(?:成功|至|到|為|境界)|成功(?:突破|晉級|晉升|引氣入體)|(?:正式|終於|已經|已然|順利|一舉|就此|成功).{0,24}(?:踏入|跨入|晉入|突破|晉升|晉級|進入|邁入|成為).{0,18}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙|境界|修士)|(?:踏入|跨入|晉升|突破至|升到).{0,10}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙)|(?:不再是凡人|由凡入仙|已成修士|完成引氣入體|踏入修仙門檻))/;
+        const forbidden=/(?:突破(?:成功|至|到|為)|成功(?:突破|晉級|晉升|引氣入體)|(?:正式|終於|已經|已然|順利|一舉|就此|成功).{0,24}(?:踏入|跨入|晉入|突破|晉升|晉級|進入|邁入|成為).{0,18}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙|境界|修士)|(?:踏入|跨入|晉升|突破至|升到).{0,10}(?:練氣|築基|金丹|元嬰|化神|返虛|大乘|真仙)|(?:不再是凡人|由凡入仙|已成修士|完成引氣入體|踏入修仙門檻))/;
         let removed=false;
         const cleaned=String(story||'').split(/(?<=[。！？\n])/).map(sentence=>{
+            // Negative, hypothetical and future attempts are not completed breakthroughs.
+            if(/(?:尚未|未能|沒有|並未|依舊|仍然|仍未|準備|打算|將要|需要|必須|須先|待|距離|難以|無法|不曾|嘗試|企圖|希望|未突破)/.test(sentence))return sentence;
             if(forbidden.test(sentence)){removed=true;return '';}
             return sentence;
         }).join('').trim();
@@ -7133,7 +7136,7 @@ JSON 輸出格式範例：
             // Legitimate future suggestions to practice/attempt a breakthrough are fine; completed promotion is not.
             const bad=forbidden.test(String(v));if(bad)removed=true;return !bad;
         });
-        return {story:removed?((cleaned?cleaned+'\n\n':'')+(attempted?`你確實發起了突破，但天道判定失敗；境界仍為【${s.realm}】。需休養後重新嘗試。`:`你雖有所感悟，但境界依舊是【${s.realm}】。真正晉級須修為圓滿，並由你親自按下「突破境界」，接受天道機率判定。`)):String(story||''),delta:out,corrected:removed};
+        return {story:removed?(cleaned||(attempted?'本次突破結果以核心判定為準。':'你仍在原本的修行階段。')):String(story||''),delta:out,corrected:removed};
     }
 
     // V6.67：有限的受傷敘事核對；不從文字猜測扣血數值，也不信任 AI 任意修改生命權威欄位。
@@ -7296,6 +7299,7 @@ JSON 輸出格式範例：
         }
         const systemText=repairKind==='receipt_story' ? '你是修仙文字RPG敘事編輯。唯一權威是CORE_RECEIPTS。只回傳JSON物件 {"story":"繁體中文敘事"}。不得修改已核准結果，不得新增未記帳的物品、報酬、擊殺或任務完成；失敗就如實描述失敗。' : getSystemPrompt()+`
 【V7.02 擴充事件契約】可在 worldActions 使用 CRAFT(必附 ingredients:[{name,quantity}],quantity:1)、CLAIM_REWARD(必附 contractId：已登錄契約 ID；若未登錄但已完成正式任務，可傳 sourceEntityId 指向任務 ID，由核心核實委託人與現有資金後建立契約)、DISTRACT(必附 sourceEntityId 指向已登錄且有守衛的物品)、ATTACK/PAY/INTERACT(僅提議，必須交給既有核心處理)。DISCOVER 可附 guardianId、guardianName、requiresTool、toolKeyword；特殊物品必須已有可信場景來源。多步驟行動另以 actionPlan:[{kind,target,description}] 表示；不得在同回合假定所有步驟完成。所有收據由核心結算，請勿在 story 自行宣布尚未結算的報酬、戰鬥勝利或製作結果。
+【V7.10 雇用契約與薪資】學徒、短工、商店雇用和固定月薪必須區分：詢問招工/報價（沒有契約）、簽約（雙方確認才建立雇用紀錄）、實際工作與時間推進、應付薪資、實際領取。招工告示不是清靈草實物，應徵不得提出 DISCOVER/ACQUIRE/HARVEST/CURRENCY_PICKUP。對「領薪水／向掌櫃領月俸」，不得提出 CURRENCY_PICKUP 或以未完成的委託 CLAIM_REWARD 代替；核心會從已簽署的雇用紀錄核算到期薪資並轉帳。每段敘事必須明確交代時間跨度；沒有完整工作憑證不得宣稱已領薪。不要每回合提到境界未突破或操作按鈕教學，除非真正在嘗試突破。
 【V7.06 下品靈石正式事件】靈石是錢包貨幣，不是物品；inventoryDelta 不得含靈石，spiritStonesDelta 必須為0。當明確發現散落靈石、且非假設或傳聞，可提出 worldActions:[{kind:"CURRENCY_DISCOVER",amount:1至10, currency:"下品靈石",outcome:"neutral",evidence:"已看到的場景靈石"}]。當玩家明確拾取且故事確認成功，可提出 kind:"CURRENCY_PICKUP"，附 amount、sourceEntityId（已登錄來源時必填）與 outcome:"success"；核心只允許一次性的有限世界探索來源，不可憑空反覆刷取。已登錄 NPC 主動贈與用 NPC_GIFT_CURRENCY，必須附 npcId、amount、證據；正式工作報酬用 WORK_PAYMENT，必須附已完成委託 contractId 與金額；戰鬥搜刮用 LOOT_CURRENCY，必須附勝利的搶劫 claimId 作為 sourceEntityId（戰鬥核心已入帳則只確認，絕不再次加錢）。未核實來源只能描述可能發現或報價，不得宣告入帳。`;
         const bodyData = {system_instruction:{parts:[{text:systemText}]},contents,
             generationConfig:{responseMimeType:'application/json',temperature:0.65,maxOutputTokens:4096}};
@@ -11730,6 +11734,227 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     document.addEventListener("DOMContentLoaded",()=>{try{v709AuditRender();}catch(_){}});
     // ===== End V7.09 =====
 
+    // V7.10: durable gameplay employment ledger. The AI may propose a storyline;
+    // signed employment, elapsed work and salary must be committed by this core.
+    function v710EmploymentState(s){
+        if(!s.v710Employment||typeof s.v710Employment!=='object'||Array.isArray(s.v710Employment))
+            s.v710Employment={contracts:[],settled:{},audit:[]};
+        const e=s.v710Employment;
+        if(!Array.isArray(e.contracts))e.contracts=[];
+        if(!e.settled||typeof e.settled!=='object'||Array.isArray(e.settled))e.settled={};
+        if(!Array.isArray(e.audit))e.audit=[];
+        if(!Array.isArray(s.v710CompletedQuests))s.v710CompletedQuests=[];
+        return e;
+    }
+    function v710EmploymentActive(s){
+        return v710EmploymentState(s).contracts.filter(c=>c&&(c.status==='ACTIVE'||Math.floor(c.workDays/30)*c.monthlySalary>c.paidAmount));
+    }
+    function v710QuestIsFinished(q){
+        if(typeof q==='string')return /^\s*(?:【已完成】|\[完成\]|已完成[:：])/.test(q);
+        if(!q||typeof q!=='object')return false;
+        return /^(?:已完成|完成|completed|done|resolved|closed|已結束|結束|已領取|已領獎|成功完成)$/i.test(String(q.status||'').trim());
+    }
+    function v710PruneFinishedQuests(s){
+        if(!Array.isArray(s?.quests))return;
+        const completed=s.quests.filter(v710QuestIsFinished);
+        if(!completed.length)return;
+        v710EmploymentState(s);
+        for(const q of completed){
+            const name=String(typeof q==='string'?q:(q.name||q.title||'未知任務')).slice(0,120);
+            const key=`${name}:${String(typeof q==='object'?q.id||q.completedDay||'':'')}`;
+            if(s.v710CompletedQuests.some(x=>x.key===key))continue;
+            s.v710CompletedQuests.push({key,name,day:Number(s.daysPassed)||0,record:typeof q==='object'?structuredClone(q):{name:q}});
+            if(s.worldMemory && Array.isArray(s.worldMemory.chronicle) && !s.worldMemory.chronicle.some(x=>x?.v710QuestKey===key))
+                s.worldMemory.chronicle.push({id:'QUEST:'+key,day:Number(s.daysPassed)||0,title:'任務完成：'+name,fact:'任務已完成，移出當前任務清單。',v710QuestKey:key,status:'已完成'});
+        }
+        s.v710CompletedQuests=s.v710CompletedQuests.slice(-120);
+        s.quests=s.quests.filter(q=>!v710QuestIsFinished(q));
+    }
+    function v710EmploymentNarrative(story,report){
+        const receipts=report?.receipts||[];
+        const paid=receipts.find(r=>r.kind==='WORK_PAYMENT'&&r.status==='PAID');
+        const signed=receipts.find(r=>r.kind==='EMPLOYMENT_SIGNED'&&r.status==='CONTRACT_SIGNED');
+        const rejected=receipts.find(r=>r.kind==='EMPLOYMENT'&&r.status==='REJECTED');
+        let text=String(story||'');
+        if(paid){
+            const job=v710EmploymentState(gameState).contracts.find(c=>c.id===paid.contractId);
+            text=`你向${job?.shop||'雇主'}掌櫃核對已完成的工作與應付月俸。掌櫃檢查帳簿確認無誤，從帳房清點出 ${paid.quantity} 顆下品靈石，親手交給你收妥。`;
+        }
+        if(signed && /(契據.*(?:未能成立|遭.*婉拒)|尚未簽約|未完成簽約|契約未成立)/.test(text))
+            text='雙方確認薪資、工期與工作內容，正式簽署學徒契約。';
+        if(rejected && /(?:已經領到|領取成功|正式入帳|成功領得|收下.*靈石)/.test(text))
+            text='本次領取尚未符合正式契約或應付薪資條件，資產未變更。';
+        return text;
+    }
+    function v710CleanCultivationSpam(story,action){
+        const patterns=[
+            /^\s*你[雖虽]有所感悟，但境界依[舊旧]是【[^】]+】[。！]?\s*$/,
+            /^\s*真正[晉晋][級级]須修[為为]圓滿[^。！？]*[。！]?\s*$/,
+            /^\s*你[雖虽]有所感悟，但境界依[舊旧]是【[^】]+】[。！]?\s*真正[晉晋][級级][^。！？]*[。！]?\s*$/
+        ];
+        return String(story||'').replace(/你[雖虽]有所感悟，但境界依[舊旧]是【[^】]+】[。！]?\s*(?:真正[晉晋][級级]須修[為为]圓滿[^。！？]*[。！]?)?/g,'')
+          .replace(/真正[晉晋][級级]須修[為为]圓滿，並由你親自按下「突破境界」[^。！？]*[。！]?/g,'')
+          .replace(/\n\s*\n\s*\n/g,'\n\n').trim();
+    }
+    function v710ChineseNumber(str){
+        if(/^\d+$/.test(str))return Number(str);
+        const nums={'零':0,'一':1,'二':2,'兩':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+        if(str==='十')return 10;
+        const parts=str.split('十');
+        if(parts.length===2)return (parts[0]?nums[parts[0]]:1)*10+(parts[1]?nums[parts[1]]:0);
+        return Number.isInteger(nums[str])?nums[str]:NaN;
+    }
+    function v710SalaryFromText(input){
+        const str=String(input||'').replace(/\\n/g,'\n');
+        const patterns=[/(?:每月|月薪|月俸|月底|一個月|月結).{0,18}?(?:薪資|薪水|工資|酬勞|靈石|報酬|底薪|發放|為|是|共|：|:|有).{0,13}?([\d一二兩两三四五六七八九十]{1,5})\s*(?:塊|顆|枚)(?:下品)?靈石/,
+        /(?:每月|月薪|月俸|月底|月結).{0,24}?([\d一二兩两三四五六七八九十]{1,5})\s*(?:塊|顆|枚)(?:下品)?靈石/,
+        /(?:月薪|月俸|每月薪資|月工錢)\s*(?:為|是|共|：|:)?\s*([\d一二兩两三四五六七八九十]{1,5})/];
+        for(const re of patterns){const m=str.match(re);if(m){const n=v710ChineseNumber(m[1]);if(Number.isSafeInteger(n)&&n>=1&&n<=1000)return n;}}
+        return null;
+    }
+    function v710ShopName(text){
+        if(/百草堂/.test(String(text||'')))return '百草堂';
+        const matches=[...String(text||'').matchAll(/([\u4e00-\u9fff]{2,8}(?:藥鋪|藥店|藥行|百草堂|商行|商會|客棧|鐵鋪|丹房|藥堂|草堂|商鋪|工坊|茶館|酒樓|醫館|器閣|書院|坊市|藥材鋪|煉丹坊|店鋪|堂|閣|樓|館|坊))/g)]
+            .map(x=>x[1]).filter(x=>!/(?:那個|附近|這個|前往|進入|整個|各個|此處|店內)/.test(x));
+        return (matches[0]||'').replace(/^(?:你踏入|你走進|走進|踏入|前往|來到|抵達|你來到|你前往|在|店內|附近|一間)+/,'');
+    }
+    function v710EmployerForJob(s,shop,story,canCreate=false){
+        const locals=Object.values(s.npcRegistry||{}).filter(n=>n&&n.id&&n.is_alive!==false&&n.status!=='DEAD'&&String(n.location||'')===String(s.location||''));
+        const matches=locals.filter(n=>n.name&&(n.name.includes(shop)||shop.includes(n.name.replace(/掌櫃|店主|老闆/g,''))));
+        if(matches.length===1)return matches[0];
+        if(matches.length>1)return null;
+        // Only the narrator's signed in-person employment scene can establish a shop keeper.
+        if(!canCreate||!shop||!String(story).includes(shop)||!/(掌櫃|店主|老闆|東家)/.test(story))return null;
+        const id='EMPLOYER:'+shop+':'+String(s.location||'').slice(0,50);
+        if(s.npcRegistry[id])return s.npcRegistry[id];
+        const n={id,name:shop+'掌櫃',location:String(s.location),role:'雇主',profession:'商人',status:'ACTIVE',is_alive:true,
+            relationship:{favorability:0,awe:0,profit:0},trust:0,inventory:[],ueWallet:0,
+            persistent:true,isImportant:true,importance:'important',v710Business:true};
+        s.npcRegistry[id]=n;
+        return n;
+    }
+    function v710EmploymentReport(){return {handled:false,receipts:[],notes:[]};}
+    function v710EmploymentTurn(s,action,story,delta,eventId,before){
+        const report=v710EmploymentReport();
+        if(!s?.hasChosenOrigin)return report;
+        const e=v710EmploymentState(s),actionText=String(action||''),t=String(story||'');
+        const isRecruiting=/(?:招募|招工|學徒|短工|工作|雜事|薪水|薪資|工錢|雇用|聘用|契約|合約|月俸|領薪|續約|打雜|上工|差事)/.test(actionText);
+        if(!isRecruiting)return report;
+        const sign=/(?:簽署|簽訂|正式簽約|接受|答應|同意|續約).{0,32}(?:契約|合約|聘用|雇用|學徒|月薪|工作|條件|續聘)|(?:契約|合約).{0,12}(?:簽署|簽訂|生效)/.test(actionText);
+        const earn=/(?:開始|繼續|每日|專心|進行|負責|完成|履行|做|清點|分揀|整理).{0,28}(?:工作|學徒|店內雜務|藥材|藥鼎|打雜|值勤|職責|差事|契約|清點)|(?:在|替).{0,18}(?:百草堂|藥鋪|藥材鋪|店裡).{0,16}(?:工作|打雜|做事)/.test(actionText);
+        const asking=/(?:詢問|問|何時|幾時|什麼時候|何日|等待|等到|打聽|能否|可否).{0,26}(?:領薪|薪資|薪水|工錢|發薪|發放|月俸)|(?:薪資|薪水|工錢|發薪|月俸).{0,14}(?:何時|幾時|什麼時候)/.test(actionText);
+        const claim=!asking&&/(?:領取|領到|領走|領|收取|結清|收下|領回|拿取|討要).{0,26}(?:薪水|薪資|月俸|工錢|工資|工錢|薪俸)|(?:發薪|薪資結算|薪水結算)/.test(actionText);
+        const shop=v710ShopName(actionText+' '+t)||v710ShopName(conversationHistory.slice(-16).map(m=>m.content||'').join(' '));
+        const active=e.contracts.filter(c=>['ACTIVE','TERM_END'].includes(c.status));
+        const matching=active.filter(c=>!shop||c.shop===shop||shop.includes(c.shop)||c.shop.includes(shop));
+        const candidates=matching.length?matching:(active.length===1?active:[]);
+        const outstanding=c=>Math.max(0,Math.floor(c.workDays/30)*c.monthlySalary-c.paidAmount);
+        // An old term's unpaid salary survives renewal. Work applies to the newest
+        // active contract, but payroll settles the oldest outstanding debt first.
+        const contract=sign?candidates.at(-1)||null:
+            earn?candidates.findLast(c=>c.status==='ACTIVE')||null:
+            claim?candidates.find(c=>outstanding(c)>0)||candidates.at(-1)||null:
+            candidates.at(-1)||null;
+        // Merely finding a shop's job notice does not create a field resource or a mission payout.
+        if(!sign&&!earn&&!claim)return {...report,handled:true};
+        if(e.settled['SIGN:'+eventId]||e.settled['WORK:'+eventId]||e.settled['PAY:'+eventId])return {...report,handled:true,notes:['【核心去重】相同雇用事件已登錄，未重複處理。']};
+        try{
+            if(sign){
+                report.handled=true;
+                if(!/(?:契約|合約).{0,35}(?:生效|簽訂|簽署|蓋印|烙印)|(?:正式|雙方).{0,40}(?:簽|契約)|(?:簽署|簽訂).{0,24}(?:契約|合約)/.test(t)
+                    ||/(?:尚未|未能|拒絕|取消|並未|失敗|條件未確認|婉拒).{0,18}(?:簽|契約|合約)/.test(t))
+                    throw new Error('本回合沒有確認雙方正式簽署雇用契約，僅保留應徵與詢問');
+                const existing=contract;
+                if(existing&&existing.workDays<existing.durationDays)
+                    throw new Error('原雇用契約尚未到期；若要提前終止或修改條件，須另行正式協商');
+                const salary=v710SalaryFromText(t)||v710SalaryFromText(conversationHistory.slice(-35).map(m=>m.content||'').join('\n'))||((existing&&/(?:待遇不變|薪資維持不變|薪資不變|原薪資|同樣薪資|維持原薪)/.test(t))?existing.monthlySalary:null);
+                if(!salary)throw new Error('尚未記錄可核實的每月薪資，請先確認薪水數量');
+                const shopName=shop||existing?.shop;
+                if(!shopName)throw new Error('雇主商號無法唯一確認');
+                const durationMonths=(/三個月|三月|3個月|三個月契約|三月期/.test(t+' '+actionText))?3:1;
+                const npc=v710EmployerForJob(s,shopName,t+(String(s.location||'').includes(shopName)?' '+shopName:''),true);
+                if(!npc)throw new Error('雇主 NPC 尚未正式登錄或不在場');
+                const id=`JOB:${npc.id}:${(existing?.cycle||0)+1}`;
+                if(e.contracts.some(c=>c.id===id))throw new Error('契約 ID 重複');
+                // Finite shop operating capital is registered once as the NPC's initial business funds.
+                // It is NOT the player's reward and never credits the player before payroll is due.
+                if(npc.v710Business&&npc.v710OpeningCapital!==true){
+                    const seed=Math.min(6000,Math.max(30,salary*durationMonths*2));
+                    if(ueWallet(npc)===0)npc.ueWallet=seed;
+                    npc.v710OpeningCapital=true;npc.v710CapitalSource='已核實店鋪初始營運資金';
+                }
+                if(existing)existing.status=outstanding(existing)>0?'TERM_END':'COMPLETED';
+                const job={id,shop:shopName,npcId:npc.id,monthlySalary:salary,durationDays:durationMonths*30,
+                    workDays:0,paidAmount:0,startDay:Number(s.daysPassed)||0,status:'ACTIVE',cycle:(existing?.cycle||0)+1,
+                    signedEventId:String(eventId),salaryCurrency:'下品靈石',lastWorkEventId:null};
+                e.contracts.push(job);e.settled['SIGN:'+eventId]=true;
+                report.receipts.push({id:'EMPLOY_SIGN:'+eventId,kind:'EMPLOYMENT_SIGNED',status:'CONTRACT_SIGNED',name:shopName,quantity:0,contractId:id});
+                report.notes.push(`【正式契約】${shopName}月薪 ${salary} 顆下品靈石、${durationMonths} 個月。已記錄雇用關係，工資仍須完成工作與結算。`);
+            }else if(claim){
+                report.handled=true;
+                if(!contract)throw new Error('未找到已簽署的工作契約。請向雇主核對既有學徒雇用契約；招工告示不等於已受雇。');
+                const months=Math.floor(contract.workDays/30);
+                const due=Math.max(0,months*contract.monthlySalary-contract.paidAmount);
+                if(!due)throw new Error(`目前沒有已到期、未領取的工資；已記錄工作 ${contract.workDays} 日（每 30 日結算一次），已領 ${contract.paidAmount} 顆。`);
+                if(e.settled['PAY:'+eventId])throw new Error('同一領薪事件已結算，不可重複入帳');
+                const npc=s.npcRegistry?.[contract.npcId];
+                if(!npc||npc.is_alive===false||npc.status==='DEAD'||String(npc.location)!==String(s.location))throw new Error('付款雇主不在現場或身分失效');
+                if(/(?:拒絕支付|拒付|無力支付|不肯發薪|拒絕發薪|資金不足|沒有付錢)/.test(t))
+                    throw new Error('雇主明確拒付，本次保留未付工資；不會虛構入帳');
+                if(/(?:明天|明日|下月|下個月|過幾日|尚未|稍後|待到|未到發薪日).{0,22}(?:發薪|給你|支付|領薪|薪水|工錢|結算|薪資)|(?:薪水|工錢|工資|薪資|月俸).{0,20}(?:明天|明日|下個月|未到|再過|晚點)/.test(t))
+                    throw new Error('雇主尚未正式交付薪資，應付工資保持未付；下回合可繼續催領');
+                if(ueWallet(npc)<due)throw new Error('雇主資金不足，薪資列為待付款，不得憑空加錢');
+                const receipt=worldStageCall(s,'正式薪資付款',d=>{
+                    const state=v710EmploymentState(d),job=state.contracts.find(c=>c.id===contract.id),payer=d.npcRegistry[contract.npcId];
+                    if(!job||state.settled['PAY:'+eventId])throw new Error('重複發薪');
+                    const owed=Math.floor(job.workDays/30)*job.monthlySalary-job.paidAmount;
+                    if(owed!==due||owed<1)throw new Error('工資餘額已變更');
+                    const beforeAmount=d.spiritStone;
+                    v694Cash(d,payer.id,'PLAYER',owed,'V710:WAGE:'+job.id+':'+(job.paidAmount+owed),'已工作日數核准的學徒薪資');
+                    d.economy.receipts.push({id:'V710:WAGE_RECEIPT:'+job.id+':'+(job.paidAmount+owed),kind:'commission',before:beforeAmount,after:d.spiritStone,
+                        debit:0,credit:owed,added:[],removed:[],targetId:payer.id,purpose:job.id,reason:'正式學徒薪資',success:true,day:d.daysPassed||0});
+                    job.paidAmount+=owed;state.settled['PAY:'+eventId]=true;
+                    return {id:'EMPLOY_PAY:'+eventId,kind:'WORK_PAYMENT',status:'PAID',name:'下品靈石',quantity:owed,credit:owed,npcId:payer.id,contractId:job.id};
+                });
+                report.receipts.push(receipt);
+                report.notes.push(`【正式入帳】${contract.shop}已支付薪資 ${due} 顆下品靈石；雇主扣款、玩家錢包入帳，附正式收據。`);
+            }else if(earn){
+                report.handled=true;
+                if(!contract||contract.status!=='ACTIVE')throw new Error('目前沒有可繼續履行的有效雇用契約；請先簽署或續約');
+                if(!/(?:分揀|清點|清洗|打雜|工作|勞動|值勤|完成|做事|打理|整理|服務|努力|履行|將藥材|灑掃)/.test(t)
+                    ||/(?:沒有|未能|並未|未曾|拒絕|偷懶|失敗|中止).{0,22}(?:工作|勞動|分揀|清點|值勤)/.test(t))
+                    throw new Error('本回合尚未確認實際完成工作，不能累計工資');
+                if(e.settled['WORK:'+eventId])throw new Error('同一工作回合已記錄，不可重複計算');
+                const remaining=contract.durationDays-contract.workDays;
+                if(remaining<=0)throw new Error('契約期滿，請先正式續約，不可繼續累計舊契約工資');
+                const narratedDays=Number(delta?.daysPassedDelta)||0;
+                // An explicit, verifiable time period can advance up to one month per turn.
+                const period=/(?:一整個月|一個月過去|工作滿一個月|過了整整一個月|一月有餘|工作一個月|工作30天|工作三十天|工作滿30天)/.test(t+' '+actionText)?30:
+                    /(?:一週|一周|七日|七天|一星期)/.test(t)?7:1;
+                const verifiedDays=Math.min(30,remaining,Number.isFinite(narratedDays)&&narratedDays>=1?Math.max(period,Math.floor(narratedDays)):period);
+                const entry=worldStageCall(s,'正式雇用工作日數',d=>{
+                    const x=v710EmploymentState(d),j=x.contracts.find(c=>c.id===contract.id);
+                    if(!j||j.status!=='ACTIVE'||x.settled['WORK:'+eventId])throw new Error('工作記錄重複或契約失效');
+                    const n=d.npcRegistry[j.npcId];if(!n)throw new Error('雇主不存在');
+                    j.workDays+=verifiedDays;j.lastWorkEventId=String(eventId);x.settled['WORK:'+eventId]=true;
+                    // Work can advance time only once. If the AI already counted a day,
+                    // only add the missing portion here; neither source double-counts.
+                    const elapsed=Math.max(0,(Number(d.daysPassed)||0)-(Number(before?.daysPassed)||0));
+                    if(elapsed<verifiedDays)d.daysPassed+=verifiedDays-elapsed;
+                    if(j.workDays>=j.durationDays)j.status='TERM_END';
+                    return {id:'EMPLOY_WORK:'+eventId,kind:'EMPLOYMENT_WORK',status:'WORK_RECORDED',name:j.shop,quantity:verifiedDays,contractId:j.id};
+                });
+                report.receipts.push(entry);
+                const updatedJob=v710EmploymentState(s).contracts.find(j=>j.id===contract.id);
+                if(updatedJob.workDays%30===0||updatedJob.workDays>=updatedJob.durationDays)report.notes.push(`【工作進度】${contract.shop}已完成 ${updatedJob.workDays}/${updatedJob.durationDays} 個工作日；已滿月薪可向掌櫃領取。`);
+            }
+        }catch(err){
+            report.receipts.push({id:'EMPLOY_REJECT:'+eventId,kind:'EMPLOYMENT',status:'REJECTED',quantity:0,reason:String(err.message||err).slice(0,180)});
+            report.notes.push('【雇用核對】'+String(err.message||err).slice(0,180));
+        }
+        return report;
+    }
+
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         if(v682State().battle){openGameModal("正式戰鬥進行中","請先在團隊戰鬥面板完成回合，不得透過 AI 文字直接結算。 ");return;}
@@ -11752,7 +11977,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 if(inputEl)inputEl.value='';
                 return;
             }
-            const wildResolution=v697WildRoute(gameState,actionText);
+            const jobApplication=/(?:招工|短工|學徒|應徵|接下.{0,15}(?:委託|差事|工作)|承接.{0,10}(?:委託|任務)|受雇|聘用|打工)/.test(actionText);
+            // Accepting a herb-gathering job is negotiation with an employer, NOT harvesting in a shop.
+            const wildResolution=jobApplication?null:v697WildRoute(gameState,actionText);
             if(wildResolution?.handled){
                 appendLogData('異世旅者',actionText,'player',false,true);
                 conversationHistory.push({role:'user',content:actionText});
@@ -11910,6 +12137,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 if (eventMeta.addDays) gameState.daysPassed += eventMeta.addDays;
                 if (eventMeta.addExp) applyCultivationExp(eventMeta.addExp, gameState);
                 if (eventMeta.addFatigue) gameState.practiceFatigue = Math.min(100, gameState.practiceFatigue + safeNumber(eventMeta.addFatigue, 0, 0, 100));
+                if (eventMeta.fatigueRecovery) gameState.practiceFatigue = Math.max(0,gameState.practiceFatigue-safeNumber(eventMeta.fatigueRecovery,0,0,100));
                 if (eventMeta.clearFatigue) gameState.practiceFatigue = 0;
                 if (eventMeta.restoreFullHp) gameState.hp = getMaxHp(gameState);
 
@@ -11978,7 +12206,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     linggen: gameState.linggen, physique: gameState.physique
                 };
 
-                const inferredMeta = { ...(eventMeta || {}) };
+                const inferredMeta = { ...(eventMeta || {}),v710ActionText:actionText,v710FatigueAtTurnStart:Number(stateBeforeAction.practiceFatigue)||0 };
                 if (!inferredMeta.actionType && /(戰鬥|攻擊|伏擊|迎戰|出手|交手|對決|斬殺|反擊)/.test(String(actionText || ""))) inferredMeta.actionType = "combat";
                 try {
                     gameState = applyStateDelta(gameState, v698ProtectScene(gameState, parsedState, actionText), inferredMeta);
@@ -12047,6 +12275,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             }
             if(isDoingOrigin && gameState.hasChosenOrigin) destinyInitialize(gameState,actionText);
             if(gameState.destiny) destinySync(gameState);
+            v710PruneFinishedQuests(gameState);
             // A fully specified purchase may be completed in this same turn, without another UI.
             // A quote, missing amount or ambiguous item must be accepted in the next spoken turn.
             if(gameState.pendingEconomyProposal?.kind==='purchase'){
@@ -12056,11 +12285,17 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             const v697Findings=v697StoryEvent(gameState,actionText,storyText,stateBeforeAction.location);
             // AI proposal -> authoritative scene/asset commit -> narrative receipts.
             // V6.97 parchment has its own verified source/receipt; never award it twice.
+            const v710Employment=v710EmploymentTurn(gameState,actionText,storyText,parsedState,eventMeta.eventId,stateBeforeAction);
+            // Employment is payroll, never a scene-money pickup or an unverified quest reward.
+            if(v710Employment.handled){
+                v700Proposals=v700Proposals.filter(p=>!/(?:清靈草|薪資|薪水|學徒|招募|告示)/.test(p.name||'')||/^(?:ACQUIRE|HARVEST)$/.test(p.kind)&&!/(?:招募|短工|應徵|領薪|契約)/.test(actionText));
+                v701RawActions.worldActions=(v701RawActions.worldActions||[]).filter(p=>!['CLAIM_REWARD','WORK_PAYMENT','CURRENCY_PICKUP','CURRENCY_DISCOVER'].includes(String(p.kind||'').toUpperCase()));
+            }
             const v700Owned=v700Proposals.filter(p=>!(/羊皮紙/.test(p.name||'')&&v697Findings.some(n=>String(n).includes('核心拾取'))));
             const v700Result=v700Issue(gameState,actionText,storyText,v700Owned,eventMeta.eventId);
             const v698Findings=v698SceneAction(gameState,actionText,storyText,stateBeforeAction.location,eventMeta.eventId,v700Result.handled);
             const v701Extra=v701ResolveExtras(gameState,v701RawActions,actionText,storyText,eventMeta.eventId,v700Result.receipts);
-            const v701Report=v701CombineReports(v700Result,v701Extra);
+            const v701Report=v701CombineReports(v701CombineReports(v700Result,v701Extra),v710Employment);
             v709AuditReceiptReport(v701Report);
             if(v701Report.handled&&v701Report.receipts.some(r=>['ACQUIRED','REJECTED','PAID','CURRENCY_PAID','CRAFTED','DISTRACTED','CURRENCY_DISCOVERED'].includes(r.status))){
                 try{
@@ -12086,6 +12321,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(v697Findings.length)storyText+='\n'+v697Findings.join('\n');
             if(v698Findings.length)storyText+='\n'+v698Findings.join('\n');
             storyText=v701NarrativeAudit(stateBeforeAction,gameState,v701SafeNarrative(storyText,v701Report),v701Report);
+            storyText=v710EmploymentNarrative(storyText,v710Employment);
+            if(v710Employment.handled&&v710Employment.notes.length)storyText+='\n'+v710Employment.notes.join('\n');
+            storyText=v710CleanCultivationSpam(storyText,actionText);
             storyText+=dialogueInlineHint(gameState);
             conversationHistory.push({ role: "assistant", content: JSON.stringify({story:storyText,coreSettlement:gameState.lastEconomySummary,pendingEconomyProposal:gameState.pendingEconomyProposal||null}) });
             appendLogData("天道", storyText, "ai", false, true);
@@ -12522,7 +12760,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             } else {
                 const wait=Math.max(0,(Number(gameState.breakthroughCdDays)||0)-(Number(gameState.daysPassed)||0));
                 const next=getRealmDef(gameState.level+1);
-                const chance=Math.max(0.12,Math.min(0.88,(Number(next.baseRate)||0.5)+(Number(getLinggenMeta(gameState.linggen).breakBonus)||0)+Math.min(0.35,Number(gameState.breakthroughInsight)||0)));
+                const chance=Math.max(.05,Math.max(0.12,Math.min(0.88,(Number(next.baseRate)||0.5)+(Number(getLinggenMeta(gameState.linggen).breakBonus)||0)+Math.min(0.35,Number(gameState.breakthroughInsight)||0)))-Math.min(.30,Math.max(0,Number(gameState.practiceFatigue)||0)*.003));
                 deduceBtn.textContent=wait>0?`✦ 突破休養：剩餘 ${Math.ceil(wait)} 天`:`✦ 衝擊突破 (${Math.round(chance*100)}%)`;
                 deduceBtn.disabled=gameState.isDead || getEffectiveMode(gameState)==="DANGER" || (gameState.activeThreats||[]).length>0 || (gameState.exp<gameState.maxExp) || wait>0;
             }
@@ -12533,7 +12771,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         document.getElementById("ui-realm").innerText = `${gameState.realm} (Lv.${gameState.level})`;
         document.getElementById("ui-cp").innerText = `${calculateCombatPower(gameState)}`;
         document.getElementById("ui-hp").innerText = `${gameState.hp} / ${getMaxHp(gameState)}`;
-        document.getElementById("ui-fatigue").innerText = `${gameState.practiceFatigue} / 100`;
+        const f=Math.max(0,Math.round(Number(gameState.practiceFatigue)||0));
+        const fatigueEl=document.getElementById('ui-fatigue');
+        fatigueEl.innerText=`${f} / 100｜修練效率 ${Math.round(v710FatigueEfficiency(f)*100)}%`;
+        fatigueEl.title='疲勞 31 以上逐步降低閉關收益；疲勞會降低突破機率，90 以上不得閉死關。可在閉關面板休養。';
         document.getElementById("ui-spiritStone").innerText = `${gameState.spiritStone} 顆`;
         const receiptEl=document.getElementById("ui-economy-receipt");
         if(receiptEl) receiptEl.textContent=gameState.lastEconomyReceipt?formatEconomyReceipt(gameState.lastEconomyReceipt):"尚無新版核心結算收據。";
@@ -12738,6 +12979,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     span.textContent = `✦ [${itemCategory}] ${name} x${qty} ${item.isQuestItem ? '🔒' : ''}`;
                     span.style.color = itemRank ? getItemRankColor(itemRank) : (meta.rarityColor || '#c5a059');
                     span.title = itemRank ? `裝備境界階：${itemRank}｜類型：${meta.category || '裝備'}` : `物品類型：${meta.category || meta.type || '雜項'}`;
+                    if (getItemPermissions(item).identify) span.title += "｜先按『鑑定』，成功後才可裝備；未鑑定持有可有微弱共鳴";
 
                     let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
@@ -12781,7 +13023,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             npcsBox.innerHTML = "";
             deadNpcsBox.innerHTML = "";
 
-            const registry = Object.values(gameState.npcRegistry).filter(n => n && (n.is_alive === false || n.status === "DEAD" || n.is_alive === true));
+            const registry = Object.values(gameState.npcRegistry).filter(n => n && (n.is_alive === false || n.status === "DEAD" || n.is_alive === true))
+              .filter(n=>n.is_alive===false||n.status==='DEAD'||String(n.location||'')===String(gameState.location||'')||n.isImportant||n.isCompanion||n.persistent||Math.abs(Number(n.relationship?.favorability)||0)>=15||Math.abs(Number(n.trust)||0)>=15)
+              .sort((a,b)=>Number(String(b.location||'')===String(gameState.location||''))-Number(String(a.location||'')===String(gameState.location||''))||(Number(b.relationship?.favorability||0)-Number(a.relationship?.favorability||0))).slice(0,35);
             let aliveCount = 0;
             let deadCount = 0;
 
@@ -12860,8 +13104,16 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const questsEl = document.getElementById("ui-quests");
         if (questsEl) {
             questsEl.innerHTML = "";
-            if (gameState.quests && gameState.quests.length > 0) {
-                gameState.quests.forEach(q => {
+            v710PruneFinishedQuests(gameState);
+            const displayQuests = (gameState.quests||[]).filter(q=>!v710QuestIsFinished(q));
+            if (displayQuests.length > 0 || v710EmploymentActive(gameState).length) {
+                for (const job of v710EmploymentActive(gameState)) {
+                    const line=document.createElement('div');line.style.marginBottom='5px';
+                    const earned=Math.floor(job.workDays/30)*job.monthlySalary-job.paidAmount;
+                    line.textContent=`✦【工作】${job.shop}｜月薪 ${job.monthlySalary} 靈石｜已工作 ${job.workDays}/${job.durationDays} 日｜待領 ${Math.max(0,earned)} 靈石`;
+                    questsEl.appendChild(line);
+                }
+                displayQuests.forEach(q => {
                     const div = document.createElement("div");
                     div.style.marginBottom = "4px";
                     if (typeof q === 'string') { div.textContent = `✦ ${q}`; }
@@ -12887,12 +13139,18 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 gameState.worldEvents.slice(-20).reverse().forEach(ev => {
                     const div = document.createElement("div");
                     div.style.marginBottom = "4px";
-                    div.textContent = `?? ${ev}`;
+                    div.textContent = '✦ '+(typeof ev==='string'?ev:(ev?.title||ev?.summary||'世界事件'));
                     eventsEl.appendChild(div);
                 });
-            } else {
-                eventsEl.textContent = "九州大地風平浪靜，尚無重大世界事件記錄。";
             }
+            const chronicle=gameState.worldMemory?.chronicle||[];
+            for (const ev of chronicle.slice(-16).reverse()) {
+                const text=(ev?.title||'紀事')+'：'+String(ev?.fact||ev?.summary||'').slice(0,180);
+                if(!eventsEl.textContent.includes(text.slice(0,18))) {
+                    const div=document.createElement('div');div.style.marginBottom='5px';div.textContent='✦ '+text;eventsEl.appendChild(div);
+                }
+            }
+            if(!eventsEl.textContent)eventsEl.textContent='九州尚無重大紀事。';
         }
 
         const isEnabled = gameState.hasChosenOrigin && !gameState.isDead;
@@ -12970,7 +13228,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             // A failed write/verification must not leave partially migrated live data.
             const staged=structuredClone(gameState);
             ensureWorldMemory(staged);v694Migrate(staged);
-            v701Migrate(staged);staged.version="7.07";staged.maxHp=getMaxHp(staged);
+            v701Migrate(staged);staged.version="7.10";staged.maxHp=getMaxHp(staged);
             ueSyncAssetRegistry(staged,"SAVE_SYNC");
             const saveIssues=[...worldInvariantIssues(staged),...v701ProtocolIssues(staged)];
             if(saveIssues.length)throw new Error('世界狀態不一致：'+saveIssues.join(','));
@@ -13010,7 +13268,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 openGameModal('存檔讀取異常','原始存檔已保留在瀏覽器儲存空間，請先備份後再繼續遊戲。');
             }
         }
-        v694Migrate(gameState);v701Migrate(gameState);v689RepairVerifiedSect(gameState);
+        v694Migrate(gameState);v701Migrate(gameState);v710EmploymentState(gameState);v689RepairVerifiedSect(gameState);
         sect690Core(gameState);
         const loadedIssues=worldInvariantIssues(gameState);
         if(loadedIssues.length){
@@ -13025,7 +13283,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         try{
             staged=structuredClone(gameState);
             ensureWorldMemory(staged);v694Migrate(staged);
-            v701Migrate(staged);staged.version="7.07";staged.maxHp=getMaxHp(staged);ueSyncAssetRegistry(staged,"EXPORT_SYNC");
+            v701Migrate(staged);staged.version="7.10";staged.maxHp=getMaxHp(staged);ueSyncAssetRegistry(staged,"EXPORT_SYNC");
             const exportIssues=[...worldInvariantIssues(staged),...v701ProtocolIssues(staged)];
             if(exportIssues.length)throw new Error(exportIssues.join(','));
         }catch(error){openGameModal('匯出前驗證失敗','世界狀態異常：'+String(error.message||error)+'。原資料未修改，請保留現有存檔供修復。');return false;}
@@ -13033,7 +13291,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v704_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v710_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
