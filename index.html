@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V6.99｜語意授權、任務物權與長期探索修復</title>
+    <title>九州裂天錄 V7.09｜真實 AI 回合自動稽核版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -197,6 +197,7 @@
                 <input type="text" id="action-input" placeholder="可點擊上方預設身世，或在此輸入自訂身世開局..." onkeydown="if(event.key==='Enter') sendAction()">
                 <button id="btn-submit" class="primary-btn" onclick="sendAction()">抉擇</button>
             </div>
+            <div id="v709-audit-live" role="status" aria-live="polite" style="margin:4px 1px 8px;padding:4px 8px;font-size:.73rem;color:#a9d9da;background:#111d27;border-left:3px solid #589b96;border-radius:3px;">AI 回合稽核：待命（詳細紀錄在「系統」頁）</div>
             <div class="quick-actions" id="quick-actions-container">
                 <button id="btn-heal" class="quick-btn" onclick="openCultivationModal()" disabled>✦ 閉關修練</button>
                 <button id="btn-hospital" class="quick-btn" onclick="hospitalHeal()" style="color:#ff8a80; border-color:#4a1515;" disabled>✦ 求醫</button>
@@ -379,6 +380,19 @@
               </div>
               <div id="long-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;line-height:1.65;padding:8px;margin-top:8px;border-radius:5px;background:#081118;color:#d2e2e1;max-height:300px;overflow:auto;">未執行。測試進度會分類統計，記錄 HP 異常、失敗突破冷卻、修為損失及無法結算原因；每回合可接續。</div>
               <p style="font-size:.74rem;color:#b4ced0;">中途關閉或重整頁面後，重新開啟此檔並按「接續」，從最近一回合檢查點恢復。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
+            </section>
+
+            <section id="v709-audit-ui" style="margin:14px 0;padding:11px;border:1px solid #5a9cb1;border-radius:8px;background:#111d27;">
+              <h2 style="margin:0 0 7px;color:#91ddef;">✦ V7.09 真實 AI 回合自動稽核</h2>
+              <p style="font-size:.79rem;line-height:1.65;color:#c7d8de;margin:5px 0;">正式遊玩的每次 AI 回合，自動核對原始提案、核心事件收據、靈石／物品／NPC 餘額與最終敘事。稽核紀錄僅保留在本機瀏覽器，可手動匯出 JSON；不會上傳到其他服務。紅色警示須人工檢查，未經驗證的敘事不等於正式結算。</p>
+              <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;margin:8px 0;"><input type="checkbox" id="v709-audit-enable" checked onchange="v709AuditToggle(this.checked)"> 啟用正式 AI 回合自動稽核（預設啟用）</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:7px 0;">
+                <button class="sys-btn" type="button" onclick="v709AuditRender()">↻ 更新稽核摘要</button>
+                <button class="sys-btn" type="button" onclick="v709AuditExport()">↧ 匯出完整稽核 JSON</button>
+                <button class="sys-btn" type="button" onclick="v709AuditClear()" style="background:#4c3030">清除本機稽核紀錄</button>
+              </div>
+              <div id="v709-audit-status" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.79rem;line-height:1.6;padding:9px;border-radius:5px;background:#0b141a;color:#d4e9ea;max-height:320px;overflow:auto;">尚無自動稽核紀錄。</div>
+              <p style="font-size:.75rem;color:#aac9cf;">保留最近 80 回合，原始模型回應每次最多 12,000 字元；HTTP 狀態與修補回應也會記錄。請勿在角色指令中貼入密碼或 API Key。匯出的日誌包含遊戲對話，請謹慎分享。</p>
             </section>
             <h2 style="margin-top:10px;">▣ 行動結算診斷</h2>
             <div id="action-diagnostic-panel" style="padding:9px;margin:8px 0;border:1px solid #414456;border-radius:6px;font-size:0.78rem;color:#bdc3d2;white-space:pre-wrap;overflow-wrap:anywhere;">尚無測試紀錄。</div>
@@ -665,7 +679,8 @@
         const meta = getItemMeta(isObj ? itemObjOrName : name);
         const canonicalDef = getCanonicalItemDefinition(isObj ? itemObjOrName : name);
         const resolvedDef = resolveItemDefinition(isObj ? itemObjOrName : name);
-        const rawAmount=isObj?(itemObjOrName.quantity??itemObjOrName.qty??qty):qty;
+        const rawAmount=isObj?(Object.prototype.hasOwnProperty.call(itemObjOrName,'quantity')?itemObjOrName.quantity:(Object.prototype.hasOwnProperty.call(itemObjOrName,'qty')?itemObjOrName.qty:qty)):qty;
+        if(rawAmount===null) throw new Error('物品數量不可為 null，未更動背包');
         const amount=Number(rawAmount);
         if(!Number.isSafeInteger(amount)||amount<1||amount>1000000)
             throw new Error('新增物品數量不合法，未更動背包');
@@ -686,6 +701,13 @@
             addItemToInventory(inv,tail,amount-9999);
             return;
         }
+        // 同一物權批次不得隱性分堆，且失敗前不得改動背包。
+        if (instanceTag) {
+            const sameBatch = inv.filter(i => String(i.ueUnitId || i.ueLotId || '') === instanceTag);
+            if (sameBatch.length > 1 || sameBatch.some(i => cleanNameStrict(i.name) !== name) ||
+                sameBatch.reduce((sum, i) => sum + Number(i.quantity || 0), 0) + amount > 9999)
+                throw new Error('物權批次重複或溢出，新增取消且背包保持不變；請先正式分批');
+        }
         const existing = inv.find(i => cleanNameStrict(i.name) === name &&
             String(i.ueUnitId||i.ueLotId||'')===instanceTag &&
             String(i.ueLegalOwnerId||'')===String(isObj&&itemObjOrName.ueLegalOwnerId||'') &&
@@ -696,7 +718,28 @@
             (i.itemId || `legacy:${cleanNameStrict(i.name)}`) === incomingItemId && (isEquipment
             ? getEquipmentGradeIndex(i) === gradeIndex && Number(i.sealLevel || 0) === Number((isObj && itemObjOrName.sealLevel) || 0) && getItemPermissions(i).disassemble === incomingPermissions.disassemble
             : (i.tier || i.quality || i.rarity || getItemMeta(i).rarity) === incomingTier && getItemMeta(i).type === meta.type && (i.identified !== false) === incomingIdentified && getItemPermissions(i).sell === incomingPermissions.sell && getItemPermissions(i).drop === incomingPermissions.drop && getItemPermissions(i).use === incomingPermissions.use && getItemPermissions(i).comprehend === incomingPermissions.comprehend && Boolean(i.isQuestItem || i.questLocked || getItemMeta(i).isQuestItem) === incomingQuest));
-        if (existing) {
+        let mergeTarget=existing;
+        if(instanceTag&&!mergeTarget){
+            const batch=inv.find(i=>String(i.ueUnitId||i.ueLotId||'')===instanceTag);
+            if(batch){
+                const compatible=cleanNameStrict(batch.name)===name
+                    &&(batch.itemId||`legacy:${cleanNameStrict(batch.name)}`)===incomingItemId
+                    &&String(batch.ueLegalOwnerId||'')===String(isObj&&itemObjOrName.ueLegalOwnerId||'')
+                    &&String(batch.ueLegalStatus||'')===String(isObj&&itemObjOrName.ueLegalStatus||'')
+                    &&String(batch.ueLoanContractId||'')===String(isObj&&itemObjOrName.ueLoanContractId||'')
+                    &&String(batch.ueStolenFrom||'')===String(isObj&&itemObjOrName.ueStolenFrom||'')
+                    &&(!batch.ueProvenanceEvent||!isObj||!itemObjOrName.ueProvenanceEvent
+                        ||batch.ueProvenanceEvent===itemObjOrName.ueProvenanceEvent)
+                    &&(batch.identified!==false)===incomingIdentified
+                    &&(isEquipment?getEquipmentGradeIndex(batch)===gradeIndex
+                       :(batch.tier||batch.quality||batch.rarity||getItemMeta(batch).rarity)===incomingTier)
+                    &&Number(batch.quantity||0)+amount<=9999;
+                if(!compatible)throw new Error('同一物權批次的身份、品階或權利資料不一致，已拒絕合併且背包保持不變');
+                mergeTarget=batch;
+            }
+        }
+        if (mergeTarget) {
+            const existing=mergeTarget;
             const taken=Math.min(amount,9999-Number(existing.quantity||0));
             existing.quantity=Number(existing.quantity||0)+taken;
             if(taken<amount){
@@ -708,7 +751,7 @@
                 if (!canonicalDef && itemObjOrName.type) existing.type = itemObjOrName.type;
                 if (itemObjOrName.isQuestItem) existing.isQuestItem = true;
                 if (itemObjOrName.canDisassemble === false || itemObjOrName.isQuestItem) existing.canDisassemble = false;
-                if (Number.isFinite(Number(itemObjOrName.value))) existing.value = Number(itemObjOrName.value);
+                if (!instanceTag && Number.isFinite(Number(itemObjOrName.value))) existing.value = Number(itemObjOrName.value);
             }
         } else {
             const item = {
@@ -757,7 +800,8 @@
                 (!tier || (i.tier || i.quality || i.rarity || getItemMeta(i).rarity) === tier));
         }
         if (idx === -1) return false;
-        const amount = safeNumber(qty, 1, 1, 9999);
+        const amount = Number(qty);
+        if (!Number.isSafeInteger(amount) || amount < 1 || amount > 9999 || amount > Number(inv[idx].quantity)) return false;
         if ((Number(inv[idx].quantity) || 1) > amount) inv[idx].quantity = (Number(inv[idx].quantity) || 1) - amount;
         else inv.splice(idx, 1);
         return true;
@@ -811,7 +855,10 @@
             (String(s.scenarioMode).toUpperCase()==="DIALOGUE" && /(商人|掌櫃|攤主|店家|收購|買賣|交易|報價|出售物品)/.test(conversationHistory.slice(-6).map(m=>m.content||"").join(" ")));
     }
     // V6.52 audit: SELL settlement is bound to pendingSellIntent identity/state, never name-only lookup.
-    function settleEconomy(s,request,authority) {
+    function settleEconomy(s,request,authority){
+        return worldStageCall(s,'settleEconomy',draft=>settleEconomyCore(draft,request,authority),null);
+    }
+    function settleEconomyCore(s,request,authority) {
         if(authority!==ECONOMY_AUTHORITY) throw new Error("結算未獲核心授權。");
         if(!request || typeof request.eventId!=="string" || !request.eventId.trim() || request.eventId.length>240) throw new Error("結算必須提供有效事件ID。");
         const id=request.eventId;
@@ -1068,7 +1115,9 @@
         return r;
     }
     function v695EquipmentTx(action,slot,index,newItem){
-        const inv=structuredClone(gameState.inventory||[]),equipment=structuredClone(gameState.equipment||{}),before=structuredClone(inv);
+        return worldStageCall(gameState,'裝備轉移',draft=>{
+
+        const inv=structuredClone(draft.inventory||[]),equipment=structuredClone(draft.equipment||{}),before=structuredClone(inv);
         const beforeEq=structuredClone(equipment),k=String(action);
         if(k==='equip'){
             if(index<0||!inv[index]||!newItem||!slot)throw new Error('裝備來源不存在');
@@ -1083,34 +1132,211 @@
         const b=v695InventoryVector([...before,...snapshot(beforeEq)]),a=v695InventoryVector([...norm,...snapshot(equipment)]);
         if(JSON.stringify(Object.entries(b).sort())!==JSON.stringify(Object.entries(a).sort()))
             throw new Error('裝備轉移出現材質、數量或物品身份變動，整筆未提交');
-        const e=v695ItemProof(gameState,'裝備／卸裝',[...before,...snapshot(beforeEq)],[...norm,...snapshot(equipment)],'EQUIPMENT');
+        const e=v695ItemProof(draft,'裝備／卸裝',[...before,...snapshot(beforeEq)],[...norm,...snapshot(equipment)],'EQUIPMENT');
         // No mint/burn during equip; log the custody move even if global vector is unchanged.
-        const receipt=v695PostItem(gameState,{kind:'裝備／卸裝',source:'EQUIPMENT',removed:[],added:[],slot,action:k,day:gameState.daysPassed},undefined);
-        gameState.inventory=norm;gameState.equipment=equipment;
+        const receipt=v695PostItem(draft,{kind:'裝備／卸裝',source:'EQUIPMENT',removed:[],added:[],slot,action:k,day:draft.daysPassed},undefined);
+        draft.inventory=norm;draft.equipment=equipment;
         return receipt;
+        });
     }
+
+    // V6.99 World Integrity: central validation, staged mutation, atomic commit.
+    // Strict rules apply after legacy migration; evidence/ledger contents are not silently fabricated.
+    const WORLD_INVARIANT_RULES=Object.freeze([
+        'INVENTORY_SHAPE','INVENTORY_QUANTITY','LOT_UNIQUENESS','CURRENCY_NONNEGATIVE',
+        'NPC_LIFE_CONSISTENCY','EVENT_IDEMPOTENCY','RECEIPT_UNIQUENESS',
+        'POSTING_BALANCE','RIGHT_UNIQUENESS','BATTLE_CLAIM_UNIQUENESS',
+        'INTEGRITY_RECEIPT_UNIQUENESS','INTEGRITY_RECEIPT_SHAPE',
+        'ASSET_HOLDER_UNIQUENESS','NPC_ASSET_QUANTITY'
+    ]);
+    // Integrity: both instance and batch identities are authoritative. Never ignore
+    // one identity just because the other is present on the same serialized item.
+    function worldPhysicalIdentityKeys(item){
+        if(!item || typeof item!=='object')return [];
+        const keys=[];
+        for(const field of ['ueUnitId','ueLotId']){
+            const val=item[field];
+            if(val!==undefined && val!==null && String(val).trim()){
+                const key=String(val).trim();
+                if(!keys.includes(key))keys.push(key);
+            }
+        }
+        return keys;
+    }
+    function worldInvariantIssues(s){
+        const issues=[];
+        if(!s||typeof s!=='object'||Array.isArray(s))return ['STATE_INVALID'];
+        if(!Array.isArray(s.inventory))issues.push('INVENTORY_SHAPE');
+        else{
+            const seen=new Set();
+            for(const item of s.inventory){
+                if(!item||typeof item!=='object'||typeof item.name!=='string'||!item.name.trim()){
+                    issues.push('INVENTORY_SHAPE');continue;
+                }
+                if(!Number.isSafeInteger(item.quantity)||item.quantity<1||item.quantity>9999)issues.push('INVENTORY_QUANTITY');
+                for(const id of worldPhysicalIdentityKeys(item)){
+                    if(seen.has(id))issues.push('LOT_UNIQUENESS');
+                    seen.add(id);
+                }
+            }
+        }
+        if(!Number.isSafeInteger(s.spiritStone)||s.spiritStone<0||s.spiritStone>1e12)issues.push('CURRENCY_NONNEGATIVE');
+        if(s.npcRegistry&&typeof s.npcRegistry==='object')for(const n of Object.values(s.npcRegistry)){
+            if(n&&typeof n==='object'&&((n.status==='DEAD'&&n.is_alive===true)
+                ||(n.status==='ALIVE'&&n.is_alive===false)))issues.push('NPC_LIFE_CONSISTENCY');
+            if(n?.ueWallet!==undefined&&(!Number.isSafeInteger(n.ueWallet)||n.ueWallet<0||n.ueWallet>1e12))issues.push('CURRENCY_NONNEGATIVE');
+        }
+        // A physical registered lot/unit may have only ONE holder anywhere in the world.
+        // Older untagged narrative items are deliberately exempt for save compatibility.
+        const physicalIds=new Set();
+        if(Array.isArray(s.inventory))for(const item of s.inventory){
+            for(const id of worldPhysicalIdentityKeys(item))physicalIds.add(id);
+        }
+        if(s.equipment&&typeof s.equipment==='object')for(const item of Object.values(s.equipment)){
+            for(const id of worldPhysicalIdentityKeys(item)){
+                if(physicalIds.has(id))issues.push('ASSET_HOLDER_UNIQUENESS');
+                physicalIds.add(id);
+            }
+        }
+        if(s.npcRegistry&&typeof s.npcRegistry==='object')for(const npc of Object.values(s.npcRegistry)){
+            if(!Array.isArray(npc?.inventory))continue;
+            for(const item of npc.inventory){
+                const keys=worldPhysicalIdentityKeys(item);
+                for(const id of keys){
+                    if(physicalIds.has(id))issues.push('ASSET_HOLDER_UNIQUENESS');
+                    physicalIds.add(id);
+                }
+                // Legacy untitled narrative goods may omit quantity. A registered
+                // physical asset may not: it must have a provable whole-unit count.
+                if((keys.length || item?.quantity!==undefined) &&
+                   (!Number.isSafeInteger(item?.quantity)||item.quantity<1||item.quantity>9999))
+                    issues.push('NPC_ASSET_QUANTITY');
+            }
+        }
+        // Once an event has committed, its id must remain in the durable audit history.
+        // Silently dropping old ids permits replay after a long campaign.
+        if(s.integrityReceipts!==undefined){
+            if(!Array.isArray(s.integrityReceipts))issues.push('INTEGRITY_RECEIPT_SHAPE');
+            else{
+                const seenReceipts=new Set();
+                for(const id of s.integrityReceipts){
+                    if(typeof id!=='string'||!id.trim()||id.length>220){issues.push('INTEGRITY_RECEIPT_SHAPE');break;}
+                    if(seenReceipts.has(id)){issues.push('INTEGRITY_RECEIPT_UNIQUENESS');break;}
+                    seenReceipts.add(id);
+                }
+            }
+        }
+        const ids=s.worldMemory?.engine?.appliedDeltaIds;
+        if(Array.isArray(ids)&&new Set(ids).size!==ids.length)issues.push('EVENT_IDEMPOTENCY');
+        const receipts=s.economy?.receipts;
+        if(Array.isArray(receipts)){
+            const used=new Set();for(const r of receipts){
+                const id=String(r?.id||'');if(!id)continue;
+                if(used.has(id))issues.push('RECEIPT_UNIQUENESS');used.add(id);
+            }
+        }
+        const postings=s.economy?.v694?.postings;
+        if(Array.isArray(postings)){
+            const seen=new Set();for(const p of postings){
+                const id=String(p?.eventId||'');
+                if(!id||seen.has(id)||!Number.isSafeInteger(p.amount)||p.amount<1
+                    ||p.debit?.amount!==p.amount||p.credit?.amount!==p.amount
+                    ||p.debit?.account!==p.from||p.credit?.account!==p.to||p.from===p.to){
+                    issues.push('POSTING_BALANCE');break;
+                }seen.add(id);
+            }
+        }
+        const e=s.economy?.uepce;
+        for(const [collection,code] of [['entitlements','RIGHT_UNIQUENESS'],['battleClaims','BATTLE_CLAIM_UNIQUENESS']]){
+            if(!Array.isArray(e?.[collection]))continue;
+            const ids=new Set();for(const item of e[collection]){
+                const id=String(item?.id||'');if(!id)continue;
+                if(ids.has(id)){issues.push(code);break;}ids.add(id);
+            }
+        }
+        issues.push(...v704CurrencyIssues(s));
+        return [...new Set(issues)];
+    }
+    function worldValidateInventoryStage(inv){return worldInvariantIssues({inventory:inv,spiritStone:0}).filter(x=>
+        ['INVENTORY_SHAPE','INVENTORY_QUANTITY','LOT_UNIQUENESS'].includes(x));}
+    function worldCommitPrepared(s,draft,label='WORLD_EVENT',eventId=null){
+        if(!s||typeof s!=='object'||!draft||typeof draft!=='object')throw new Error(label+':無效世界狀態');
+        const issues=[...worldInvariantIssues(draft),...(draft.worldProtocol701?v701ProtocolIssues(draft):[])];
+        if(issues.length)throw new Error(label+':世界狀態驗證失敗 '+issues.join(','));
+        if(eventId!==null){
+            if(typeof eventId!=='string'||!eventId.trim()||eventId.length>220)throw new Error(label+':無效事件ID');
+            if((s.integrityReceipts||[]).includes(eventId))throw new Error(label+':事件已結算，拒絕重複');
+            draft.integrityReceipts=Array.isArray(draft.integrityReceipts)?draft.integrityReceipts:[];
+            draft.integrityReceipts.push(eventId);
+            // Validate again after appending the receipt. Prior validation alone
+            // misses a mutator that already inserted the very same event id.
+            const receiptIssues=worldInvariantIssues(draft);
+            if(receiptIssues.length)throw new Error(label+':提交收據驗證失敗 '+receiptIssues.join(','));
+            // Never truncate: a pruned event ID can be submitted again and award assets twice.
+            // Event ids are durable audit data; fail closed rather than lose history.
+        }
+        // Only mutation after validation is this root commit. Never change a live ledger on failure.
+        for(const key of Object.keys(s))if(!Object.hasOwn(draft,key))delete s[key];
+        Object.assign(s,draft);return true;
+    }
+    function worldStageCall(s,label,mutate,eventId=null){
+        if(!s||typeof s!=='object'||typeof mutate!=='function')throw new Error(label+':無效結算');
+        const before=worldInvariantIssues(s);
+        if(before.length)throw new Error(label+':原始狀態異常 '+before.join(','));
+        if(eventId!==null&&(s.integrityReceipts||[]).includes(eventId))throw new Error(label+':重複事件');
+        const draft=structuredClone(s);
+        const result=mutate(draft);
+        worldCommitPrepared(s,draft,label,eventId);
+        return result;
+    }
+    function worldAtomicCommit(s,label,mutator,opts={}){
+        try{return {success:true,value:worldStageCall(s,label,draft=>{
+            const r=mutator(draft);if(!r||r.success!==true)throw new Error(r?.reason||'MUTATOR_REJECTED');
+            return r;
+        },Object.hasOwn(opts,'id')?opts.id:null)};}
+        catch(e){return {success:false,reason:String(e.message||e)};}
+    }
+    function worldGuardedStageCommit(s,mutate,label='WORLD_EVENT'){
+        try{return {success:true,value:worldStageCall(s,label,mutate)};}
+        catch(e){return {success:false,reason:String(e.message||e)};}
+    }
+    const WORLD_REGRESSION_FIXTURES=Object.freeze([
+      {id:'lot-duplicate',rule:'LOT_UNIQUENESS'},
+      {id:'invalid-quantity',rule:'INVENTORY_QUANTITY'},
+      {id:'negative-currency',rule:'CURRENCY_NONNEGATIVE'},
+      {id:'duplicate-event',rule:'EVENT_IDEMPOTENCY'},
+      {id:'atomic-rollback',rule:'ATOMIC_ROLLBACK'},
+      {id:'idempotent-commit',rule:'DUPLICATE_EVENT_ID'},
+      {id:'double-receipt',rule:'RECEIPT_UNIQUENESS'},
+      {id:'unbalanced-ledger',rule:'POSTING_BALANCE'},
+      {id:'duplicate-entitlement',rule:'RIGHT_UNIQUENESS'}
+    ]);
 
     // V6.58：統一背包原子交易入口。回呼只操作淺複製的暫存背包；明確回傳 success:true 且通過結構驗證後才提交。
     function commitInventoryTransaction(label, mutate) {
-        if (typeof mutate !== "function" || !Array.isArray(gameState.inventory))
-            return { success:false, reason:`${label}交易環境無效，背包未變更。` };
-        const liveInventory = gameState.inventory;
-        const stagedInventory = liveInventory.map(item => item && typeof item === "object" ? { ...item } : item);
-        try {
-            const result = mutate(stagedInventory);
-            if (!result || result.success !== true)
-                return { success:false, reason:result?.reason || `${label}驗證未通過，背包未變更。` };
-            if (stagedInventory.some(item => !item || typeof item !== "object" || !cleanNameStrict(item.name) || !Number.isFinite(Number(item.quantity ?? 1)) || Number(item.quantity ?? 1) < 1))
-                throw new Error("暫存背包含有無效物品或數量");
-            // Record the exact item deltas before committing the staged inventory.
-            const delta=v695ItemProof(gameState,label,liveInventory,stagedInventory,'PLAYER_INVENTORY_TX');
-            if(delta)v695PostItem(gameState,delta);
-            // 原陣列原地提交，避免其他程式持有 inventory 陣列參照時失效。
-            liveInventory.splice(0, liveInventory.length, ...stagedInventory);
-            return { success:true, ...(result.message ? {message:result.message} : {}) };
-        } catch (error) {
-            return { success:false, reason:`${label}交易未提交，背包維持原狀：${error?.message || error}` };
-        }
+        const originalInventory=gameState?.inventory;
+        if(typeof mutate!=='function'||!Array.isArray(gameState.inventory))
+            return {success:false,reason:`${label}交易環境無效`};
+        try{
+            const result=worldStageCall(gameState,'背包：'+label,draft=>{
+                const original=draft.inventory;
+                const stagedInventory=structuredClone(original);
+                const r=mutate(stagedInventory);
+                if(!r||r.success!==true)throw new Error(r?.reason||'交易未獲確認');
+                const issues=worldValidateInventoryStage(stagedInventory);
+                if(issues.length)throw new Error('暫存背包不一致：'+issues.join(','));
+                const delta=v695ItemProof(draft,label,original,stagedInventory,'PLAYER_INVENTORY_TX');
+                if(delta)v695PostItem(draft,delta);
+                draft.inventory=stagedInventory;
+                return r;
+            });
+            // Keep the previously published inventory array reference stable for UI listeners.
+            if(Array.isArray(originalInventory) && originalInventory!==gameState.inventory){
+                originalInventory.splice(0,originalInventory.length,...gameState.inventory);
+                gameState.inventory=originalInventory;
+            }
+            return {success:true,...(result?.message?{message:result.message}:{})};
+        }catch(error){return {success:false,reason:`${label}交易未提交：${String(error?.message||error)}`};}
     }
 
     const TransactionEngine = {
@@ -1165,7 +1391,7 @@
                 const receipt=settleEconomy(staging,{eventId:`TRADE:${tradeOffer?.tx_nonce || ""}`,kind:"trade",offer:tradeOffer},ECONOMY_AUTHORITY);
                 const audit=ueAuditProperty(staging);
                 if(audit.issues.length)throw new Error('物品所有權稽核未通過：'+audit.issues.join(','));
-                Object.assign(gameState,staging);
+                worldCommitPrepared(gameState,staging,'TRADE_SETTLEMENT');
                 return {success:true,receipt,message:formatEconomyReceipt(receipt)};
             } catch(error){return {success:false,reason:error.message};}
         },
@@ -1933,7 +2159,7 @@
             }
             destinyEnsureWorldEvent(s,fate.chapter);
             destinySync(s);
-            gameState=s;
+            worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');
             appendLogData('命運',success?`✦ 【正式線索・第${r.chapter}幕】沿著「${r.approach}」的方向，你前往${r.place}，花了 ${r.time} 日耐心核對。最終確認：${r.summary}。這項資訊已存入正式證據簿；${r.cost?'另支出 '+r.cost+' 顆靈石，':''}目前本幕進度 ${fateChapterCount(fate)}/2。`:`✦ 【調查未果】${r.title} 尚無可靠證據，時間與費用已依核心結算。你可再次調查或改選別的途徑。`,'system',false,true);
             renderUI();saveGameState();
         }catch(error){openGameModal('命運調查未執行',String(error.message||error));}
@@ -1991,7 +2217,7 @@
                 fate.status='complete';
                 destinyCoreCommit(s,'fate-conclusion',`${fate.title}命運篇章完成：${summary}`);
             }
-            destinySync(s);gameState=s;
+            destinySync(s);worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');
             appendLogData('命運',chapter===5?`✦ 【命運篇章完結】${rt.conclusion.summary}`:`✦ 【章節完成】第${chapter}幕結束；你選擇「${choice}」。第${fate.chapter}幕「${fate.chapterTitle}」已開啟。`,'system',false,true);
             renderUI();saveGameState();
         }catch(error){openGameModal('命運分支未執行',String(error.message||error));}
@@ -2001,7 +2227,7 @@
         const s=structuredClone(gameState);fateEnsureRuntime(s);
         s.destiny.status=s.destiny.status==='paused'?'active':'paused';
         destinyCoreCommit(s,'life-choice',s.destiny.status==='paused'?'玩家暫時擱置個人命運追查，自由人生不受阻':'玩家選擇重新追尋自己的命運主線');
-        destinySync(s);gameState=s;appendLogData('命運',s.destiny.status==='paused'?'✦ 已暫時擱置個人主線，世界仍會自行流轉。':'✦ 已重新追尋個人命運主線。','system',false,true);renderUI();saveGameState();
+        destinySync(s);worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');appendLogData('命運',s.destiny.status==='paused'?'✦ 已暫時擱置個人主線，世界仍會自行流轉。':'✦ 已重新追尋個人命運主線。','system',false,true);renderUI();saveGameState();
     }
     function destinySetLifeGoal(goal){
         if(isTyping||!gameState?.destiny||gameState.isDead)return;
@@ -2009,7 +2235,7 @@
         if(gameState.destiny.questEngine?.lifeGoal)allowed.push(gameState.destiny.questEngine.lifeGoal);
         if(!allowed.includes(goal))return;
         const s=structuredClone(gameState);const rt=fateEnsureRuntime(s);
-        rt.lifeGoal=goal;destinyCoreCommit(s,'life-goal',`玩家自行選擇人生志向：「${goal}」`);destinySync(s);gameState=s;renderUI();saveGameState();
+        rt.lifeGoal=goal;destinyCoreCommit(s,'life-goal',`玩家自行選擇人生志向：「${goal}」`);destinySync(s);worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
     }
     // 世界每一段經過的月份進入「命運歲月紀錄」；不假造 NPC 生死、資產損失或證據自動蒸發。
     function destinyWorldTick(s,fromDay,toDay){
@@ -2068,7 +2294,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "6.88",
+            version: "6.99",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, maxHp: 50, hp: 50, exp: 0, maxExp: 100,
             economy: {receipts:[],notifiedIds:[]},
@@ -2459,7 +2685,7 @@
         check('卸裝流程保留鑑定狀態', /identified/.test(equipmentLifecycleSource));
         check('拆解共用原子交易入口', /commitInventoryTransaction\("拆解"/.test(TransactionEngine.processDisassembly.toString()));
         check('熔煉共用原子交易入口', /commitInventoryTransaction\("熔煉"/.test(interactInventoryItem.toString()));
-        check('原子交易先暫存再提交', /const stagedInventory = liveInventory\.map/.test(commitInventoryTransaction.toString()) && /liveInventory\.splice/.test(commitInventoryTransaction.toString()));
+        check('原子交易先暫存再提交', /worldStageCall/.test(commitInventoryTransaction.toString()) && /worldValidateInventoryStage/.test(commitInventoryTransaction.toString()) && /originalInventory\.splice/.test(commitInventoryTransaction.toString()));
         check('鑑定共用原子交易入口', /commitInventoryTransaction\(\"鑑定\"/.test(interactInventoryItem.toString()));
         check('消耗品使用共用原子交易入口', /commitInventoryTransaction\(\"使用消耗品\"/.test(TransactionEngine.useItemOptimistic.toString()));
         return { passed: cases.filter(x=>x.ok).length, failed: cases.filter(x=>!x.ok).length, cases };
@@ -2505,18 +2731,18 @@
         // 4. 裝備流程防護靜態檢查；不直接操作玩家角色的 gameState。
         const equipSrc = equipItem.toString(), unequipSrc = unequipItem.toString();
         check('裝備操作以背包物件參照定位物品', /gameState\.inventory\.find\(i\s*=>\s*i\s*===\s*itemInput\)/.test(equipSrc), '', 'static');
-        check('裝備前從背包扣除一件，且不以名稱扣除', /gameState\.inventory\.indexOf\(invItem\)/.test(equipSrc) && /gameState\.inventory\.splice\(invIndex,\s*1\)/.test(equipSrc), '', 'static');
-        check('替換裝備時將舊裝備回存背包', /addItemToInventory\(gameState\.inventory/.test(equipSrc), '', 'static');
-        check('卸裝後清空欄位並回存物品', /addItemToInventory\(gameState\.inventory/.test(unequipSrc) && /gameState\.equipment\[slot\]\s*=\s*null/.test(unequipSrc), '', 'static');
+        check('裝備前從背包扣除一件，且不以名稱扣除', /v695EquipmentTx/.test(equipSrc) && /inv\.splice\(index,\s*1\)/.test(v695EquipmentTx.toString()), '', 'static');
+        check('替換裝備時將舊裝備回存背包', /addItemToInventory\(inv/.test(v695EquipmentTx.toString()), '', 'static');
+        check('卸裝後清空欄位並回存物品', /addItemToInventory\(inv/.test(v695EquipmentTx.toString()) && /equipment\[slot\]\s*=\s*null/.test(v695EquipmentTx.toString()), '', 'static');
         check('裝卸裝保留 itemId／鑑定狀態／權限欄位', /itemId/.test(equipSrc) && /identified/.test(equipSrc) && /canSell/.test(equipSrc) && /\.\.\.itemObj/.test(unequipSrc), '', 'static');
 
         // 5. 任務獎勵與存檔：確認核心結算／正規化路徑有必要的防重與欄位保護。
-        const economySrc = settleEconomy.toString();
+        const economySrc = settleEconomyCore.toString();
         const questSrc = getSystemPrompt.toString();
         check('經濟結算以事件 ID 防止重複入帳', /receipts\.some/.test(economySrc) && /completedTxIds/.test(economySrc), '', 'static');
         check('任務獎勵要求來源事件並防止重複領取', /sourceEntityId/.test(questSrc) && /may only be claimed once/.test(questSrc), '', 'static');
         const saveSrc = exportSave.toString(), importSrc = validateImportedSave.toString();
-        check('匯出存檔包含完整角色 state', /state:\s*gameState/.test(saveSrc), '', 'static');
+        check('匯出存檔包含完整角色 state', /state:\s*staged/.test(saveSrc) && /worldInvariantIssues/.test(saveSrc), '', 'static');
         check('匯入驗證檢查物品名稱與正整數數量', /Array\.isArray\(raw\.inventory\)/.test(importSrc) && /item\.quantity/.test(importSrc), '', 'static');
         check('匯入後經正規化並重算最大生命', /normalizeGameState/.test(importSrc) && /getMaxHp\(state\)/.test(importSrc), '', 'static');
 
@@ -3376,7 +3602,7 @@
             const gain=["仙品","極品"].includes(tier)?50:tier==="上品"?30:15;
             npc.relationship=npc.relationship||{favorability:0,awe:0,profit:0};
             npc.relationship.favorability=Math.min(100,(Number(npc.relationship.favorability)||0)+gain);
-            gameState=draft;publishEconomyReceipt(receipt);renderUI();saveGameState();
+            worldCommitPrepared(gameState,draft,'UI_WORLD_STAGE');publishEconomyReceipt(receipt);renderUI();saveGameState();
             sendAction(`【核心已完成贈禮給${npcName}，請只敘述反應，不得重複扣物品或費用】`,{eventId:newEconomyId("GIFT-NARRATIVE"),economyNarrativeOnly:true});
         }catch(error){openGameModal("贈禮未結算",error.message);}
     }
@@ -3681,7 +3907,7 @@
                     const receipt=settleEconomy(draft,{eventId:`BOUNTY:${contract.id}`,kind:"bounty",targetId,amount:latest.cost},ECONOMY_AUTHORITY);
                     draft.bountyContracts.push(contract);
                     if(!settleBountyContract(draft,contract.id)) throw new Error("懸賞無法結算，未扣款。");
-                    gameState=draft;publishEconomyReceipt(receipt);
+                    worldCommitPrepared(gameState,draft,'UI_WORLD_STAGE');publishEconomyReceipt(receipt);
                     appendLogData("黑市",`核心刺殺結果：${contract.outcome}；${contract.outcome==="成功"?"目標死亡及關聯狀態已同步。":"目標仍存活。"}`,"system",false,true);
                 }catch(error){openGameModal("懸賞未結算",error.message);return;}
                 renderUI(); saveGameState();
@@ -4842,7 +5068,7 @@ JSON 輸出格式範例：
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
         // Retain V6.90 membership metadata that the legacy normalizer does not know.
         if(valid && raw.sect && typeof raw.sect==='object')s.sect={...raw.sect,...normalized.sect};
-        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "6.98";
+        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.07";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -4881,6 +5107,7 @@ JSON 輸出格式範例：
             }
         }
         sect690Core(s);
+        v701Migrate(s);
         return s;
     }
     function npcFaction(npc) {
@@ -5284,7 +5511,7 @@ JSON 輸出格式範例：
             if(op.status!=='available')throw new Error('事件已結束或失效。');
             op.status='accepted';op.side=ev[side];op.acceptedDay=s.daysPassed;
             worldSyncOpportunityQuest(s,op);if(s.destiny)destinySync(s);
-            gameState=s;renderUI();saveGameState();
+            worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
             appendLogData('九州',`你決定關注「${ev.title}」，選擇支援${op.side}。這只是玩家的立場，尚未達成任何世界結果。`,'system',false,true);
         }catch(err){openGameModal('無法接取世界任務',String(err.message||err));}
     }
@@ -5308,7 +5535,7 @@ JSON 輸出格式範例：
             const next=sim.opportunities[eventId];if(next&&next.status==='accepted')worldSyncOpportunityQuest(s,next);
             if(s.destiny)destinySync(s);
             worldLog(s,id,prevDay,`玩家在${ev.region}為${op.side}提供已結算的物資，消耗4靈石與2日；勢力資源增加且影響事件判定。`,'player-world-contribution');
-            gameState=s;renderUI();saveGameState();
+            worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
             appendLogData('九州',`你在${ev.region}將實際籌備的物資交給${op.side}，支出 4 顆靈石、經過 2 日。勢力收到資源，世界事件仍依雙方條件自行發展。`,'system',false,true);
         }catch(err){openGameModal('支援未執行',String(err.message||err));}
     }
@@ -5473,7 +5700,7 @@ JSON 輸出格式範例：
         c.xp+=4;c.completed++;c.stage=Math.min(10,Math.floor(Math.sqrt(c.xp/8)));
         lifeRecord(life,id,day,`按正式配方製作${spec.name}：消耗材料與${spec.cost}靈石，成品已入庫。`);
         s.daysPassed=day+spec.days;advanceWorldState(s,spec.days);destinySync(s);
-        gameState=s;renderUI();saveGameState();
+        worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
         appendLogData('百藝',`製作${spec.name}成功，耗時${spec.days}日；原料已扣、成品已入背包。`,'system',false,true);
       }catch(err){openGameModal('百藝製作未完成',String(err.message||err));}
     }
@@ -5497,7 +5724,7 @@ JSON 輸出格式範例：
         v694Cash(s,'PLAYER',`CARAVAN_ESCROW:${id}`,15,`CASH:${id}:CAPITAL`,'商隊託管本金');
         lifeRecord(life,id,day,`商隊從${s.location}出發，本金15靈石封存，預計第${day+duration}日結算。`);
         s.daysPassed=day+1;advanceWorldState(s,1);destinySync(s);
-        gameState=s;renderUI();saveGameState();
+        worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
         appendLogData('商道',`商隊已啟程，投入15靈石；商路控制：${controller}，當前已記錄風險修正 ${Math.round(riskShift*100)}%；第${day+duration}日後正式結算。`,'system',false,true);
       }catch(err){openGameModal('商隊未能啟程',String(err.message||err));}
     }
@@ -5557,7 +5784,7 @@ JSON 輸出格式範例：
         lifeRecord(life,id,day,`${spec.name}完成第${c.completed}次正式準備，消耗${spec.cost}靈石、${spec.days}日，職涯閱歷+2。`);
         s.daysPassed=day+spec.days;advanceWorldState(s,spec.days);
         if(s.destiny)destinySync(s);
-        gameState=s;renderUI();saveGameState();
+        worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
         appendLogData('人生',`${spec.name}：你投入${spec.days}日與${spec.cost}靈石，完成一次可追溯的長期準備（不等於直接突破或取得物品）。`,'system',false,true);
       }catch(err){openGameModal('人生專案未能執行',String(err.message||err));}
     }
@@ -5575,7 +5802,7 @@ JSON 輸出格式範例：
         }
         const npc=s.npcRegistry?.[m.npcId];if(!npc||npc.is_alive===false||npc.status==='DEAD')throw new Error('委託人已無法執行委託。');
         m.status='accepted';m.acceptedDay=Number(s.daysPassed)||0;lifeWorldTick(s,s.daysPassed);
-        if(s.destiny)destinySync(s);gameState=s;renderUI();saveGameState();
+        if(s.destiny)destinySync(s);worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
       }catch(err){openGameModal('無法接受委託',String(err.message||err));}
     }
     function lifeCompleteMission(id){
@@ -5594,7 +5821,7 @@ JSON 輸出格式範例：
         lifeRecord(life,receipt,day,`實際提供${npc.name||m.npcId}的長期計畫支援；費用2靈石，信任+2。`);
         s.daysPassed+=3;advanceWorldState(s,3);if(s.destiny)destinySync(s);
         if(s.questLedger?.verified['LIFEQUEST:'+id]){s.questLedger.verified['LIFEQUEST:'+id].status='已完成';s.questLedger.verified['LIFEQUEST:'+id].progress='正式資源支援已結算';}
-        gameState=s;renderUI();saveGameState();
+        worldCommitPrepared(gameState,s,'UI_WORLD_STAGE');renderUI();saveGameState();
         appendLogData('人脈',`完成${m.title}，支出2靈石、經過3日；${npc.name}信任+2。`,'system',false,true);
       }catch(err){openGameModal('委託未能結算',String(err.message||err));}
     }
@@ -5855,6 +6082,9 @@ JSON 輸出格式範例：
         return u.pending;
     }
     function ueExecute(s,id){
+        return worldStageCall(s,'ueExecute',draft=>ueExecuteCore(draft,id),null);
+    }
+    function ueExecuteCore(s,id){
         const u=ueEnsure(s),p=u.pending;
         if(!p||p.id!==id)throw new Error('提案不存在或已失效');
         if(u.events.some(e=>e.id===id)||s.economy.receipts.some(r=>r.id===id))throw new Error('已結算交易，禁止再次提交');
@@ -6008,7 +6238,7 @@ JSON 輸出格式範例：
     }
     function ueAcceptRegistration(id){
         if(isTyping)return;
-        try{const draft=structuredClone(gameState),r=ueConsumeEntitlement(draft,id);Object.assign(gameState,draft);
+        try{const draft=structuredClone(gameState),r=ueConsumeEntitlement(draft,id);worldCommitPrepared(gameState,draft,'GAME_UI_COMMIT');
             appendLogData('系統',`✦ 已持 ${r.registrationNumber||r.id} 進入考核候選流程；尚未判定考核結果。`,'system',false,true);
             renderUI();saveGameState();
         }catch(e){openGameModal('考核資格未生效',String(e.message||e));}
@@ -6076,6 +6306,9 @@ JSON 輸出格式範例：
         return receipt;
     }
     function ueFinalizeBattle(s,b){
+        return worldStageCall(s,'ueFinalizeBattle',draft=>ueFinalizeBattleCore(draft,b),null);
+    }
+    function ueFinalizeBattleCore(s,b){
         const u=ueEnsure(s);const claims=u.battleClaims.filter(c=>c.status==='awaiting_battle'&&c.location===b.location&&b.units.some(x=>x.id===(c.opponentId||c.targetId)&&x.team==='enemy'));
         for(const c of claims){
             const n=findNpc(s,c.targetId);c.status=b.status==='won'?'won':'failed';c.battleId=b.id;c.closedDay=Number(s.daysPassed)||0;
@@ -6167,7 +6400,7 @@ JSON 輸出格式範例：
                 if(!enemy||String(enemy.location||'')!==String(gameState.location||'')||v682State(gameState).battle||tacticalState().battle)
                     throw new Error('正式團戰不可開始，財產提案未提交');
             }
-            Object.assign(gameState,draft);
+            worldCommitPrepared(gameState,draft,'GAME_UI_COMMIT');
             if(r.staged){
                 if(!v682StartTeamBattle([r.targetId]))openGameModal('戰鬥啟動未成功','提案已暫存，請從系統診斷檢查團戰入口，勿重複付款。');
             }else publishEconomyReceipt(r);
@@ -6506,6 +6739,9 @@ JSON 輸出格式範例：
         return {kind,amount:amount||1,targetId:target?.id||null,purpose,assetName:(namedAsset&&['theft','pickpocket','robbery','recover_asset'].includes(kind))?namedAsset:''};
     }
     function ueFulfilService(s,rightId){
+        return worldStageCall(s,'ueFulfilService',draft=>ueFulfilServiceCore(draft,rightId),null);
+    }
+    function ueFulfilServiceCore(s,rightId){
         const u=ueEnsure(s),r=u.entitlements.find(x=>x.id===rightId);
         if(!r||!['registered','exam_pending','active'].includes(r.status))throw new Error('找不到有效履約憑證');
         if(!(r.type==='admission_registration'?v689AdmissionPlace(r,s.location):r.location===String(s.location||'')))throw new Error('須回到已付款服務地點才能履行');
@@ -6562,7 +6798,7 @@ JSON 輸出格式範例：
     function ueFulfilFromUI(rightId){
         if(isTyping)return;
         try{const d=structuredClone(gameState),result=ueFulfilService(d,rightId);
-            Object.assign(gameState,d);appendLogData('系統',`✦ 履約結果：${JSON.stringify(result)}`,'system',false,true);
+            worldCommitPrepared(gameState,d,'GAME_UI_COMMIT');appendLogData('系統',`✦ 履約結果：${JSON.stringify(result)}`,'system',false,true);
             saveGameState();renderUI();}
         catch(e){openGameModal('履約條件未滿足',String(e.message||e));}
     }
@@ -6687,7 +6923,10 @@ JSON 輸出格式範例：
         return {id:request.eventId,sourceKey,operation:operationLabel,kind:op.kind,request,location:String(s.location||""),inventorySnapshot:inventorySnapshot(s),balance:s.spiritStone,status:"pending",
             ...(op.kind==='service'?{serviceKey:`admission:${String(s.location||'').trim()}:${fee}`}:{})};
     }
-    function approveEconomyProposal(s,id) {
+    function approveEconomyProposal(s,id){
+        return worldStageCall(s,'approveEconomyProposal',draft=>approveEconomyProposalCore(draft,id),null);
+    }
+    function approveEconomyProposalCore(s,id) {
         const p=s.pendingEconomyProposal;
         if(!p||p.id!==id||p.status!=="pending")throw new Error("提案不存在或已處理。");
         if(p.location!==String(s.location||"")||p.inventorySnapshot!==inventorySnapshot(s)||p.balance!==s.spiritStone)throw new Error("提案已過期，請取消後重新提出。");
@@ -6702,7 +6941,7 @@ JSON 輸出格式範例：
         }
         draft.economy.claimedSources=draft.economy.claimedSources||[];
         draft.economy.claimedSources.push(p.sourceKey);draft.pendingEconomyProposal=null;
-        finishEconomySummary(draft,s,p.request.parentId);Object.assign(s,draft);return r;
+        finishEconomySummary(draft,s,p.request.parentId);worldCommitPrepared(s,draft,'APPROVE_ECONOMY');return r;
     }
     function confirmEconomyProposal(id) {
         if(isTyping)return;
@@ -6792,9 +7031,10 @@ JSON 輸出格式範例：
 3) 傷害命中玩家就回傳負整數 hpDelta 及 hpReason；未受傷回傳 0；NPC 傷亡與場景威脅須一致。不要只在故事裡宣稱 HP 改變。
 4) 每回合都回傳最終 location、scenarioMode(IDLE/DIALOGUE/HAZARD/DANGER)、activeThreats(陣列)。逃離成功且無威脅時清空威脅。每日時間/修為由核心檢查。
 5) 任何買賣、拍賣、議價、寄售、借貸、交換、黑市交易都只能以已登錄 NPC 的清楚對話提出報價及條件，不得在故事或 JSON 直接宣稱交割完成。tradeOffer:null；inventoryDelta:[]；inventoryRemoveDelta:[]；economyOperation:{kind:"reward",fee:0}。玩家接受後由前端比對商品、庫存、實際錢包與報價。沒有 NPC 來源或資金時應說明無法成立，不能杜撰 NPC 錢包及貨品。
-6) 合法採集/拾取/任務獎勵：economyOperation:{kind:"reward",fee:0}，inventoryDelta 明確列物品和正整數數量；不可扣材料/費用。煉製、交換須使用 kind:craft 或 exchange，列出投入物品及成本；損失 kind:loss；失敗不得發獎（除純補償 consolation）。物品/靈石不可從故事文字直接入帳；任務獎勵來源必須已由核心登記 (Quest rewards must use sourceEntityId and may only be claimed once)。下品靈石獎勵列 inventoryDelta 中 {name:"下品靈石",quantity:正整數}；不得藉此買賣貨幣。
+6) 合法採集/拾取/任務獎勵：economyOperation:{kind:"reward",fee:0}，inventoryDelta 明確列物品和正整數數量；不可扣材料/費用。煉製、交換須使用 kind:craft 或 exchange，列出投入物品及成本；損失 kind:loss；失敗不得發獎（除純補償 consolation）。物品/靈石不可從故事文字直接入帳；任務獎勵來源必須已由核心登記 (Quest rewards must use sourceEntityId and may only be claimed once)。下品靈石不得列入 inventoryDelta；改用 V7.05 的 worldActions 貨幣事件提案，核心核實後才入玩家錢包。
 7) 堅守 NPC 動機、宗門權限、世界時間線、已登記任務及內在邏輯；以結構化 npcDelta、memoryDelta、quests、techniqueDelta 回傳可持續的新增事實。裝備物品 grade 用凡器/靈器/築基器/金丹器/元嬰器/化神器/返虛器/大乘器/真仙器/太乙器/聖道器/主宰器；一般消耗品與材料可用 tier。
-【輸出】只回傳一個合法 JSON 物件，不加 markdown，不加註解。至少包含：{"story":"約兩至四段故事","actionOutcome":{"result":"success|partial|failure|neutral","risk":"low|medium|high","reason":"理由","costs":[],"consequences":[]},"expDelta":0,"hpDelta":0,"hpReason":"無","daysPassedDelta":0,"inventoryDelta":[],"inventoryRemoveDelta":[],"economyOperation":{"kind":"reward","fee":0},"tradeOffer":null,"npcDelta":{"created":[],"updated":[],"killed":[]},"techniqueDelta":[],"worldEvents":[],"memoryDelta":{"chronicle":[],"openThreads":[],"resolvedThreads":[],"revealedSecrets":[],"worldStateChanges":[],"recentSummary":""},"quests":[],"choices":["選擇一","選擇二"],"location":"最終地點","scenarioMode":"IDLE","activeThreats":[]}。沒發生的增量用空陣列或0。開局身世物品由前端發放，禁止重複發放。`; 
+【V7.00 場景實體行動協定】對場景發現、搜尋取得、摘取、採集、收取工具與任務領獎，在 JSON 增加 worldActions 陣列，每項格式為 {"kind":"DISCOVER|ACQUIRE|HARVEST|CLAIM_REWARD","name":"物品名稱","quantity":1,"outcome":"success|partial|failure|neutral","evidence":"敘事中明確肯定的發現或取得依據","sourceEntityId":null,"tier":"凡品或未鑑定","method":"方式"}。這些是提案，核心才有物權決定權。一般石塊木棍等普通材料可於確實找到後由核心登錄並取得；赤火藤、法寶、任務物品、報酬等特殊資產需要已登錄來源，不能自行發獎。對每個已真正看到、但尚未取得的特定場景物品，回傳 DISCOVER；確實取得才回傳 ACQUIRE/HARVEST，失敗則不能送出成功提案。玩家搜尋並同回合找到且拿起普通物品，可直接以 ACQUIRE 提案。提案之後 inventoryDelta 請保持 []，避免新舊系統重複新增。對於不存在物品、否定、假設及傳聞不得提案。未知品階可以不填，並不妨礙普通物品入袋。
+【輸出】只回傳一個合法 JSON 物件，不加 markdown，不加註解。至少包含：{"story":"約兩至四段故事","actionOutcome":{"result":"success|partial|failure|neutral","risk":"low|medium|high","reason":"理由","costs":[],"consequences":[]},"expDelta":0,"hpDelta":0,"hpReason":"無","daysPassedDelta":0,"inventoryDelta":[],"inventoryRemoveDelta":[],"worldActions":[],"economyOperation":{"kind":"reward","fee":0},"tradeOffer":null,"npcDelta":{"created":[],"updated":[],"killed":[]},"techniqueDelta":[],"worldEvents":[],"memoryDelta":{"chronicle":[],"openThreads":[],"resolvedThreads":[],"revealedSecrets":[],"worldStateChanges":[],"recentSummary":""},"quests":[],"choices":["選擇一","選擇二"],"location":"最終地點","scenarioMode":"IDLE","activeThreats":[]}。沒發生的增量用空陣列或0。開局身世物品由前端發放，禁止重複發放。`; 
     }
 
 
@@ -7028,6 +7268,8 @@ JSON 輸出格式範例：
         result.lastEconomyWarning=null;result.lastInventoryTransferNotice=null;
         result.version="6.77";
         finishEconomySummary(result,currentState,sourceId);
+        const settlementIssues=worldInvariantIssues(result);
+        if(settlementIssues.length)throw new Error('回合結算違反世界一致性：'+settlementIssues.join(','));
         return result;
     }
 
@@ -7043,12 +7285,19 @@ JSON 輸出格式範例：
                 ? 'HP CONSISTENCY REPAIR: The story explicitly describes the PLAYER being injured, but JSON has no negative hpDelta. If injury occurred, supply negative integer hpDelta and hpReason. Otherwise revise only story to an uninjured outcome. Preserve all other fields. Return complete JSON.'
                 : repairKind === 'format'
                 ? 'JSON FORMAT REPAIR: The previous response could not be parsed as JSON with a nonempty story. Return one valid JSON object with story, location, scenarioMode and activeThreats; preserve original story and outcome. Do not create or invent any rewards, costs, items, tradeOffers or HP changes absent from the original response.'
+                : repairKind === 'receipt_story'
+                ? 'RECEIPT NARRATIVE ONLY: Use the appended CORE_RECEIPTS as the sole authority. Produce JSON with story only. Never grant anything beyond successful receipts. A rejected receipt is NOT success. Do not alter core state.'
+                : repairKind === 'actions'
+                ? 'SCENE ACTION FORMAT REPAIR: Return the complete original JSON, modifying ONLY worldActions. Extract confirmed DISCOVER/ACQUIRE/HARVEST or CURRENCY_DISCOVER/CURRENCY_PICKUP from existing scene and player action. Each worldActions item must include kind, name, quantity:1, outcome, evidence. Do not invent items, money, rewards, costs, or successes absent from original story. If no tangible scene item exists, use worldActions:[]. Never change the story, outcome, or other fields.'
                 : repairKind === 'settlement'
                 ? 'ECONOMY KIND REPAIR: Fix ONLY economyOperation.kind according to the attempted player action, item additions, removals, and original fee. Do NOT alter ANY other field, item name, quantity, itemId, transaction price, HP, NPC, scene, story, or outcome. Pure reward cannot consume materials or fee; craft/exchange must have inputs or costs; purchase/auction need fee and items. Return the complete original JSON with that ONE field corrected.'
                 : 'Repair only missing end-of-turn location, scenarioMode and activeThreats. Preserve all other fields exactly. Return complete corrected JSON.';
             contents.push({role:'model',parts:[{text:sceneRepair}]}, {role:'user',parts:[{text:instruction}]});
         }
-        const bodyData = {system_instruction:{parts:[{text:getSystemPrompt()}]},contents,
+        const systemText=repairKind==='receipt_story' ? '你是修仙文字RPG敘事編輯。唯一權威是CORE_RECEIPTS。只回傳JSON物件 {"story":"繁體中文敘事"}。不得修改已核准結果，不得新增未記帳的物品、報酬、擊殺或任務完成；失敗就如實描述失敗。' : getSystemPrompt()+`
+【V7.02 擴充事件契約】可在 worldActions 使用 CRAFT(必附 ingredients:[{name,quantity}],quantity:1)、CLAIM_REWARD(必附 contractId：已登錄契約 ID；若未登錄但已完成正式任務，可傳 sourceEntityId 指向任務 ID，由核心核實委託人與現有資金後建立契約)、DISTRACT(必附 sourceEntityId 指向已登錄且有守衛的物品)、ATTACK/PAY/INTERACT(僅提議，必須交給既有核心處理)。DISCOVER 可附 guardianId、guardianName、requiresTool、toolKeyword；特殊物品必須已有可信場景來源。多步驟行動另以 actionPlan:[{kind,target,description}] 表示；不得在同回合假定所有步驟完成。所有收據由核心結算，請勿在 story 自行宣布尚未結算的報酬、戰鬥勝利或製作結果。
+【V7.06 下品靈石正式事件】靈石是錢包貨幣，不是物品；inventoryDelta 不得含靈石，spiritStonesDelta 必須為0。當明確發現散落靈石、且非假設或傳聞，可提出 worldActions:[{kind:"CURRENCY_DISCOVER",amount:1至10, currency:"下品靈石",outcome:"neutral",evidence:"已看到的場景靈石"}]。當玩家明確拾取且故事確認成功，可提出 kind:"CURRENCY_PICKUP"，附 amount、sourceEntityId（已登錄來源時必填）與 outcome:"success"；核心只允許一次性的有限世界探索來源，不可憑空反覆刷取。已登錄 NPC 主動贈與用 NPC_GIFT_CURRENCY，必須附 npcId、amount、證據；正式工作報酬用 WORK_PAYMENT，必須附已完成委託 contractId 與金額；戰鬥搜刮用 LOOT_CURRENCY，必須附勝利的搶劫 claimId 作為 sourceEntityId（戰鬥核心已入帳則只確認，絕不再次加錢）。未核實來源只能描述可能發現或報價，不得宣告入帳。`;
+        const bodyData = {system_instruction:{parts:[{text:systemText}]},contents,
             generationConfig:{responseMimeType:'application/json',temperature:0.65,maxOutputTokens:4096}};
 
         const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
@@ -7066,6 +7315,7 @@ JSON 輸出格式範例：
                 durationMs:Math.round(performance.now()-began),requestChars:requestSize};
             if(__liveQaRuntime?.active)__liveQaRuntime.httpEvents.push(event);
             recordGeminiTiming(event);
+            v709AuditHttp(event);
             if(res?.ok)break;
             if(res && res.status === 429){
                 let payload = null;
@@ -7092,6 +7342,7 @@ JSON 輸出格式範例：
         const data=await res.json();
         const __liveQaText=(data.candidates?.[0]?.content?.parts||[]).map(part=>part.text||"").join("") || "天道無回應...";
         if (__liveQaRuntime?.active) __liveQaRuntime.responses.push({kind:sceneRepair?repairKind:"initial",status:res.status,text:__liveQaText});
+        v709AuditResponse(sceneRepair?repairKind:"initial",__liveQaText);
         return __liveQaText;
     }
 
@@ -7582,7 +7833,7 @@ JSON 輸出格式範例：
     function v689ConservativeScene(s,story,action){
         const mode=['IDLE','DIALOGUE','HAZARD','DANGER'].includes(s.scenarioMode)?s.scenarioMode:'IDLE';
         const threat=Array.isArray(s.activeThreats)?structuredClone(s.activeThreats):[];
-        return {story:`你嘗試${String(action||'觀察周遭').slice(0,50)}，但眼前的線索尚不足以確認新的發現。你仍可換個方向查探或繼續前行。`,
+        return {story:`【系統提示】本次 AI 回傳或結算內容不完整，核心未核准新的物品或獎勵；請重新操作或查看系統診斷。（這是資料驗證問題，並非角色探索失敗。）`,
             location:s.location,scenarioMode:mode==='IDLE'&&threat.length?'HAZARD':mode,activeThreats:threat,
             expDelta:0,hpDelta:0,daysPassedDelta:0,inventoryDelta:[],inventoryRemoveDelta:[],lostItems:[],
             spiritStonesDelta:0,economyOperation:{kind:'reward',fee:0},tradeOffer:null,actionOutcome:{result:'neutral',reason:'不完整的AI結算資料被保守忽略'}};
@@ -7660,7 +7911,7 @@ JSON 輸出格式範例：
                 const related=v688State(draft).contracts.find(c=>c.type==='service'&&c.receiptId===chosen.receiptId&&c.status==='paid_pending');
                 if(related){related.status='fulfilled';related.fulfilledDay=Number(draft.daysPassed)||0;}
             }
-            Object.assign(gameState,draft);
+            worldCommitPrepared(gameState,draft,'GAME_UI_COMMIT');
             v689RepairVerifiedSect(gameState);
             const result=r.status==='reported'?`你出示號牌 ${r.number}，守山弟子查驗後完成報到。`:
                  r.status==='admitted'?`考核成績 ${r.score} 分，已正式通過，登錄為 ${r.sect} 的外門弟子。`:
@@ -7680,7 +7931,7 @@ JSON 輸出格式範例：
                 const npc=findNpc(staged,r.targetId);
                 if(!npc || npc.location!==staged.location || v682State(staged).battle)throw new Error('正式對戰入口不符合條件');
             }
-            Object.assign(gameState,staged);
+            worldCommitPrepared(gameState,staged,'GAME_UI_COMMIT');
             if(r.staged){
                 if(!v682StartTeamBattle([r.targetId]))throw new Error('無法啟動正式戰鬥');
                 return {handled:true,text:'你正式發起對抗，已進入團隊戰鬥；勝負與財物轉移由戰鬥核心裁定。'};
@@ -7697,7 +7948,7 @@ JSON 輸出格式範例：
             const entitlement=right?.registrationNumber?` 守方核發考核號牌 ${right.registrationNumber}；報到與考核仍須另外進行。`:
                 right?` 取得正式服務憑證 ${right.id}。`:'';
             return {handled:true,text:`${reason}${entitlement}（餘額 ${gameState.spiritStone} 顆）`};
-        }catch(e){Object.assign(gameState,old);return {handled:true,text:`交割未成立：${String(e.message||e)}；沒有扣款或轉移物品。`};}
+        }catch(e){worldCommitPrepared(gameState,old,'ROLLBACK_RESTORE');return {handled:true,text:`交割未成立：${String(e.message||e)}；沒有扣款或轉移物品。`};}
     }
     // ===== V6.88 unified dialogue-first commerce / title / law kernel =====
     // Only core-verified state changes are authoritative. NPC narration is never a receipt.
@@ -7813,6 +8064,12 @@ JSON 輸出格式範例：
         const key=String(id||'');const u=ueEnsure(s),v=v688State(s),state=v691State(s),f=v694State(s);
         if(key==='PLAYER')return {get:()=>economyInteger(s.spiritStone,'玩家資金',0,1e12),set:n=>s.spiritStone=n};
         if(key==='TREASURY')return {get:()=>economyInteger(u.treasury,'金庫',0,1e12),set:n=>u.treasury=n};
+        if(key==='WORLD_POOL:704')return {get:()=>economyInteger(v704State(s).reserve,'世界探索靈石準備金',0,1e12),set:n=>v704State(s).reserve=n};
+        if(key.startsWith('SCENE_CASH:704:')){
+            const id=key.slice('SCENE_CASH:704:'.length),source=v704State(s).sources[id];
+            if(!source||source.id!==id)throw new Error('沒有正式登錄的場景靈石來源');
+            return {get:()=>economyInteger(source.balance,'場景現金',0,1e9),set:n=>source.balance=n};
+        }
         if(key.startsWith('ORG:')){
             const fid=key.slice(4),faction=(s.worldMemory?.engine?.factions||[]).find(f=>String(f.id)===fid)||WORLD_BIBLE.factions.find(f=>String(f.id)===fid);
             if(!faction)throw new Error('組織不是已登錄勢力，不能建立憑空資金');
@@ -7880,6 +8137,11 @@ JSON 輸出格式範例：
         for(const [id,sum]of Object.entries(f.estates||{}))a['ESTATE:'+id]=economyInteger(sum,'遺產',0,1e12);
         for(const [id,sum]of Object.entries(f.orgFunds||{}))a['ORG:'+id]=economyInteger(sum,'組織資金',0,1e12);
         for(const [id,sum]of Object.entries(f.caravanEscrows||{}))a['CARAVAN_ESCROW:'+id]=economyInteger(sum,'商隊本金',0,1e12);
+        if(s.worldCurrency704){
+            a['WORLD_POOL:704']=economyInteger(s.worldCurrency704.reserve,'世界探索準備金',0,1e12);
+            for(const [id,source] of Object.entries(s.worldCurrency704.sources||{}))
+                a['SCENE_CASH:704:'+id]=economyInteger(source.balance,'場景靈石',0,1e9);
+        }
         return a;
     }
     function v694AuditMoney(before,after){
@@ -7891,7 +8153,7 @@ JSON 輸出格式範例：
         // Detect remaining legacy direct money edits without silently minting counterpart funds.
         const v=v694State(s),current=v694MoneySnapshot(s),previous=v.lastAudit;
         if(previous&&previous.balances&&Number.isSafeInteger(previous.postCount)&&previous.postCount<=v.postings.length){
-            const delta={};const account=k=>k.startsWith('DECEASED:')?'NPC:'+k.slice(9):k==='PLAYER'||k==='TREASURY'||k==='ESCROW_CASH'||k.startsWith('CASINO:')||k.startsWith('CASINO_ESCROW:')||k.startsWith('ESTATE:')||k.startsWith('ORG:')||k.startsWith('CARAVAN_ESCROW:')?k:'NPC:'+k;
+            const delta={};const account=k=>k.startsWith('DECEASED:')?'NPC:'+k.slice(9):k==='PLAYER'||k==='TREASURY'||k==='ESCROW_CASH'||k.startsWith('CASINO:')||k.startsWith('CASINO_ESCROW:')||k.startsWith('ESTATE:')||k.startsWith('ORG:')||k.startsWith('CARAVAN_ESCROW:')||k==='WORLD_POOL:704'||k.startsWith('SCENE_CASH:704:')?k:'NPC:'+k;
             for(const p of v.postings.slice(previous.postCount)){
                 const from=account(p.from),to=account(p.to);
                 delta[from]=(delta[from]||0)-p.amount;delta[to]=(delta[to]||0)+p.amount;
@@ -8038,6 +8300,18 @@ JSON 輸出格式範例：
                 const c=v.contracts.find(x=>x.id===ref&&x.status==='active');
                 if(!c)throw new Error('未指定唯一、未結清的正式契約編號');
                 if(c.providerId!==holder)throw new Error('契約的收付款對手不一致');
+                // V7.06: a balanced debit/credit is not enough.  A request to
+                // PAY BACK borrowed money must never silently COLLECT a loan.
+                // Likewise "salary" cannot settle a debt or refund a deposit.
+                const settlementTypes={
+                    salary:['salary'],
+                    repayment:['loan'],
+                    payback:['borrow'],
+                    refund:['deposit','escrow'],
+                    installment:['loan','borrow']
+                };
+                if(!settlementTypes[kind]?.includes(c.type))
+                    throw new Error('結算操作與原契約性質不相符，拒絕反向付款或以其他名義結清債務');
                 if(c.type==='salary'){
                     if(Number(s.daysPassed)<Number(c.dueDay))throw new Error('工資尚未達到已登錄支付日期');
                     const confirmed=[...(s.worldMemory?.engine?.events||[]),...ueEnsure(s).events].some(e=>
@@ -8315,7 +8589,7 @@ JSON 輸出格式範例：
                 const movement=v695ItemProof(staged,`正式財產交割：${order.kind}`,prior,next,`DOMAIN:${r.id}`,{holderId:party});
                 if(movement)v695PostItem(staged,movement,`ITEM:DOMAIN:${r.id}:${party}`);
             }
-            Object.assign(gameState,staged);dialogueRecordReceipt(r);
+            worldCommitPrepared(gameState,staged,'GAME_UI_COMMIT');dialogueRecordReceipt(r);
             return {handled:true,text:`【正式交割】${r.reason}。收入 ${r.credit}、支出 ${r.debit} 顆靈石；餘額 ${gameState.spiritStone}。帳本 ${r.id} 已記錄。`};
         }catch(e){return {handled:true,text:`【未成交】${String(e.message||e)}。資產、金額與原有紀錄沒有變動。`};}
     }
@@ -8447,7 +8721,7 @@ JSON 輸出格式範例：
                 const copy=structuredClone(s),cc=ueEnsure(copy).judicialCases.find(x=>x.id===c.id);
                 v688Cash(copy,'PLAYER','TREASURY',a);cc.status='enforced';cc.finePaid=a;
                 const r=v688Journal(copy,'court_fine',{targetId:null,debit:a,reference:c.id,reason:`司法裁判 ${c.id} 罰金執行`});
-                Object.assign(gameState,copy);dialogueRecordReceipt(r);
+                worldCommitPrepared(gameState,copy,'GAME_UI_COMMIT');dialogueRecordReceipt(r);
                 return {handled:true,text:`依判決已繳罰金 ${a} 顆靈石，案件 ${c.id} 已履行，餘額 ${gameState.spiritStone}。`};
             }catch(e){return {handled:true,text:`罰金未繳：${String(e.message||e)}。原款保留。`};}
         }
@@ -8858,7 +9132,7 @@ JSON 輸出格式範例：
     function v696Route(raw){
         const t=v691Normalize(raw).trim();if(!t||v693NoCommit(t)||v691IsNegation(t)||/[?？]|(?:嗎|呢)$/.test(t))return null;
         const commit=(fn)=>{try{const old=gameState,d=structuredClone(old),money=v694MoneySnapshot(d),prior=new Set(ueAuditProperty(old).issues),result=fn(d);v694AuditMoney(money,v694MoneySnapshot(d));
-            const problems=ueAuditProperty(d).issues.filter(x=>!prior.has(x));if(problems.length)throw new Error('財產稽核新增異常：'+problems[0]);Object.assign(gameState,d);
+            const problems=ueAuditProperty(d).issues.filter(x=>!prior.has(x));if(problems.length)throw new Error('財產稽核新增異常：'+problems[0]);worldCommitPrepared(gameState,d,'GAME_UI_COMMIT');
             return {handled:true,text:`【正式結算】${typeof result==='string'?result:JSON.stringify(result)}。已保存唯一事件與資產紀錄。`};}
             catch(e){return {handled:true,text:`【安全拒絕】${String(e.message||e)}；資產未變動。`};}};
         if(/(?:勘測|探查|探勘).{0,30}(?:靈草|靈木|靈礦)/.test(t)){
@@ -9360,12 +9634,9 @@ JSON 輸出格式範例：
         const a=v691Normalize(action);
         // Narrative exploration may discover items, but model-created inventory is NOT a receipt.
         // Remove only attempted unverified finds, not declared canonical rewards from verified events.
-        if(/(?:搜查|搜尋|搜索|查探|探查|查看|找尋|尋找|撿|拾|收起|取出|取回|摸索|翻找|勘察|調查|探尋)/.test(a)
+        if(/(?:搜查|搜尋|搜索|查探|探查|查看|找尋|尋找|撿|拾|收起|取出|取回|拿走|拿起|摸索|翻找|勘察|調查|探尋|摘取|採集|採摘|割下|奪取|挖取|剝取)/.test(a)
             && !/(?:買|購|賣|交易|煉|打造|領薪|宗門領|正式獎勵)/.test(a)){
-            if(Array.isArray(out.inventoryDelta))out.inventoryDelta=out.inventoryDelta.filter(x=>{
-                const name=String(x?.name||'');
-                return Boolean(x?.coreAuthorizedSource)&&!/(?:靈石)/.test(name);
-            });
+            if(Array.isArray(out.inventoryDelta))out.inventoryDelta=[]; // AI-supplied source flags are not core authorization.
             // AI cannot remove inventory for free merely because the narrative mentions a find.
             if(Array.isArray(out.inventoryRemoveDelta))out.inventoryRemoveDelta=[];
             if(Array.isArray(out.lostItems))out.lostItems=[];
@@ -9471,12 +9742,23 @@ JSON 輸出格式範例：
     function v698RegisterFind(s,name,location,source,reason='scene'){
         const v=v698State(s),n=cleanNameStrict(name),loc=String(location||s.location||'');
         if(v698RestrictedName(n)||!loc)return null;
-        const existing=Object.values(v.finds).find(f=>f.location===loc&&v698SameItem(f.name,n)&&f.status!=='expired'&&(f.status==='found'||f.day===(s.daysPassed||0)));
+        // Distinct confirmed occurrences of *mundane* resources may share a display name.
+        // The old same-name/same-day rule incorrectly treated the second loose rock
+        // as the already collected FIRST rock.  Provenance (a fresh V700 event id)
+        // supplies a distinct physical identity; exact event replay is still blocked.
+        // Rare or quest sources, and legacy narration-only discovery, remain one-off.
+        const verifiedCommonInstance=reason==='v700_common_discovery' &&
+            /:V700:\d+$/.test(String(source||'')) && v700Mundane(s,n);
+        const existing=Object.values(v.finds).find(f=>f.location===loc&&v698SameItem(f.name,n)&&f.status!=='expired'&&
+            (f.status==='found'||(!verifiedCommonInstance&&f.day===(s.daysPassed||0))));
         if(existing)return existing;
         // No infinitely repeatable resource spawn at one scene/day or via repeated generation.
-        const recent=Object.values(v.finds).filter(f=>f.location===loc&&f.day===(s.daysPassed||0));
-        // No hard four-per-day limit; unique source and name still prevent replay farming.
-        if(recent.length>=64)return null;
+        // V7.02: Do not impose a hidden per-scene/day item quota.  Long exploration
+        // previously made the 65th *distinct* verified discovery silently fail.
+        // Source validation, unique event receipts, one-unit semantics, and proposal
+        // limits protect the acquisition path independently of scene population.
+        // Already-taken/expired finds are archived by v699TrimFinds, while durable
+        // rights and provenance remain in the item and world protocol ledgers.
         const id='FIND:698:'+v.seq++;
         const f={id,name:n,location:loc,source:String(source||id),reason,day:s.daysPassed||0,status:'found',quantity:1};
         v.finds[id]=f;v.events.push({id,kind:'found',item:n,location:loc,day:f.day});
@@ -9635,7 +9917,880 @@ JSON 輸出格式範例：
         }
         destinyRebuildQuests(s);
     }
-    function v698SceneAction(s,action,story,previousLocation,eventId){
+    // V7.00 pilot: AI proposes; world core creates and settles; only receipts are facts.
+    // This layer deliberately reuses V6.98 scene finds and V6.95 inventory provenance.
+    const V700_ACTION_TYPES=new Set(['DISCOVER','ACQUIRE','HARVEST','CLAIM_REWARD']);
+    function v700State(s){
+        if(!s.worldActionCore||typeof s.worldActionCore!=='object'||Array.isArray(s.worldActionCore))
+            s.worldActionCore={schemaVersion:700,processed:{},receipts:[],rejected:[]};
+        const c=s.worldActionCore;
+        if(!c.processed||typeof c.processed!=='object'||Array.isArray(c.processed))c.processed={};
+        if(!Array.isArray(c.receipts))c.receipts=[];
+        if(!Array.isArray(c.rejected))c.rejected=[];
+        return c;
+    }
+    function v700SafeName(name){
+        const n=cleanNameStrict(name||'').slice(0,60);
+        if(!n||n.length>24||v698RestrictedName(n)||/[{}\[\]<>]/.test(n))return '';
+        return n;
+    }
+    function v700AcquisitionVerb(text){
+        const t=String(text||'');
+        if(/(?:不要|不想|禁止|別|没有|沒有|不打算|能否|可否|是否|如果|假如|聽說|據說|將來|明日|明天|下次|計畫|打算)/.test(t))return false;
+        return /(?:撿|拾|拿|取|摘|採|割|拔|收|帶走|領取|領到|搜|尋|找|奪取|剝取|挖取|獲得|得到|挑選)/.test(t);
+    }
+    function v700ExploreVerb(text){
+        return /(?:搜|尋|找|查|探索|探查|勘察|撿|拾|拿|取|摘|採|挖|剝|割|挑選)/.test(String(text||''));
+    }
+    function v700Outcome(raw){
+        const x=String(raw?.actionOutcome?.result||'').toLowerCase();
+        return ['success','partial','failure','neutral'].includes(x)?x:'unknown';
+    }
+    function v700StoryFailed(story,name){
+        const n=String(name||''),sentences=String(story||'').split(/[。！？\n]/);
+        return sentences.some(t=>t.includes(n)&&/(?:未能|沒能|無法|未成功|尚未|來不及|不得不放棄|未拔下|無法取|並未取得|不曾取得)/.test(t));
+    }
+    function v700NarrativeAcquisitionSignal(story){
+        const text=String(story||'');
+        return /(?:發現|找到|尋獲|拾得|撿到|拿到|取得|收入|摘下|採得|挑選|選了|手持|握住)/.test(text)
+            &&/(?:石|岩|木|枝|藤|草|礦|骨|刀|劍|繩|布|衣|藥|丹|符|戒|瓶|書|錢|靈石|法寶|令牌|果|火把)/.test(text);
+    }
+    function v700SourceProposals(raw,action,story){
+        const proposals=[];
+        const masterOutcome=v700Outcome(raw);
+        if(raw&&Array.isArray(raw.worldActions))for(const r of raw.worldActions.slice(0,12)){
+            if(!r||typeof r!=='object'||Array.isArray(r))continue;
+            const kind=String(r.kind||r.type||'').toUpperCase();
+            if(!V700_ACTION_TYPES.has(kind))continue;
+            const name=v700SafeName(r.name||r.targetName||r.item?.name);
+            const q=r.quantity??r.item?.quantity??1;
+            proposals.push({kind,name,quantity:q,tier:r.tier||r.item?.tier||null,
+                sourceEntityId:r.sourceEntityId||null,method:String(r.method||'').slice(0,80),
+                evidence:String(r.evidence||'').slice(0,160),category:String(r.category||r.item?.category||'').slice(0,35),
+                outcome:masterOutcome==='failure'?'failure':String(r.outcome||masterOutcome).toLowerCase()});
+        }
+        // Backward-compatible bridge: old models may output inventoryDelta but not worldActions.
+        // Only scene exploration and clear success may use this bridge; money and rare items never can.
+        if(!proposals.length&&v700AcquisitionVerb(action)&&v700ExploreVerb(action)
+          &&v700Outcome(raw)==='success'&&Array.isArray(raw?.inventoryDelta)){
+            for(const i of raw.inventoryDelta.slice(0,5)){
+                const name=v700SafeName(i?.name);
+                if(name&&!/靈石/.test(name))proposals.push({kind:'ACQUIRE',name,quantity:i.quantity,
+                    tier:i.tier||null,sourceEntityId:i.sourceEntityId||null,
+                    evidence:String(story||'').slice(0,160),category:i.type||'',outcome:'success',legacyBridge:true});
+            }
+        }
+        return proposals;
+    }
+    function v700FindScene(s,name){
+        const loc=String(s.location||''),v=v698State(s);
+        return Object.values(v.finds).find(f=>f?.status==='found'&&v698SameItem(f.name,name)&&f.location===loc)||null;
+    }
+    function v700Mundane(s,name){
+        if(v698RestrictedName(name))return false;
+        // Classification gates exceptional objects; freeform common materials need no vocabulary whitelist.
+        const meta=getItemMeta(name);
+        const type=String(meta?.type||'');
+        if(/(?:靈|仙|妖丹|法寶|丹藥|符籙|秘笈|靈器|神器|妖核|秘寶|令牌|玉簡|鑰匙|信物|契約|印璽|寶|赤火藤)/.test(name))return false;
+        // Unknown botanicals and medicinal resources are not equivalent to loose rocks.
+        // Common vegetation is allowed only when explicitly mundane (枯草/普通藤條).
+        if(/(?:藤|草|藥|植|花|果|菌|丹|晶|玉|金|銀|礦)/.test(name) &&
+            !/(?:普通藤條|野草|雜草|枯草|草葉|普通樹葉)/.test(name))return false;
+        if(type==='equipment'||type==='pill'||type==='skill'||type==='book'||type==='key')return false;
+        return true;
+    }
+    function v700ConfirmPhysical(story,name){
+        const sentences=String(story||'').split(/[。！？\n]/);
+        return sentences.some(t=>t.includes(name)&&/(?:發現|找到|尋獲|撿到|拾得|拿起|拾起|採得|摘下|採下|取得|獲得|挑選|入手|握住|握著|手持|收好|收入|成功)/.test(t)
+            &&!/(?:沒有|未能|無法|未發現|沒找到|不曾|聽說|據說|傳聞|似乎|可能|假如|如果|計畫|想要)/.test(t));
+    }
+    function v702DistinctPhysicalEvidence(story,name){
+        // A fresh turn ID is not proof that another copy exists.  The AI must
+        // explicitly describe a DISTINCT mundane occurrence when the prior
+        // same-named object at this location has already been taken.
+        return String(story||'').split(/[。！？\n]/).some(t=>t.includes(name)
+            &&/(?:又找到|又發現|再找到|再發現|另一|另外一|新的一|新發現|第二(?:塊|根|件|個|枚|片)|接著又)/.test(t)
+            &&!/(?:沒有|沒能|無法|不曾|據說|傳聞|可能|假如|只是想|夢見)/.test(t));
+    }
+    function v700Issue(s,action,story,proposals,turnId){
+        if(!Array.isArray(proposals)||!proposals.length)return {handled:false,receipts:[],notes:[]};
+        const c=v700State(s),receipts=[],notes=[];
+        const seen=new Set(),rawOutcome=v700Outcome({actionOutcome:{result:proposals[0]?.outcome}});
+        for(let i=0;i<proposals.length;i++){
+            const p=proposals[i],key=String(turnId)+':V700:'+i;
+            if(c.processed[key]){receipts.push(c.processed[key]);continue;}
+            const name=v700SafeName(p.name);
+            let outcome=String(p.outcome||rawOutcome||'unknown').toLowerCase();
+            let status='REJECTED',reason='',entityId=null;
+            const quantity=Number(p.quantity),kind=p.kind;
+            if(!name)reason='目標名稱無效';
+            else if(seen.has(name+':'+kind))reason='同回合重複提案';
+            else if(!Number.isSafeInteger(quantity)||quantity!==1)reason='場景實體須以單件登錄；多件需各自提供來源';
+            else if(['failure','neutral','unknown'].includes(outcome)&&kind!=='DISCOVER')reason='AI 未明確確認本次取得成功';
+            else if(kind==='CLAIM_REWARD')reason='報酬須先完成已登錄契約與付款方驗證，本協定不允許無來源發放';
+            else if((kind==='ACQUIRE'||kind==='HARVEST')&&!v700AcquisitionVerb(action))reason='玩家未授權本次取得';
+            else if((kind==='ACQUIRE'||kind==='HARVEST')&&v700StoryFailed(story,name))reason='敘事明確表示目標尚未取得';
+            else {
+                try{
+                    const draftResult=worldStageCall(s,'V700場景事件',draft=>{
+                        const v=v698State(draft),core=v700State(draft),loc=String(draft.location||'');
+                        if(!loc)throw new Error('場景地點不存在');
+                        let f=v700FindScene(draft,name);
+                        const physical=v700ConfirmPhysical(story,name);
+                        // DISCOVER only registers a physical scene object, never awards inventory.
+                        if(kind==='DISCOVER'){
+                            if(!(physical||v701PhysicalEvidence(story,name)))throw new Error('未提供實際出現於場景的肯定證據');
+                            f=f||v698RegisterFind(draft,name,loc,key,'v700_discovery');
+                            if(!f)throw new Error('場景實體登錄受限制');
+                            v701DiscoverEntity(draft,f,p);
+                            core.processed[key]={id:key,kind,status:'DISCOVERED',name,entityId:f.id,quantity:0};
+                            core.receipts.push(core.processed[key]);
+                            return core.processed[key];
+                        }
+                        if(!f){
+                            // Common scenery may be generated only when an AI actually confirms discovery.
+                            // Rare / quest materials need an existing, registered source.
+                            if(!v700Mundane(draft,name)||!physical)throw new Error('缺少已登錄來源；未知特殊物品不得憑空生成');
+                            const sameTaken=Object.values(v.finds).some(x=>x.location===loc&&x.status==='taken'&&v698SameItem(x.name,name));
+                            if(sameTaken&&!v702DistinctPhysicalEvidence(story,name))
+                                throw new Error('同名物品先前已取走；需要確認找到的是另一件實物');
+                            f=v698RegisterFind(draft,name,loc,key,'v700_common_discovery');
+                        }
+                        if(!f||f.status!=='found')throw new Error('物品已被取走或場景來源不存在');
+                        if(p.sourceEntityId && p.sourceEntityId!==f.id)
+                            throw new Error('物品來源 ID 與當前場景實體不一致，禁止轉移其他來源的物品');
+                        v701AssertTake(draft,f,p,action);
+                        if(!v699ItemMention(action,name)&&!String(action).includes(name)){
+                            // General searches may obtain multiple items explicitly confirmed by AI.
+                            if(!/(?:搜尋|搜索|搜查|找尋|尋找|四處找|採集周邊|搜集)/.test(String(action)))
+                                throw new Error('玩家指令未指向該物品');
+                        }
+                        const before=structuredClone(draft.inventory||[]);
+                        const questTarget=Object.values(v.missions).some(m=>m&&m.kind==='fetch'&&['active','objective_acquired'].includes(m.status)&&v699ItemMention(m.target,name));
+                        const locked=questTarget||f.reason==='npc_quest_handover';
+                        const isSpecial=!v700Mundane(draft,name);
+                        // An AI claim cannot upgrade an unregistered rock to an immortal-grade artifact.
+                        // Rare items stay unidentified until a separately verified appraisal.
+                        const tier=isSpecial? (v698ItemTier(f.tier,name)||null) : '凡品';
+                        const item={name,quantity:1,type:locked?'key':(/(?:木|草|藤|岩|石|枝|骨|礦|金屬)/.test(name)?'material':'misc'),
+                            identified:!isSpecial||Boolean(tier),isQuestItem:locked,questLocked:locked,canSell:!locked,canDrop:!locked,
+                            ueLegalOwnerId:'PLAYER',ueLegalStatus:'v700_scene_acquisition',ueProvenanceEvent:key,v698SourceFind:f.id};
+                        if(tier)item.tier=tier;
+                        addItemToInventory(draft.inventory,item,1);
+                        ueSyncAssetRegistry(draft,key);
+                        v695PostItem(draft,v695ItemProof(draft,'V700正式取得',before,draft.inventory,key,{find:f.id,location:loc}),key);
+                        f.status='taken';f.takeEvent=key;v701MarkTaken(draft,f);v.processed['PICKUP:698:'+f.id]=true;
+                        core.processed[key]={id:key,kind,status:'ACQUIRED',name,entityId:f.id,quantity:1};
+                        core.receipts.push(core.processed[key]);
+                        return core.processed[key];
+                    },key);
+                    status=draftResult.status;entityId=draftResult.entityId;
+                }catch(e){reason=String(e?.message||e).slice(0,180);}
+            }
+            seen.add(name+':'+kind);
+            const receipt={id:key,kind,name,status,quantity:status==='ACQUIRED'?1:0,entityId,reason};
+            // Non-committed results are informational only.  They must not mutate inventories.
+            if(status==='ACQUIRED')notes.push(`【核心取得】${name} ×1 已正式收入背包。`);
+            else if(status==='DISCOVERED')notes.push(`【場景登錄】${name} 已存在於當前場景，尚未取得。`);
+            else notes.push(`【核心未結算】${name||'未知目標'}：${reason||'來源或條件不足'}；背包未增加。`);
+            receipts.push(receipt);
+            if(status==='REJECTED'){
+                const cNow=v700State(s);cNow.rejected.push(receipt);
+                if(cNow.rejected.length>120)cNow.rejected.splice(0,cNow.rejected.length-120);
+            }
+        }
+        return {handled:true,receipts,notes};
+    }
+    function v700StoryToReceipts(story,report){
+        if(!report?.handled)return String(story||'');
+        const receipts=report.receipts||[];
+        const failed=receipts.filter(r=>r.status==='REJECTED'&&r.name);
+        let result=String(story||'');
+        // A rejected grant must not survive as a fact in the final visible narrative.
+        if(failed.length){
+            const sentence=result.split(/(?<=[。！？\n])/).filter(Boolean);
+            result=sentence.filter(t=>!failed.some(r=>t.includes(r.name)&&
+                /(?:已|成功|終於|總算|拿到|取得|得到|採到|摘下|撿到|尋獲|收進|收入|手持|握住|獲得)/.test(t))).join('').trim();
+            if(!result)result='本次行動尚未完成目標取得。';
+        }
+        return [result,...report.notes].filter(Boolean).join('\n');
+    }
+
+    // V7.01 | Persistent world entity and event protocol. Compatible with V7.00 pilot.
+    // Existing combat/economy/mission engines remain the authority; AI emits proposals only.
+    const V701_EXTRA_KINDS = new Set(['CRAFT','CLAIM_REWARD','DISTRACT','PLAN','ATTACK','PAY','INTERACT']);
+    function v701Core(s){
+        if(!s.worldProtocol701||typeof s.worldProtocol701!=='object'||Array.isArray(s.worldProtocol701))
+            s.worldProtocol701={schemaVersion:701,entities:{},plans:{},rewardContracts:{},settled:{},traces:[]};
+        const c=s.worldProtocol701;
+        for(const k of ['entities','plans','rewardContracts','settled'])if(!c[k]||typeof c[k]!=='object'||Array.isArray(c[k]))c[k]={};
+        if(!Array.isArray(c.traces))c.traces=[];
+        c.schemaVersion=701;
+        return c;
+    }
+    function v701Migrate(s){
+        const c=v701Core(s),v=v698State(s);
+        // Derive present custody from the authoritative inventories; never assume
+        // that the original finder still owns an asset after trade, theft or use.
+        const holders=new Map();
+        for(const it of s.inventory||[])if(it?.v698SourceFind)holders.set(String(it.v698SourceFind),'PLAYER');
+        for(const npc of Object.values(s.npcRegistry||{}))for(const it of npc?.inventory||[])
+            if(it?.v698SourceFind)holders.set(String(it.v698SourceFind),String(npc.id||'NPC_UNVERIFIED'));
+        // Reconstruct only objects whose physical existence has already been proved.
+        for(const f of Object.values(v.finds||{})){
+            if(!f?.id||!f.location||!f.name)continue;
+            if(!c.entities[f.id])c.entities[f.id]={id:f.id,name:f.name,kind:'SCENE_ITEM',location:f.location,
+                status:f.status==='taken'?'OWNED':f.status==='found'?'AVAILABLE':'RETIRED',legacyFindId:f.id,
+                provenance:f.source||null,guardianId:null,requiresTool:false};
+            const e=c.entities[f.id];
+            if(f.status==='taken'){
+                const holder=holders.get(String(f.id));
+                if(holder){e.status='OWNED';e.ownerId=holder;}
+                else {e.status='NO_LONGER_HELD';delete e.ownerId;}
+            }else if(f.status==='expired')e.status='RETIRED';
+        }
+        return c;
+    }
+    function v701PhysicalEvidence(story,name){
+        const lines=String(story||'').split(/[。！？\n]/);
+        return lines.some(line=>line.includes(name)
+            &&/(?:看見|看到|望見|瞧見|發現|找到|尋獲|現身|出現|生長|長著|長在|位於|就在|守護|看守|盤踞|散落|擺放|存放|埋藏|躺著|藏著)/.test(line)
+            &&!/(?:未發現|找不到|看不到|不曾|沒有|並未|無法|據說|聽說|傳聞|可能|假設|如果|假如|夢見|似乎)/.test(line));
+    }
+    function v701AcquisitionAuthorized(action,name){
+        const whole=String(action||'');
+        const parts=whole.split(/[，,；;。！!]/).filter(Boolean);
+        const named=parts.filter(x=>String(name||'')&&x.includes(name));
+        const relevant=named.length?named:parts.filter(x=>/(?:搜尋|搜索|搜集|搜查|尋找|拾|撿|採|摘|割|拔|取|拿|剝|挖|領取)/.test(x));
+        if(!relevant.length)return false;
+        return relevant.some(t=>{
+            if(/(?:如果|假如|假設|聽說|據說|請問|能否|可否|是否|打算|計畫|明天|下次|稍後)/.test(t))return false;
+            if(/(?:不要|別|不想|不打算|先不|暫時不|禁止|請勿|沒有要|拒絕).{0,15}(?:拾|撿|採|摘|割|拔|取|拿|搜|尋|挖)/.test(t))return false;
+            return /(?:搜尋|搜索|搜集|搜查|尋找|拾|撿|採|摘|割|拔|取|拿|剝|挖|帶走|領取)/.test(t);
+        });
+    }
+    function v701SceneEntity(s,f){
+        const c=v701Migrate(s);
+        return c.entities[f.id]||null;
+    }
+    function v701DiscoverEntity(s,f,p){
+        const ent=v701SceneEntity(s,f);
+        if(!ent)throw new Error('物品實體登錄失敗');
+        // Once protected, a later AI omission cannot silently remove restrictions.
+        if(typeof p.guardianId==='string' && p.guardianId.trim()){
+            const id=p.guardianId.trim();
+            if(id.length>100)throw new Error('守衛識別格式無效');
+            if(!ent.guardianId)ent.guardianId=id;
+            else if(ent.guardianId!==id)throw new Error('場景守衛身分不一致');
+        }
+        if(p.guardianName && !ent.guardianName)ent.guardianName=v700SafeName(p.guardianName);
+        // A scene guardian described in the AI story is a restriction, never an award.
+        if(!ent.guardianId && (p.sceneGuardianName||p.guardianName)){
+            ent.guardianName=v700SafeName(p.sceneGuardianName||p.guardianName);
+            ent.guardianId='SCENE_GUARD:'+ent.id;
+        }
+        if(p.requiresTool===true||p.sceneToolRequired===true)ent.requiresTool=true;
+        if(p.toolKeyword && !ent.toolKeyword)ent.toolKeyword=String(p.toolKeyword).slice(0,24);
+        if(p.requiresTool===true)ent.knownRestrictions=true;
+        return ent;
+    }
+    function v701AssertTake(s,f,p,action){
+        const ent=v701SceneEntity(s,f);
+        if(!ent || ent.status!=='AVAILABLE')throw new Error('場景物品已經被取得或不存在');
+        const threat=s.npcRegistry?.[ent.guardianId];
+        const alive=threat ? (threat.is_alive!==false&&threat.status!=='DEAD') : Boolean(ent.guardianId);
+        const distraction=ent.distraction;
+        const distracted=distraction&&distraction.available===true&&distraction.location===String(s.location||'')
+            && Number(v701Core(s).turnCounter||0)<Number(distraction.expiresAtTurn||Infinity);
+        if(alive&&!distracted)throw new Error('守衛尚未解除：必須先擊敗或引開守衛，不能直接採集');
+        if(ent.requiresTool){
+            const kw=ent.toolKeyword;
+            const usable=(s.inventory||[]).some(i=>Number(i.quantity)>0 && (kw?String(i.name).includes(kw):/(?:刀|刃|鋸|斧|鑿|鐮|剪|石片)/.test(i.name)));
+            if(!usable)throw new Error('採集條件不足：尚未持有可用工具');
+        }
+        if(/^(?:採集|摘|割|拔)/.test(String(action||''))&&p.kind==='HARVEST'&&!v700AcquisitionVerb(action))
+            throw new Error('玩家沒有授權採集');
+        return ent;
+    }
+    function v701MarkTaken(s,f){
+        const ent=v701SceneEntity(s,f);
+        if(ent){ent.status='OWNED';ent.ownerId='PLAYER';ent.distraction=null;}
+    }
+    // V7.05: audited low-grade spirit-stone sources.  Stones are CURRENCY,
+    // not backpack objects.  Every transfer is double-entry via v694Cash.
+    // The one-time finite world reserve represents previously untracked loose
+    // currency; it is initialized once per save and cannot be renewed per turn.
+    function v704State(s){
+        if(!s.worldCurrency704||typeof s.worldCurrency704!=='object'){
+            const initial=500;
+            s.worldCurrency704={schemaVersion:704,reserve:initial,nextId:1,
+                sources:{},discoveredLocations:{},giftsByDay:{},
+                genesis:{amount:initial,kind:'finite_preexisting_wilderness_stone_stock',applied:true}};
+            const cash=v694State(s);
+            if(cash.lastAudit?.balances){
+                // One-time schema migration reclassifies old, untracked scenery
+                // currency as a finite inventory; no PLAYER/NPC wallet changes.
+                cash.lastAudit.balances['WORLD_POOL:704']=initial;
+            }
+            cash.migrations.push({schemaVersion:704,kind:'wilderness_stock_reclassification',amount:initial,day:s.daysPassed||0});
+        }
+        const c=s.worldCurrency704;
+        if(!c.sources||typeof c.sources!=='object'||Array.isArray(c.sources))c.sources={};
+        if(!c.discoveredLocations||typeof c.discoveredLocations!=='object')c.discoveredLocations={};
+        if(!c.giftsByDay||typeof c.giftsByDay!=='object')c.giftsByDay={};
+        if(!Number.isSafeInteger(c.nextId)||c.nextId<1)c.nextId=1;
+        return c;
+    }
+    const V704_CURRENCY_KINDS=new Set(['CURRENCY_DISCOVER','CURRENCY_PICKUP','NPC_GIFT_CURRENCY','WORK_PAYMENT','LOOT_CURRENCY']);
+    function v704Proposals(raw){
+        if(!Array.isArray(raw?.worldActions))return [];
+        return raw.worldActions.slice(0,12).map((r,i)=>{
+            if(!r||typeof r!=='object'||Array.isArray(r))return null;
+            const kind=String(r.kind||r.type||'').toUpperCase();
+            if(!V704_CURRENCY_KINDS.has(kind))return null;
+            return {kind,sequence:i,amount:r.amount??r.quantity,
+                currency:String(r.currency||r.name||'下品靈石').trim(),
+                sourceEntityId:String(r.sourceEntityId||'').slice(0,110),
+                npcId:String(r.npcId||'').slice(0,110),
+                contractId:String(r.contractId||'').slice(0,110),
+                outcome:String(r.outcome||raw?.actionOutcome?.result||'unknown').toLowerCase(),
+                evidence:String(r.evidence||'').slice(0,240)};
+        }).filter(Boolean);
+    }
+    // V7.05: a remembered, quoted, hypothetical or third-party find is NOT
+    // proof of loose currency in the current physical scene.
+    function v704PhysicalCurrencyClause(t){
+        if(!/靈石/.test(t))return false;
+        if(/(?:沒找到|沒有發現|沒有找到|未能發現|無法找到|尚未發現|尚未找到|沒有靈石|並無靈石|不存在靈石|傳聞|據說|假如|如果|可能|似乎|聽說|夢見|夢中|幻覺|打算|以為|以後|將來|曾經|往事|昔日|昨日|回憶|想起|記得|過去|以前|壁畫|畫中|地圖|書中|碑文|刻著|寫著|聽聞|轉述|他人拾走|別人拾走)/.test(t))return false;
+        return true;
+    }
+    function v704PositiveSceneEvidence(text){
+        return String(text||'').split(/[。！？\n]/).some(sentence=>
+            v704PhysicalCurrencyClause(sentence)&&
+            /(?:發現|找到|藏著|藏有|躺著|散落|掉落|地上有|拾得|撿到|撿起|拾起|拿起|收起|搜出|翻出|尋獲|洞內有|石縫中有)/.test(sentence));
+    }
+    function v704PositivePick(action){
+        const a=String(action||'');
+        return !/(?:不要|不想|不打算|如果|假如|能否|可否|是否|明日|下次|以後|打算|計畫|聽說|據說|問問|詢問|請問|賣|購買|支付|交給)/.test(a)
+            &&/(?:撿|拾|拿|取|收|搜|尋|找|搜刮|翻找|摸索|領取)/.test(a);
+    }
+    function v704DistinctCurrencyEvidence(story){
+        return String(story||'').split(/[。！？\n]/).some(t=>/靈石/.test(t)
+            &&/(?:另一堆|另一袋|另一處|另外一堆|不同的一堆|第二堆|新的一堆|另有一堆|另一批)/.test(t)
+            &&!/(?:沒有|未能|據說|傳聞|假如|夢見|似乎|可能)/.test(t));
+    }
+    // Confirm PLAYER custody, not merely that someone in the story picked it up.
+    function v704NarrativePickup(story){
+        return String(story||'').split(/[。！？\n]/).some(t=>{
+            if(!v704PhysicalCurrencyClause(t)||/(?:沒能|沒拿|沒撿|不曾|失敗|拒絕|看見一人|看到別人|瞧見他人|目睹他人|看著別人|看見別人|放回|退還|交還|扔回|丟回|放下|扔掉|還給|(?:尚未|沒有|未能|無法|不想|不打算).{0,12}(?:撿|拾|拿|取|收|帶))/.test(t))return false;
+            // Provisional positive narrative must explicitly identify player as actor.
+            return /你.{0,70}(?:撿起|拾起|拾得|撿到|拿起|拿走|收入|收起|入袋|入囊|收進|取走|裝進|搜得|搜到|搜出)/.test(t);
+        });
+    }
+    function v704PositiveInspect(action){
+        const a=String(action||'');
+        return !/(?:不要|不想|不打算|如果|假如|能否|可否|是否|明日|下次|以後|計畫|打算|聽說|據說|問問|詢問|請問)/.test(a)
+            &&/(?:搜|尋|找|查|看|觀察|環顧|環視|探|巡視|探索|撿|拾)/.test(a);
+    }
+    // V7.05: AI-proposed quantities are not evidence on their own. Compare
+    // every explicitly narrated currency amount with the proposed amount.
+    function v705ChineseNumber(raw){
+        const chars={'零':0,'〇':0,'一':1,'二':2,'兩':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+        if(/^\d+$/.test(raw))return Number(raw);
+        if(Object.hasOwn(chars,raw))return chars[raw];
+        let total=0,part=0;
+        for(const ch of raw){
+            if(Object.hasOwn(chars,ch))part=chars[ch];
+            else if(ch==='十'||ch==='百'||ch==='千'){
+                const mult=ch==='十'?10:ch==='百'?100:1000;
+                total+=(part||1)*mult;part=0;
+            }else return NaN;
+        }
+        return total+part;
+    }
+    function v705CurrencyNarratedAmounts(story){
+        const out=[];
+        const re=/([零〇一二兩三四五六七八九十百千\d]+)\s*(?:顆|枚|塊|粒|個)\s*(?:下品|中品|上品|極品)?\s*靈石/g;
+        for(const m of String(story||'').matchAll(re)){
+            const value=v705ChineseNumber(m[1]);if(Number.isFinite(value))out.push(value);
+        }
+        return out;
+    }
+    function v705CheckCurrencyAmount(story,expected,requireExplicit=false){
+        const amounts=v705CurrencyNarratedAmounts(story);
+        if(requireExplicit&&!amounts.length)throw new Error('敘事未提供可驗證的靈石數量');
+        if(amounts.some(amount=>amount!==expected))throw new Error('敘事數量與正式結算數量不一致');
+    }
+    // An earlier handover is not final custody if the story subsequently
+    // describes refusal, return or rescission in another sentence.
+    function v705CurrencyLaterReversal(story,completedPattern){
+        const clauses=String(story||'').split(/[。！？\n，,；;]/).filter(Boolean);
+        let last=-1;
+        for(let i=0;i<clauses.length;i++)if(completedPattern.test(clauses[i]))last=i;
+        if(last<0)return false;
+        return clauses.slice(last).some(t=>
+            // A narrated offer is not a completed payment if a *later clause*
+            // rejects, leaves unaccepted, transfers, discards, or loses the funds.
+            // Never silently credit the player for a multi-step transfer to a third party:
+            // that requires its own independently verified payment event.
+            /(?:拒絕收下|拒收|不肯收下|拒絕接受|拒絕(?:了|這筆|領取|拿取)|擺手拒絕|你拒絕$|你(?:說)?不要$|你(?:說)?不必了|你不收|你不拿|你.{0,12}推回去|你.{0,12}借給(?:朋友|同伴|別人|他人)|你.{0,12}交給(?:朋友|同伴|別人|他人)|(?:沒拿|沒接|沒有拿|未拿)|不要了|不想要了|沒有收下|未收下|沒有接(?:過|住)?|未接(?:過|住)?|未曾接|並未接|放回|放下|退回|退還|交還|歸還|還給|轉交|收回|拿回|取回|搶回|奪回|交給(?:別人|他人|其他人|另一|旁人|路人|第三人|乞丐)|送給(?:別人|他人|其他人|另一|旁人|路人|乞丐)|贈給(?:別人|他人|其他人|另一|旁人|路人|乞丐)|捐給|扔給|丟給|扔掉|丟掉|被.{0,15}(?:偷走|搶走|拿走|奪走))/.test(t)
+            &&!/(?:沒有放回|並未放回|沒有交還|並未交還|沒有收回|沒有拿回|沒有拒絕|並未拒絕|並非不收|沒有退回|未曾退回|並未轉交|沒有轉交|沒有交給別人|沒有送給別人|沒有捐給|沒有被.{0,15}(?:偷走|搶走|拿走|奪走))/.test(t));
+    }
+    function v704CurrencyIssues(s){
+        const c=s?.worldCurrency704;if(!c)return [];
+        const errs=[];
+        if(!Number.isSafeInteger(c.reserve)||c.reserve<0||c.reserve>500)errs.push('WORLD_STONE_RESERVE');
+        const recorded=new Set();
+        for(const [id,f] of Object.entries(c.sources||{})){
+            if(!id||f?.id!==id||recorded.has(id)||!f.location||
+                !Number.isSafeInteger(f.amount)||f.amount<1||f.amount>10||
+                !Number.isSafeInteger(f.balance)||f.balance<0||f.balance>f.amount||
+                !['REGISTERED','TAKEN'].includes(f.status)||
+                (f.status==='TAKEN'&&f.balance!==0)||
+                (f.status==='REGISTERED'&&f.balance!==f.amount))errs.push('SCENE_STONE_SOURCE');
+            recorded.add(id);
+        }
+        for(const [loc,id]of Object.entries(c.discoveredLocations||{})){
+            if(!loc||!c.sources?.[id]||c.sources[id].location!==loc)errs.push('SCENE_STONE_LOCATION');
+        }
+        if(c.genesis?.amount!==500 || c.reserve+Object.values(c.sources||{}).reduce((a,f)=>a+(Number(f?.amount)||0),0)!==500)
+            errs.push('WORLD_STONE_TOTAL_UNBACKED');
+        return [...new Set(errs)];
+    }
+    function v704SceneTransfer(s,p,key,action,story){
+        const amount=p.amount,kind=p.kind;
+        const discovery=kind==='CURRENCY_DISCOVER';
+        if(!Number.isSafeInteger(amount)||amount<1||amount>10)throw new Error('探索靈石數量必須為1～10顆下品靈石');
+        if(discovery?!v704PositiveInspect(action):!v704PositivePick(action))throw new Error('玩家未授權觀察或拾取靈石');
+        if(!discovery&&!v704NarrativePickup(story))throw new Error('AI敘事只有發現，沒有確認已拾取靈石');
+        if(!discovery&&v705CurrencyLaterReversal(story,/(?:撿起|拾起|拾得|撿到|拿起|拿走|收入|收起|入袋|入囊|收進|取走|裝進|搜得|搜到|搜出)/))
+            throw new Error('拾取後又放回或轉交，無法確認玩家最終持有');
+        if(discovery&&!v704PositiveSceneEvidence(story))throw new Error('無法核實靈石實際出現於場景');
+        if(!discovery&&p.outcome!=='success'&&p.outcome!=='partial')throw new Error('AI 未確認成功拾取');
+        return worldStageCall(s,'V704場景靈石結算',d=>{
+            const c=v704State(d),loc=String(d.location||'');
+            if(!loc)throw new Error('場景位置無效');
+            const inScene=Object.values(c.sources).filter(f=>f.location===loc);
+            let source=p.sourceEntityId?c.sources[p.sourceEntityId]:
+                inScene.find(f=>f.status==='REGISTERED'&&f.amount===amount);
+            if(p.sourceEntityId&&(!source||source.location!==loc))
+                throw new Error('來源ID不屬於目前場景，拒絕領取');
+            // A previously registered, uniquely matched source is independently
+            // quantified; do not force AI to repeat its amount in every sentence.
+            // A newly invented source must include an explicit narrated quantity.
+            v705CheckCurrencyAmount(story,amount,!source);
+            if(!source){
+                if(!v704PositiveSceneEvidence(story))throw new Error('缺少可信的靈石來源證據');
+                // Multiple physical piles may exist at one location.  Do not mistake
+                // a genuinely NEW pile for the one already picked up.  Require
+                // narrative evidence and keep a finite per-location/source budget.
+                if(inScene.length&&!v704DistinctCurrencyEvidence(story))
+                    throw new Error('先前靈石已被發現／取得；新來源必須明確是另一堆實體');
+                if(inScene.length>=3)throw new Error('同場景已達三筆獨立靈石來源上限');
+                if(c.reserve<amount)throw new Error('世界探索靈石準備金不足');
+                const id='C704:'+c.nextId++;
+                source={id,location:loc,amount,balance:0,status:'REGISTERED',
+                    generationEvent:key,day:Number(d.daysPassed)||0};
+                c.sources[id]=source;c.discoveredLocations[loc]=id;
+                v694Cash(d,'WORLD_POOL:704','SCENE_CASH:704:'+id,amount,'V704:FUND:'+id,'單次場景實體靈石登錄');
+            }
+            if(source.amount!==amount)throw new Error('靈石數量與已登錄來源不一致');
+            if(discovery){
+                if(source.status==='TAKEN')throw new Error('場景靈石已被取走');
+                v701Core(d).settled[key]=true;
+                return {id:key,kind,status:'CURRENCY_DISCOVERED',name:'下品靈石',quantity:0,
+                    amount:source.amount,sourceEntityId:source.id};
+            }
+            if(source.status==='TAKEN'||source.balance!==amount)throw new Error('靈石已被領取或來源餘額不符');
+            if(!p.sourceEntityId&&!v704PositiveSceneEvidence(story))throw new Error('未指定來源且未確認場景確有靈石');
+            v694Cash(d,'SCENE_CASH:704:'+source.id,'PLAYER',amount,'V704:TAKE:'+source.id,'玩家拾取已登錄場景靈石');
+            source.status='TAKEN';source.claimEvent=key;v701Core(d).settled[key]=true;
+            const receipt={id:key,kind,status:'CURRENCY_PAID',name:'下品靈石',quantity:amount,
+                amount,sourceEntityId:source.id,credit:amount};
+            d.economy.receipts.push({id:'V704:RECEIPT:'+source.id,sourceKey:key,kind:'scene_currency',
+                credit:amount,debit:0,amount,reason:'拾取已登錄場景靈石'});
+            return receipt;
+        },key);
+    }
+    function v704NPCGift(s,p,key,action,story){
+        const amount=p.amount;
+        if(!Number.isSafeInteger(amount)||amount<1||amount>100)throw new Error('NPC 贈與金額不合法');
+        if(!/(?:贈|送|給|收下|接受|領取|酬謝|謝禮)/.test(String(action||'')))
+            throw new Error('玩家未要求或接受這筆贈與');
+        // Only a completed, present-tense NPC-to-player handover authorizes a gift.
+        // Promises, conditionals, refusal, withdrawal and third-party quotes are
+        // explicitly not a receipt, even if the model marked outcome="success".
+        const giftClauses=String(story||'').split(/[。！？\n，,；;]/);
+        const handover=/(?:交給你|遞給你|送給你|贈給你|贈予你|贈與你|給了你|給你|贈你|送你|贈送你|交到你(?:的)?手(?:中|裡)|(?:遞到|放進|放到|放在|塞到|塞進).{0,15}你(?:的)?(?:手中|手裡|手心|掌中)|(?:贈送|送出|交付).{0,25}你(?:收下|接過|接受|收入))/;
+        const completed=giftClauses.some(t=>
+            handover.test(t)
+            &&!/(?:沒有|不是|並非|並未|未曾|未能|無法|拒絕|不肯|不會|不想|不願|尚未|還沒|未交付|尚未交付|將來|以後|下次|三天後|明天|日後|稍後|改天|等你|如果|假如|只要|打算|準備|希望|想要|想送|想贈|承諾|答應|說要|會送|會給|會交|說：|說「|據說|聽說|夢|幻覺|反悔|收回|拿回|取回|被打斷|昨天|曾經|當時|過去|以前|只是在說)/.test(t));
+        if(!completed)throw new Error('NPC 尚未實際交付靈石（承諾、傳聞或反悔不得入帳）');
+        if(v705CurrencyLaterReversal(story,handover))throw new Error('NPC 交付後發生拒收或收回，尚未完成贈與');
+        v705CheckCurrencyAmount(story,amount,true);
+        return worldStageCall(s,'V704 NPC贈與',d=>{
+            const npc=d.npcRegistry?.[p.npcId];
+            if(npc && !giftClauses.some(t=>t.includes(npc.name||'\uFFFF') && handover.test(t)))
+                throw new Error('無法核對實際交付者身分');
+            if(!npc||npc.id!==p.npcId||npc.is_alive===false||npc.status==='DEAD'||
+                String(npc.location||'')!==String(d.location||''))throw new Error('贈與 NPC 未登錄或不在場');
+            const wallet=ueWallet(npc),c=v704State(d),day=Number(d.daysPassed)||0;
+            const giftKey=npc.id+':'+day;
+            if(c.giftsByDay[giftKey])throw new Error('同一NPC當日贈與已結算，不得反覆刷取');
+            if(wallet<amount||amount>Math.max(1,Math.floor(wallet/4)))throw new Error('贈與超過NPC實際負擔能力');
+            v694Cash(d,npc.id,'PLAYER',amount,'V704:GIFT:'+key,'已在場NPC確認的靈石贈與');
+            c.giftsByDay[giftKey]=key;v701Core(d).settled[key]=true;
+            d.economy.receipts.push({id:'V704:GIFT_RECEIPT:'+key,kind:'npc_gift',credit:amount,debit:0,
+                sourceKey:key,reason:'NPC現金贈與'});
+            return {id:key,kind:p.kind,status:'CURRENCY_PAID',amount,quantity:amount,
+                credit:amount,name:'下品靈石',npcId:npc.id};
+        },key);
+    }
+    // V7.06: explicit, completed real-world payout evidence, shared by both
+    // WORK_PAYMENT and the older CLAIM_REWARD action path.
+    function v706AssertCompletedPayout(story,amount,allowVerifiedNeutral=false){
+        const clauses=String(story||'').split(/[。！？\n，,；;]/).filter(Boolean);
+        const handed=/(?:交給你|給了你|給你|付你|付了你|付給你|支付給你|發給你|交到你(?:的)?手(?:中|裡)|(?:遞到|放在|放到|塞到|塞進).{0,15}你(?:的)?(?:手中|手裡|手心|掌中)|匯入你的|匯到你的|你.{0,25}(?:收下|收到|領得|領到|獲得|領取了|領取到)|(?:正式交付|正式發放|當面支付).{0,35}(?:工錢|工資|薪資|報酬|酬勞)|(?:薪資|工資|工錢|報酬|酬勞).{0,24}(?:已入帳|已入袋|到手))/;
+        const excluded=/(?:給別人|交給其他人|給另一個|給旁人|沒有|不是|並非|並未|未曾|未能|無法|拒絕|不肯|不會|尚未|還沒|未支付|未交付|尚未交付|未付|欠著|將來|下月|下次|以後|三天後|明天|日後|稍後|改天|等你|如果|假如|只要|打算|準備|希望|想要|承諾|答應|說要|會支付|會給|會交|夢|幻覺|反悔|收回|拿回|取回|被打斷|昨天|曾經|當時|過去|以前|僅報價|只是在說)/;
+        const completed=clauses.some(t=>handed.test(t)&&!excluded.test(t));
+        // A core-verified CLAIM_REWARD may settle a terse neutral output such
+        // as 「領取薪資」. The engine then supplies its own authoritative receipt.
+        const neutral=allowVerifiedNeutral && /^(?:領取|領薪|領報酬|領取薪資|領取報酬|取得報酬|薪資|報酬|工錢|酬勞)[。！!\s]*$/.test(String(story||'').trim());
+        if(!completed&&!neutral)
+            throw new Error('敘事未確認實際向玩家支付，不得把拒付、承諾或傳聞算成報酬');
+        if(v705CurrencyLaterReversal(story,handed))
+            throw new Error('敘事記錄薪資已退還、撤銷或收回，不得入帳');
+        v705CheckCurrencyAmount(story,amount,false);
+    }
+    function v704HandleProposal(s,p,key,action,story){
+        if(!/^(?:下品)?靈石$/.test(p.currency))throw new Error('目前只支援下品靈石，禁止自動換算幣別');
+        if(!['success','partial'].includes(p.outcome) && p.kind!=='CURRENCY_DISCOVER')
+            throw new Error('事件結果未確認成功，不能入帳');
+        if(p.kind==='CURRENCY_DISCOVER'||p.kind==='CURRENCY_PICKUP')
+            return v704SceneTransfer(s,p,key,action,story);
+        if(p.kind==='NPC_GIFT_CURRENCY')return v704NPCGift(s,p,key,action,story);
+        if(p.kind==='WORK_PAYMENT'){
+            // Contractually verified wages reuse the canonical quest payout core.
+            // V7.06: a valid contract proves entitlement, NOT actual payment.  The
+            // narrated handover must be completed, to PLAYER, and amount-consistent.
+            if(!/(?:領薪|領取|工錢|酬勞|報酬|薪資)/.test(action))throw new Error('尚未提出領薪指令');
+            v706AssertCompletedPayout(story,p.amount);
+            const ref=p.contractId||p.sourceEntityId;
+            if(!ref)throw new Error('必須提供已核實的工資／委託契約ID');
+            return worldStageCall(s,'V704薪資契約與實付一致提交',draft=>{
+                let id=ref;
+                if(!v701Core(draft).rewardContracts[ref])id=v701AutoBindReward(draft,{contractId:ref,sourceEntityId:ref});
+                const contract=v701Core(draft).rewardContracts[id];
+                if(!contract||contract.amount!==p.amount)throw new Error('領薪金額與正式契約不符');
+                return v701ClaimReward(draft,{contractId:id},key);
+            });
+        }
+        if(p.kind==='LOOT_CURRENCY'){
+            // Combat's verified robbery settlement already transfers funds on victory.
+            const claim=ueEnsure(s).battleClaims.find(c=>c.id===p.sourceEntityId&&c.status==='won'&&c.kind==='robbery');
+            if(!claim)throw new Error('缺少勝利的正式搶劫戰鬥憑證');
+            if(claim.credit>0)return {id:key,kind:p.kind,status:'ALREADY_SETTLED',amount:claim.credit,
+                quantity:0,credit:0,name:'下品靈石',reason:'戰鬥核心已入帳，禁止再給一次'};
+            throw new Error('該戰鬥沒有核准的靈石戰利品');
+        }
+        throw new Error('無效靈石事件');
+    }
+    function v701ProposalExtras(raw){
+        if(!Array.isArray(raw?.worldActions))return [];
+        return raw.worldActions.slice(0,12).map((r,i)=>{
+            if(!r||typeof r!=='object'||Array.isArray(r))return null;
+            const kind=String(r.kind||r.type||'').toUpperCase();
+            if(!V701_EXTRA_KINDS.has(kind))return null;
+            return {kind,sequence:i,name:v700SafeName(r.name||r.targetName||r.item?.name),
+                sourceEntityId:String(r.sourceEntityId||'').slice(0,100),contractId:String(r.contractId||'').slice(0,100),
+                npcId:String(r.npcId||'').slice(0,100),outcome:String(r.outcome||raw?.actionOutcome?.result||'unknown').toLowerCase(),
+                ingredients:Array.isArray(r.ingredients)?r.ingredients.slice(0,8):[],
+                quantity:r.quantity,guardianId:String(r.guardianId||'').slice(0,100),
+                stepName:String(r.stepName||'').slice(0,100),method:String(r.method||'').slice(0,120)};
+        }).filter(Boolean);
+    }
+    function v701CollectProposal(raw,action,story){
+        const list=v700SourceProposals(raw,action,story);
+        // The old V7.00 parser skips typed metadata; preserve it for the new scene rules.
+        for(let i=0;i<list.length;i++){
+            const src=(raw?.worldActions||[]).filter(x=>x&&V700_ACTION_TYPES.has(String(x.kind||x.type||'').toUpperCase()))[i];
+            if(src)Object.assign(list[i],{guardianId:String(src.guardianId||'').slice(0,100),
+                guardianName:String(src.guardianName||'').slice(0,24),requiresTool:src.requiresTool===true,
+                sceneGuardianName:(/(?:妖獸|裂岩獸|野獸|守衛|山賊).{0,26}(?:看守|守護|守在|盤踞|護著)/.test(String(story||'')) && String(story||'').includes(src.name||src.targetName||src.item?.name))
+                  ?(String(story||'').match(/(?:裂岩獸|妖獸|野獸|守衛|山賊)/)||[])[0]:null,
+                toolKeyword:String(src.toolKeyword||'').slice(0,24),
+                sceneToolRequired:String(story||'').includes(src.name||src.targetName||src.item?.name)
+                    &&/(?:根莖堅韌|根莖盤結|根基盤結|根深|難以拔|難以徒手|需要工具|切斷根莖|難以採集)/.test(String(story||''))});
+        }
+        // CLAIM_REWARD is handled exclusively by the verified mission-payment core;
+        // otherwise V7.00 would produce a spurious rejection beside a valid payout.
+        return list.filter(p=>p.kind!=='CLAIM_REWARD');
+    }
+    function v701RegisterContract(s,missionId,npcId,amount,contractId){
+        return worldStageCall(s,'登錄可核實的任務報酬',d=>{
+            const c=v701Core(d),v=v698State(d),m=Object.values(v.missions||{}).find(x=>x?.id===missionId);
+            const npc=d.npcRegistry?.[npcId];
+            if(!m||!['active','employed','enroute','arrived','completed'].includes(m.status))throw new Error('委託不存在或未正式接受');
+            if(!npc||npc.id!==npcId||npc.is_alive===false||npc.status==='DEAD')throw new Error('報酬付款人未經登錄');
+            if(!Number.isSafeInteger(amount)||amount<1||amount>100000000)throw new Error('報酬數量不合法');
+            if(m.pay!==amount && m.rewardAmount!==amount)throw new Error('委託未確認此報酬金額');
+            if(m.issuerId!==npcId&&m.employerId!==npcId)throw new Error('付款人與委託人身分未綁定');
+            const id=String(contractId||'REWARD:'+missionId).slice(0,100);
+            if(!id||c.rewardContracts[id])throw new Error('契約已登錄或 ID 重複');
+            c.rewardContracts[id]={id,missionId,npcId,amount,status:'OPEN',createdDay:d.daysPassed||0};
+            return structuredClone(c.rewardContracts[id]);
+        },'V701:REGISTER:'+String(contractId||missionId));
+    }
+    function v701ClaimReward(s,p,key){
+        return worldStageCall(s,'領取正式任務報酬',d=>{
+            const c=v701Core(d),contract=c.rewardContracts[p.contractId||p.sourceEntityId];
+            if(!contract||contract.status!=='OPEN')throw new Error('沒有可領取的正式報酬契約');
+            const m=Object.values(v698State(d).missions||{}).find(x=>x?.id===contract.missionId);
+            if(!m||!['completed','arrived'].includes(m.status)||m.paid===true)
+                throw new Error('任務尚未完成或報酬已領');
+            const npc=d.npcRegistry?.[contract.npcId];
+            if(!npc||npc.is_alive===false||npc.status==='DEAD'||npc.id!==contract.npcId)
+                throw new Error('付款 NPC 不存在或已死亡');
+            if(String(npc.location||'')!==String(d.location||''))throw new Error('付款 NPC 不在目前場景');
+            if(ueWallet(npc)<contract.amount)throw new Error('付款 NPC 資金不足，報酬仍待履約');
+            const playerBefore=d.spiritStone;
+            v694Cash(d,npc.id,'PLAYER',contract.amount,'V701:CASH:'+contract.id,'任務報酬實付');
+            d.economy.receipts.push({id:'V701:PAYOUT:'+contract.id,sourceKey:key,
+                kind:'commission',reason:'已驗證任務報酬',before:playerBefore,after:d.spiritStone,
+                credit:contract.amount,debit:0,added:[],removed:[],success:true,
+                targetId:npc.id,purpose:contract.missionId,day:d.daysPassed||0});
+            contract.status='CLAIMED';contract.claimEvent=key;m.paid=true;m.rewardClaimEvent=key;
+            c.settled[key]=true;
+            return {id:key,kind:'CLAIM_REWARD',status:'PAID',name:'下品靈石',quantity:contract.amount,
+                entityId:contract.id,npcId:npc.id};
+        },key);
+    }
+    function v701Craft(s,p,key,action){
+        return worldStageCall(s,'原子化製作',d=>{
+            if(!/(?:製作|打造|合成|編|綁|捆|削|做成|改造|拼接|加工)/.test(action))throw new Error('沒有明確製作授權');
+            if(p.outcome!=='success'&&p.outcome!=='partial')throw new Error('AI 未確認製作成功');
+            if(!v700Mundane(d,p.name))throw new Error('未知特殊裝備不可透過普通製作憑空生成');
+            if(!Number.isSafeInteger(p.quantity)||p.quantity!==1)throw new Error('製作品數不合法');
+            if(!p.ingredients.length||p.ingredients.length>8)throw new Error('製作必須提供可驗證材料');
+            const before=structuredClone(d.inventory||[]);
+            for(const ingredient of p.ingredients){
+                const n=v700SafeName(ingredient.name),q=Number(ingredient.quantity);
+                if(!n||!Number.isSafeInteger(q)||q<1||q>9999)throw new Error('材料輸入不合法');
+                const held=(d.inventory||[]).filter(i=>i.name===n).reduce((sum,i)=>sum+(Number(i.quantity)||0),0);
+                if(held<q)throw new Error('製作所需材料不足：'+n);
+            }
+            for(const ingredient of p.ingredients){
+                const target=d.inventory.find(i=>i.name===ingredient.name&&i.quantity>=ingredient.quantity);
+                if(!target)throw new Error('材料不能安全扣除（分堆尚未支援）');
+                if(target.isQuestItem||target.questLocked)throw new Error('任務鎖定材料不可消耗');
+                removeItemFromInventory(d.inventory,target,ingredient.quantity);
+            }
+            addItemToInventory(d.inventory,{name:p.name,type:'misc',tier:'凡品',quantity:1,
+                ueLegalOwnerId:'PLAYER',ueLegalStatus:'v701_craft',ueProvenanceEvent:key},1);
+            ueSyncAssetRegistry(d,key);
+            v695PostItem(d,v695ItemProof(d,'自由組合製作',before,d.inventory,key,{ingredients:p.ingredients}),key);
+            v701Core(d).settled[key]=true;
+            return {id:key,kind:'CRAFT',status:'CRAFTED',name:p.name,quantity:1};
+        },key);
+    }
+    function v701Distract(s,p,key,action){
+        return worldStageCall(s,'守衛分心判定',d=>{
+            if(!/(?:引開|分心|聲東擊西|丟|投擲|吸引|製造聲響|聲響)/.test(action))throw new Error('玩家未執行引誘動作');
+            const entity=v701Core(d).entities[p.sourceEntityId],npc=d.npcRegistry?.[entity?.guardianId];
+            if(!entity||entity.status!=='AVAILABLE'||!entity.guardianId||entity.location!==d.location)throw new Error('沒有可引開的現場守衛');
+            if(npc&&(npc.is_alive===false||npc.status==='DEAD'))throw new Error('守衛已死亡，無須引開');
+            if(p.outcome!=='success')throw new Error('守衛未成功被引開');
+            const throwable=d.inventory.find(i=>Number(i.quantity)>0 && /(?:石|木塊|石片)/.test(i.name) && !i.isQuestItem && !i.questLocked);
+            if(!throwable)throw new Error('缺少可消耗的誘餌（碎石等）');
+            const before=structuredClone(d.inventory);
+            removeItemFromInventory(d.inventory,throwable,1);
+            ueSyncAssetRegistry(d,key);
+            v695PostItem(d,v695ItemProof(d,'消耗誘餌',before,d.inventory,key,{target:entity.id}),key);
+            entity.distraction={available:true,location:d.location,eventId:key,
+                expiresAtTurn:Number(v701Core(d).turnCounter||0)+2};
+            v701Core(d).settled[key]=true;
+            return {id:key,kind:'DISTRACT',status:'DISTRACTED',name:entity.name,quantity:0,entityId:entity.id};
+        },key);
+    }
+    function v701QueueBattle(s,p,key,action){
+        return worldStageCall(s,'正式戰鬥請求',draft=>{
+            if(!/(?:攻擊|戰鬥|迎戰|交鋒|斬殺|殺死|擊敗|對付|動手)/.test(action))
+                throw new Error('玩家未明確要求戰鬥');
+            const npc=draft.npcRegistry?.[p.npcId||p.sourceEntityId]||
+                Object.values(draft.npcRegistry||{}).filter(n=>n?.name===p.name&&n.location===draft.location&&n.is_alive!==false&&n.status!=='DEAD')[0];
+            if(!npc||!npc.id||npc.is_alive===false||npc.status==='DEAD')throw new Error('尚未建立可驗證的正式敵人');
+            if(npc.location!==draft.location)throw new Error('敵人不在同一場景');
+            if(v682State(draft).battle||tacticalState(draft).battle)throw new Error('已有正在進行的戰鬥');
+            const c=v701Core(draft);
+            if(c.pendingBattle)throw new Error('已有待啟動戰鬥請求');
+            c.pendingBattle={id:key,npcId:npc.id,name:npc.name,status:'QUEUED'};
+            c.settled[key]=true;
+            return {id:key,kind:'ATTACK',name:npc.name,entityId:npc.id,status:'BATTLE_QUEUED',quantity:0};
+        },key);
+    }
+    function v701Plan(s,raw,action,receipts,turnId){
+        const src=Array.isArray(raw?.actionPlan)?raw.actionPlan.slice(0,8):[];
+        if(!src.length)return null;
+        const c=v701Core(s),id='PLAN:'+String(turnId);
+        if(c.plans[id])return c.plans[id];
+        const done=new Set(receipts.filter(r=>['ACQUIRED','DISCOVERED','PAID','CRAFTED','DISTRACTED'].includes(r.status)).map(r=>r.kind+':'+r.name));
+        const steps=src.map((r,i)=>({id:id+':'+i,description:String(r?.description||'').slice(0,100),
+            kind:String(r?.kind||'').toUpperCase(),target:String(r?.target||'').slice(0,60),
+            status:done.has(String(r?.kind||'').toUpperCase()+':'+String(r?.target||''))?'COMPLETED':'PENDING'}));
+        const plan={id,originalAction:String(action).slice(0,250),status:steps.every(x=>x.status==='COMPLETED')?'COMPLETED':'ACTIVE',steps};
+        c.plans[id]=plan;return plan;
+    }
+    function v701AdvancePlans(s,receipts){
+        const plans=Object.values(v701Core(s).plans||{});
+        const done=(receipts||[]).filter(r=>['ACQUIRED','DISCOVERED','CRAFTED','PAID','DISTRACTED'].includes(r.status));
+        for(const plan of plans){
+            if(plan.status!=='ACTIVE')continue;
+            for(const step of plan.steps){
+                if(step.status!=='PENDING')continue;
+                if(done.some(r=>r.kind===step.kind && (r.name===step.target||r.entityId===step.target)))
+                    step.status='COMPLETED';
+            }
+            if(plan.steps.every(x=>x.status==='COMPLETED'))plan.status='COMPLETED';
+        }
+    }
+    function v701AutoBindReward(s,p){
+        const c=v701Core(s),id=p.contractId||p.sourceEntityId;
+        if(c.rewardContracts[id])return id;
+        if(c.rewardContracts['REWARD:'+id])return 'REWARD:'+id;
+        const missions=Object.values(v698State(s).missions||{});
+        const m=missions.find(x=>x?.id===id && ['arrived','completed'].includes(x.status) && !x.paid);
+        if(!m)throw new Error('找不到已完成的可驗證委託');
+        const amount=Number(m.pay??m.rewardAmount);
+        const npcs=Object.values(s.npcRegistry||{}).filter(n=>n?.id&&n.is_alive!==false&&n.status!=='DEAD'&&
+            String(n.location||'')===String(s.location||'') &&
+            ((m.employerId&&n.id===m.employerId)||(m.issuerId&&n.id===m.issuerId)||
+                ((!m.employerId&&!m.issuerId) && n.name===(m.employer||m.issuer))));
+        if(npcs.length!==1)throw new Error('委託人未唯一對應在場、登錄的 NPC，不能自行發薪');
+        const npc=npcs[0];
+        if(!m.employerId&&!m.issuerId&&(m.kind!=='escort'||!m.employedDay))
+            throw new Error('缺少正式 NPC 委託身分綁定');
+        if(!Number.isSafeInteger(amount)||amount<1||amount>1e8)
+            throw new Error('契約報酬金額不明確');
+        const contractId='REWARD:'+m.id;
+        worldStageCall(s,'報酬契約身分核實',draft=>{
+            const found=Object.values(v698State(draft).missions).find(x=>x.id===m.id);
+            if(!found||found.paid||!['arrived','completed'].includes(found.status))throw new Error('契約狀態已改變');
+            if(!found.employerId&&!found.issuerId)found.employerId=npc.id;
+            if(found.employerId!==npc.id&&found.issuerId!==npc.id)throw new Error('付款人不符');
+            const registry=v701Core(draft).rewardContracts;
+            if(registry[contractId])throw new Error('報酬已建檔');
+            registry[contractId]={id:contractId,missionId:m.id,npcId:npc.id,
+                amount,status:'OPEN',createdDay:draft.daysPassed||0};
+        },'V701:REWARD_BIND:'+contractId);
+        return contractId;
+    }
+    function v701ResolveExtras(s,raw,action,story,turnId,baseReceipts=[]){
+        const proposals=[...v701ProposalExtras(raw),...v704Proposals(raw)],notes=[],receipts=[];
+        for(const p of proposals){
+            const id='V701:'+String(turnId)+':'+p.sequence;
+            if(v701Core(s).settled[id]){notes.push('【核心去重】重複事件已略過。');continue;}
+            try{
+                let r;
+                if(V704_CURRENCY_KINDS.has(p.kind)){
+                    r=v704HandleProposal(s,p,id,action,story);
+                }else if(p.kind==='CLAIM_REWARD'){
+                    if(!/(?:領取|領薪|索取|結清|領報酬|領酬勞)/.test(action))throw new Error('玩家沒有要求領取報酬');
+                    if(!['success','partial'].includes(p.outcome))throw new Error('AI 尚未確認報酬已實際支付');
+                    // Never create an entitlement contract before checking the
+                    // payout story.  Bind, verify and settle inside one atomic stage.
+                    r=worldStageCall(s,'V706報酬證據與付款原子化',draft=>{
+                        const ref=p.contractId||p.sourceEntityId;
+                        const contractId=v701Core(draft).rewardContracts[ref]?ref:v701AutoBindReward(draft,p);
+                        const contract=v701Core(draft).rewardContracts[contractId];
+                        if(!contract)throw new Error('未找到可驗證報酬契約');
+                        v706AssertCompletedPayout(story,contract.amount,true);
+                        return v701ClaimReward(draft,{contractId},id);
+                    });
+                }else if(p.kind==='CRAFT')r=v701Craft(s,p,id,action);
+                else if(p.kind==='DISTRACT')r=v701Distract(s,p,id,action);
+                else if(p.kind==='ATTACK')r=v701QueueBattle(s,p,id,action);
+                else throw new Error(p.kind+' 須由原有戰鬥、交易或 NPC 核心完成，不允許 AI 宣告成功');
+                receipts.push(r);
+                notes.push(r.status==='CURRENCY_PAID'?`【正式靈石】下品靈石 +${r.credit}，已入錢包（非背包道具）。`:
+                    r.status==='CURRENCY_DISCOVERED'?`【場景靈石】已登錄 ${r.amount} 顆下品靈石，尚未拾取，來源ID：${r.sourceEntityId}。`:
+                    r.status==='ALREADY_SETTLED'?`【核心去重】這筆戰利品早已入帳，未再次發放。`:
+                    r.status==='PAID'?`【正式報酬】${r.quantity} 下品靈石已由付款 NPC 支付。`:
+                    r.status==='CRAFTED'?`【正式製作】${r.name} ×1 已加入背包。`:
+                    r.status==='BATTLE_QUEUED'?`【正式戰鬥】已向戰鬥核心提出挑戰 ${r.name}；尚未確認勝負。`:
+                    `【正式戰術】${r.name}的守衛已被暫時引開。`);
+            }catch(e){
+                const reason=String(e?.message||e).slice(0,180);
+                const r={id,kind:p.kind,name:p.name,status:'REJECTED',quantity:0,reason};
+                receipts.push(r);notes.push(`【核心未結算】${p.kind}：${reason}`);
+            }
+        }
+        const plan=v701Plan(s,raw,action,[...baseReceipts,...receipts],turnId);
+        v701AdvancePlans(s,[...baseReceipts,...receipts]);
+        const core=v701Core(s);
+        const marker='TURN:'+String(turnId);
+        if(!core.settled[marker]){core.settled[marker]=true;core.turnCounter=Number(core.turnCounter||0)+1;}
+        if(plan&&plan.status!=='COMPLETED')notes.push(`【長期計畫】${plan.steps.filter(x=>x.status==='PENDING').length} 個步驟待完成，不會提前宣告成功。`);
+        if(receipts.length){const c=v701Core(s);c.traces.push({turnId:String(turnId),receipts:receipts.map(r=>({id:r.id,status:r.status,kind:r.kind}))});
+            if(c.traces.length>250)c.traces.splice(0,c.traces.length-250);}
+        return {handled:proposals.length>0||Boolean(plan),receipts,notes};
+    }
+    function v701CombineReports(a,b){return {handled:Boolean(a?.handled||b?.handled),
+        receipts:[...(a?.receipts||[]),...(b?.receipts||[])],notes:[...(a?.notes||[]),...(b?.notes||[])]};}
+    function v701SafeNarrative(text,report){
+        // Receipt-only final narration: any rejected asset claim is removed before publication.
+        let result=v700StoryToReceipts(text,report);
+        const failed=(report?.receipts||[]).filter(r=>r.status==='REJECTED');
+        if(failed.some(r=>r.kind==='CLAIM_REWARD') && /(?:已|成功|領到|取得|收到|得到|領取|領走|遞給|交付).{0,35}(?:報酬|薪資|靈石|酬勞|工錢)|(?:報酬|薪資|靈石|酬勞|工錢).{0,18}(?:到手|入袋|入帳|收入)/.test(result))
+            result='這次尚未完成正式報酬交付。\n'+(report.notes||[]).join('\n');
+        if((failed.some(r=>r.kind==='ATTACK')||(report?.receipts||[]).some(r=>r.status==='BATTLE_QUEUED'))
+            && /(?:擊殺|斬殺|殺死|當場斃命|已被殺死|裂岩獸倒下)/.test(result))
+            result='此回合尚未經正式戰鬥核心確認擊殺；敵人狀態未改變。\n'+(report.notes||[]).join('\n');
+        if(failed.some(r=>r.kind==='CRAFT') && /(?:製作完成|成功打造|已製成|做成了|合成成功)/.test(result))
+            result='本次製作未通過材料與規則驗證；沒有新物品入袋。\n'+(report.notes||[]).join('\n');
+        return result;
+    }
+    function v701NarrativeAudit(before,after,story,report){
+        let result=String(story||'');
+        const newMoney=(Number(after.spiritStone)||0)>(Number(before.spiritStone)||0);
+        const moneyReceipt=(after.economy?.receipts||[]).some(r=>!(before.economy?.receipts||[]).some(b=>b.id===r.id)
+            && ((Number(r.credit)||0)>0||(Number(r.after)||0)>(Number(r.before)||0)));
+        if(!newMoney&&!moneyReceipt){
+            const sentences=result.split(/(?<=[。！？\n])/);
+            let removed=false;
+            result=sentences.filter(t=>{
+                const positive=/(?:領到|領取了|領走|得到|收到|獲得|收入|入袋|入帳|付給你|交給你|發給你|遞給你)/.test(t);
+                if(positive&&/(?:靈石|薪資|報酬|酬勞|工錢)/.test(t)){removed=true;return false;}
+                return true;
+            }).join('');
+            if(removed)result+='\n【核心核對】本回合沒有正式金流入帳，敘事中的領款宣稱已撤銷。';
+        }
+        // Do not erase legitimate unregistered scenery discoveries; custody claims need a receipt.
+        const hasNewInventory=JSON.stringify(before.inventory||[])!==JSON.stringify(after.inventory||[]);
+        if(!hasNewInventory && /(?:收入背包|收進背包|放進背包|裝入行囊)/.test(result)
+           && !/(?:尚未|未能|沒能|沒有|未成功|並未)/.test(result)){
+            result=result.split(/(?<=[。！？\n])/).filter(t=>!/(?:收入背包|收進背包|放進背包|裝入行囊)/.test(t)).join('')+
+                '\n【核心核對】本回合沒有正式物品入袋，相關敘事已撤銷。';
+        }
+        return result;
+    }
+    function v701ProtocolIssues(s){
+        const c=s?.worldProtocol701;if(!c)return [];
+        v701Migrate(s);
+        const issues=[];
+        const v=s?.v698??s?.economy?.v698;
+        for(const e of Object.values(c.entities||{})){
+            if(!e?.id||!e.name||!e.location)issues.push('SCENE_ENTITY_SHAPE');
+            if(e.status==='OWNED'&&(!e.ownerId||typeof e.ownerId!=='string'))issues.push('SCENE_OWNER_MISMATCH');
+        }
+        for(const r of Object.values(c.rewardContracts||{})){
+            if(!r?.id||!r.missionId||!r.npcId||!Number.isSafeInteger(r.amount)||r.amount<1)
+                issues.push('REWARD_CONTRACT_SHAPE');
+            if(r.status==='CLAIMED'&&!r.claimEvent)issues.push('REWARD_RECEIPT_MISSING');
+        }
+        return [...new Set(issues)];
+    }
+
+    function v698SceneAction(s,action,story,previousLocation,eventId,skipLegacyFinds=false){
         const v=v698State(s),a=v691Normalize(action),t=v691Normalize(story),loc=String(s.location||''),out=[];
         const eid=String(eventId||'');if(eid&&v.processed['TURN:'+eid])return [];
         out.push(...v698CaptureMissions(s,a,t,previousLocation));
@@ -9646,7 +10801,7 @@ JSON 輸出格式範例：
         }
         const exploration=/(?:搜查|搜尋|搜索|查探|探查|查看|找尋|尋找|撿|拾|收起|取出|取回|摸索|翻找|勘察|調查|探尋|拿起|拿走)/.test(a)
             && !/(?:買|購|售|拍賣|賭|借款|煉丹|製作)/.test(a);
-        if(exploration){
+        if(exploration&&!skipLegacyFinds){
             // Only the model's positive observation can mint a findable object. A player request alone cannot.
             const discovered=v698DiscoverNames(t);
             for(const name of discovered){
@@ -10354,6 +11509,227 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(declaredQty && ueChineseNumber(declaredQty[1])!==item.quantity)return null;
         return approveEconomyProposal(s,p.id);
     }
+    // ===== V7.09: non-invasive per-REAL-AI-turn audit trail =====
+    // This module OBSERVES game commits, it does not authorize new rewards.
+    // Existing worldInvariantIssues and account-ledger checks remain authoritative.
+    const V709_AUDIT_STORE='blade_v709_real_ai_audit_v1';
+    const V709_AUDIT_ENABLE='blade_v709_real_ai_audit_enabled';
+    const V709_AUDIT_MAX=80;
+    let __v709AuditCurrent=null;
+    let __v709AuditStorageError=false;
+    function v709AuditEnabled(){try{return localStorage.getItem(V709_AUDIT_ENABLE)!=='off';}catch(_){return true;}}
+    function v709AuditSafe(value,max=12000){
+        let result=String(value??'').slice(0,max);
+        const secret=document.getElementById('api-key')?.value?.trim()||localStorage.getItem('blade_api_key')||'';
+        if(secret.length>=8)result=result.split(secret).join('[REDACTED]');
+        return result.replace(/AIza[0-9A-Za-z_-]{20,}/g,'[REDACTED_KEY]');
+    }
+    function v709AuditRead(){
+        try{const x=JSON.parse(localStorage.getItem(V709_AUDIT_STORE)||'[]');return Array.isArray(x)?x:[];}
+        catch(_){return [];}
+    }
+    function v709AuditWrite(entries){
+        // Quota exhaustion must NEVER cause the actual game turn to fail.
+        // Also redact arbitrary fields at the storage boundary.
+        const pack=arr=>{let json=JSON.stringify(arr);
+            const key=document.getElementById('api-key')?.value?.trim()||localStorage.getItem('blade_api_key')||'';
+            if(key.length>=8)json=json.split(key).join('[REDACTED]');
+            return json.replace(/AIza[0-9A-Za-z_-]{20,}/g,'[REDACTED_KEY]');};
+        try{localStorage.setItem(V709_AUDIT_STORE,pack(entries.slice(-V709_AUDIT_MAX)));__v709AuditStorageError=false;return true;}
+        catch(_){try{localStorage.setItem(V709_AUDIT_STORE,pack(entries.slice(-10)));__v709AuditStorageError=false;return true;}
+            catch(__){__v709AuditStorageError=true;return false;}}
+    }
+    function v709AuditToggle(enabled){
+        try{localStorage.setItem(V709_AUDIT_ENABLE,enabled?'on':'off');}catch(_){}
+        v709AuditRender();
+    }
+    function v709AuditBegin(eventId,action,state){
+        if(!v709AuditEnabled())return null;
+        try{return {schemaVersion:709,turnId:String(eventId||''),time:new Date().toISOString(),
+            model:v709AuditSafe(document.getElementById('api-model')?.value||'gemini-3.5-flash-lite',100),
+            input:v709AuditSafe(action,1800),qa:Boolean(__liveQaRuntime?.active||__longQaRuntime?.active),
+            responses:[],network:[],proposals:[],coreReceipts:[],issues:[],
+            before:v709AuditState(state),basePostings:state?.economy?.v694?.postings?.length||0,
+            baseEconomyReceipts:state?.economy?.receipts?.length||0};}
+        catch(_){return null;}
+    }
+    function v709AuditState(s){
+        const money={PLAYER:Number(s?.spiritStone)||0};
+        for(const [id,n] of Object.entries(s?.npcRegistry||{}))money['NPC:'+id]=Number(n?.ueWallet??n?.spiritStone??0);
+        const snapshot={money,location:String(s?.location||''),hp:Number(s?.hp)||0,
+            inventory:Array.isArray(s?.inventory)?s.inventory.map(i=>({name:String(i?.name||''),quantity:i?.quantity,
+                id:String(i?.itemId||i?.ueUnitId||i?.ueLotId||i?.v698SourceFind||'')})):[],
+            economyReceipts:s?.economy?.receipts?.length||0,
+            cashPostings:s?.economy?.v694?.postings?.length||0,
+            events:s?.worldMemory?.engine?.appliedDeltaIds?.length||0,
+            npcCount:Object.keys(s?.npcRegistry||{}).length,
+            questCount:Object.keys(s?.questLedger?.verified||{}).length};
+        return snapshot;
+    }
+    function v709AuditHttp(event){
+        const ctx=__v709AuditCurrent;
+        if(!ctx)return;
+        try{ctx.network.push({phase:String(event.phase||''),status:event.status,durationMs:event.durationMs,
+            attempt:event.attempt,requestChars:event.requestChars});}
+        catch(_){}
+    }
+    function v709AuditResponse(kind,response){
+        const ctx=__v709AuditCurrent;
+        if(!ctx)return;
+        try{ctx.responses.push({kind:v709AuditSafe(kind,40),raw:v709AuditSafe(response,12000),
+            truncated:String(response||'').length>12000});}
+        catch(_){}
+    }
+    function v709AuditParsed(raw,actionText){
+        const ctx=__v709AuditCurrent;
+        if(!ctx||!raw)return;
+        try{ctx.proposals=(Array.isArray(raw.worldActions)?raw.worldActions:[]).slice(0,12).map(a=>({
+                kind:v709AuditSafe(a?.kind||a?.type||'',50),name:v709AuditSafe(a?.name||'',120),
+                amount:v709AuditSafe(a?.amount??'',40),quantity:v709AuditSafe(a?.quantity??'',40),npcId:v709AuditSafe(a?.npcId||'',90),
+                sourceEntityId:v709AuditSafe(a?.sourceEntityId||'',90),outcome:v709AuditSafe(a?.outcome||'',30)
+            }));
+            ctx.aiOutcome=v709AuditSafe(raw.actionOutcome?.result||'',30);
+            ctx.requestedAction=v709AuditSafe(actionText,1500);
+        }catch(_){}
+    }
+    function v709AuditReceiptReport(report){
+        const ctx=__v709AuditCurrent;
+        if(!ctx||!report)return;
+        try{ctx.coreReceipts=(report.receipts||[]).slice(0,24).map(r=>({
+            id:v709AuditSafe(r.id,160),kind:v709AuditSafe(r.kind,70),status:v709AuditSafe(r.status,35),
+            name:v709AuditSafe(r.name,140),amount:r.amount??null,quantity:r.quantity??null,
+            sourceEntityId:v709AuditSafe(r.sourceEntityId||r.entityId||'',140),
+            npcId:v709AuditSafe(r.npcId||'',120),reason:v709AuditSafe(r.reason||'',180)}));}
+        catch(_){}
+    }
+    function v709AuditAccount(key){
+        if(key==='PLAYER'||key==='TREASURY'||key==='ESCROW_CASH'||key==='WORLD_POOL:704'||
+            /^(?:SCENE_CASH:704:|CASINO:|CASINO_ESCROW:|ESTATE:|ORG:|CARAVAN_ESCROW:)/.test(key))return key;
+        if(key.startsWith('DECEASED:'))return 'NPC:'+key.slice('DECEASED:'.length);
+        return 'NPC:'+key;
+    }
+    function v709AuditDiff(beforeState,afterState,ctx,story){
+        const issues=[];
+        const old=v709AuditState(beforeState),now=v709AuditState(afterState);
+        const beforeLedger=beforeState?.economy?.v694?.postings||[],afterLedger=afterState?.economy?.v694?.postings||[];
+        const newPostings=afterLedger.slice(beforeLedger.length);
+        const projected={};
+        for(const p of newPostings){
+            const amt=Number(p?.amount);
+            if(!Number.isSafeInteger(amt)||amt<1||p?.from===p?.to){issues.push({severity:'CRITICAL',code:'INVALID_POSTING'});continue;}
+            const from=v709AuditAccount(String(p.from)),to=v709AuditAccount(String(p.to));
+            projected[from]=(projected[from]||0)-amt;projected[to]=(projected[to]||0)+amt;
+        }
+        const beforeAll={};const afterAll={};
+        try{Object.assign(beforeAll,v694MoneySnapshot(beforeState));Object.assign(afterAll,v694MoneySnapshot(afterState));}
+        catch(e){issues.push({severity:'WARNING',code:'MONEY_SNAPSHOT_UNAVAILABLE',detail:v709AuditSafe(e.message,150)});}
+        for(const account of Object.keys(beforeAll)){
+            if(!(account in afterAll))continue;
+            const changed=Number(afterAll[account])-Number(beforeAll[account]);
+            const expected=projected[account]||0;
+            if(changed!==expected){
+                issues.push({severity:'CRITICAL',code:'CURRENCY_LEDGER_MISMATCH',account,
+                    actualDelta:changed,postedDelta:expected});
+            }
+        }
+        if(afterLedger.length<beforeLedger.length)issues.push({severity:'CRITICAL',code:'CASH_POSTINGS_REMOVED'});
+        // Independently match each committed cash receipt to an actual incoming posting.
+        for(const receipt of ctx.coreReceipts||[]){
+            if(!['CURRENCY_PAID','PAID'].includes(receipt.status))continue;
+            if(!/(?:CURRENCY|WORK_PAYMENT|CLAIM_REWARD)/.test(receipt.kind))continue;
+            const amount=Number(receipt.amount??receipt.quantity);
+            if(!Number.isSafeInteger(amount)||amount<1)continue;
+            const matched=newPostings.some(p=>p?.to==='PLAYER'&&p.amount===amount &&
+                (!receipt.npcId||String(p.from)===String(receipt.npcId))&&
+                (receipt.kind!=='CURRENCY_PICKUP'||!receipt.sourceEntityId||
+                    String(p.from)==='SCENE_CASH:704:'+receipt.sourceEntityId));
+            if(!matched)issues.push({severity:'CRITICAL',code:'CURRENCY_RECEIPT_WITHOUT_MATCHING_INFLOW',
+                receiptId:receipt.id,kind:receipt.kind,amount});
+        }
+        const beforeReceipts=new Set((beforeState?.economy?.receipts||[]).map(r=>String(r?.id||'')));
+        const newReceipts=(afterState?.economy?.receipts||[]).filter(r=>r?.id&&!beforeReceipts.has(String(r.id)));
+        const firstSet=new Set();for(const r of newReceipts){if(firstSet.has(String(r.id)))issues.push({severity:'CRITICAL',code:'DUPLICATE_NEW_RECEIPT',receiptId:String(r.id)});firstSet.add(String(r.id));}
+        const newAssets=JSON.stringify(old.inventory)!==JSON.stringify(now.inventory);
+        const assetEvents=(ctx.coreReceipts||[]).filter(r=>['ACQUIRED','CRAFTED','PAID','CURRENCY_PAID','DISCOVERED','REJECTED'].includes(r.status));
+        const positiveAssets=assetEvents.some(r=>['ACQUIRED','CRAFTED'].includes(r.status));
+        if(newAssets&&!positiveAssets&&!newPostings.length){
+            // May be a legitimate legacy item event; report rather than fail the game.
+            issues.push({severity:'WARNING',code:'INVENTORY_CHANGED_WITHOUT_PROTOCOL_RECEIPT'});
+        }
+        const finalText=String(story||'');
+        const claims=finalText.split(/[。！？\n]/).filter(t=>/(?:靈石|工錢|工資|報酬|薪資)/.test(t)&&
+            /(?:得到|獲得|收下|收到|領取了|領到了|入帳|到手|交給你|給了你)/.test(t)&&
+            !/(?:未|沒有|並未|拒絕|尚未|不能|未能|未成功|並非|尚欠|沒能|尚未完成)/.test(t));
+        if(claims.length && now.money.PLAYER<=old.money.PLAYER && !newReceipts.some(r=>Number(r.credit)>0))
+            issues.push({severity:'WARNING',code:'NARRATIVE_CURRENCY_CLAIM_WITHOUT_CREDIT',excerpt:v709AuditSafe(claims[0],180)});
+        const narrativeInventoryClaims=finalText.split(/[。！？\n]/).filter(t=>
+            /(?:收入背包|收入行囊|放進背包|裝入行囊|塞進儲物袋|成功摘下|成功採集|你.{0,20}(?:撿起|拾起|摘下|採到|拿起))/.test(t) &&
+            !/(?:並未|沒有|尚未|未能|失敗|沒能|不得|不能|又放回|放回原處|隨即交給)/.test(t));
+        if(narrativeInventoryClaims.length && !newAssets && !positiveAssets)
+            issues.push({severity:'WARNING',code:'NARRATIVE_ITEM_CLAIM_WITHOUT_ASSET',excerpt:v709AuditSafe(narrativeInventoryClaims[0],180)});
+        const coreStateIssues=[...worldInvariantIssues(afterState),...v701ProtocolIssues(afterState)];
+        if(coreStateIssues.length)issues.push({severity:'CRITICAL',code:'WORLD_INVARIANT',detail:coreStateIssues.slice(0,8)});
+        return {issues,after:now,postings:newPostings.slice(-50).map(p=>({
+            eventId:v709AuditSafe(p.eventId,160),from:v709AuditSafe(p.from,100),to:v709AuditSafe(p.to,100),amount:p.amount,
+            reason:v709AuditSafe(p.reason,140)})),newEconomyReceipts:newReceipts.slice(-40).map(r=>({
+            id:v709AuditSafe(r.id,160),kind:v709AuditSafe(r.kind,80),credit:r.credit,debit:r.debit,
+            reason:v709AuditSafe(r.reason,140)}))};
+    }
+    function v709AuditFinish(ctx,before,after,story,succeeded,error){
+        if(!ctx)return;
+        if(__v709AuditCurrent===ctx)__v709AuditCurrent=null;
+        try{
+            ctx.success=Boolean(succeeded);ctx.finalStory=v709AuditSafe(story,9000);
+            ctx.failure=v709AuditSafe(error||'',500);ctx.finishedAt=new Date().toISOString();
+            if(succeeded){const result=v709AuditDiff(before,after,ctx,story);
+                Object.assign(ctx,result);ctx.issues.push(...result.issues);
+            }else{ctx.after=v709AuditState(after);ctx.issues.push({severity:'INFO',code:'TURN_ROLLED_BACK',detail:ctx.failure});}
+            ctx.status=ctx.issues.some(i=>i.severity==='CRITICAL')?'CRITICAL':
+                ctx.issues.some(i=>i.severity==='WARNING')?'WARNING':succeeded?'PASS':'ROLLED_BACK';
+            ctx.transport=ctx.network.length?'GEMINI_HTTP':'NO_HTTP_EVIDENCE';
+            const records=v709AuditRead();records.push(ctx);v709AuditWrite(records);
+        }catch(e){console.warn('V709 audit logging unavailable:',e?.message||e);}
+        try{v709AuditRender();}catch(_){}
+    }
+    function v709AuditRender(){
+        const el=document.getElementById('v709-audit-status');if(!el)return;
+        const toggle=document.getElementById('v709-audit-enable');if(toggle)toggle.checked=v709AuditEnabled();
+        const records=v709AuditRead(),counts={PASS:0,WARNING:0,CRITICAL:0,ROLLED_BACK:0};
+        for(const r of records)counts[r.status]=(counts[r.status]||0)+1;
+        const recent=records.slice(-8).reverse().map(r=>{
+            const details=(r.issues||[]).filter(i=>i.severity!=='INFO').slice(0,2).map(i=>i.code).join(', ');
+            return `${r.time?.slice(11,19)||'--'} ${r.status||'UNKNOWN'}｜${v709AuditSafe(r.input,50)}${details?'｜'+details:''}`;
+        });
+        el.textContent=`自動稽核：${v709AuditEnabled()?'啟用':'停用'}｜最近保留 ${records.length}/${V709_AUDIT_MAX} 回合\n通過 ${counts.PASS}｜警示 ${counts.WARNING}｜嚴重異常 ${counts.CRITICAL}｜已回滾 ${counts.ROLLED_BACK}\n`+
+            (__v709AuditStorageError?'⚠ 瀏覽器儲存空間不足：本次稽核無法保留！請匯出舊紀錄並清理空間。\n':'')+
+            (recent.length?'\n最近回合：\n'+recent.join('\n'):'\n尚無真實 AI 回合稽核資料。');
+        const live=document.getElementById('v709-audit-live');
+        if(live){
+            const last=records.at(-1);
+            live.textContent=__v709AuditStorageError?'⚠ AI 稽核紀錄儲存失敗，請到系統頁檢查容量':!v709AuditEnabled()?'AI 回合稽核：已停用':!last?'AI 回合稽核：待命（詳細紀錄在「系統」頁）':
+                last.status==='CRITICAL'?'⚠ 稽核發現嚴重資產異常，請暫停交易並在「系統」頁匯出紀錄':
+                last.status==='WARNING'?'⚠ 稽核發現需核對的敘事或物品差異，詳見「系統」頁':
+                last.status==='ROLLED_BACK'?'AI 回合稽核：本回合未提交，資產應已回滾':
+                'AI 回合稽核：最近回合未發現已定義的結算異常';
+            live.style.borderLeftColor=last?.status==='CRITICAL'?'#ff5252':last?.status==='WARNING'?'#e2a94b':'#589b96';
+        }
+    }
+    function v709AuditExport(){
+        const records=v709AuditRead();
+        const report={schemaVersion:709,product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
+            exportedAt:new Date().toISOString(),turns:records.length,records};
+        const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json;charset=utf-8'});
+        const url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download='九州裂天錄_V7.09_真實AI逐回合稽核_'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    function v709AuditClear(){
+        if(!confirm('確定刪除這個瀏覽器中保存的 AI 稽核紀錄？這不會刪除角色存檔。'))return;
+        try{localStorage.removeItem(V709_AUDIT_STORE);}catch(_){}v709AuditRender();
+    }
+    document.addEventListener("DOMContentLoaded",()=>{try{v709AuditRender();}catch(_){}});
+    // ===== End V7.09 =====
+
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         if(v682State().battle){openGameModal("正式戰鬥進行中","請先在團隊戰鬥面板完成回合，不得透過 AI 文字直接結算。 ");return;}
@@ -10421,6 +11797,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const historyBeforeAction = conversationHistory.slice(0,-1);
         eventMeta={...eventMeta,sourceId:eventMeta.sourceId||eventMeta.eventId,actionText};
         const stateBeforeAction = structuredClone(gameState);
+        const v709AuditTrace=v709AuditBegin(eventMeta.eventId,actionText,stateBeforeAction);
+        __v709AuditCurrent=v709AuditTrace;
+        let v709AuditFinalStory="";
         const logsBeforeAction=storyLogData.slice();
         startLoadingAnim(); isTyping = true;
         let repairedThisTurn = false;
@@ -10444,6 +11823,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 }else ({storyText,parsedState}=fixed);
                 repairedThisTurn=true;
             }
+            let v700Proposals = v701CollectProposal(parsedState,actionText,storyText);
+            let v701RawActions=structuredClone(parsedState);
+            v709AuditParsed(v701RawActions,actionText);
             parsedState = normalizeSceneDelta(v698SanitizeSceneItems(v691SanitizeScene(parsedState,actionText),actionText));
             if(parsedState && typeof parsedState==='object') delete parsedState.__npcContestAlert;
             if (!hasCompleteScene(parsedState)) {
@@ -10453,13 +11835,31 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 const repairedScene = normalizeSceneDelta(parseApiResponse(repairedText).parsedState);
                 parsedState = {...originalDelta, location:repairedScene.location, scenarioMode:repairedScene.scenarioMode, activeThreats:repairedScene.activeThreats};
                 if (!hasCompleteScene(parsedState)) {
-                    // The AI did not establish movement or a new danger state; preserve last verified scene.
-                    parsedState=v689ConservativeScene(gameState,storyText,actionText);
-                    storyText=parsedState.story;
+                    // Preserve the last known world scene instead of discarding an otherwise valid action.
+                    parsedState.location=String(gameState.location||stateBeforeAction.location||'未知地點');
+                    parsedState.scenarioMode=String(gameState.scenarioMode||'IDLE').toUpperCase();
+                    parsedState.activeThreats=Array.isArray(gameState.activeThreats)?structuredClone(gameState.activeThreats):[];
+                    if(!hasCompleteScene(parsedState))throw new Error('AI 場景格式無效；回合未提交，請重新操作');
                 }
                 repairedThisTurn=true;
             }
 
+            // An older AI can omit worldActions even when the story claims acquisition.
+            // Retry format extraction once; never silently treat prose as inventory.
+            if(!v700Proposals.length && !v701ProposalExtras(v701RawActions).length && !v704Proposals(v701RawActions).length && v700ExploreVerb(actionText) && v700NarrativeAcquisitionSignal(storyText)){
+                try{
+                    const repairedAction=parseApiResponse(await callGeminiApi(apiKey,
+                        JSON.stringify({playerAction:actionText,original:parsedState,story:storyText}), 'actions'));
+                    if(repairedAction.parsedState){
+                        v700Proposals=v701CollectProposal(repairedAction.parsedState,actionText,storyText);
+                        v701RawActions={...v701RawActions,worldActions:repairedAction.parsedState.worldActions};
+                        v709AuditParsed(v701RawActions,actionText);
+                        repairedThisTurn=true;
+                    }
+                }catch(e){console.warn('V700 action proposal repair rejected:',String(e.message||e));}
+                if(!v700Proposals.length && !v704Proposals(v701RawActions).length)
+                    throw new Error('AI 敘事提及可取得物品／靈石，但缺少正式場景事件；本回合安全回滾，請重新操作。');
+            }
             // V6.67：確定玩家受傷的敘事必須有負數 HP 結算；不自動創造傷害數值。
             // 修補回應只接受「負傷害欄位」或「更正為未受傷的文字」，其餘經濟／角色／場景欄位一律保留初次結果。
             if (needsInjurySettlementRepair(storyText, parsedState)) {
@@ -10654,7 +12054,25 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             }
             finishEconomySummary(gameState,stateBeforeAction,eventMeta.sourceId);
             const v697Findings=v697StoryEvent(gameState,actionText,storyText,stateBeforeAction.location);
-            const v698Findings=v698SceneAction(gameState,actionText,storyText,stateBeforeAction.location,eventMeta.eventId);
+            // AI proposal -> authoritative scene/asset commit -> narrative receipts.
+            // V6.97 parchment has its own verified source/receipt; never award it twice.
+            const v700Owned=v700Proposals.filter(p=>!(/羊皮紙/.test(p.name||'')&&v697Findings.some(n=>String(n).includes('核心拾取'))));
+            const v700Result=v700Issue(gameState,actionText,storyText,v700Owned,eventMeta.eventId);
+            const v698Findings=v698SceneAction(gameState,actionText,storyText,stateBeforeAction.location,eventMeta.eventId,v700Result.handled);
+            const v701Extra=v701ResolveExtras(gameState,v701RawActions,actionText,storyText,eventMeta.eventId,v700Result.receipts);
+            const v701Report=v701CombineReports(v700Result,v701Extra);
+            v709AuditReceiptReport(v701Report);
+            if(v701Report.handled&&v701Report.receipts.some(r=>['ACQUIRED','REJECTED','PAID','CURRENCY_PAID','CRAFTED','DISTRACTED','CURRENCY_DISCOVERED'].includes(r.status))){
+                try{
+                    const evidence={candidateStory:storyText,playerAction:actionText,
+                        CORE_RECEIPTS:v701Report.receipts,scene:{location:gameState.location,mode:gameState.scenarioMode}};
+                    const candidate=parseApiResponse(await callGeminiApi(apiKey,JSON.stringify(evidence),'receipt_story'));
+                    if(candidate.parsedState && typeof candidate.storyText==='string' && candidate.storyText.trim()
+                       &&candidate.storyText.length<=3500 &&
+                       !['inventoryDelta','spiritStonesDelta','npcDelta','worldActions','economyOperation'].some(k=>Object.hasOwn(candidate.parsedState,k)))
+                        storyText=candidate.storyText;
+                }catch(e){console.warn('V700 narration repair unavailable; preserving committed receipts:',String(e.message||e));}
+            }
             const rawAdmissionQuoteStory=storyText;
             storyText=v698ProtectStory(gameState,destinyGuardNarrative(projectNarrative(storyText,gameState),gameState),actionText);
             storyText=v691SafeStory(v689CleanAdmissionStory(storyText,gameState,actionText),actionText);
@@ -10667,6 +12085,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             v697CaptureSimpleStockQuote(gameState,storyText);
             if(v697Findings.length)storyText+='\n'+v697Findings.join('\n');
             if(v698Findings.length)storyText+='\n'+v698Findings.join('\n');
+            storyText=v701NarrativeAudit(stateBeforeAction,gameState,v701SafeNarrative(storyText,v701Report),v701Report);
             storyText+=dialogueInlineHint(gameState);
             conversationHistory.push({ role: "assistant", content: JSON.stringify({story:storyText,coreSettlement:gameState.lastEconomySummary,pendingEconomyProposal:gameState.pendingEconomyProposal||null}) });
             appendLogData("天道", storyText, "ai", false, true);
@@ -10676,6 +12095,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             // if(gameState.lastEconomySummary && (gameState.lastEconomySummary.receiptIds||[]).length) appendLogData("系統",formatEconomySummary(gameState.lastEconomySummary),"system",false,true);
             // if(gameState.lastEconomyWarning) appendLogData("系統",`【敘事核對提醒】${gameState.lastEconomyWarning}`,"system",false,true);
             checkLifeStatus(gameState);
+            const finalIssues=[...worldInvariantIssues(gameState),...v701ProtocolIssues(gameState)];
+            if(finalIssues.length)throw new Error('完整回合結果不一致：'+finalIssues.join(','));
+            v709AuditFinalStory=storyText;
             actionSucceeded=true;
         } catch (error) {
             failureReason=String(error?.message||error||"未知問題");
@@ -10689,10 +12111,20 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 ? "✦ 此次行動未完成：資源或交易條件不足，物資未變動。"
                 : isApiLimit?"✦ Gemini API 配額或速率限制，遊戲狀態未變動；請檢查 API 配額再重試。"
                 : isNetwork?"✦ 模型連線或服務異常，操作未完成；資金與物品保持不變。"
-                : "✦ 回合內容未能通過完整驗證，沒有提交任何收支或狀態修改；可查看系統診斷中的具體錯誤。", "system", false, true);
+                : "✦ 回合驗證失敗（系統錯誤，並非遊戲線索不足），所有世界狀態已回滾。請查看系統診斷。", "system", false, true);
         } finally {
+            v709AuditFinish(v709AuditTrace,stateBeforeAction,gameState,v709AuditFinalStory,actionSucceeded,failureReason);
             updateActionTelemetry(gameState,actionSucceeded,repairedThisTurn,failureReason);
-            isTyping = false; stopLoadingAnim(); renderUI(); saveGameState();
+            isTyping = false; stopLoadingAnim();
+            if(actionSucceeded && gameState.worldProtocol701?.pendingBattle?.status==='QUEUED'){
+                const request=gameState.worldProtocol701.pendingBattle;
+                delete gameState.worldProtocol701.pendingBattle;
+                try{
+                    const launched=v682StartTeamBattle([request.npcId]);
+                    if(!launched)appendLogData('系統','【戰鬥未啟動】正式戰鬥條件未滿足，敵人沒有被判定死亡。','system',false,true);
+                }catch(e){appendLogData('系統','【戰鬥啟動異常】'+String(e.message||e).slice(0,120),'system',false,true);}
+            }
+            renderUI(); saveGameState();
             if(inputEl) inputEl.value = "";
         }
     }
@@ -10903,15 +12335,19 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
       for(const id of allies){const n=gameState.npcRegistry[id];const cp=v682Rating(n);units.push({id,team:'player',name:n.name,power:cp,hp:Math.max(20,Number(n.hp)||cp*2),maxHp:Math.max(20,Number(n.hp)||cp*2),guard:false,stamina:100});}
       for(const id of ids){const n=gameState.npcRegistry[id];const cp=v682Rating(n);units.push({id,team:'enemy',name:n.name,power:cp,hp:Math.max(20,Number(n.hp)||cp*2),maxHp:Math.max(20,Number(n.hp)||cp*2),guard:false,stamina:100});}
       const b={id:'TEAM682:'+Date.now()+':'+Math.random().toString(36).slice(2),location:String(gameState.location),turn:0,units,actions:[],status:'active',last:'雙方進入戰鬥；NPC 依狀況選擇集火、防禦、救援或撤退。'};
-      v682State().battle=b;appendLogData('天道',`【團隊戰鬥】${units.filter(u=>u.team==='enemy').map(u=>u.name).join('、')}進入交戰。`,'system',false,true);renderUI();saveGameState();return true;
+      const draft=structuredClone(gameState);
+      v682State(draft).battle=b;
+      worldCommitPrepared(gameState,draft,'BATTLE_START');
+      appendLogData('天道',`【團隊戰鬥】${units.filter(u=>u.team==='enemy').map(u=>u.name).join('、')}進入交戰。`,'system',false,true);renderUI();saveGameState();return true;
     }
     function v682Turn(tactic='attack',targetId=null,skillIndex=-1){
-      const v=v682State(),b=v.battle;if(!b||b.status!=='active'||isTyping||gameState.isDead)return false;
-      if(b.location!==String(gameState.location)){b.status='cancelled';v.battle=null;renderUI();saveGameState();return false;}
+      const draft=structuredClone(gameState);
+      const v=v682State(draft),b=v.battle;if(!b||b.status!=='active'||isTyping||gameState.isDead)return false;
+      if(b.location!==String(draft.location)){b.status='cancelled';v.battle=null;worldCommitPrepared(gameState,draft,'BATTLE_CANCEL');renderUI();saveGameState();return false;}
       const self=b.units.find(u=>u.id==='PLAYER'),living=(team)=>b.units.filter(u=>u.team===team&&u.hp>0&&!u.fled);
       if(!self||self.hp<=0)return false;
       const log=[];b.turn++;
-      const skill=(Array.isArray(gameState.skills)&&Number.isInteger(skillIndex))?gameState.skills[skillIndex]:null;
+      const skill=(Array.isArray(draft.skills)&&Number.isInteger(skillIndex))?draft.skills[skillIndex]:null;
       function attack(att,target,type='attack',boost=0){
         if(!target||att.hp<=0||att.fled)return;
         const ratio=att.power/Math.max(1,target.power);
@@ -10950,17 +12386,22 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
           attack(enemy,target,Math.random()<.16?'feint':'attack');
         }
       }
-      gameState.hp=Math.max(0,self.hp);
-      for(const u of b.units.filter(u=>u.id!=='PLAYER')){const npc=gameState.npcRegistry?.[u.id];if(npc){npc.hp=Math.max(1,Math.floor(u.hp));if(u.hp<=0)npc.wounded=true;}}
+      draft.hp=Math.max(0,self.hp);
+      for(const u of b.units.filter(u=>u.id!=='PLAYER')){const npc=draft.npcRegistry?.[u.id];if(npc){npc.hp=Math.max(1,Math.floor(u.hp));if(u.hp<=0)npc.wounded=true;}}
       if(b.status==='active'&&!living('enemy').length)b.status='won';
       if(b.status==='active'&&!living('player').length)b.status='lost';
       if(b.status!=='active'){
-        ueFinalizeBattle(gameState,b);
-        v688BattleRecord(gameState,b);
+        ueFinalizeBattleCore(draft,b);
+        v688BattleRecord(draft,b);
         v.roundLog.push({id:b.id,turn:b.turn,result:b.status,day:gameState.daysPassed,units:b.units.map(u=>({id:u.id,hp:u.hp,fled:!!u.fled}))});
         v.roundLog=v.roundLog.slice(-100);v.battle=null;
       }
-      b.last=log.join(' ');gameState.daysPassed=(Number(gameState.daysPassed)||0)+.05;
+      b.last=log.join(' ');draft.daysPassed=(Number(draft.daysPassed)||0)+.05;
+      worldCommitPrepared(gameState,draft,'BATTLE_TURN');
+      if(b.status==='won'){
+          for(const foe of b.units.filter(u=>u.team==='enemy'))
+              v701AdvancePlans(gameState,[{kind:'ATTACK',name:foe.name,status:'BATTLE_WON'}]);
+      }
       appendLogData('天道',`【團戰第 ${b.turn} 回合】${b.last}${b.status!=='active'?'｜結果：'+b.status:''}`,'system',false,true);
       renderUI();saveGameState();return true;
     }
@@ -11363,7 +12804,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 locEl.textContent = `位置: ${n.location || "未知"}`;
 
                 const favorEl = document.createElement("div"); favorEl.className = "npc-favor";
-                favorEl.textContent = `好感: ${fav} [${getNpcRelationText(fav)}] | 信任: ${Number(n.trust)||0} | 敬畏: ${n.relationship.awe || 0} | 利益: ${n.relationship.profit || 0}`;
+                favorEl.textContent = `好感: ${fav} [${getNpcRelationText(fav)}] | 信任: ${Number(n.trust)||0} | 敬畏: ${n.relationship?.awe || 0} | 利益: ${n.relationship?.profit || 0}`;
 
                 info.appendChild(nameEl); info.appendChild(locEl); info.appendChild(favorEl);
                 top.appendChild(info); card.appendChild(top);
@@ -11524,12 +12965,21 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState);v694Migrate(gameState); gameState.version = "6.98"; gameState.maxHp = getMaxHp(gameState);
-        conversationHistory = conversationHistory.slice(-100);
         try {
-            ueSyncAssetRegistry(gameState,"SAVE_SYNC");
-            const payload = { state: gameState, logs: storyLogData, history: conversationHistory, schemaVersion:V694_SCHEMA };
-            localStorage.setItem("blade_v600_save", JSON.stringify(payload));
+            // Save performs migration and asset synchronization on a detached world.
+            // A failed write/verification must not leave partially migrated live data.
+            const staged=structuredClone(gameState);
+            ensureWorldMemory(staged);v694Migrate(staged);
+            v701Migrate(staged);staged.version="7.07";staged.maxHp=getMaxHp(staged);
+            ueSyncAssetRegistry(staged,"SAVE_SYNC");
+            const saveIssues=[...worldInvariantIssues(staged),...v701ProtocolIssues(staged)];
+            if(saveIssues.length)throw new Error('世界狀態不一致：'+saveIssues.join(','));
+            const history=conversationHistory.slice(-100);
+            const payload = { state: staged, logs: storyLogData, history, schemaVersion:V694_SCHEMA };
+            const serialized=JSON.stringify(payload);
+            localStorage.setItem("blade_v600_save", serialized);
+            worldCommitPrepared(gameState,staged,'SAVE_COMMIT');
+            conversationHistory=history;
             return true;
         } catch (error) {
             console.error("Save failed; in-memory progress retained", error);
@@ -11555,21 +13005,35 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 storyLogData = Array.isArray(pkg.logs) ? pkg.logs : [];
                 conversationHistory = Array.isArray(pkg.history) ? pkg.history.slice(-100).filter(x=>x && typeof x.role==="string").map(x=>({role:x.role,content:typeof x.content==="string"?x.content:(Array.isArray(x.parts)?x.parts.map(p=>String(p.text||"")).join("\n"):"")})) : [];
             } catch (e) {
+                console.error('存檔讀取失敗，保留原始儲存資料供修復',e);
                 gameState = getDefaultGameState();
+                openGameModal('存檔讀取異常','原始存檔已保留在瀏覽器儲存空間，請先備份後再繼續遊戲。');
             }
         }
-        v694Migrate(gameState);v689RepairVerifiedSect(gameState);
+        v694Migrate(gameState);v701Migrate(gameState);v689RepairVerifiedSect(gameState);
         sect690Core(gameState);
+        const loadedIssues=worldInvariantIssues(gameState);
+        if(loadedIssues.length){
+            console.error('存檔遷移後驗證失敗，原始儲存資料仍保留',loadedIssues);
+            openGameModal('存檔需檢查','發現：'+loadedIssues.join(',')+'。原始存檔未覆蓋，請先匯出備份。');
+        }
         renderUI(); renderStoryLogs();
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState);v694Migrate(gameState); gameState.version = "6.98"; gameState.maxHp = getMaxHp(gameState);ueSyncAssetRegistry(gameState,"EXPORT_SYNC");
-        const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory, schemaVersion:V694_SCHEMA };
+        let staged;
+        try{
+            staged=structuredClone(gameState);
+            ensureWorldMemory(staged);v694Migrate(staged);
+            v701Migrate(staged);staged.version="7.07";staged.maxHp=getMaxHp(staged);ueSyncAssetRegistry(staged,"EXPORT_SYNC");
+            const exportIssues=[...worldInvariantIssues(staged),...v701ProtocolIssues(staged)];
+            if(exportIssues.length)throw new Error(exportIssues.join(','));
+        }catch(error){openGameModal('匯出前驗證失敗','世界狀態異常：'+String(error.message||error)+'。原資料未修改，請保留現有存檔供修復。');return false;}
+        const saveObj = { state: staged, logs: storyLogData, history: conversationHistory, schemaVersion:V694_SCHEMA };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v698_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v704_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
@@ -11587,8 +13051,8 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             throw new Error("存檔等級或靈石超出範圍。");
         if (typeof raw.location !== "string" || !Array.isArray(raw.inventory)) throw new Error("存檔缺少地點或背包。");
         for (const item of raw.inventory) {
-            if (!object(item) || typeof item.name !== "string" || !item.name.trim() || !Number.isSafeInteger(item.quantity) || item.quantity <= 0)
-                throw new Error("背包物品格式無效。");
+            if (!object(item) || typeof item.name !== "string" || !item.name.trim() || !Number.isSafeInteger(item.quantity) || item.quantity <= 0 || item.quantity > 1000000)
+                throw new Error("背包物品格式無效或超過安全限制。");
         }
         if (pkg.logs !== undefined && (!Array.isArray(pkg.logs) || pkg.logs.some(x => !object(x) || typeof x.role !== "string" || typeof x.content !== "string")))
             throw new Error("日誌格式無效。");
@@ -11599,7 +13063,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
             content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.98"; v694Migrate(state);state.maxHp = getMaxHp(state);
+        v701Migrate(state);state.version = "7.07"; v694Migrate(state);state.maxHp = getMaxHp(state);
+        const importedIssues=[...worldInvariantIssues(state),...v701ProtocolIssues(state)];
+        if(importedIssues.length)throw new Error('存檔遷移後完整性檢查失敗：'+importedIssues.join(','));
         return {state, logs: structuredClone(pkg.logs || []), history, schemaVersion:V694_SCHEMA};
     }
     function importSave(e) {
