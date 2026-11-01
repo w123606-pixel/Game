@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V6.94｜極限容錯、財產守恆與安全授權修復版</title>
+    <title>九州裂天錄 V6.99｜語意授權、任務物權與長期探索修復</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -724,8 +724,12 @@
             };
             if (!canonicalDef) {
                 // 未登錄物品不接受來源端自行授予出售、丟棄或拆解權限；待明確登錄後再開放。
-                item.canSell = false;
-                item.canDrop = false;
+                const certifiedFind=Boolean(isObj && itemObjOrName.ueLegalStatus==='verified_scene_find' &&
+                    /^PICKUP:698:FIND:698:[0-9]+$/.test(String(itemObjOrName.ueProvenanceEvent||'')) &&
+                    itemObjOrName.ueLegalOwnerId==='PLAYER' && !incomingQuest &&
+                    !/(?:傳承|至寶|仙品|神器|主宰|聖品|禁物|血書|密令|委託令)/.test(name));
+                item.canSell=certifiedFind && meta.canSell!==false && !['key','special','unidentified','fragment'].includes(meta.type);
+                item.canDrop=certifiedFind && meta.canDrop!==false && !['key','special','unidentified','fragment'].includes(meta.type);
                 item.canDisassemble = false;
             }
             if (canonicalDef) {
@@ -782,9 +786,10 @@
             if(!values.length) throw new Error(`${label}缺少物品數量。`);
             const quantity=economyInteger(values[0],`${name}數量`,1,9999);
             if(values.some(v=>economyInteger(v,`${name}數量`,1,9999)!==quantity)) throw new Error(`${name}數量欄位矛盾。`);
-            const tier=obj.tier || obj.rarity || null;
+            const fixed=v698CleanItemProposal(obj);
+            const tier=fixed.tier || fixed.rarity || null;
             if(tier && !Object.hasOwn(RARITY_TIERS,tier)) throw new Error(`${name}品階無效。`);
-            return {...obj,name,quantity,tier};
+            return {...fixed,name,quantity,tier};
         });
     }
     function quoteEconomyService(s,purpose) {
@@ -4109,7 +4114,7 @@ ${wm.revealedSecrets.slice(-30).map(x => typeof x === "string" ? x : `${x.subjec
 ‧ 當前場景可互動 NPC：[${aliveNpcs || '無'}]
 ‧ 當前背包物品：[${invListStr}]
 
-【V6.89 對話交易高優先規則】詢價、議價、寄售、借貸、僱用、交換、黑市、拍賣時，NPC 須說明唯一明確的報價、物品、數量與身份。報價不是成交；付款與物品移轉一律由前端財產核心驗證。買賣、寄售、拍賣、交換不得透過 AI 的 inventoryDelta、economyOperation 或 tradeOffer 憑空創造物品。賣方必須具有已登錄的 inventory 與合法所有權；借貸、押金、薪資須有可追溯的契約及實際資金。NPC 可以拒絕、反報價或提出條件，不得在 story 中宣稱已付款或完成交易，除非核心明確完成結算。若商人為持續交易對象，應依持續關係註冊為 persistent NPC 並登錄實際庫存與資金。人物不是物品，任何拘禁、救援及人口交易犯罪事件必須查核實體 NPC 與既有拘禁紀錄。
+【V6.89 對話交易高優先規則】詢價、議價、寄售、借貸、僱用、交換、黑市、拍賣時，NPC 須說明唯一明確的報價、物品、數量與身份。報價不是成交；付款與物品移轉一律由前端財產核心驗證。買賣、寄售、拍賣、交換不得透過 AI 的 inventoryDelta、economyOperation 或 tradeOffer 憑空創造物品。玩家出售物品必須持有合法所有權；普通店家可依 V6.97 有限動態供應規則交付，稀有特殊商品仍須正式來源；借貸、押金、薪資須有可追溯的契約及實際資金。NPC 可以拒絕、反報價或提出條件，不得在 story 中宣稱已付款或完成交易，除非核心明確完成結算。若商人為持續交易對象，應依持續關係註冊為 persistent NPC 並登錄實際庫存與資金。人物不是物品，任何拘禁、救援及人口交易犯罪事件必須查核實體 NPC 與既有拘禁紀錄。
 ?? AI 必須嚴格遵守的【八大鐵律】：
 1. [結算與因果]：每回合必須回傳 expDelta、daysPassedDelta、inventoryDelta，但允許 expDelta=0、daysPassedDelta=0、inventoryDelta=[]。不得為了讓玩家開心而保證成功、送出獎勵或憑空增加物品；高風險行動可成功、部分成功、失敗，必須符合能力、情報、準備與代價。失敗也要推進合理後果，不可無故懲罰。
 2. [考核費／服務費] 宗門報名只由 NPC 口頭明確報價，AI 不得回傳扣費或加錢提案，economyOperation={"kind":"reward","fee":0}、inventoryDelta:[]、spiritStonesDelta:0、sectDelta:null。玩家隨後口頭同意的費用由前端服務核心單獨扣款和核發號牌；報名≠報到≠考核通過≠正式入宗，不可由 AI 故事直接宣稱任何核心權限完成。\n2A. [V6.88 對話交易授權] NPC 的交易報價與同意須有可指認且已登錄的 NPC、庫存、價金及數量。一般交易的 JSON 只描述故事與已知報價，不得透過 inventoryDelta、inventoryRemoveDelta、economyOperation 或 tradeOffer 直接購買、拍賣、交換、寄售或付費；保留這些欄位的空值，等待玩家下一句話由統一交易核心直接結算。對未能查證物品來源者，請先讓玩家與 NPC 談妥並取得庫存，而非發送不存在的商品。可被追溯的合法採集、製作與正式任務獎勵另依原有核心規則。
@@ -4837,7 +4842,7 @@ JSON 輸出格式範例：
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
         // Retain V6.90 membership metadata that the legacy normalizer does not know.
         if(valid && raw.sect && typeof raw.sect==='object')s.sect={...raw.sect,...normalized.sect};
-        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "6.96";
+        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "6.98";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -5673,6 +5678,7 @@ JSON 輸出格式範例：
     // V6.52: AI/任務/劇情獎勵只提供物品提案；分類與權限由核心解析，不接受 AI 自行授權。
     function validateIncomingItemProposal(rawItem, label = '物品') {
         if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) throw new Error(`${label}格式無效。`);
+        rawItem=v698CleanItemProposal(rawItem);
         const name = cleanNameStrict(rawItem.name);
         if (!name) throw new Error(`${label}缺少名稱。`);
         const quantity = economyInteger(rawItem.quantity, `${label}數量`, 1, 9999);
@@ -6770,6 +6776,8 @@ JSON 輸出格式範例：
 【固定世界】${canon}
 【近期真實記憶】${String(wm.recentSummary||'').slice(0,550)}；紀事:${JSON.stringify(recent)}；未結事件:${JSON.stringify(threads)}
 【核心快照 SSOT】${JSON.stringify(snap)}
+【V6.98 已確認委託、護衛與場景物品，不可推翻】${v698PromptContext(gameState)}
+【通用物品規格】物品的品質 tier 只填凡品/下品/中品/上品/極品/仙品；未鑑定不屬於品階，請用 identified:false；殘破為保存狀況。玩家收起物品後，不能只用故事宣稱得到，須由核心場景拾取確認；不得自行發放靈石。普通NPC委託的接受、護衛受聘及隨隊出發必須持續記憶，不可無因重置成路人。
 【V6.90 勢力身分】18 個主要勢力各有專屬階級。資質卓越可獲破格真傳候選，但必須由宗門核心的正式使者審核、玩家接受並入籍；單純 NPC 敘事、宗主自稱、收徒口頭承諾、AI sectDelta 不能擅自解鎖階級、職務、功勳或宗門資產。加入、晉升、退出、叛宗與貢獻領用可在故事對話中辦理，禁止自訂數額獲得貢獻。師承、職務及正式階級分開，客卿/盟會會員不自動擁有宗主權限。叛宗只產生調查與關係後果，不憑空通緝、沒收私人合法財產。
 【財產／考核權利】已核發的號牌與資格必須被承認，不可要求同一筆考核再次繳費；已登記不等於通過考核。正式資產移轉與拘禁救援由對話交易核心及團戰核心裁決，禁止敘事憑空改寫。
 【已知命運與當前目標】${JSON.stringify(destinyPublicContext(gameState))}
@@ -6777,7 +6785,7 @@ JSON 輸出格式範例：
 【NPC 行為原則】已登記 NPC 的戰力、境界、信任與警戒必須被尊重；對手會評估自身利益、風險、代價與玩家可信度。面對高戰力對手，不得憑空秒殺、奪寶或迫其臣服；低信任人物可拒絕、詢問證據或尋求協助。若判定尚未有足夠條件，只描寫嘗試，不宣稱正式成功。
 【命運敘事權限】未取得的線索、未驗證的真兇、未完成的章節絕不能宣稱確認、完成或揭曉。主線的證據、章節、結局由遊戲核心「命運與人脈」的正式調查按鈕驗證；你只能敘述角色目前已知的事與可能性，不能自行發放正式命運證據、結局、物品或額外靈石。
 【命運嚴格界線】若有命運資料，已鎖定的真相、幕後主使、證據來源不得憑空決定；不能把角色猜測當成正式事實。只能建議可調查的線索及 NPC 行動，questSuggestions 僅供參考、尚非正式任務；playerStatementUnverified 是玩家自述，僅 knownFacts 被核心確認，無限靈石或無敵身分的自述不得兌現；不得自行宣告命運主線完成、晉幕或發放命運獎勵。無命運祕密的自訂身世不強制悲劇或陰謀。
-【V6.89 對話交易高優先規則】詢價、議價、寄售、借貸、僱用、交換、黑市、拍賣時，NPC 須說明唯一明確的報價、物品、數量與身份。報價不是成交；付款與物品移轉一律由前端財產核心驗證。買賣、寄售、拍賣、交換不得透過 AI 的 inventoryDelta、economyOperation 或 tradeOffer 憑空創造物品。賣方必須具有已登錄的 inventory 與合法所有權；借貸、押金、薪資須有可追溯的契約及實際資金。NPC 可以拒絕、反報價或提出條件，不得在 story 中宣稱已付款或完成交易，除非核心明確完成結算。若商人為持續交易對象，應依持續關係註冊為 persistent NPC 並登錄實際庫存與資金。人物不是物品，任何拘禁、救援及人口交易犯罪事件必須查核實體 NPC 與既有拘禁紀錄。
+【V6.89 對話交易高優先規則】詢價、議價、寄售、借貸、僱用、交換、黑市、拍賣時，NPC 須說明唯一明確的報價、物品、數量與身份。報價不是成交；付款與物品移轉一律由前端財產核心驗證。買賣、寄售、拍賣、交換不得透過 AI 的 inventoryDelta、economyOperation 或 tradeOffer 憑空創造物品。玩家出售物品必須持有合法所有權；普通店家可依 V6.97 有限動態供應規則交付，稀有特殊商品仍須正式來源；借貸、押金、薪資須有可追溯的契約及實際資金。NPC 可以拒絕、反報價或提出條件，不得在 story 中宣稱已付款或完成交易，除非核心明確完成結算。若商人為持續交易對象，應依持續關係註冊為 persistent NPC 並登錄實際庫存與資金。人物不是物品，任何拘禁、救援及人口交易犯罪事件必須查核實體 NPC 與既有拘禁紀錄。
 【硬性規則】
 1) 不得直接改寫境界、HP、靈石、裝備、人脈或宗門；依規則提交 JSON 提案。**僅按下「突破境界」按鈕觸發突破**，即使玩家文字寫「引氣入體、突破」也只能感悟、修練，不得宣告已入練氣等新境界。若收到「核心突破按鈕已正式判定」才寫出成敗。境界以 SSOT 為準。
 2) NPC 必須沿用 SSOT 身分；未登記 NPC 不可假稱過去已建立關係。路人、一次性商家、普通敵人不進永久登記。只有可持續關係（師徒、重要任務、長期合作）才放 npcDelta.created，附 persistent:true、importance、relationship:{favorability:0,awe:0,profit:0}，獨立 trust(−100..100) 與 knownFacts。updated 僅限既有 NPC。死者不復活。
@@ -7029,7 +7037,7 @@ JSON 輸出格式範例：
         if (__liveQaRuntime?.active) __liveQaRuntime.currentCalls++;
         const customModel = document.getElementById("api-model").value.trim() || "gemini-3.5-flash-lite";
         const cleanKey = apiKey.trim();
-        const contents = conversationHistory.slice(-6).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: String(m.content||'').slice(-2400) }] }));
+        const contents = conversationHistory.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: String(m.content||'').slice(-1500) }] }));
         if (sceneRepair) {
             const instruction = repairKind === 'injury'
                 ? 'HP CONSISTENCY REPAIR: The story explicitly describes the PLAYER being injured, but JSON has no negative hpDelta. If injury occurred, supply negative integer hpDelta and hpReason. Otherwise revise only story to an uninjured outcome. Preserve all other fields. Return complete JSON.'
@@ -7574,7 +7582,7 @@ JSON 輸出格式範例：
     function v689ConservativeScene(s,story,action){
         const mode=['IDLE','DIALOGUE','HAZARD','DANGER'].includes(s.scenarioMode)?s.scenarioMode:'IDLE';
         const threat=Array.isArray(s.activeThreats)?structuredClone(s.activeThreats):[];
-        return {story:'本次僅完成安全的對話與觀察，未執行任何付款、財產移轉、考核或宗門身分變更。請依目前資訊繼續行動。',
+        return {story:`你嘗試${String(action||'觀察周遭').slice(0,50)}，但眼前的線索尚不足以確認新的發現。你仍可換個方向查探或繼續前行。`,
             location:s.location,scenarioMode:mode==='IDLE'&&threat.length?'HAZARD':mode,activeThreats:threat,
             expDelta:0,hpDelta:0,daysPassedDelta:0,inventoryDelta:[],inventoryRemoveDelta:[],lostItems:[],
             spiritStonesDelta:0,economyOperation:{kind:'reward',fee:0},tradeOffer:null,actionOutcome:{result:'neutral',reason:'不完整的AI結算資料被保守忽略'}};
@@ -9107,6 +9115,653 @@ JSON 輸出格式範例：
         return {contracts:v.contracts.length,auctions:v.auctions.length,consignments:v.consignments.length,titles:v.titles.length,incidents:v.proceedings.length,issues};
     }
 
+    // ===== V6.97: bounded narrative-market supply, scene finds, verified wildlife =====
+    // Narrative can offer ordinary goods and reveal findable objects, but NEVER settle money/items itself.
+    function v697State(s){
+        if(!s.economy||typeof s.economy!=='object')s.economy={receipts:[],notifiedIds:[]};
+        if(!s.economy.v697||typeof s.economy.v697!=='object')s.economy.v697={schema:697,seq:1,quotas:{},marketEvents:[],clues:{},wild:{},events:[],seen:{}};
+        const v=s.economy.v697;
+        for(const key of ['quotas','clues','wild','seen'])if(!v[key]||typeof v[key]!=='object'||Array.isArray(v[key]))v[key]={};
+        for(const key of ['marketEvents','events'])if(!Array.isArray(v[key]))v[key]=[];
+        if(!Number.isSafeInteger(v.seq)||v.seq<1)v.seq=1;
+        return v;
+    }
+    function v697MarketPlace(s){
+        const loc=String(s.location||'');
+        return /(?:商盟|商會|店|鋪|坊市|書肆|商行|貨棧|集市|市集|交易所|拍賣場)/.test(loc)&&!/(?:廢棄|荒廢|遺址|殘骸|戰場)/.test(loc);
+    }
+    function v697OrdinaryKind(name){
+        const n=cleanNameStrict(name);
+        if(/^(?:聚氣丹|培元丹|止血丹|回氣丹|凝神丹|補氣丹|養氣丹)$/.test(n))return 'consumable';
+        if(/^(?:靈草|靈木|靈礦|符紙|空玉瓶|普通藥草|麻布|低階靈植種子)$/.test(n))return 'material';
+        if(/(?:書|經|要訣|實錄|初解|典籍|手札|筆記|圖鑑|圖譜|草本|靈植|藥典|丹方入門|冊|卷)/.test(n))return 'knowledge';
+        return null;
+    }
+    function v697OrdinaryItem(name,price,qty=1){
+        const n=cleanNameStrict(name),p=Number(price),q=Number(qty);
+        if(!n||n.length<2||n.length>64||!Number.isSafeInteger(p)||p<1||p>2000||!Number.isSafeInteger(q)||q<1||q>3)return false;
+        if(/(?:上古|太古|太乙|造化|鴻蒙|混沌|神級|神品|神功|仙品|仙器|仙丹|神器|主宰|聖器|聖品|天階|地階|鎮派|禁術|無上|唯一|至寶|絕世|不朽|不死|極品|傳承核心|宗門機密|秘傳|真傳|核心傳承|祖傳|家傳|神祕古戒|神秘古戒)/.test(n))return false;
+        if(/(?:古戒|令牌|信物|鑰匙|寶庫|洞府玉簡|契約|通行證|官方文書|地契)/.test(n))return false;
+        return Boolean(v697OrdinaryKind(n));
+    }
+    function v697MerchantName(story){
+        const t=v691Normalize(story);
+        const names=[...t.matchAll(/([\u4e00-\u9fff]{1,4}(?:掌櫃|老闆|店主|書商|店員))(?=說|道|答|表示|報價|開口|見|聽|微笑|點頭|：|:)/g)].map(m=>m[1]);
+        return [...new Set(names)].length===1?names[0]:null;
+    }
+    function v697EnsureMerchant(s,story){
+        if(!v697MarketPlace(s)||!/(?:《[^》]+》|(?:售價|索價|靈石))/.test(story))return null;
+        const t=v691Normalize(story),st=v691State(s);
+        // Do not bootstrap a merchant solely from the player's utterance; only a narrator's quote may register a vendor.
+        let name=v697MerchantName(t);
+        const local=Object.values(s.npcRegistry||{}).filter(n=>n&&n.name&&n.id&&n.is_alive!==false&&n.status!=='DEAD'&&String(n.location)===String(s.location));
+        if(!name){
+            if(local.length===1&&/(?:掌櫃|老闆|店主|書商)/.test(local[0].name))return local[0];
+            if(local.length || !/(?:掌櫃|店主|店員|老闆).{0,25}(?:說|道|表示|報價|開口|報出|索價)/.test(t))return null;
+            name='本店掌櫃';
+        }
+        const exact=local.filter(n=>v691Normalize(n.name)===name);
+        if(exact.length===1)return exact[0];
+        if(exact.length>1||local.some(n=>v691Normalize(n.name).endsWith('掌櫃')&&v691Normalize(n.name)!==name))return null;
+        const id='SHOP697:'+name+':'+String(s.location).slice(0,45);
+        const prev=s.npcRegistry?.[id];if(prev)return prev;
+        if(!s.npcRegistry||typeof s.npcRegistry!=='object')s.npcRegistry={};
+        const npc={id,name,location:String(s.location),role:'商店掌櫃',profession:'商人',inventory:[],ueWallet:0,
+            is_alive:true,status:'ACTIVE',relationship:{favorability:0,awe:0,profit:0},trust:0,goals:[],level:0,hp:30,maxHp:30,
+            persistent:true,isImportant:true,importance:'important',createdDay:Number(s.daysPassed)||0,
+            v697CommercialOnly:true};
+        s.npcRegistry[id]=npc;v697State(s).events.push({kind:'merchant_registered',npcId:id,location:s.location,day:s.daysPassed||0});
+        return npc;
+    }
+    function v697QuoteUpgrade(s,story){
+        if(!v697MarketPlace(s))return [];
+        const v=v697State(s),st=v691State(s),actor=v697EnsureMerchant(s,story),out=[];
+        if(!actor)return out;
+        // Upgrade only fresh prices demonstrably quoted by this very merchant; do not revive expired quotations.
+        for(const o of st.offers.filter(x=>x.status==='unverified'&&x.actorId===actor.id&&x.location===s.location&&x.day===(s.daysPassed||0))){
+            if(!v697OrdinaryItem(o.itemName,o.amount,o.quantity))continue;
+            if(!v691Normalize(story).includes('《'+o.itemName+'》'))continue;
+            const key=actor.id+'|'+o.itemName+'|'+(s.daysPassed||0);
+            if((v.quotas[key]||0)>=3)continue;
+            o.status='open';o.dynamicSupply=true;o.marketKey=key;o.sourceId=null;o.fingerprint=null;
+            o.marketReason='有上限的普通商業供貨承諾';out.push(o);
+        }
+        return out;
+    }
+    function v697CaptureSimpleStockQuote(s,story){
+        // Ordinary non-book goods may be spoken without 《》. Require one unambiguous named item and one price.
+        if(!v697MarketPlace(s)||/《[^》]+》/.test(story))return [];
+        const st=v691State(s),v=v697State(s),npc=v697EnsureMerchant(s,story);
+        if(!npc)return [];
+        const t=v691Normalize(story),whitelist=['聚氣丹','培元丹','止血丹','回氣丹','凝神丹','補氣丹','養氣丹','靈草','靈木','靈礦','符紙','空玉瓶','普通藥草','麻布','低階靈植種子'];
+        const matches=whitelist.filter(n=>t.includes(n));
+        const amounts=v691Amounts(t);
+        if(matches.length!==1||amounts.length!==1||amounts[0].currency!=='下品')return [];
+        const name=matches[0],amount=amounts[0].amount;
+        if(!v697OrdinaryItem(name,amount,1))return [];
+        const existing=st.offers.find(o=>o.status==='open'&&o.actorId===npc.id&&o.itemName===name&&o.amount===amount&&o.location===s.location);
+        if(existing)return [existing];
+        const key=npc.id+'|'+name+'|'+(s.daysPassed||0);
+        if((v.quotas[key]||0)>=3)return [];
+        const rec={id:`V691:Q:${st.seq++}`,kind:'purchase',actorId:npc.id,actorName:npc.name,itemName:name,quantity:1,amount,
+            location:String(s.location),day:Number(s.daysPassed)||0,status:'open',dynamicSupply:true,marketKey:key,sourceId:null,fingerprint:null};
+        st.offers.push(rec);st.offers=st.offers.slice(-60);return [rec];
+    }
+    function v697IssueOrdinary(s,offer){
+        if(!offer.dynamicSupply)return;
+        if(!v697MarketPlace(s)||offer.location!==s.location||!v697OrdinaryItem(offer.itemName,offer.amount,offer.quantity))throw new Error('商品類別、場所或價格超出普通商品動態供應規則');
+        const v=v697State(s),key=offer.marketKey;
+        if(!key||((v.quotas[key]||0)+offer.quantity)>3)throw new Error('此商家本日普通供應限額已滿');
+        const merchant=s.npcRegistry?.[offer.actorId];
+        if(!merchant||merchant.is_alive===false||merchant.location!==s.location)throw new Error('商家未在場，不能交貨');
+        if(!Array.isArray(merchant.inventory))merchant.inventory=[];
+        const eventId='ISSUE:697:'+offer.id;
+        if(v.seen[eventId])throw new Error('這筆普通商品來源已使用，不能重複生成');
+        const obj={name:offer.itemName,type:v697OrdinaryKind(offer.itemName),quantity:offer.quantity,quality:'下品',tier:'下品',
+            value:Math.max(1,Math.floor(offer.amount/offer.quantity)),ueLegalOwnerId:merchant.id,
+            ueProvenanceEvent:eventId,ueLegalStatus:'lawful_market_supply',v697MarketSource:true};
+        addItemToInventory(merchant.inventory,obj,offer.quantity);
+        // Unknown but audited market goods default to non-transferable in the legacy permission
+        // adapter. Permit only THIS minted ordinary supply lot to be delivered.
+        for(const it of merchant.inventory.filter(x=>x.ueProvenanceEvent===eventId&&x.name===offer.itemName)){
+            it.canSell=true;it.canDrop=true;it.isQuestItem=false;it.questLocked=false;
+        }
+        ueSyncAssetRegistry(s,eventId);
+        v695PostItem(s,{kind:'ordinary_market_supply',source:eventId,removed:[],added:[{to:merchant.id,name:obj.name,quantity:offer.quantity}],day:s.daysPassed||0},eventId);
+        v.quotas[key]=(v.quotas[key]||0)+offer.quantity;v.seen[eventId]=true;
+        v.marketEvents.push({id:eventId,itemName:offer.itemName,quantity:offer.quantity,merchantId:merchant.id,day:s.daysPassed||0,reference:offer.id});
+        // The existing verified transfer and receipt logic now handles this created, registered lot.
+    }
+    function v697SceneItem(s){
+        const v=v697State(s),location=String(s.location||'');
+        return v.clues[location+':羊皮紙']||null;
+    }
+    function v697StoryEvent(s,action,story,previousLocation=null){
+        const v=v697State(s),a=v691Normalize(action),t=v691Normalize(story),loc=String(s.location||''),prev=String(previousLocation||''),results=[];
+        if(/(?:羊皮紙|泛黃的紙張|殘缺地圖)/.test(t)&&/(?:石板|角落|廢棄|屋|牆|廟|殘骸|碎石)/.test(t)
+            &&/(?:搜索|搜查|查找|查探|查看|尋找|搜尋|翻找|發現|露出|取出|拾起|撿起)/.test(a)){
+            const key=loc+':羊皮紙';
+            if(!v.clues[key])v.clues[key]={id:'CLUE:697:'+v.seq++,name:'殘缺羊皮紙',location:loc,status:'found',source:'verified_scene_discovery',day:s.daysPassed||0};
+        }
+        const clue=v697SceneItem(s)||(prev?v.clues[prev+':羊皮紙']:null);
+        if(clue&&clue.status==='found'&&/(?:羊皮紙|石板下的紙|紙片)/.test(a)&&/(?:取出|拿起|拾起|撿起|帶走|收入|撿走|收好|收起)/.test(a)
+            && /(?:羊皮紙|紙張|紙片|殘圖)/.test(t)&&!/(?:未能|沒能|無法|未找到|不存在|被搶|來不及)/.test(t)){
+            const id='PICKUP:697:'+clue.id;
+            if(!v.seen[id]){
+                const before=structuredClone(s.inventory||[]);
+                addItemToInventory(s.inventory,{name:'殘缺羊皮紙',type:'special',quantity:1,isQuestItem:true,questLocked:true,
+                    canSell:false,canDrop:false,identified:true,ueLegalOwnerId:'PLAYER',ueProvenanceEvent:id,ueLegalStatus:'lawful_find',desc:'在廢棄聚落石板下發現的殘缺地圖線索。'},1);
+                ueSyncAssetRegistry(s,id);v695PostItem(s,v695ItemProof(s,'探索拾取',before,s.inventory,id,{location:loc}),id);
+                clue.status='taken';clue.acquiredEvent=id;v.seen[id]=true;
+                results.push('【核心拾取】殘缺羊皮紙 ×1 已正式收入背包；再查看可閱讀線索。');
+            }
+        }
+        // Wild NPC creation is only a combat encounter marker, never an immediate drop or a kill.
+        if(/(?:荒原野狼|野狼)/.test(t)&&/(?:撲|低吼|逼近|靠近|襲|對峙)/.test(t)&&!v.wild[loc]){
+            v.wild[loc]={id:'WILD:697:'+v.seq++,name:'荒原野狼',location:loc,hp:14,maxHp:14,dead:false,harvested:false,turns:0,source:'wild_encounter',day:s.daysPassed||0};
+            results.push('【遭遇紀錄】荒原野狼已進入核心遭遇，須由正式戰鬥判定生死。');
+        }
+        // A narrative kill without a verified combat event cannot create a corpse or loot.
+        return results;
+    }
+    function v697WildRoute(s,raw){
+        const a=v691Normalize(raw),v=v697State(s),loc=String(s.location||''),wolf=v.wild[loc];
+        if(!wolf){if(/(?:解剖.{0,5}狼|剝.{0,4}狼皮|搜刮.{0,4}狼)/.test(a))return {handled:true,text:'尚未有正式確認死亡的野狼屍體，無法解剖或領取戰利品。'};return null;}
+        if(/^(?:我)?(?:解剖|剝皮|搜刮|搜身|處理屍體|取狼皮|收集戰利品)/.test(a)){
+            if(!wolf.dead)return {handled:true,text:'野狼仍活著，尚無合法戰果或屍體可以解剖。'};
+            if(wolf.harvested)return {handled:true,text:'這隻野狼已處理過，不能重複取得戰利品。'};
+            const d=structuredClone(s),dv=v697State(d),w=dv.wild[loc],id='HARVEST:697:'+w.id;
+            try{
+                const before=structuredClone(d.inventory||[]);
+                addItemToInventory(d.inventory,{name:'荒原狼皮',type:'material',quantity:1,ueLegalOwnerId:'PLAYER',ueLegalStatus:'wildlife_harvest',ueProvenanceEvent:id},1);
+                ueSyncAssetRegistry(d,id);v695PostItem(d,v695ItemProof(d,'戰利品解剖',before,d.inventory,id,{corpseId:w.id}),id);
+                w.harvested=true;w.harvestId=id;dv.seen[id]=true;
+                Object.assign(s,d);
+                return {handled:true,text:'你剝取了荒原狼皮 ×1，已由核心記錄來源並收入背包。這隻野狼的屍體已處理，不得重複解剖。未發現可核實的靈石，靈石餘額不變。'};
+            }catch(e){return {handled:true,text:'解剖未完成：'+String(e.message||e)+'；物品未變動。'};}
+        }
+        if(wolf.dead)return null;
+        const fight=/(?:攻擊|交手|搏鬥|戰鬥|纏鬥|拳擊|揮拳|迎戰|打倒|擊殺|反擊|繼續打|正面交手)/.test(a);
+        if(!fight)return null;
+        if(v693NoCommit(a))return null;
+        const d=structuredClone(s),w=v697State(d).wild[loc];
+        w.turns++;const strength=Math.max(1,Number(d.stats?.str||d.stats?.strength||8));
+        const dmg=Math.max(4,Math.min(12,Math.floor(strength/4)+3));
+        w.hp=Math.max(0,w.hp-dmg);
+        let damageTaken=0;
+        if(w.hp>0){damageTaken=Math.max(1,Math.min(6,Math.floor(7-Math.min(4,Number(d.stats?.agi||0)/8))));d.hp=Math.max(1,Number(d.hp||1)-damageTaken);}
+        if(w.hp===0){w.dead=true;w.defeatedDay=d.daysPassed||0;w.verifiedBattleEvent='DEFEAT:697:'+w.id;v697State(d).events.push({id:w.verifiedBattleEvent,kind:'wildlife_defeat',corpseId:w.id,day:d.daysPassed||0});}
+        Object.assign(s,d);
+        return {handled:true,text:w.dead?`你與荒原野狼經過 ${w.turns} 回合交鋒，最終將牠擊倒，核心已確認死亡並留下可解剖的屍體。`:`你奮力擊中荒原野狼，牠仍在抵抗（剩餘體力 ${w.hp}/${w.maxHp}），你受傷 ${damageTaken} 點生命。可繼續戰鬥或設法撤退。`};
+    }
+    function v697GuardStory(s,story,findings=[]){
+        const v=v697State(s),loc=String(s.location||'');
+        let t=String(story||'');
+        // A narrator cannot independently kill a tracked creature or pay an untracked wildlife reward.
+        const wolf=v.wild[loc];
+        if(wolf&&!wolf.dead && /(?:野狼|荒原野狼)/.test(t)&&/(?:氣絕|斷氣|徹底擊殺|已被擊殺|倒地身亡|死去)/.test(t)){
+            t=t.split(/(?<=[。！？!？\n])/).filter(x=>!/(?:氣絕|斷氣|徹底擊殺|已被擊殺|倒地身亡|死去)/.test(x)).join('').trim();
+            t+=(t?'\n':'')+'【遭遇狀態】野狼仍有生命，須經正式戰鬥才能確認擊殺。';
+        }
+        if(/(?:靈石|狼皮|獸皮|羊皮紙)/.test(t) && /(?:收入懷中|收進懷中|塞入懷中|放進袋|收入儲物袋|收好戰利品)/.test(t)
+            && !findings.some(x=>/核心拾取|核心取得/.test(x))){
+            t=t.split(/(?<=[。！？!？\n])/).filter(x=>!/(?:收入懷中|收進懷中|塞入懷中|放進袋|收入儲物袋|收好戰利品)/.test(x)).join('').trim();
+            t+=(t?'\n':'')+'你目前尚未取得經核心結算的實物或靈石。';
+        }
+        return t;
+    }
+    // ===== End V6.97 =====
+    // ===== V6.99: unified authorization and provenance; V6.98-compatible state =====
+    // AI provides scene evidence and proposals; this core owns creation, custody and mission status.
+    function v698State(s){
+        if(!s.economy||typeof s.economy!=='object')s.economy={receipts:[],notifiedIds:[]};
+        if(!s.economy.v698||typeof s.economy.v698!=='object')s.economy.v698={schema:698,seq:1,missions:{},finds:{},processed:{},events:[],warnings:[]};
+        const x=s.economy.v698;
+        for(const k of ['missions','finds','processed'])if(!x[k]||typeof x[k]!=='object'||Array.isArray(x[k]))x[k]={};
+        for(const k of ['events','warnings'])if(!Array.isArray(x[k]))x[k]=[];
+        if(!Number.isSafeInteger(x.seq)||x.seq<1)x.seq=1;
+        return x;
+    }
+    function v698ItemTier(value,name=''){
+        const raw=String(value||'').normalize('NFKC').replace(/\s/g,'');
+        if(!raw)return null;
+        if(Object.hasOwn(RARITY_TIERS,raw))return raw;
+        const alias={'凡階':'凡品','凡級':'凡品','普通':'凡品','普通品':'凡品','凡物':'凡品','無品階':'凡品','一階':'下品','一品':'下品','低階':'下品','低級':'下品','二階':'中品','二品':'中品','三階':'上品','三品':'上品','四階':'極品','四品':'極品'};
+        if(alias[raw])return alias[raw];
+        // Identification and physical condition are NOT a rank. The real rank remains unknown.
+        if(/^(?:未鑑定|未識別|不明|未知|品階不明|無法判定|待鑑定|殘破|破損|陳舊|蒙塵|凡俗)$/.test(raw))return null;
+        // Never downgrade obviously higher/unique grade labels to common goods for safety.
+        if(/仙|聖|神|天階|地階|傳說|絕世|無上|極品/.test(raw+name))return null;
+        return null; // unknown AI vocabulary cannot be an authority for grade
+    }
+    function v698CleanItemProposal(item){
+        if(!item||typeof item!=='object'||Array.isArray(item))return item;
+        const x={...item}, original=x.tier??x.rarity??null;
+        const tier=v698ItemTier(original,x.name||'');
+        if(tier){x.tier=tier;x.rarity=tier;}
+        else if(original){
+            delete x.tier;delete x.rarity;
+            x.v698OriginalTier=String(original).slice(0,32);
+            if(/未鑑|未知|不明|蒙塵|待鑑/.test(String(original))){x.identified=false;x.condition=x.condition||'待鑑定';}
+            else if(/殘破|破損|陳舊/.test(String(original)))x.condition=x.condition||String(original).slice(0,12);
+        }
+        if(x.quality&& !Object.hasOwn(RARITY_TIERS,String(x.quality))){
+            if(/未鑑|未知|不明|蒙塵|待鑑/.test(String(x.quality)))x.identified=false;
+            if(/殘破|破損|陳舊/.test(String(x.quality)))x.condition=x.condition||String(x.quality).slice(0,12);
+            delete x.quality;
+        }
+        return x;
+    }
+    function v698SanitizeSceneItems(raw,action){
+        if(!raw||typeof raw!=='object')return raw;
+        const out={...raw};
+        for(const key of ['inventoryDelta','inventoryRemoveDelta','lostItems'])
+            if(Array.isArray(out[key]))out[key]=out[key].map(v698CleanItemProposal);
+        const a=v691Normalize(action);
+        // Narrative exploration may discover items, but model-created inventory is NOT a receipt.
+        // Remove only attempted unverified finds, not declared canonical rewards from verified events.
+        if(/(?:搜查|搜尋|搜索|查探|探查|查看|找尋|尋找|撿|拾|收起|取出|取回|摸索|翻找|勘察|調查|探尋)/.test(a)
+            && !/(?:買|購|賣|交易|煉|打造|領薪|宗門領|正式獎勵)/.test(a)){
+            if(Array.isArray(out.inventoryDelta))out.inventoryDelta=out.inventoryDelta.filter(x=>{
+                const name=String(x?.name||'');
+                return Boolean(x?.coreAuthorizedSource)&&!/(?:靈石)/.test(name);
+            });
+            // AI cannot remove inventory for free merely because the narrative mentions a find.
+            if(Array.isArray(out.inventoryRemoveDelta))out.inventoryRemoveDelta=[];
+            if(Array.isArray(out.lostItems))out.lostItems=[];
+        }
+        return out;
+    }
+    function v698RestrictedName(name){
+        const n=String(name||'').trim();
+        return !n||n.length>24||/(?:靈石|聖物|神器|仙器|仙丹|仙品|極品|天階|聖階|神品|鎮派|至寶|無敵|上古|太古|傳承核心|法則|元嬰|化神|不死|洞府鑰匙|地契|官印|真傳令|宗主令)/.test(n);
+    }
+    const V698_NOUN='(?:羊皮紙|獸骨|銅環|木牌|令牌|竹簡|玉簡|符紙|信物|古幣|錦囊|手札|殘圖|地圖|紙片|石片|骨片|碎片|鑰匙|口糧|乾糧|靈草|藥草|靈木|靈礦|礦石|藥瓶|藥材|筆記|文書|書冊|布條|玉珮|玉佩|皮卷|戒指|古書|銅錢|短刃|瓷瓶|空玉瓶|鐵塊|銅鏡|小刀|紙條|信件|筆記本)';
+    function v698DiscoverNames(story){
+        const t=String(story||''),names=[];
+        for(const sentence of t.split(/[。！？!？\n]/)){
+            if(!/(?:發現|找到|尋獲|露出|翻出|挖出|拾得|摸到|掉落|藏有|藏著|撿到|取出|遞給|拋給|放在|腳邊)/.test(sentence))continue;
+            if(/(?:並未|沒有|未能|無法|未發現|沒找到|不曾|疑似|聽聞|據說|傳言|幻覺|仿佛|可能是)/.test(sentence))continue;
+            const re=new RegExp('([\\u4e00-\\u9fff]{0,15}'+V698_NOUN+')','g');
+            for(const match of sentence.matchAll(re)){
+                let name=match[1];
+                name=name.replace(/^.*?(?:一枚|一片|一張|一塊|一個|一份|一截|一根|一株|一只|一件|一顆|半截|幾枚|幾片|幾張|數枚|一把)/,'');
+                name=name.replace(/^.*?(?:中的|下面的|內的|附近的|旁的|上的|裡的|背後的|沾著泥土的|泛黃的)/,m=>m.endsWith('泛黃的')?'泛黃的':'');
+                name=name.replace(/^(?:那枚|這枚|那張|這張|那塊|這塊|那件|這件|那個|這個|一枚|一張|一塊|一件|一個|殘留的|發現的)/,'');
+                name=name.replace(/^(?:地上|角落|井口|腳邊|石縫|砂中|黃沙中|井壁|你手中|身旁|手心|內部|裡面|殘骸|周邊|亂石下|下)(?=刻有)/,'');
+                // Keep a short recognizable descriptor, not the whole preceding narrative phrase.
+                const tail=new RegExp('([\\u4e00-\\u9fff]{0,7}'+V698_NOUN+')$').exec(name);
+                name=tail?tail[1]:name;
+                if(/(?:你的|他的|自己的|不過是|彷彿|像是|可能|那枚|這枚)/.test(name))name=name.replace(/^.*?(?:你的|他的|自己的|不過是|彷彿|像是|可能|那枚|這枚)/,'');
+                if(!v698RestrictedName(name)&&!names.includes(name))names.push(name);
+            }
+        }
+        return names.slice(0,5);
+    }
+    // V6.99: one consent gate for all irreversible scene/quest actions.
+    // A user may observe/ask/plan/refuse without issuing an authorization.
+    function v699PositiveAction(action,kind){
+        const a=v691Normalize(action).replace(/[\s，,。！!]+/g,'');
+        if(!a||/[?？]/.test(a))return false;
+        // Resignation is a positive instruction even when it includes '不再同行'.
+        if(kind==='resign')return !/(?:不(?:打算|想|願|要)?(?:辭|辞|離隊|离队|解除|解約|退出)|拒絕辭|拒绝辞)/.test(a)
+            &&/(?:辭去|辞去|辭職|辞职|退出|離隊|离队|解除契約|解約|我不再護送|我不再同行)/.test(a);
+        if(/(?:我不|先不要|絕不|绝不|不要|不用|不(?=.{0,8}(?:撿|拾|取|拿|收|帶|装|裝|交|接|答|同|參加|受聘))|別|别|沒有|没|拒絕|拒绝|禁止|停止|取消|暫緩|暂缓|無意|无意|不願|不愿|無須|无需|不想|打算不|先別|先别|未(?=.{0,6}(?:撿|拾|拿|收|交|答|接受)))/.test(a))return false;
+        // An escort departure is a narrated scene transition, not an item transfer.
+        // The caller additionally requires a positive NPC/world departure event.
+        if(kind==='depart')return /(?:出發|集合|隨隊|随队|跟隊|跟队|啟程|启程|準時前往)/.test(a)
+            &&!/(?:明日再|明天再|下次再|之後再|以后再|改天再|只是問|請問)/.test(a);
+        if(/(?:明天|明日|後天|改天|稍後|稍后|等會|等会|待會|待会|下次|以後|以后|未來|未来|過幾天|过几天|之後再|之后再|將來再|将来再)/.test(a))return false;
+        if(/(?:是否|能否|可否|可以嗎|能不能|可不可以|要不要|是不是|如果|假如|假設|假设|倘若|萬一|万一|例如|比方|我想知道|我想問|詢問|询问|請問|请问|考慮|考虑|計畫|计划|打算|準備|准备)/.test(a))return false;
+        if(/(?:聽說|聽聞|据说|據說|他說|她說|他們說|有人說)/.test(a))return false;
+        const verbs={
+            pickup:/(?:取出|取走|取回|撿起|拾起|撿走|收起|收好|帶走|拿起|拿走|收入|拾取|裝入|拿到|收下)/,
+            accept:/(?:答應|應下|接受|接下|同意|承接|^好$|^行$)/,
+            handover:/(?:交付|交還|交給|遞交|交出|遞給|繳交|呈交)/,
+            resign:/(?:辭去|辞去|辭職|辞职|退出|離隊|离队|不再護送|不再同行|解除契約|解約)/,
+            depart:/(?:出發|集合|隨隊|随队|跟隊|跟队|啟程|启程)/
+        };
+        return Boolean(verbs[kind]?.test(a));
+    }
+    function v699Ident(n){return cleanNameStrict(n).replace(/^(?:一枚|一張|一塊|那枚|這枚|一個|一件|那件|這件)/,'').trim();}
+    function v699ItemMention(action,name){
+        const a=v699Ident(action),n=v699Ident(name);
+        if(!a||!n)return false;
+        if(a.includes(n))return true;
+        // Markings, owner names and color descriptors are identity-bearing; never ignore them.
+        const mark=t=>(t.match(/(?:刻有|寫著|写着|印有|繪有|绘有)([\u4e00-\u9fffA-Za-z0-9]{1,8})(?:字|紋|纹|記號|记号)?/)||[])[1]||'';
+        const am=mark(a),nm=mark(n);
+        if(am&&(!nm||am!==nm))return false;
+        if(nm&&am&&nm!==am)return false;
+        if(/(?:林字|李字|張字|王字|甲字|乙字|東字|西字|南字|北字)/.test(a)&&!a.includes(n)){
+            const chars=(a.match(/[林李張王甲乙東西南北]字/g)||[]);
+            if(chars.length&&!chars.every(x=>n.includes(x)))return false;
+        }
+        // Generic names can target only a UNIQUE active scene item (checked by caller).
+        const nouns=['舊銅環','銅環','木牌','令牌','羊皮紙','獸骨','古幣','靈草','礦石','乾糧','空玉瓶','玉簡','竹簡','符紙','骨片','殘圖','地圖','錦囊','短刃','筆記','書冊','布條','藥瓶','藥草','石片','鐵塊','手札','文書','戒指'];
+        return nouns.some(x=>a.includes(x)&&n.endsWith(x));
+    }
+    function v699UniqueCandidate(action,items){
+        const xs=(items||[]).filter(f=>v699ItemMention(action,f.name));
+        if(xs.length===1)return xs[0];
+        // Explicit exact name takes priority over a generic suffix when several objects exist.
+        const exact=xs.filter(f=>v699Ident(action).includes(v699Ident(f.name)));
+        return exact.length===1?exact[0]:null;
+    }
+    function v699TrimFinds(v){
+        // Keep all outstanding scene objects; archive only already taken / expired records.
+        const ids=Object.keys(v.finds);
+        if(ids.length<=3000)return;
+        const retired=ids.filter(id=>['taken','expired'].includes(v.finds[id]?.status)).slice(0,Math.max(0,ids.length-2200));
+        v.findArchive=v.findArchive||{count:0,lastArchived:null};
+        for(const id of retired){
+            const f=v.finds[id];v.findArchive.count++;v.findArchive.lastArchived={id,day:f.day,status:f.status};
+            delete v.finds[id];
+        }
+        // The processed ledger and per-event asset receipts remain for replay protection.
+    }
+    function v698SameItem(a,b){
+        // Exact item identity: the same generic suffix is not the same physical object.
+        const x=v699Ident(a),y=v699Ident(b);
+        return Boolean(x&&y&&x===y);
+    }
+    function v698PickupIntent(action,name){
+        return v699PositiveAction(action,'pickup')&&v699ItemMention(action,name);
+    }
+    function v698RegisterFind(s,name,location,source,reason='scene'){
+        const v=v698State(s),n=cleanNameStrict(name),loc=String(location||s.location||'');
+        if(v698RestrictedName(n)||!loc)return null;
+        const existing=Object.values(v.finds).find(f=>f.location===loc&&v698SameItem(f.name,n)&&f.status!=='expired'&&(f.status==='found'||f.day===(s.daysPassed||0)));
+        if(existing)return existing;
+        // No infinitely repeatable resource spawn at one scene/day or via repeated generation.
+        const recent=Object.values(v.finds).filter(f=>f.location===loc&&f.day===(s.daysPassed||0));
+        // No hard four-per-day limit; unique source and name still prevent replay farming.
+        if(recent.length>=64)return null;
+        const id='FIND:698:'+v.seq++;
+        const f={id,name:n,location:loc,source:String(source||id),reason,day:s.daysPassed||0,status:'found',quantity:1};
+        v.finds[id]=f;v.events.push({id,kind:'found',item:n,location:loc,day:f.day});
+        if(v.events.length>1500)v.events.splice(0,v.events.length-1500);
+        v699TrimFinds(v);return f;
+    }
+    function v698Pickup(s,f,action,story,previousLocation=null){
+        if(!f||f.status!=='found'||v698RestrictedName(f.name))return null;
+        if(!v698PickupIntent(action,f.name))return null;
+        const text=v691Normalize(story);
+        if(/(?:未能|沒能|無法|來不及|被奪|被搶|未找到|不存在)/.test(text)&&v698SameItem(text,f.name))return null;
+        // Only same scene or immediate retreat after discovery; no remote universal pickups.
+        const loc=String(s.location||'');
+        const justRetreated=(String(previousLocation||'')===f.location && /(?:退回|撤退|退至|退到|安全處|離開現場)/.test(String(action||'')));
+        if(f.location!==loc && !(String(f.location).includes('枯井')&&loc.includes('枯井')) && !justRetreated)return null;
+        const v=v698State(s),id='PICKUP:698:'+f.id;
+        if(v.processed[id])return null;
+        const before=structuredClone(s.inventory||[]);
+        const questTarget=Object.values(v.missions).some(m=>m&&m.kind==='fetch'&&['active','objective_acquired'].includes(m.status)&&v699ItemMention(m.target,f.name));
+        const questLocked=questTarget||f.reason==='npc_quest_handover';
+        const item={name:f.name,type:questLocked?'key':/(?:藥草|靈草|骨片|獸骨|礦石|藥材)/.test(f.name)?'material':'misc',
+            quantity:1,tier:'凡品',identified:!/(未鑑|未解密|神祕|神秘)/.test(f.name),isQuestItem:questLocked,
+            questLocked:questLocked,canSell:!questLocked,canDrop:!questLocked,
+            ueLegalOwnerId:'PLAYER',ueLegalStatus:'verified_scene_find',ueProvenanceEvent:id,v698SourceFind:f.id};
+        addItemToInventory(s.inventory,item,1);
+        ueSyncAssetRegistry(s,id);
+        v695PostItem(s,v695ItemProof(s,'正式場景拾取',before,s.inventory,id,{find:f.id,location:f.location}),id);
+        f.status='taken';f.takeEvent=id;v.processed[id]=true;
+        v.events.push({id,kind:'taken',item:f.name,location:f.location,day:s.daysPassed||0});
+        return `【拾取成功】${f.name} ×1 已正式收入背包。`;
+    }
+    function v698CaptureMissions(s,action,story,priorLocation){
+        const v=v698State(s),a=v691Normalize(action),t=v691Normalize(story),day=s.daysPassed||0,notes=[];
+        const priorSpeech=conversationHistory.slice(-12).map(x=>String(x.content||'')).join(' ');
+        const fetch=v.missions.fetch;
+        const wantsFetch=/(?:取回|找回|尋回|取來|帶回).{0,30}(?:信物|銅環|木牌|舊物)/.test(t);
+        if(wantsFetch&&/(?:引路費|黑市|信物|委託)/.test(t)&&!fetch){
+            const target=(t.match(/(?:信物(?:是|乃)|尋回|取回)(?:一枚|那枚|那件)?([\u4e00-\u9fff「」『』]{2,18}銅環)/)||[])[1]?.replace(/[「」『』]/g,'')||'舊銅環';
+            v.missions.fetch={id:'QUEST:698:FETCH',kind:'fetch',title:'尋回信物',issuer:/(灰袍散修)/.test(t)?'灰袍散修':'委託人',target:target.slice(-24),destination:(t.match(/(?:西邊|東邊|南邊|北邊)[^，。]{0,10}枯井/)||[])[0]||'枯井',status:'offered',createdDay:day,compensation:'黑市引路費抵償',paid:false};
+        }
+        if(v.missions.fetch?.status==='offered'&&v699PositiveAction(a,'accept')
+            &&(/(?:信物|枯井|銅環|委託)/.test(a)||(/^(?:我)?(?:答應|接受|同意)[！!。\s]*$/.test(a)
+                && Object.values(v.missions).filter(m=>m&&m.status==='offered').length===1))){
+            v.missions.fetch.status='active';v.missions.fetch.acceptedDay=day;notes.push('【任務登錄】尋回信物：已接受；尚未取得目標物品。');
+        }
+        let escort=v.missions.escort;
+        if(!escort&&/(?:應徵護衛|招募護衛|聘用護衛|隨行護衛)/.test(a+t)&&/(?:商隊|護衛)/.test(t)){
+            escort={id:'QUEST:698:ESCORT',kind:'escort',title:'商隊護衛',employer:/(?:萬寶商盟)/.test(t+priorSpeech)?'萬寶商盟':(t.match(/(?:[\u4e00-\u9fff]{2,9}商盟|[\u4e00-\u9fff]{2,9}商隊)/)||[])[0]||'商隊',
+                role:'應徵者',status:'negotiating',departure:priorLocation||s.location,destination:'西荒州邊境',pay:null,paid:false,createdDay:day,checkpoints:[]};
+            v.missions.escort=escort;
+        }
+        if(escort){
+            // Capture real offer terms from explicit NPC speech; never hardcode the salary.
+            if(escort.status==='negotiating' && /(?:報酬|薪資|薪酬|酬勞|工錢)/.test(t)){
+                const quote=t.match(/(?:報酬|薪資|薪酬|酬勞|工錢)(?:嘛|是|為|每人|每趟|每次|按路程|：|:|，|[\s]){0,8}[\s\S]{0,32}?(?:[\d零〇一二兩三四五六七八九十百千萬]+)\s*(?:枚|顆|塊)?\s*(?:下品)?靈石/);
+                const amounts=v691Amounts(quote?.[0]||t);
+                if(amounts.length===1&&Number.isSafeInteger(amounts[0].amount)&&amounts[0].amount>=0&&amounts[0].amount<=100000){
+                    escort.pay=amounts[0].amount;escort.payQuotedBy=escort.employer;escort.payQuoteDay=day;
+                }
+            }
+            const positiveHire=/(?:算你過關|錄用你|准你加入|你過關|正式聘用|收你當護衛)/.test(t)
+                &&/(?:號牌|登記|辰時|出發|護衛)/.test(t)
+                &&!/(?:沒有錄用|沒錄用|尚未錄用|未錄用|不錄用|拒絕錄用|不會錄用|沒過關|未過關|不能錄用|錄用名單還未|不會給你|拿不到號牌|不給你號牌|沒有過關)/.test(t);
+            if(escort.status==='negotiating'&&positiveHire){
+                escort.status='employed';escort.role='正式受聘護衛';escort.employedDay=day;
+                // A verified hiring speech that physically hands over a numbered badge may issue ONE credential.
+                if(/(?:號牌|令牌)/.test(t)&&/(?:交給|遞給|拋給|拿著|領取)/.test(t)){
+                    const id='TOKEN:698:'+escort.id;
+                    if(!v.processed[id]){
+                        const before=structuredClone(s.inventory||[]);
+                        const token={name:'商隊護衛號牌',type:'key',tier:'凡品',quantity:1,isQuestItem:true,questLocked:true,
+                            canSell:false,canDrop:false,ueLegalOwnerId:'PLAYER',ueLegalStatus:'verified_hiring_credential',ueProvenanceEvent:id};
+                        addItemToInventory(s.inventory,token,1);
+                        ueSyncAssetRegistry(s,id);v695PostItem(s,v695ItemProof(s,'受聘發放號牌',before,s.inventory,id,{contract:escort.id}),id);
+                        v.processed[id]=true;escort.badgeEvent=id;notes.push('【履約憑證】商隊護衛號牌 ×1 已正式收入背包。');
+                    }
+                }
+                notes.push('【正式僱傭】商隊已錄用你為護衛；報酬按契約待完成後結算。');
+            }
+            if(['employed','enroute'].includes(escort.status)&&v699PositiveAction(a,'resign')
+                &&/(?:商隊|護衛|護送|離隊|离队|隨隊|跟隊)/.test(a)
+                &&/(?:准許|同意|允許|允许|已解除|契約取消|可以離隊|不予挽留|正式解約|收回號牌)/.test(t)
+                &&!/(?:不准|不允許|拒絕|不同意|不得離隊|不同意解約)/.test(t)){
+                escort.status='resigned';escort.role='已離隊前護衛';escort.resignedDay=day;escort.resignLocation=s.location;
+                notes.push('【護衛解約】已正式離隊，未完成之薪資不得自行入帳。');
+            }
+            if(['employed','enroute'].includes(escort.status)&&/(?:隨隊出發|正式踏入|商隊緩緩駛離|隊伍起行|商隊出發)/.test(t)
+                &&v699PositiveAction(a,'depart') && !/(?:未出發|尚未出發|沒有出發|不准出發|拒絕出發|延期出發)/.test(t)){
+                escort.status='enroute';escort.departedDay=escort.departedDay??day;escort.role='隨隊護衛';
+                notes.push('【護衛進度】已隨隊出發，正式僱傭身分保持有效。');
+            }
+            if(escort.status==='enroute'){
+                const place=String(s.location||'');
+                if(place&&!escort.checkpoints.includes(place))escort.checkpoints.push(place);
+                escort.checkpoints=escort.checkpoints.slice(-15);
+                escort.currentLocation=place;
+            }
+            if(escort.status==='enroute'&&/(?:已抵達西荒州邊境|護送任務完成)/.test(t)&&/(?:完成|抵達|到達|交付)/.test(a)){
+                escort.status='arrived';escort.arrivedDay=day;notes.push('【護衛進度】護送抵達，薪資須由正式商隊契約資金結算。');
+            }
+        }
+        // Other NPC-generated commissions have an explicit offer and acceptance stage.
+        // This is intentionally a bounded record, not automatic reward or mission completion.
+        const isGenericOffer=/(?:委託你|委託我|請你|拜託你|替我|幫我)/.test(t)
+            &&/(?:找回|尋回|取回|調查|探查|查明|尋找|查探|送往|送到|護送|保護|收集|帶回)/.test(t)
+            && !/(?:黑市引路費|灰袍散修)/.test(t)
+            &&!/(?:任務已完成|已替你完成|取消委託)/.test(t);
+        if(isGenericOffer&&Object.values(v.missions).filter(m=>m&&['offered','active','objective_acquired','negotiating','employed','enroute'].includes(m.status)).length<64){
+            const type=/(?:找回|尋回|取回|尋找|帶回|收集)/.test(t)?'fetch':/(?:送往|送到|護送|保護)/.test(t)?'escort':'investigate';
+            const taskTarget=(v698DiscoverNames(t)[0] || (t.match(/(?:調查|探查|查明|查探)([\u4e00-\u9fff]{2,16})/)||[])[1] || (t.match(/(?:尋找|找回|取回)([\u4e00-\u9fff]{2,16})/)||[])[1] || '委託事項').slice(0,20);
+            const issuer=(t.match(/([\u4e00-\u9fff]{2,9})(?:向你|對你|低聲|開口|囑咐|說道|委託)/)||[])[1]?.slice(-9)||'委託人';
+            const key='ai:'+type+':'+issuer+':'+taskTarget;
+            if(!v.missions[key])v.missions[key]={id:'QUEST:698:'+v.seq++,kind:type,title:`${issuer}的委託`,issuer,target:taskTarget,
+                status:'offered',createdDay:day,paid:false,source:'npc_narrative_offer'};
+        }
+        if(v699PositiveAction(a,'accept')&&!/(?:委託取消|取消委託|不再委託|拒絕委託|此事作罷|不再需要你)/.test(t)){
+            const pending=Object.values(v.missions).filter(m=>m.source==='npc_narrative_offer'&&m.status==='offered');
+            const generic=/^(?:我)?(?:好|行|接受|答應|同意)[！!。\s]*$/.test(a)||/(?:這份|這件|剛才的|該項)/.test(a);
+            let choices=[];
+            if(generic&&pending.length===1)choices=pending;
+            else{
+                choices=pending.filter(m=>{
+                    const target=String(m.target||''),issuer=String(m.issuer||''),title=String(m.title||'');
+                    const tail=target.replace(/^(?:(?:丟失的|遺失的|普通的|普通|失蹤的|村外|附近的|一個|一塊|一份))+/,'');
+                    return (issuer!=='委託人'&&a.includes(issuer))||
+                        (target.length>=2&&a.includes(target))||
+                        (tail.length>=2&&a.includes(tail))||
+                        (title.length>=2&&a.includes(title));
+                });
+            }
+            if(choices.length===1){
+                choices[0].status='active';choices[0].acceptedDay=day;
+                notes.push(`【委託登錄】${choices[0].title}：已接下，後續進度將持續保存。`);
+            }
+        }
+        if(v.events.length>600)v.events.splice(0,v.events.length-600);
+        return notes;
+    }
+    function v698SyncQuestPanel(s){
+        const v=v698State(s);
+        if(!s.questLedger||typeof s.questLedger!=='object'){
+            if(!Array.isArray(s.quests))s.quests=[];
+            s.quests=s.quests.filter(q=>!String(q?.id||'').startsWith('QUEST:698:'));
+            s.quests.push(...Object.values(v.missions).filter(m=>m&&m.id&&!['offered','negotiating'].includes(m.status)).map(m=>({id:m.id,name:m.title,
+                progress:m.kind==='escort'?`角色：${m.role}；進度：${m.status}；報酬須正式結算。`:`尋找${m.target||'委託線索'}；進度：${m.status}`,
+                verified:true,status:['completed','arrived'].includes(m.status)?'已完成':(['resigned','declined','cancelled'].includes(m.status)?'已終止':'進行中')})));
+            return;
+        }
+        s.questLedger.verified=s.questLedger.verified||{};
+        for(const m of Object.values(v.missions)){
+            if(!m||!m.id||['offered','negotiating'].includes(m.status))continue;
+            s.questLedger.verified[m.id]={id:m.id,name:m.title,scope:'narrative_verified',verified:true,
+                progress:m.kind==='escort' ? `身份：${m.role}；狀態：${m.status}；目前：${m.currentLocation||s.location}；報酬：${m.pay===null||m.pay===undefined?'尚未約定':m.pay+'顆下品靈石'}（尚未入帳）`:
+                    `委託：${m.issuer}；尋找${m.target}；狀態：${m.status}；補償：${m.compensation}`,
+                status:['arrived','completed'].includes(m.status)?'已完成':(['resigned','declined','cancelled'].includes(m.status)?'已終止':'進行中')};
+        }
+        destinyRebuildQuests(s);
+    }
+    function v698SceneAction(s,action,story,previousLocation,eventId){
+        const v=v698State(s),a=v691Normalize(action),t=v691Normalize(story),loc=String(s.location||''),out=[];
+        const eid=String(eventId||'');if(eid&&v.processed['TURN:'+eid])return [];
+        out.push(...v698CaptureMissions(s,a,t,previousLocation));
+        if(/(?:拋給你|扔到你|丟到你|放在你的腳邊|遞到你面前)/.test(t)&&/(?:木牌|令牌|信物|文書|竹簡)/.test(t)&&v.missions.fetch?.status==='active'){
+            const names=v698DiscoverNames(t);
+            for(const name of names.filter(x=>/(?:木牌|令牌|信物|竹簡|文書)/.test(x)))
+                v698RegisterFind(s,name,loc,eid,'npc_quest_handover');
+        }
+        const exploration=/(?:搜查|搜尋|搜索|查探|探查|查看|找尋|尋找|撿|拾|收起|取出|取回|摸索|翻找|勘察|調查|探尋|拿起|拿走)/.test(a)
+            && !/(?:買|購|售|拍賣|賭|借款|煉丹|製作)/.test(a);
+        if(exploration){
+            // Only the model's positive observation can mint a findable object. A player request alone cannot.
+            const discovered=v698DiscoverNames(t);
+            for(const name of discovered){
+                // V6.97 owns its historical parchment pickup; do not mint a second parchment.
+                if(/羊皮紙/.test(name) && Object.values(v697State(s).clues||{}).some(c=>/羊皮紙/.test(c.name||'') && (c.location===loc||c.location===previousLocation)))continue;
+                const f=v698RegisterFind(s,name,loc,eid,'narrated_discovery');
+                if(f&&f.status==='found')out.push(`【場景線索】已記錄可拾取物品：${f.name}。`);
+            }
+            const available=Object.values(v.finds).filter(f=>f.status==='found'&&(f.location===loc||f.location===previousLocation));
+            const candidate=v699PositiveAction(a,'pickup')?v699UniqueCandidate(a,available):null;
+            for(const f of candidate?[candidate]:[]){
+                const settled=v698Pickup(s,f,a,t,previousLocation);
+                if(settled){
+                    out.push(settled);
+                    for(const m of Object.values(v.missions))if(m && m.kind==='fetch' && ['active','offered'].includes(m.status) && v699ItemMention(m.target,f.name)){
+                        if(m.status==='active'){m.status='objective_acquired';m.foundItem=f.name;m.findId=f.id;
+                            out.push(`【任務進度】已找到${f.name}，可返回委託人處交付。`);}
+                    }
+                }
+            }
+        }
+        const fetchMission=v.missions.fetch;
+        if(fetchMission?.status==='objective_acquired' && v699PositiveAction(a,'handover')
+            && v699ItemMention(a,fetchMission.target)
+            && /(?:灰袍散修|委託人)/.test(t)
+            && /(?:收下|接過|驗過|確認|認出|承認|認可)/.test(t)
+            && !/(?:沒有收下|沒收下|未收下|不收下|拒絕收下|不肯接|拒絕接受|未認出|沒有接過|沒有承認|未承認|未確認|不認可)/.test(t)){
+            const item=(s.inventory||[]).find(it=>it && it.v698SourceFind===fetchMission.findId && v699ItemMention(fetchMission.target,it.name));
+            if(item){
+                const id='COMPLETE:698:'+fetchMission.id;
+                if(!v.processed[id]){
+                    const before=structuredClone(s.inventory||[]),held={...item,quantity:1};
+                    if(removeItemFromInventory(s.inventory,item,1)){
+                        ueSyncAssetRegistry(s,id);v695PostItem(s,v695ItemProof(s,'委託交付',before,s.inventory,id,{mission:fetchMission.id,recipient:fetchMission.issuer}),id);
+                        fetchMission.status='completed';fetchMission.completedDay=s.daysPassed||0;fetchMission.heldEvidence=held;
+                        fetchMission.compensationStatus='引路資格待正式引路程序核准';v.processed[id]=true;
+                        out.push('【委託完成】信物已正式交給委託人並登記；引路權利須另行履約，不會擅自扣費或發放靈石。');
+                    }
+                }
+            }
+        }
+        const escort=v.missions.escort;
+        if(escort?.status==='enroute'){
+            const realLoc=String(s.location||'');
+            escort.currentLocation=realLoc;
+            if(realLoc&&!escort.checkpoints.includes(realLoc))escort.checkpoints.push(realLoc);
+        }
+        v698SyncQuestPanel(s);
+        if(eid)v.processed['TURN:'+eid]=true;
+        return [...new Set(out)];
+    }
+    function v698PromptContext(s){
+        const v=v698State(s),missions=Object.values(v.missions).filter(m=>m&&['offered','active','objective_acquired','negotiating','employed','enroute','arrived','resigned'].includes(m.status));
+        const finds=Object.values(v.finds).filter(f=>f.status==='found'&&f.location===s.location).slice(-8);
+        return JSON.stringify({missions,sceneFinds:finds.map(f=>({name:f.name,status:f.status,location:f.location})),
+            rules:'正式護衛已聘用不可因聊天、修煉或轉場改成路人/中途加入；已出發不可無因返回出發地。任務憑證必須真實拾取才宣稱持有；僅敘述實際發現物品，品質請用凡品/下品/中品/上品/極品/仙品，未鑑定請獨立使用 identified:false。'});
+    }
+    function v698ProtectScene(s,raw,action){
+        if(!raw||typeof raw!=='object')return raw;
+        const out={...raw},escort=v698State(s).missions.escort;
+        if(escort?.status!=='enroute'||/(?:回程|返回|回到|折返|撤退|掉頭|放棄護衛)/.test(String(action||'')))return out;
+        const old=String(s.location||''),next=String(out.location||'');
+        const far=/黑風谷|戈壁|風口|商隊營地|臨時營地|山谷|荒原/.test(old);
+        const start=/集市北口|荒野集市|北口卸貨/.test(next);
+        if(far&&start&&next!==old){
+            out.location=old;
+            if(out.scene&&typeof out.scene==='object')out.scene={...out.scene,location:old};
+            out.v698RejectedLocation=next;
+        }
+        return out;
+    }
+    function v698ProtectStory(s,story,action){
+        let t=String(story||''),escort=v698State(s).missions.escort;
+        if(escort&&['employed','enroute','arrived'].includes(escort.status)){
+            t=t.replace(/你緩步走向北口，向那名曾見過你靈力波動的商隊護衛頭目/g,'你在商隊目前的駐紮地，向已錄用你的護衛頭目');
+            t=t.replace(/表達同行隨隊尋找安全落腳點的意願/g,'依正式護衛身分請示下一處落腳點');
+            t=t.replace(/讓你跟在商隊的外圍隊列後方/g,'安排你以正式護衛身分守在外圍隊列');
+            if(escort.status==='enroute'&&/(?:中途加入|才剛加入|尚未受聘|尚未錄用)/.test(t))
+                t=t.replace(/[^。！？\n]*(?:中途加入|才剛加入|尚未受聘|尚未錄用)[^。！？\n]*[。！？]?/g,'');
+        }
+        // Only the core's inventory receipt can authorize claims of custody.
+        for(const find of Object.values(v698State(s).finds)){
+            if(find.status!=='found'||find.location!==s.location||!t.includes(find.name))continue;
+            const sentenceParts=t.split(/(?<=[。！？!？\n])/);
+            t=sentenceParts.map(segment=>{
+                if(!segment.includes(find.name))return segment;
+                if(/(?:你|主角|玩家).{0,12}(?:未|沒|不曾|沒有|並未|無法|拒絕|不願)/.test(segment))return segment;
+                if(/(?:你|主角|玩家).{0,15}(?:將|把|拾|撿|拿|取|收|藏|帶|揣|塞|裝).{0,36}/.test(segment)
+                    &&/(?:你將|你把|拾起|撿起|拿起|取走|收好|收起|藏起|帶走|收入|收進|塞進|裝入|放入|揣好|取出|揣入|撿走)/.test(segment)){
+                    return `你已發現${find.name}，但尚未完成正式拾取。`;
+                }
+                return segment;
+            }).join('');
+        }
+        // A model may claim the player took a DIFFERENT item from the one on the ground.
+        // Narration cannot serve as a transfer receipt; disclose the gap without inventing goods.
+        const claimed=t.split(/(?<=[。！？!？\n])/);
+        t=claimed.map(sentence=>{
+            if(!/(?:你|主角|玩家).{0,18}(?:拾起|撿起|拿起|取走|收好|收起|帶走|收入背包|收入懷中|收進行囊|揣好|塞進行囊)/.test(sentence))return sentence;
+            if(/(?:沒有|沒能|未能|不曾|未曾|無法|拒絕)/.test(sentence))return sentence;
+            const mentions=[];const rx=new RegExp('([\u4e00-\u9fff]{0,10}'+V698_NOUN+')','g');
+            for(const m of sentence.matchAll(rx)){
+                const name=m[1].replace(/^.*?(?:那枚|這枚|一枚|那件|這件|一塊|一張|拿起|拾起|撿起|取走|收好|收起|帶走|收入|將|把)/,'');
+                if(name&&!mentions.includes(name))mentions.push(name);
+            }
+            const held=mentions.some(name=>(s.inventory||[]).some(i=>i&&v699ItemMention(name,i.name)));
+            const hasSceneItem=mentions.some(name=>Object.values(v698State(s).finds).some(f=>f&&f.status==='found'&&v699ItemMention(name,f.name)));
+            if(mentions.length&&!held)return `你看到了相關物品，但尚未經核心完成正式拾取。`;
+            return sentence;
+        }).join('');
+        return t;
+    }
+    // ===== End V6.98 =====
+
+
     // ===== V6.91 Context-aware intent and settlement kernel =====
     // Language can be fuzzy; asset authority, amounts and settlement are never fuzzy.
     function v691State(s) {
@@ -9260,6 +9915,7 @@ JSON 輸出格式範例：
         if(Number(draft.spiritStone)<o.amount)return {handled:true,text:`靈石不足：需要 ${o.amount} 顆，實有 ${draft.spiritStone} 顆；交易未成立。`};
         try{
             const npc=v688Target(draft,o.actorId);
+            if(o.dynamicSupply)v697IssueOrdinary(draft,o);
             const selected=v688Selected(draft,npc.id,o.itemName,o.quantity,true);
             if(o.sourceId && selected.rec.id!==o.sourceId)throw new Error('商品批次已變動，請重新核對報價');
             if(o.fingerprint && v691ItemFingerprint(selected.it)!==o.fingerprint)throw new Error('商品品階、屬性或數量已變動，舊報價不再有效');
@@ -9290,6 +9946,7 @@ JSON 輸出格式範例：
             for(const src of offers){
                 const o=st.offers.find(x=>x.id===src.id);
                 if(!o||o.status!=='open'||o.location!==d.location||Number(d.daysPassed||0)-Number(o.day||0)>3||o.kind==='gift')throw new Error('有商品報價已失效或不屬於買賣');
+                if(o.dynamicSupply)v697IssueOrdinary(d,o);
                 const selected=v688Selected(d,npc.id,o.itemName,o.quantity,true);
                 if(o.sourceId&&selected.rec.id!==o.sourceId)throw new Error(`《${o.itemName}》來源已變動`);
                 if(o.fingerprint&&v691ItemFingerprint(selected.it)!==o.fingerprint)throw new Error(`《${o.itemName}》實物內容已變動`);
@@ -9326,7 +9983,7 @@ JSON 輸出格式範例：
             if(!Number.isSafeInteger(amount))return {handled:true,text:'這個金額不完整，未扣款。請說完整數字。'};
             const matches=active.filter(o=>o.kind!=='gift'&&o.amount===amount);
             if(matches.length===1)return v691PayOffer(s,matches[0]);
-            return {handled:true,text:matches.length?'有多筆同價商品，請指定唯一品名；未扣款。':'沒有符合這個價格的有效庫存報價，未扣款。'};
+            return {handled:true,text:matches.length?'有多筆同價商品，請指定唯一品名；未扣款。':'沒有符合這個價格的有效商品報價，未扣款。'};
         }
         let monetary=v691Amounts(t);
         if(!monetary.length){
@@ -9350,7 +10007,7 @@ JSON 輸出格式範例：
             candidates=active.filter(o=>v691Normalize(o.itemName)===v691Normalize(titles[0]));
             if(!candidates.length){
                 const raw=st.offers.filter(o=>o.status==='unverified'&&o.location===s.location&&v691Normalize(o.itemName)===v691Normalize(titles[0]));
-                return {handled:true,text:raw.length?`《${titles[0]}》僅有口頭報價，商家尚無可核驗的庫存或權屬；未扣款。`:`《${titles[0]}》沒有有效的已登錄商品報價；未扣款，請向商人確認實物。`};
+                return {handled:true,text:raw.length?`《${titles[0]}》僅有口頭報價，這是非一般限額供應品，仍須正式取得特殊供貨證明；未扣款。`:`《${titles[0]}》沒有有效商品報價；未扣款，請向商人重新詢價。`};
             }
         }else{
             const mentioned=active.filter(o=>v691OfferItemMentions(t,o));
@@ -9371,7 +10028,7 @@ JSON 輸出格式範例：
         const settled=st.offers.filter(o=>o.status==='settled'&&o.location===s.location&&(titles.length?v691Normalize(o.itemName)===v691Normalize(titles[0]):uniqueAmounts.length===1&&o.amount===uniqueAmounts[0]));
         if(settled.length===1)return {handled:true,text:`《${settled[0].itemName}》已於單據 ${settled[0].receiptId||settled[0].id} 正式成交，不能重複扣款或交貨。`};
         if(titles.length || /(?:買|購).{0,10}(?:書|典籍|丹藥|法寶|靈植)/.test(t))
-            return {handled:true,text:'目前沒有可核對的有效商品報價。可請具名商家確認庫存與總價；未扣款或交貨。'};
+            return {handled:true,text:'目前沒有可核對的有效商品報價。可請商家說明品名與總價；未扣款或交貨。'};
         return null;
     }
         function v691Casino(s){
@@ -9537,7 +10194,7 @@ JSON 輸出格式範例：
         const shop=v691ShopRoute(s,t);if(shop?.handled)return shop;
         const service=v691ServicePay(s,t);if(service?.handled)return service;
         if(/^(?:我|我要|確認|直接|當場)?\s*(?:支付|付清|付錢|付款|結帳|確認付|我付)\s*[零〇一二兩三四五六七八九十百千萬\d,]+/.test(t)
-            &&/(?:買|購|書|典籍|成交)/.test(t))return {handled:true,text:'沒有符合這筆付款的有效商品報價，尚未扣款。請先確認書名與商家實際庫存。'};
+            &&/(?:買|購|書|典籍|成交)/.test(t))return {handled:true,text:'沒有符合這筆付款的有效商品報價，尚未扣款。請先確認書名與有效報價。'};
         return null;
     }
     function v691Unrelated(t){
@@ -9553,6 +10210,12 @@ JSON 輸出格式範例：
         // Monetary items are not inventory; rejected AI monetary deltas should not kill roleplay.
         for(const key of ['inventoryDelta','inventoryRemoveDelta','lostItems']){
             if(Array.isArray(out[key]))out[key]=out[key].filter(x=>!/(?:下品|中品|上品)?靈石|靈石貨幣/.test(String(x?.name||x?.item_name||'')));
+        }
+        const sceneTake=/(?:取出|拾起|撿起|拿起|帶走|撿走|收起|搜查|搜尋|解剖|剝皮)/.test(t)
+            &&/(?:羊皮紙|紙片|野狼|狼皮|野獸|戰利品|石板)/.test(t);
+        if(sceneTake){
+            out.inventoryDelta=[];out.inventoryRemoveDelta=[];out.lostItems=[];
+            out.spiritStonesDelta=0;out.tradeOffer=null;out.economyOperation={kind:'reward',fee:0};
         }
         if(financial){
             out.inventoryDelta=[];out.inventoryRemoveDelta=[];out.lostItems=[];
@@ -9662,9 +10325,9 @@ JSON 輸出格式範例：
     }
     function dialogueInlineHint(s){
         const fresh=v691CurrentOffers(s);
-        if(fresh.length)return `\n\n【已核對商家庫存】${fresh.map(o=>`《${o.itemName}》×${o.quantity}：${o.amount} 顆靈石`).join('、')}。直接說書名與付款金額即可成交；有多筆時請指定其中一本。`;
+        if(fresh.length)return `\n\n【有效商品報價】${fresh.map(o=>`《${o.itemName}》×${o.quantity}：${o.amount} 顆靈石`).join('、')}。直接說書名與付款金額即可成交；有多筆時請指定其中一本。`;
         const pendingStock=v691State(s).offers.filter(o=>o.status==='unverified'&&o.location===s.location).slice(-3);
-        if(pendingStock.length)return `\n\n【尚未核實庫存】${pendingStock.map(o=>`《${o.itemName}》${o.amount} 靈石`).join('、')}僅為口頭報價，不能據此付款領貨。請商人確認正式庫存來源。`;
+        if(pendingStock.length)return `\n\n【待核對供貨資格】${pendingStock.map(o=>`《${o.itemName}》${o.amount} 靈石`).join('、')}僅為口頭報價，不能據此付款領貨。高階商品仍須正式供貨證明。`;
         const u=ueEnsure(s),p=s.pendingEconomyProposal,o=s.pendingTradeOffer;
         if(o)return `\n\n商人將價格說清楚：「${o.item_name}」×${o.quantity}，總計 ${o.total_gold} 顆靈石。你可以直接說「成交」或「取消」。目前尚未交割。`;
         if(p){const r=p.request;
@@ -9712,6 +10375,15 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 dialogueSay(sectResolution.text);
                 if(inputEl)inputEl.value='';
                 return;
+            }
+            const wildResolution=v697WildRoute(gameState,actionText);
+            if(wildResolution?.handled){
+                appendLogData('異世旅者',actionText,'player',false,true);
+                conversationHistory.push({role:'user',content:actionText});
+                conversationHistory.push({role:'assistant',content:wildResolution.text});
+                if(conversationHistory.length>60)conversationHistory=conversationHistory.slice(-60);
+                dialogueSay(wildResolution.text);if(inputEl)inputEl.value='';
+                renderUI();saveGameState();return;
             }
             const resolution=dialogueHandle(actionText);
             if(resolution?.handled){
@@ -9772,7 +10444,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 }else ({storyText,parsedState}=fixed);
                 repairedThisTurn=true;
             }
-            parsedState = normalizeSceneDelta(v691SanitizeScene(parsedState,actionText));
+            parsedState = normalizeSceneDelta(v698SanitizeSceneItems(v691SanitizeScene(parsedState,actionText),actionText));
             if(parsedState && typeof parsedState==='object') delete parsedState.__npcContestAlert;
             if (!hasCompleteScene(parsedState)) {
                 // Repair before any fees, time, inventory or state are committed.
@@ -9812,7 +10484,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 parsedState=protectedBreakthrough.delta;
             }
             if (parsedState) {
-                parsedState=v689NoAiMoney(v691SanitizeScene(parsedState,actionText),actionText,eventMeta,gameState);
+                parsedState=v689NoAiMoney(v698SanitizeSceneItems(v691SanitizeScene(parsedState,actionText),actionText),actionText,eventMeta,gameState);
                 const adjustedTrade=reconcileQuoteVersusSettlement(parsedState,actionText);
                 if(adjustedTrade.story && adjustedTrade.story!==parsedState.story)storyText=adjustedTrade.story;
                 parsedState=adjustedTrade;
@@ -9909,7 +10581,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 const inferredMeta = { ...(eventMeta || {}) };
                 if (!inferredMeta.actionType && /(戰鬥|攻擊|伏擊|迎戰|出手|交手|對決|斬殺|反擊)/.test(String(actionText || ""))) inferredMeta.actionType = "combat";
                 try {
-                    gameState = applyStateDelta(gameState, parsedState, inferredMeta);
+                    gameState = applyStateDelta(gameState, v698ProtectScene(gameState, parsedState, actionText), inferredMeta);
                 } catch (settlementError) {
                     if (!isRepairableSettlementError(settlementError.message) &&
                         !/(?:靈石|經濟|商店|報價|財產|獎勵|交易|物品|提案|inventory|重複結算|來源|未登記)/.test(String(settlementError.message))) throw settlementError;
@@ -9921,7 +10593,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                                 JSON.stringify({validationError:settlementError.message,original:parsedState}), 'settlement');
                             const candidate=parseApiResponse(repairText).parsedState;
                             const proposed=applyEconomicKindRepair(parsedState,candidate,actionText);
-                            gameState=applyStateDelta(gameState,proposed,inferredMeta);
+                            gameState=applyStateDelta(gameState,v698ProtectScene(gameState,proposed,actionText),inferredMeta);
                             parsedState=proposed;corrected=true;
                         }catch(repairError){console.warn('Economic AI repair rejected; falling back to narrative-only',repairError.message);}
                     }
@@ -9981,13 +10653,20 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 try{dialogueAutoConfirmPurchase(gameState,parsedState,actionText);}catch(e){gameState.lastEconomyWarning=String(e.message||e);}
             }
             finishEconomySummary(gameState,stateBeforeAction,eventMeta.sourceId);
+            const v697Findings=v697StoryEvent(gameState,actionText,storyText,stateBeforeAction.location);
+            const v698Findings=v698SceneAction(gameState,actionText,storyText,stateBeforeAction.location,eventMeta.eventId);
             const rawAdmissionQuoteStory=storyText;
-            storyText=destinyGuardNarrative(projectNarrative(storyText,gameState),gameState);
+            storyText=v698ProtectStory(gameState,destinyGuardNarrative(projectNarrative(storyText,gameState),gameState),actionText);
             storyText=v691SafeStory(v689CleanAdmissionStory(storyText,gameState,actionText),actionText);
             ueCaptureQuotedFee(gameState,v691Normalize(v689IsAdmissionScene(actionText)?rawAdmissionQuoteStory:storyText));
             v692BindQualifiedAppraiser(gameState);
             v688CaptureQuote(gameState,storyText);
+            v697EnsureMerchant(gameState,storyText);
             v691CaptureQuotes(gameState,storyText);
+            v697QuoteUpgrade(gameState,storyText);
+            v697CaptureSimpleStockQuote(gameState,storyText);
+            if(v697Findings.length)storyText+='\n'+v697Findings.join('\n');
+            if(v698Findings.length)storyText+='\n'+v698Findings.join('\n');
             storyText+=dialogueInlineHint(gameState);
             conversationHistory.push({ role: "assistant", content: JSON.stringify({story:storyText,coreSettlement:gameState.lastEconomySummary,pendingEconomyProposal:gameState.pendingEconomyProposal||null}) });
             appendLogData("天道", storyText, "ai", false, true);
@@ -10845,7 +11524,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
 
     function saveGameState() {
-        ensureWorldMemory(gameState);v694Migrate(gameState); gameState.version = "6.96"; gameState.maxHp = getMaxHp(gameState);
+        ensureWorldMemory(gameState);v694Migrate(gameState); gameState.version = "6.98"; gameState.maxHp = getMaxHp(gameState);
         conversationHistory = conversationHistory.slice(-100);
         try {
             ueSyncAssetRegistry(gameState,"SAVE_SYNC");
@@ -10885,12 +11564,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
 
     function exportSave() {
-        ensureWorldMemory(gameState);v694Migrate(gameState); gameState.version = "6.96"; gameState.maxHp = getMaxHp(gameState);ueSyncAssetRegistry(gameState,"EXPORT_SYNC");
+        ensureWorldMemory(gameState);v694Migrate(gameState); gameState.version = "6.98"; gameState.maxHp = getMaxHp(gameState);ueSyncAssetRegistry(gameState,"EXPORT_SYNC");
         const saveObj = { state: gameState, logs: storyLogData, history: conversationHistory, schemaVersion:V694_SCHEMA };
         const blob = new Blob([JSON.stringify(saveObj, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `jiuzhou_v696_save_${Date.now()}.json`;
+        a.href = url; a.download = `jiuzhou_v698_save_${Date.now()}.json`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }
@@ -10920,7 +11599,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
             content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        state.version = "6.96"; v694Migrate(state);state.maxHp = getMaxHp(state);
+        state.version = "6.98"; v694Migrate(state);state.maxHp = getMaxHp(state);
         return {state, logs: structuredClone(pkg.logs || []), history, schemaVersion:V694_SCHEMA};
     }
     function importSave(e) {
