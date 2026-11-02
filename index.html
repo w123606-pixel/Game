@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.14.8｜閉關排程修復與因果測試版</title>
+    <title>九州裂天錄 V7.14.9｜閉關排程修復與因果測試版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -12777,7 +12777,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
 
     function v712Handover(s,action,story,eventId){
         const a=String(action||''),t=String(story||'');
-        if(!/(?:交付|交割|交給|交還|呈交|繳交|交出|送交|提交)/.test(a)||
+        // A generic mention of 'formal settlement' in a quest instruction is NOT
+        // a player request to hand over an actual object.
+        if(!/(?:交付|交給|交還|呈交|繳交|交出|送交|提交)/.test(a)||
             /(?:詢問|能否|可否|可以|如果|假設|準備|打算|先問)/.test(a))return {handled:false,receipts:[],notes:[]};
         const report={handled:true,receipts:[],notes:[]};
         const key='HANDOVER:712:'+eventId;
@@ -12970,7 +12972,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     // renewable materials; it never authorizes rare loot or an unverified corpse.
     function v721ObservedMaterial(s,event,action,story,name){
         const text=v718Text(story),a=v718Text(action),ev=v718Text(event.evidence||'');
-        if(!name||!text.includes(name)||!v718Confirm(action,story))return false;
+        // Same ordinary material can be referred to with reversed descriptive words.
+        // Keep strict matching of the material noun; do not fuzzy-match rare loot.
+        const sameMaterial=[name,name.replace('枯乾','乾枯'),name.replace('乾枯','枯乾')];
+        if(!name||!sameMaterial.some(n=>text.includes(n))||!v718Confirm(action,story))return false;
         if(!/(?:採|摘|拔|挖|砍|伐|割|拾|撿|收|取|尋找.*採集|找.*材料|尋.*素材|找.*武器)/.test(a))return false;
         if(!['success','partial',''].includes(String(event.outcome||'').toLowerCase()))return false;
         if(!v718NaturalKind(name)&&!['wood','plant','mineral','water','natural'].includes(String(event.category||'')))return false;
@@ -13005,12 +13010,19 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             const st=v718State(d);if(st.processed[key])throw Error('重複採集事件');
             let res=v718FindResource(d,{...event,actionText:act});
             if(!res){
-                if(event.sourceId||event.resourceId)throw Error('指定自然來源不存在或已經耗盡');
+                // V7.14.9: an AI-generated sourceId is a reference hint, not proof that
+                // a physical resource was registered in the world state. An unknown
+                // hint can be re-grounded ONLY from a positive, localized, ordinary
+                // material extraction. An exhausted, previously registered source
+                // remains exhausted; never silently refill it.
+                const hint=String(event.sourceId||event.resourceId||'').trim();
+                if(hint && Object.hasOwn(st.resources,hint))throw Error('指定自然來源已耗盡或不在目前場景');
                 const claimed=v721ObservedMaterial(d,event,action,story,name);
-                if(!claimed)throw Error('未能確認物品的實際來源與取得動作');
+                if(!claimed)throw Error(hint?'AI 來源代碼未登錄，且缺少新素材的實地取得證據':'未能確認物品的實際來源與取得動作');
                 const already=Object.values(st.resources).some(x=>x.location===d.location&&x.name===name);
-                if(already&&!/(?:又找到|又發現|另一根|另外一根|新的|另一件)/.test(txt))throw Error('原來源已耗盡，不得重複生成');
-                res=v718Discover(d,{...event,available:q},action,story,key+':SOURCE');
+                if(already&&!/(?:又找到|又發現|另一根|另外一根|另一株|新找到|新的|另一件|再次發現|另有一株)/.test(txt))throw Error('原來源已耗盡，不得重複生成');
+                if(hint)st.events.push({id:key+':UNREGISTERED_HINT',kind:'AI_SOURCE_HINT_IGNORED',sourceHint:hint.slice(0,80),name,day:Number(d.daysPassed)||0});
+                res=v718Discover(d,{...event,sourceId:'',resourceId:'',available:q},action,story,key+':SOURCE');
             }
             if(res.location!==String(d.location))throw Error('資源不在目前所在地');
             if(res.remaining<q)throw Error('來源剩餘數量不足');
@@ -13970,7 +13982,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             }
             const v721NatureNames=new Set(v718EventsFromAI(v701RawActions,actionText,storyText).nature.map(e=>v718ObjectName(e.name||e.itemName)).filter(Boolean));
             const v700Owned=v700Proposals.filter(p=>!(v721NatureNames.has(v718ObjectName(p.name))&&['DISCOVER','HARVEST','ACQUIRE'].includes(String(p.kind||'').toUpperCase())) && !(/羊皮紙/.test(p.name||'')&&v697Findings.some(n=>String(n).includes('核心拾取')))
-               && !(String(p.kind||'').toUpperCase()==='DISCOVER'&&/(?:禁制|封印|線索|祕密|機關|商道|山路|小徑|路徑|方向|蹤跡|招工告示|告示牌|氣息|身分|背影)/.test(String(p.name||''))));
+               && !(String(p.kind||'').toUpperCase()==='DISCOVER'&&(
+                    /(?:禁制|封印|線索|祕密|機關|商道|山路|小徑|路徑|方向|蹤跡|招工告示|告示牌|氣息|身分|背影)/.test(String(p.name||'')) ||
+                    /(?:廢墟|遺址|驛站|破廟|洞穴|市集|山谷|山洞|村落|廣場|街道|地點|場景)$/.test(String(p.name||''))
+               )));
             const v700Result=v700Issue(gameState,actionText,storyText,v700Owned,eventMeta.eventId);
             const v698Findings=v698SceneAction(gameState,actionText,storyText,stateBeforeAction.location,eventMeta.eventId,v700Result.handled);
             // Mixed cash + physical reward must be settled as ONE operation, not as
@@ -15330,7 +15345,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     // V6.82 QA hotfix: observe effective progress, not only HTTP 200 / telemetry.
     function mixedQaProgressed(before,after){
         return before.days!==after.days || before.level!==after.level || before.exp!==after.exp ||
-            before.hp!==after.hp || before.stones!==after.stones || before.fragments!==after.fragments || before.npcs!==after.npcs ||
+            before.hp!==after.hp || before.stones!==after.stones || before.fragments!==after.fragments || before.npcs!==after.npcs || before.agreements!==after.agreements ||
             before.items!==after.items || before.mode!==after.mode || before.location!==after.location;
     }
     function mixedQaClearStaleCommerce(s, data, reason){
@@ -15381,14 +15396,15 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             social:'向眼前可接觸的 NPC 交談，確認其名字、所在地及之前的承諾；若對方不同意不強迫建立好友關係。',
             gather:nearby.length?
                 `把眼前已確認存在的「${nearby[0].name}」採下或撿起並收進背包（僅在實際成功時入袋，不要再只描述找到）。`:
-                gatherPhase===0?'尋找附近可實際採集的野草、樹枝、礦石或水源；清楚說明來源與數量。':'在附近實地採集先前找到的一件自然素材，成功後正式加入背包。',
+                '尋找目前場景或合理可到達的新地點，實地發現並採集一件尚未採過的普通自然素材。若成功，請寫出採集動作、所在位置及具體數量；新來源的 natureEvents.sourceId 必須留空，由核心建立唯一來源。不得引用已耗盡的舊來源，也不得虛構來源代碼。',
             economy:sellable.length ?
                 commercePhase===0 ? `到有商人的市集，提出將背包中「${sellable[0].name}」一件出售，請商人說明真實價格並決定是否成交。`:
                 commercePhase===1 ? `若商人已同意，現在正式賣出背包中的「${sellable[0].name}」一件並收取約定靈石；請核對貨幣與所有權。`:
                 '詢問同一商人是否願意買入另外一件材料，若雙方未成交不能扣貨或加錢。':
                 '在就近的市集詢問可出售的普通材料或低階雇用工作，不得捏造已成交。',
             work:ag ?
-                workPhase===0||workPhase===1 ? '依已成立的雇用或委託履行一天能實際完成的工作，記錄真實工時與成果。':
+                (Number(ag.workDays||0)===0||workPhase===0||workPhase===1) ? '依已成立的雇用或委託履行一天能實際完成的工作，記錄真實工時與成果。':
+                (ag.wage===null||ag.wage===undefined) ? '我已完成部分工作，向原雇主確認工資數額與週期，待遇尚未確定時不能憑空收款。':
                 '向原雇主請求結清已完成工作的工錢；只有在 NPC 確實支付後才增加靈石。':
                 legacyContracts.length?
                 '按照已簽署的學徒契約繼續工作，累計實際工時；若到發薪日便向原掌櫃領取工錢。':
@@ -15404,11 +15420,17 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const targetSum=Object.values(MIX_QA_TARGETS).reduce((a,b)=>a+b,0);
         let ranked=opts.map((type,i)=>({type,score:(t+1)*MIX_QA_TARGETS[type]/targetSum-(count[type]||0)+(((n*17+i*11)%17)/1000)}));
         if(cd>day&&Number(s.exp||0)>=Number(s.maxExp||0))ranked=ranked.filter(x=>x.type!=='cultivate');
+        // After a newly accepted job, prefer completing the first actual shift
+        // rather than spending a month in seclusion and ignoring obligations.
+        if(ag && Number(ag.workDays||0)===0 && day-Number(ag.acceptedDay||0)<=3){
+            ranked=ranked.map(x=>({...x,score:x.score+(x.type==='work'?2:x.type==='cultivate'?-2:0)}));
+        }
         if(getLocationModifier(loc).expPerDay<=0)ranked=ranked.map(x=>({...x,score:x.type==='other'?x.score+2:x.score}));
         ranked.sort((a,b)=>b.score-a.score);
         const type=ranked[0]?.type||'other';
         return {type,action:catalog[type],intent:nearby.length&&type==='gather'?'harvest':'explore',
-            expectedReceipt:type==='gather'||type==='economy'&&sellable.length>0&&commercePhase!==0||type==='work'&&Boolean(ag)};
+            expectedReceipt:type==='gather'||type==='economy'&&sellable.length>0&&commercePhase!==0||
+                type==='work'&&Boolean(ag)&&!(ag.wage===null&&Number(ag.workDays||0)>0&&workPhase>=2)};
     }
     function mixedQaReceiptVerification(plan, auditRecord, before, after){
         const receipts=Array.isArray(auditRecord?.coreReceipts)?auditRecord.coreReceipts:[];
@@ -15438,7 +15460,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function longQaBefore(s){return {level:s.level,realm:s.realm,exp:Math.floor(s.exp||0),maxExp:Math.floor(s.maxExp||0),
         hp:s.hp,maxHp:getMaxHp(s),stones:v713StoneDisplay(s),fragments:Number(s.v716FragmentStones||0),days:s.daysPassed,dead:Boolean(s.isDead),
-        npcs:Object.keys(s.npcRegistry||{}).length,items:(s.inventory||[]).reduce((a,x)=>a+Number(x.quantity||0),0),
+        npcs:Object.keys(s.npcRegistry||{}).length,agreements:Object.keys(s.v718?.agreements||{}).length,items:(s.inventory||[]).reduce((a,x)=>a+Number(x.quantity||0),0),
         location:String(s.location||''),mode:getEffectiveMode(s),pending:Boolean(s.pendingEconomyProposal),breakthroughCdDays:Number(s.breakthroughCdDays||0),telemetryCompleted:Number(s.actionTelemetry?.completed||0),telemetryFailed:Number(s.actionTelemetry?.failed||0)};}
     function longQaCheckpoint(data){
         // Last-turn progress is compact, so even 3,000 rounds can be resumed from localStorage.
@@ -15493,9 +15515,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V7.14.8 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V7.14.9 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
-                    target:requested,delayMs,protocol:'V7.14.8 safe-mode cultivation + receipt verification v3',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    target:requested,delayMs,protocol:'V7.14.9 grounded-source + causal QA v4',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
             data.target=Math.max(data.target||1000,requested);
