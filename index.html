@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.14.5｜真實 AI 回合拾取與雇用修復版</title>
+    <title>九州裂天錄 V7.14.5-QA2｜內建千回合自動測試重設版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -332,8 +332,8 @@
             </div>
             <h2 style="margin-top:10px;">▣ AI 測試與自動稽核</h2>
             <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
-              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ 真實 Gemini 均衡遊玩測試＋逐回合自動稽核</h2>
-              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。測試包含修煉、NPC、探索、經濟、任務與交手情境；僅正式按鈕操作才算相應核心功能覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。每回合自動稽核提案、資產、正式收據與最終敘事，警示一起納入報告。</p>
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.6 真實 Gemini 1000 回合探索驗證</h2>
+              <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。重新分配修煉、NPC、拾取、採集、買賣、雇用、任務與戰鬥情境，逐項追蹤正式收據。AI 說成功不代表結算成功；只有已入帳／入袋／履約的正式收據才列為實際核心覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。每回合自動稽核提案、資產、正式收據與最終敘事，警示一起納入報告。</p>
               <label for="long-qa-turns">目標回合：</label>
               <select id="long-qa-turns" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
                 <option value="1000" selected>1,000 回合</option><option value="1200">1,200 回合</option><option value="1500">1,500 回合</option><option value="2000">2,000 回合</option><option value="3000">3,000 回合</option>
@@ -342,7 +342,7 @@
               <select id="long-qa-delay" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
                 <option value="3000">3 秒（僅配額充足）</option><option value="15000">15 秒</option><option value="30000">30 秒</option><option value="60000" selected>60 秒（建議起點）</option><option value="120000">120 秒</option>
               </select>
-              <p style="font-size:.74rem;color:#e4c889;">遇到 HTTP 429（配額／限流）會立即暫停並保存檢查點，不會同一回合連續重送。請先查看 Google AI Studio 的配額。目標回合只計算成功完成的遊戲回合。</p>
+              <p style="font-size:.74rem;color:#e4c889;">遇到 HTTP 429（配額／限流）會立即暫停並保存檢查點，不會同一回合連續重送。請先查看 Google AI Studio 的配額。目標僅計算遊戲成功回合；另記錄資產真正結算、空轉、阻擋及失敗。最多嘗試目標回合數的 130%，避免無限循環。</p>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
                 <button id="long-qa-new" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(false)">▶ 新測試</button>
                 <button id="long-qa-resume" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(true)">↻ 接續</button>
@@ -353,6 +353,16 @@
               <p style="font-size:.74rem;color:#b4ced0;">中途關閉或重整頁面後，重新開啟此檔並按「接續」，從最近一回合檢查點恢復。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
             </section>
 
+
+            <section id="qa1000-offline-ui" style="margin:9px 0;padding:11px;border:1px solid #7c8c6a;border-radius:8px;background:#151c17;">
+              <h2 style="margin:0 0 8px;color:#c4e4a8;">⚙ 免費 1000 次核心結算壓力測試</h2>
+              <p style="font-size:.78rem;line-height:1.65;color:#d0d9cf;">50 組 × 20 個連續事件，使用隔離角色直接呼叫真正的自然資源與資產核心，測拾取、來源耗盡、出售、買貨、口頭雇用、工時、領薪、押金、退款、品階驗證與存讀檔一致性。不花 Gemini API 額度，也不修改正式角色。<strong>此項是 1,000 次核心檢查，不等同 1,000 回合真實 AI 對話。</strong></p>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
+                <button class="sys-btn" type="button" onclick="qa1000Run(1000)">▶ 執行免費 1000 次測試</button>
+                <button class="sys-btn" type="button" onclick="qa1000Export()">↧ 匯出核心測試報告</button>
+              </div>
+              <div id="qa1000-offline-progress" style="white-space:pre-wrap;font-size:.76rem;line-height:1.6;background:#0d1510;padding:8px;border-radius:5px;">尚未執行。</div>
+            </section>
             <section id="v709-audit-ui" style="margin:8px 0;padding:11px;border:1px solid #5a9cb1;border-radius:8px;background:#111d27;">
                 <label style="display:flex;align-items:center;gap:7px;font-size:.85rem;margin:8px 0;"><input type="checkbox" id="v709-audit-enable" checked onchange="v709AuditToggle(this.checked)"> 正常遊玩及 1,000 回合測試皆啟用 AI 自動稽核</label>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -15231,12 +15241,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const b=document.getElementById(id);if(b)b.disabled=running;
     }const stop=document.getElementById('long-qa-stop');if(stop)stop.disabled=!running;}
     // V6.82 MIXED QA: goal-oriented schedule, not a sequence of 80% cultivation.
-    const MIX_QA_TARGETS={cultivate:300,social:160,gather:140,combat:120,economy:120,quest:120,other:40};
-    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'social',world:'quest'})[t]||t;}
+    const MIX_QA_TARGETS={cultivate:120,social:100,gather:180,combat:80,economy:160,work:160,quest:100,other:100};
+    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',team_battle_turn:'combat',tactical_battle_turn:'combat',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'work',world:'quest'})[t]||t;}
     // V6.82 QA hotfix: observe effective progress, not only HTTP 200 / telemetry.
     function mixedQaProgressed(before,after){
         return before.days!==after.days || before.level!==after.level || before.exp!==after.exp ||
-            before.hp!==after.hp || before.stones!==after.stones || before.npcs!==after.npcs ||
+            before.hp!==after.hp || before.stones!==after.stones || before.fragments!==after.fragments || before.npcs!==after.npcs ||
             before.items!==after.items || before.mode!==after.mode || before.location!==after.location;
     }
     function mixedQaClearStaleCommerce(s, data, reason){
@@ -15248,39 +15258,87 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         }
         return keys.length;
     }
+    // V7.14.6: The long Gemini runner schedules real multi-turn intentions,
+    // rather than rewarding 1,000 informational scenes that never settle assets.
     function mixedQaPlan(s,data){
-        const count=data?.actionCounts||{};
-        const t=Number(data?.completedTurns||0), n=Number(data?.rounds?.length||0);
-        if(!s.hasChosenOrigin)return {type:'origin',action:'3 落魄少主。選擇出身，從荒郊破廟開始。'};
-        if(s.pendingEconomyProposal||s.pendingTradeOffer)return {type:'pending',action:'待確認交易必須先由核心處理，不得以自由文字跳過'};
+        const count=data?.actionCounts||{},t=Number(data?.completedTurns||0), n=Number(data?.rounds?.length||0);
+        if(!s.hasChosenOrigin)return {type:'origin',action:'3. 落魄少主：家族遭滅門，懷揣神祕古戒逃亡。'};
+        if(s.pendingEconomyProposal||s.pendingTradeOffer)return {type:'pending',action:'確認既有交易是否完成；不能在待確認報價上再生成新交易'};
         if(s.isDead)return {type:'dead',action:'角色死亡，停止測試'};
-        if(getEffectiveMode(s)==='DANGER'||(s.activeThreats||[]).length)return {type:'retreat',action:'評估傷勢和敵人，沿已知路線謹慎撤退，不宣稱必然脫離戰鬥。'};
-        if(['DIALOGUE','HAZARD'].includes(getEffectiveMode(s)))return {type:'depart',action:'以符合情境的方式結束對話或離開危險地點，不自行清空警戒與人脈。'};
+        if(v682State(s).battle?.status==='active')return {type:'team_battle_turn',action:'【正式團戰回合】'};
+        if(tacticalState(s).battle?.status==='active')return {type:'tactical_battle_turn',action:'【正式戰鬥回合】'};
+        const mode=getEffectiveMode(s);
+        if(mode==='DANGER'||(s.activeThreats||[]).length){
+            return {type:'retreat',action:'我評估眼前追兵或妖獸，若可安全撤離便尋找實際退路；若仍在戰鬥不能假稱已逃脫。'};
+        }
         const cd=Number(s.breakthroughCdDays)||0,day=Number(s.daysPassed)||0;
         if(s.exp>=s.maxExp&&day>=cd&&Number(s.hp||0)>(Number(s.maxHp||getMaxHp(s))*.35))return {type:'breakthrough',action:'【真正按鈕】突破境界'};
-        if(Number(s.hp||0)<getMaxHp(s)*.3)return {type:'recover',action:'我受傷嚴重，先在安全地點治療或休養；不可憑空回滿血量。'};
-        const opts=[
-          {type:'cultivate',action:'【閉關修練30天】'},
-          {type:'social',action:'與所在地一位可接觸的修士正式結識，詢問姓名、修為、需求與立場；若對方願意，按照正式人脈規則登錄，不得虛構信任。'},
-          {type:'gather',action:'探索附近可抵達的地區、採集普通靈草，若有實際取得，按核心合法來源與背包權限結算。'},
-          {type:'combat',action:'謹慎尋找與自身實力相近、願意切磋的對手。只建立可驗證的遭遇與交手條件；正式勝負須由戰鬥核心裁定，不可憑文字秒殺。'},
-          {type:'economy',action:'探查附近商鋪與合法委託，了解普通藥草價格及百藝材料來源；本回合僅收集情報，不提出出售、不建立 tradeOffer、不移轉靈石與物品。真正出售必須先在背包選定物品，建立正式出售意圖及報價。'},
-          {type:'quest',action:'推進落魄少主身世線索，從已有任務簿、人物與世界事件尋找一個具體下一步；不得無證據改寫命運真相。'},
-          {type:'other',action:'按照當前任務與周圍情境，前往合理可抵達的新地點，必要時安排短期休息；只有實際抵達才改位置。'}
-        ];
-        // Deficit-based weighted interleaving; prioritize deficits but never force impossible actions.
-        const noEconomyUntil=Number(data?.qaAvoidEconomyUntil||0);
-        const available=opts.filter(o => !(o.type==='economy' && n<noEconomyUntil));
-        let ranked=available.map((o,i)=>({o,score:((t+1)*MIX_QA_TARGETS[o.type]/1000-(count[o.type]||0))/(Math.max(1,MIX_QA_TARGETS[o.type]))*1000+(((n*17+i*7)%13)/100)}));
-        if(cd>day){ranked=ranked.filter(x=>x.o.type!=='cultivate'||Number(s.exp||0)<Number(s.maxExp||0));}
-        if(getLocationModifier(s.location).expPerDay<=0)ranked=ranked.map(x=>({...x,score:x.o.type==='other'?x.score+3:x.score}));
+        if(Number(s.hp||0)<getMaxHp(s)*.3)return {type:'recover',action:'在安全處治療受傷，確認治療資源與實際血量變化。'};
+        // Give every planned stream a fair deficit; the result records whether
+        // the game made a real state change rather than treating a story as settlement.
+        const last=(data.rounds||[]).slice(-1)[0], lastBucket=last?.bucket||'';
+        const prevPhase=data.qaPhases||{},loc=String(s.location||'');
+        const resources=Object.values(s.v718?.resources||{});
+        const nearby=resources.filter(x=>x.location===loc&&Number(x.remaining)>0&&!x.isCorpse);
+        const goods=(s.inventory||[]).filter(x=>Number(x.quantity)>0);
+        const sellable=goods.filter(x=>{try{return Boolean(getItemPermissions(x).sell);}catch(_){return false;}});
+        const ag=Object.values(s.v718?.agreements||{}).find(x=>/ACTIVE|AGREED|WORKING|ONGOING|TERM_END/i.test(String(x.status||'')))||null;
+        const legacyContracts=Array.isArray(s.v710Employment?.contracts)?s.v710Employment.contracts.filter(x=>x.status==='ACTIVE'):[];
+        const workPhase=Number(prevPhase.work||0)%4;
+        const commercePhase=Number(prevPhase.economy||0)%3;
+        const gatherPhase=Number(prevPhase.gather||0)%3;
+        const catalog={
+            cultivate:'【閉關修練30天】',
+            social:'向眼前可接觸的 NPC 交談，確認其名字、所在地及之前的承諾；若對方不同意不強迫建立好友關係。',
+            gather:nearby.length?
+                `把眼前已確認存在的「${nearby[0].name}」採下或撿起並收進背包（僅在實際成功時入袋，不要再只描述找到）。`:
+                gatherPhase===0?'尋找附近可實際採集的野草、樹枝、礦石或水源；清楚說明來源與數量。':'在附近實地採集先前找到的一件自然素材，成功後正式加入背包。',
+            economy:sellable.length ?
+                commercePhase===0 ? `到有商人的市集，提出將背包中「${sellable[0].name}」一件出售，請商人說明真實價格並決定是否成交。`:
+                commercePhase===1 ? `若商人已同意，現在正式賣出背包中的「${sellable[0].name}」一件並收取約定靈石；請核對貨幣與所有權。`:
+                '詢問同一商人是否願意買入另外一件材料，若雙方未成交不能扣貨或加錢。':
+                '在就近的市集詢問可出售的普通材料或低階雇用工作，不得捏造已成交。',
+            work:ag ?
+                workPhase===0||workPhase===1 ? '依已成立的雇用或委託履行一天能實際完成的工作，記錄真實工時與成果。':
+                '向原雇主請求結清已完成工作的工錢；只有在 NPC 確實支付後才增加靈石。':
+                legacyContracts.length?
+                '按照已簽署的學徒契約繼續工作，累計實際工時；若到發薪日便向原掌櫃領取工錢。':
+                workPhase===0 ? '到附近可接觸的藥鋪、商隊或工坊詢問是否有學徒或短工，不必要求所有條款都先有數字。':
+                workPhase===1 ? '若掌櫃已同意雇用，我接受口頭或書面工作的約定，開始入職；保留未知薪資為未知。':
+                workPhase===2 ? '如果有雇主已答應讓我工作，就開始實際履行一天工作，不能只敘述正在談判。':
+                '如果先前完成工作且雇主同意支付，向原雇主領取應得報酬。',
+            combat:'依當前境界尋找合理且有危險的低階妖獸，要求建立正式敵人與戰鬥狀態；沒有正式戰鬥就不得宣告擊殺或掉落妖丹。',
+            quest:'檢查當前任務，推進一項已有委託的實際目標；報酬須憑已完成證據與正式交割領取。',
+            other:'探索一處合理可抵達的新場景，記錄 NPC、時間或位置變更；不得無故生成靈石。'
+        };
+        const opts=['cultivate','social','gather','combat','economy','work','quest','other'];
+        const targetSum=Object.values(MIX_QA_TARGETS).reduce((a,b)=>a+b,0);
+        let ranked=opts.map((type,i)=>({type,score:(t+1)*MIX_QA_TARGETS[type]/targetSum-(count[type]||0)+(((n*17+i*11)%17)/1000)}));
+        if(cd>day&&Number(s.exp||0)>=Number(s.maxExp||0))ranked=ranked.filter(x=>x.type!=='cultivate');
+        if(getLocationModifier(loc).expPerDay<=0)ranked=ranked.map(x=>({...x,score:x.type==='other'?x.score+2:x.score}));
         ranked.sort((a,b)=>b.score-a.score);
-        return ranked[0].o;
+        const type=ranked[0]?.type||'other';
+        return {type,action:catalog[type],intent:nearby.length&&type==='gather'?'harvest':'explore',
+            expectedReceipt:['gather','economy','work'].includes(type)};
+    }
+    function mixedQaReceiptVerification(plan, auditRecord, before, after){
+        const receipts=Array.isArray(auditRecord?.coreReceipts)?auditRecord.coreReceipts:[];
+        const results=receipts.filter(r=>r&&/^(ACQUIRED|SETTLED|SETTLED_DISPUTED|PAID|WORK_RECORDED|AGREED|CONTRACT_SIGNED|STOCK_RECORDED|REWARDED|RETURNED)$/.test(String(r.status||'')));
+        const bucket=mixedQaBucket(plan.type);
+        let verified=false;
+        if(bucket==='gather')verified=results.some(r=>r.status==='ACQUIRED');
+        else if(bucket==='economy')verified=results.some(r=>/^(SELL|BUY|BARTER|TRANSFER|AUCTION_CLOSE|PAYMENT|REFUND)$/.test(String(r.kind||''))&&/^(SETTLED|SETTLED_DISPUTED)$/.test(r.status));
+        else if(bucket==='work')verified=results.some(r=>['PAID','AGREED','CONTRACT_SIGNED','WORK_RECORDED'].includes(r.status));
+        else verified=results.length>0;
+        const rejectionCount=receipts.filter(r=>r.status==='REJECTED').length;
+        return {verified,receipts:receipts.slice(-12).map(r=>({kind:r.kind,status:r.status,name:r.name||r.itemName||'',reason:String(r.reason||'').slice(0,180)})),
+                rejectionCount,warningCodes:(auditRecord?.issues||[]).map(x=>String(x.code||x)).slice(-8),
+                mismatch:plan.expectedReceipt&&!!auditRecord&&results.length===0&&before.items===after.items&&before.stones===after.stones};
     }
     function mixedQaAudit(before,after,plan,game){
         const issues=[];
         for(const key of ['exp','maxExp','hp','maxHp','stones','days','level'])if(!Number.isFinite(Number(after[key])))issues.push('P0_NONFINITE_'+key);
-        if(after.hp<0||after.maxHp<=0||after.exp<0||after.maxExp<=0||after.stones<0||after.days<before.days)issues.push('P0_INVALID_NUMERIC_STATE');
+        if(after.hp<0||after.maxHp<=0||after.exp<0||after.maxExp<=0||after.stones<0||after.fragments<0||after.days<before.days)issues.push('P0_INVALID_NUMERIC_STATE');
         if(after.level===before.level && after.maxHp>before.maxHp*2.0)issues.push('P0_HP_JUMP_WITHOUT_LEVEL');
         if(after.level>before.level+1)issues.push('P0_MULTILEVEL_SINGLE_TURN');
         if(plan.type==='breakthrough' && after.level===before.level && after.hp<before.hp){
@@ -15290,7 +15348,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         return issues;
     }
     function longQaBefore(s){return {level:s.level,realm:s.realm,exp:Math.floor(s.exp||0),maxExp:Math.floor(s.maxExp||0),
-        hp:s.hp,maxHp:getMaxHp(s),stones:s.spiritStone,days:s.daysPassed,dead:Boolean(s.isDead),
+        hp:s.hp,maxHp:getMaxHp(s),stones:v713StoneDisplay(s),fragments:Number(s.v716FragmentStones||0),days:s.daysPassed,dead:Boolean(s.isDead),
         npcs:Object.keys(s.npcRegistry||{}).length,items:(s.inventory||[]).reduce((a,x)=>a+Number(x.quantity||0),0),
         location:String(s.location||''),mode:getEffectiveMode(s),pending:Boolean(s.pendingEconomyProposal),breakthroughCdDays:Number(s.breakthroughCdDays||0),telemetryCompleted:Number(s.actionTelemetry?.completed||0),telemetryFailed:Number(s.actionTelemetry?.failed||0)};}
     function longQaCheckpoint(data){
@@ -15322,8 +15380,8 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
         longQaText([`完成 ${data.completedTurns??arr.filter(r=>r.success).length}/${data.target} 個有效回合（已嘗試 ${arr.length} 次） | Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
             `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
-            `突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；稽核警示 ${data.auditIssues?.length||0}；連續危險撤退 ${data.qaRetreatStall||0}/3`,
-            `均衡分類 ${Object.entries(data.actionCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；NPC ${Object.keys(p.npcRegistry||{}).length}；HP ${p.hp??'?'}；靈石 ${p.spiritStone??'?'}`, 
+            `未驗證的交易/採集/雇用成功回合 ${data.unverifiedSettlements||0}；突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；稽核警示 ${data.auditIssues?.length||0}；連續危險撤退 ${data.qaRetreatStall||0}/3`,
+            `目標分類 ${Object.entries(data.actionCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；已驗證真實收據 ${Object.entries(data.verifiedCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；NPC ${Object.keys(p.npcRegistry||{}).length}；HP ${p.hp??'?'}；靈石 ${p.spiritStone??'?'}`, 
             `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
     }
     async function startLongGeminiQA(resume=false){
@@ -15335,7 +15393,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(!resume&&oldText&&!confirm('現有長期測試進度將被新的測試覆蓋。若需要舊報告請先匯出。確定重開？'))return;
         const requested=Number(document.getElementById('long-qa-turns').value||1000);
         const delayMs=Number(document.getElementById('long-qa-delay').value||60000);
-        if(!confirm(`即將${resume?'接續':'開始'}真正 Gemini 均衡混合測試，目標 1,000 個成功結算回合；每回合使用付費／限額 API，可能持續數小時。角色可能死亡，突破並不保證成功。會備份並還原正式遊戲。是否執行？`))return;
+        if(!confirm(`即將${resume?'接續':'開始'}真正 Gemini 均衡混合測試，目標 ${requested} 個成功遊戲回合，並獨立統計真實交易／物品收據；每回合使用付費／限額 API，可能持續數小時。角色可能死亡，突破並不保證成功。會備份並還原正式遊戲。是否執行？`))return;
         let snapshot;
         try {
             snapshot=liveQaSnapshot();
@@ -15346,14 +15404,14 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V6.82 真實Gemini千回合均衡測試',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V7.14.6 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
-                    target:requested,delayMs,protocol:'P0-P2 balanced V1.0',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    target:requested,delayMs,protocol:'V7.14.6 scenario + receipt verification v2',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
             data.target=Math.max(data.target||1000,requested);
             data.completedTurns ??= (data.rounds||[]).filter(r=>r.success).length;
-            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaCommerceFailureStreak??=0;
+            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaCommerceFailureStreak??=0;data.qaPhases??={};data.verifiedCounts??={};data.unverifiedSettlements??=0;
             if(resume && data.nextAllowedAt && Date.now()<data.nextAllowedAt){
                 const until=new Date(data.nextAllowedAt).toLocaleString();
                 openGameModal('Gemini 配額尚未恢復',`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
@@ -15367,7 +15425,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             longQaControl(true);
             let streak=0;
             // n is the attempt number; only successful settled actions advance completedTurns.
-            for(let n=data.rounds.length;data.completedTurns<data.target;n++){
+            for(let n=data.rounds.length;data.completedTurns<data.target&&n<Math.ceil(data.target*1.3);n++){
                 if(rt.stop){data.status='paused by user';break;}
                 if(gameState.isDead){data.status='character died';break;}
                 // Clean orphaned sale intents left by a rejected AI quote. The QA agent never confirms a sale.
@@ -15378,6 +15436,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     break;
                 }
                 const plan=mixedQaPlan(gameState,data);
+                data.qaPhases??={};if(['work','economy','gather'].includes(plan.type))data.qaPhases[plan.type]=(Number(data.qaPhases[plan.type]||0)+1)%4;
                 const before=longQaBefore(gameState);
                 const completedBefore=Number(gameState.actionTelemetry?.completed||0);
                 const failedBefore=Number(gameState.actionTelemetry?.failed||0);
@@ -15385,7 +15444,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 const began=Date.now();
                 let quotaLimit=null;
                 try {
-                    if(plan.type==='breakthrough') await attemptBreakthrough();
+                    if(plan.type==='team_battle_turn') v682Turn('attack');
+                    else if(plan.type==='tactical_battle_turn') battleTurn('strike');
+                    else if(plan.type==='breakthrough') await attemptBreakthrough();
                     else if(plan.type==='cultivate') await quickHeal(30,'long');
                     else await sendAction(plan.action);
                     if(gameState.pendingEconomyProposal){
@@ -15404,7 +15465,8 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 }
                 if(rt.rateLimit)quotaLimit={...rt.rateLimit};
                 const after=longQaBefore(gameState);
-                const success=Number(gameState.actionTelemetry?.completed||0)>completedBefore;
+                const success=Number(gameState.actionTelemetry?.completed||0)>completedBefore ||
+                    (['team_battle_turn','tactical_battle_turn'].includes(plan.type)&&after.days>before.days);
                 const progressed=mixedQaProgressed(before,after);
                 const failure=!success?(gameState.actionTelemetry?.recent||[]).slice(-1)[0]?.reason||'操作未完成':'';
                 const deltas=rt.httpEvents.slice(httpBefore);
@@ -15430,6 +15492,15 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     data.qaAvoidEconomyUntil=n+1+Math.min(20,8*data.qaCommerceFailureStreak);
                     record.commerceRecovery='cleared orphan intent and temporarily avoided repeated quote requests';
                 }else if(plan.type==='economy'&&success)data.qaCommerceFailureStreak=0;
+                const latestAudit=typeof v709AuditRead==='function'?v709AuditRead().slice(-1)[0]:null;
+                const verification=mixedQaReceiptVerification(plan,latestAudit,before,after);
+                record.coreVerification=verification;
+                data.verifiedCounts??={};
+                if(verification.verified&&success)data.verifiedCounts[record.bucket]=(data.verifiedCounts[record.bucket]||0)+1;
+                if(plan.expectedReceipt&&success&&!verification.verified){
+                    data.unverifiedSettlements=(data.unverifiedSettlements||0)+1;
+                    if(verification.mismatch)(data.unverifiedExamples??=[]).length<50&&data.unverifiedExamples.push({turn:record.turn,bucket:record.bucket,action:plan.action,receipt:verification.receipts});
+                }
                 record.auditIssues=mixedQaAudit(before,after,plan,gameState);
                 if(success&&!progressed && plan.type!=='origin') record.auditIssues.push('P2_NO_MEANINGFUL_STATE_CHANGE');
                 if(plan.type==='retreat'&&data.qaRetreatStall>=3){
@@ -15468,6 +15539,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 if(data.completedTurns<data.target&&delayMs>0)await new Promise(resolve=>setTimeout(resolve,delayMs));
             }
             if(data.completedTurns>=data.target)data.status='target reached';
+            else if(data.rounds.length>=Math.ceil(data.target*1.3)&&data.status==='running')data.status='maximum attempt budget reached';
             if(gameState.isDead)data.status='character died';
         } catch(e){if(data){data.status='unexpected error';data.unexpectedError=liveQaSanitize(String(e?.message||e));}}
         finally {
@@ -15485,9 +15557,171 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const {state,history,logs,...safeReport}=data; // Explicitly exclude checkpoint internals and all API secrets.
         const blob=new Blob([JSON.stringify({...safeReport,currentState:longQaBefore(state||getDefaultGameState())},null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_V6.82_千回合Gemini均衡遊玩_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V7.14.6_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
+    // V7.14.6 QA core: deterministic, isolated scenario replay. This is NOT a Gemini call.
+    // The 1,000 checks are 50 complete 20-step fixture workflows through the real settlement functions.
+    // Player state, saved progress, API keys and localStorage are never modified by this runner.
+    let __qa1000Report = null;
+    let __qa1000Running = false;
+    const QA1000_VERSION = '7.14.6-qa2';
+    const QA1000_CASES = [
+        '登錄自然來源','確實拾取並進包','同一來源不可複製','賣素材並入帳','商人合法貨源登錄',
+        '以半顆靈石買貨','不用硬性日薪格式也能締約','打工天數正式記錄','工資實際收款',
+        '領過的薪水不可再領','超額出售不得扣錯帳','重放買貨事件不能重複扣款',
+        '不明仙丹不能憑空入袋','普通樹枝不能無證據升仙品','合法押金入帳',
+        '原押金退款','重複退款防護','舊素材權限與贓物權限','序列化存讀檔','貨幣與物品狀態不變量'
+    ];
+    function qa1000SourceFixture(i) {
+        return [
+            {name:'樹枝',category:'wood',scene:'你在林地樹下發現一根樹枝。'},
+            {name:'石頭',category:'mineral',scene:'你在路旁發現一塊石頭。'},
+            {name:'藤蔓',category:'plant',scene:'你在林中發現一截藤蔓。'},
+            {name:'野花',category:'plant',scene:'你在草地發現一朵野花。'},
+            {name:'野果',category:'plant',scene:'你在灌木間發現一顆野果。'}
+        ][i % 5];
+    }
+    function qa1000IsolatedWorld() {
+        const s=getDefaultGameState();
+        s.hasChosenOrigin=true; s.location='青石城外山林';s.inventory=[];s.npcRegistry={};
+        s.scenarioMode='IDLE';s.activeThreats=[];
+        ensureWorldMemory(s);
+        return s;
+    }
+    function qa1000Step(ctx, step, cycle) {
+        const s=ctx.s, f=ctx.f, base='QA1000:'+cycle+':';
+        const all=()=>s.inventory.reduce((t,x)=>t+Number(x.quantity||0),0);
+        const asset=(type,extra,action,story,serial)=>v718AssetEvent(s,{kind:type,confirmed:true,partyName:'青衫掌櫃',...extra},action,story,base+serial,0);
+        let r=null;
+        switch(step){
+        case 0:
+            r=v718Apply(s,{actionOutcome:{result:'success'},worldActions:[{kind:'DISCOVER',name:f.name,quantity:1,outcome:'success',tier:'凡品',evidence:'附近自然形成的可見來源'}]},
+                '查看附近',f.scene,base+'0');
+            return {ok:r.receipts.some(x=>x.status==='DISCOVERED'),receipt:r.receipts};
+        case 1:
+            r=v718Apply(s,{actionOutcome:{result:'success'},natureEvents:[{kind:'HARVEST',name:f.name,quantity:1,category:f.category,outcome:'success'}],worldActions:[{kind:'ACQUIRE',name:f.name,quantity:1,outcome:'success',tier:'凡品'}]},
+                `把${f.name}收起來`,`你把${f.name}收進背包。`,base+'1');
+            return {ok:r.receipts.some(x=>x.status==='ACQUIRED')&&s.inventory.some(x=>x.name===f.name&&x.quantity===1),receipt:r.receipts};
+        case 2:
+            {const old=all();r=v718Apply(s,{actionOutcome:{result:'success'},natureEvents:[{kind:'HARVEST',name:f.name,quantity:1,category:f.category,outcome:'success'}]},
+                `把${f.name}收起來`,`你把${f.name}收進背包。`,base+'2');
+            return {ok:all()===old&&!r.receipts.some(x=>x.status==='ACQUIRED'),receipt:r.receipts};}
+        case 3:
+            s.location='青石城市集';
+            r=asset('SELL',{itemName:f.name,quantity:1,amount:1},`出售一件${f.name}`,
+                `青衫掌櫃收購${f.name}並當場付給你一顆靈石。`,'3');
+            return {ok:r.status==='SETTLED'&&v713StoneDisplay(s)===1&&!s.inventory.some(x=>x.name===f.name&&Number(x.quantity)>0),receipt:r};
+        case 4:
+            r=asset('SHOP_STOCK',{itemName:'乾糧',quantity:1},'詢問乾糧','青衫掌櫃從貨架上拿出一份乾糧並展示。','4');
+            return {ok:r.status==='STOCK_RECORDED',receipt:r};
+        case 5:
+            r=asset('BUY',{itemName:'乾糧',quantity:1,amount:.5},'用半顆靈石買一份乾糧','青衫掌櫃同意你用半顆靈石買下一份乾糧，當場交付。','5');
+            return {ok:r.status==='SETTLED'&&v713StoneDisplay(s)===.5&&s.inventory.some(x=>x.name==='乾糧'),receipt:r};
+        case 6:
+            r=asset('HIRE',{title:'七日零工',durationDays:7,wage:.5,paymentBasis:'total'},'接受七日零工','青衫掌櫃同意讓你做七日零工，完工支付半顆靈石。','6');
+            ctx.agreementId=Object.values(v718State(s).agreements).find(x=>x.title==='七日零工')?.id;
+            return {ok:r.status==='AGREED'&&!!ctx.agreementId,receipt:r};
+        case 7:
+            r=asset('WORK',{agreementId:ctx.agreementId,days:7},'工作七日','你完成七日零工，青衫掌櫃確認成果。','7');
+            return {ok:r.status==='WORK_RECORDED',receipt:r};
+        case 8:
+            r=asset('PAY_WAGE',{agreementId:ctx.agreementId,amount:.5},'領取七日薪資','青衫掌櫃取出半顆靈石，當場支付給你。','8');
+            return {ok:r.status==='PAID'&&v713StoneDisplay(s)===1,receipt:r};
+        case 9:
+            {const old=v713StoneDisplay(s);r=asset('PAY_WAGE',{agreementId:ctx.agreementId,amount:.5},'再次領取七日薪資','青衫掌櫃試圖再付半顆靈石，但款項已經結清。','9');
+            return {ok:r.status==='REJECTED'&&v713StoneDisplay(s)===old,receipt:r};}
+        case 10:
+            {const old=v713StoneDisplay(s),inv=all();r=asset('SELL',{itemName:f.name,quantity:99,amount:99},'出售九十九件素材','青衫掌櫃說願意高價收購。','10');
+            return {ok:r.status==='REJECTED'&&v713StoneDisplay(s)===old&&all()===inv,receipt:r};}
+        case 11:
+            {const old=v713StoneDisplay(s),inv=all();r=asset('BUY',{itemName:'乾糧',quantity:1,amount:.5},'再用半顆靈石買一份乾糧','青衫掌櫃同意成交。','5');
+            return {ok:r.status==='REJECTED'&&v713StoneDisplay(s)===old&&all()===inv,receipt:r};}
+        case 12:
+            {const old=all();r=v718Apply(s,{actionOutcome:{result:'success'},worldActions:[{kind:'ACQUIRE',name:'九轉仙丹',quantity:1,outcome:'success',tier:'仙品'}]},'收起九轉仙丹','眼前其實沒有任何仙丹。',base+'12');
+            return {ok:all()===old&&!s.inventory.some(x=>x.name==='九轉仙丹'),receipt:r.receipts};}
+        case 13:
+            {let blocked=false;try{v720ProfileFromAI({tier:'仙品',materialQuality:'極品',category:'wood',referenceUnitValue:99999},'普通樹枝',{story:'你只是在路邊撿到一根普通樹枝。'});}catch(_){blocked=true;}
+            let high=null;try{high=v720ProfileFromAI({tier:'上品',materialQuality:'精良',category:'wood'},'千年雷擊木',{story:'你找到一截千年雷擊木，雷芒閃動，屬稀有靈材。'});}catch(_){}
+            const fakeBeast=v718Apply(s,{actionOutcome:{result:'success'},natureEvents:[{kind:'HARVEST',name:'獸牙',quantity:1,category:'beast',outcome:'success'}]},'剝取獸牙','周圍沒有任何已獵獲妖獸。',base+'13');
+            return {ok:blocked&&high?.tier==='上品'&&!s.inventory.some(x=>x.name==='獸牙'),receipt:{blocked,highTier:high?.tier,beast:fakeBeast.receipts}};}
+        case 14:
+            r=asset('DEPOSIT',{amount:.5},'繳納半顆靈石押金','青衫掌櫃收下半顆靈石押金。','14');
+            ctx.depositRef=r.obligationId;
+            return {ok:r.status!=='REJECTED'&&v713StoneDisplay(s)===.5&&!!ctx.depositRef,receipt:r};
+        case 15:
+            r=asset('RETURN_DEPOSIT',{amount:.5,reference:ctx.depositRef},'領回半顆押金','青衫掌櫃退還半顆靈石押金。','15');
+            return {ok:r.status==='SETTLED'&&v713StoneDisplay(s)===1,receipt:r};
+        case 16:
+            {const old=v713StoneDisplay(s);r=asset('RETURN_DEPOSIT',{amount:.5,reference:ctx.depositRef},'再次要求退押金','青衫掌櫃同意再次退款。','16');
+            return {ok:r.status==='REJECTED'&&v713StoneDisplay(s)===old,receipt:r};}
+        case 17:
+            {const ordinary=getItemPermissions({name:'樹枝',quantity:1,canDrop:false,canSell:false,type:'misc'});
+             const owned=getItemPermissions({name:'樹枝',quantity:1,ueLoanContractId:'LOAN:1'});
+             return {ok:Boolean(ordinary.drop&&ordinary.sell&&!owned.drop&&!owned.sell),receipt:{ordinary,borrowed:owned}};}
+        case 18:
+            {const data=JSON.parse(JSON.stringify(s));
+             return {ok:v713StoneDisplay(data)===v713StoneDisplay(s)&&
+                 !!Object.values(v718State(data).agreements).find(x=>x.id===ctx.agreementId)&&
+                 data.inventory.some(x=>x.name==='乾糧')&&
+                 Object.keys(v718State(data).processed).length===Object.keys(v718State(s).processed).length,
+                 receipt:{wallet:v713StoneDisplay(data),inventory:data.inventory.map(x=>x.name)}};}
+        case 19:
+            {const npc=Object.values(s.npcRegistry).find(x=>x.name==='青衫掌櫃');
+             const valid=Number.isFinite(v713StoneDisplay(s))&&v713StoneDisplay(s)>=0&&
+                 s.inventory.every(x=>Number.isSafeInteger(Number(x.quantity))&&x.quantity>0)&&
+                 npc&&npc.inventory?.some(x=>x.name===f.name)&&
+                 Object.values(v718State(s).agreements).every(x=>Number(x.paid||0)>=0);
+             return {ok:Boolean(valid),receipt:{wallet:v713StoneDisplay(s),npcItems:npc?.inventory?.length,items:s.inventory.length}};}
+        default:return {ok:false,receipt:'unknown test step'};
+        }
+    }
+    async function qa1000Run(total=1000){
+        if(__qa1000Running)throw Error('千回合測試正在執行');
+        const target=Number(total);
+        if(!Number.isInteger(target)||target<1||target>1000)throw Error('目前僅允許 1 至 1000 個檢查');
+        __qa1000Running=true;
+        const started=Date.now();
+        const output={version:QA1000_VERSION,baseline:'V7.14.5',mode:'deterministic_offline_core_no_Gemini',
+            note:'每20個檢查由同一隔離角色沿實際核心結算流程完成；每組重新建立角色。非1,000次Gemini呼叫，非1,000回合sendAction。',
+            target,completed:0,passed:0,failed:0,categories:{},failures:[],evidence:[],startedAt:new Date().toISOString()};
+        let ctx=null;
+        try{
+            for(let n=0;n<target;n++){
+                const step=n%QA1000_CASES.length,cycle=Math.floor(n/QA1000_CASES.length);
+                if(step===0)ctx={s:qa1000IsolatedWorld(),f:qa1000SourceFixture(cycle),agreementId:null,depositRef:null};
+                let test;
+                try{test=qa1000Step(ctx,step,cycle);}catch(e){test={ok:false,receipt:{error:String(e?.stack||e).slice(0,1200)}};}
+                const name=QA1000_CASES[step],group=output.categories[name]??={passed:0,failed:0};
+                if(test.ok){output.passed++;group.passed++;}
+                else{output.failed++;group.failed++;if(output.failures.length<100)output.failures.push({turn:n+1,cycle:cycle+1,case:name,receipt:test.receipt});}
+                if(cycle===0||!test.ok&&output.failures.length<=30)output.evidence.push({turn:n+1,case:name,passed:Boolean(test.ok),receipt:JSON.stringify(test.receipt||null).slice(0,600)});
+                output.completed=n+1;
+                if(n%25===24){
+                    const el=document.getElementById('qa1000-offline-progress');
+                    if(el)el.textContent=`執行中 ${output.completed}/${target}；通過 ${output.passed}／失敗 ${output.failed}`;
+                    await new Promise(resolve=>setTimeout(resolve,0));
+                }
+            }
+        }finally{__qa1000Running=false;}
+        output.finishedAt=new Date().toISOString();output.elapsedMs=Date.now()-started;
+        output.result=output.failed===0?'PASS':'FAIL';
+        __qa1000Report=output;
+        const el=document.getElementById('qa1000-offline-progress');
+        if(el)el.textContent=`${output.result} | ${output.passed}/${target} 檢查通過，${output.failed} 失敗，耗時 ${(output.elapsedMs/1000).toFixed(1)} 秒。\n`+
+            `涵蓋 ${Object.keys(output.categories).length} 種情境，每20項進行一次可追蹤的隔離流程。\n`+
+            (output.failures.length?'首項失敗：'+JSON.stringify(output.failures[0]).slice(0,350):'所有檢查均無失敗。')+
+            '\n注意：本測試不連接 Gemini，亦不是連續 1,000 次真實 AI 遊玩。';
+        return output;
+    }
+    function qa1000Export(){
+        if(!__qa1000Report){openGameModal('無離線測試報告','請先執行離線千回合測試。');return;}
+        const blob=new Blob([JSON.stringify(__qa1000Report,null,2)],{type:'application/json;charset=utf-8'});
+        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+        a.download='九州裂天錄_V7.14.6_內建1000次核心覆檢_'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+
     document.addEventListener('DOMContentLoaded',longQaStartupRestore);
 
     document.addEventListener('DOMContentLoaded',()=>{liveQaRestoreInterrupted();});
