@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.14.4｜自然素材分類與資產交易整合版</title>
+    <title>九州裂天錄 V7.14.5｜真實 AI 回合拾取與雇用修復版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -2313,7 +2313,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "7.14.4",
+            version: "7.14.5",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, maxHp: 50, hp: 50, exp: 0, maxExp: 100,
             economy: {receipts:[],notifiedIds:[]},
@@ -5252,7 +5252,7 @@ JSON 輸出格式範例：
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
         // Retain V6.90 membership metadata that the legacy normalizer does not know.
         if(valid && raw.sect && typeof raw.sect==='object')s.sect={...raw.sect,...normalized.sect};
-        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.14.4";
+        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.14.5";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -7484,8 +7484,8 @@ JSON 輸出格式範例：
         }
         const systemText=repairKind==='receipt_story' ? '你是修仙文字RPG敘事編輯。唯一權威是CORE_RECEIPTS。只回傳JSON物件 {"story":"繁體中文敘事"}。不得修改已核准結果，不得新增未記帳的物品、報酬、擊殺或任務完成；失敗就如實描述失敗。' : getSystemPrompt()+`
 【V7.02 擴充事件契約】可在 worldActions 使用 CRAFT(必附 ingredients:[{name,quantity}],quantity:1)、CLAIM_REWARD(必附 contractId：已登錄契約 ID；若未登錄但已完成正式任務，可傳 sourceEntityId 指向任務 ID，由核心核實委託人與現有資金後建立契約)、DISTRACT(必附 sourceEntityId 指向已登錄且有守衛的物品)、ATTACK/PAY/INTERACT(僅提議，必須交給既有核心處理)。DISCOVER 可附 guardianId、guardianName、requiresTool、toolKeyword；特殊物品必須已有可信場景來源。多步驟行動另以 actionPlan:[{kind,target,description}] 表示；不得在同回合假定所有步驟完成。所有收據由核心結算，請勿在 story 自行宣布尚未結算的報酬、戰鬥勝利或製作結果。
-【V7.14.4 AI 動態物品定義規則】每一種首次確定存在的自然素材、妖獸部位、礦物、木材、草藥，在 natureEvents 的 DISCOVER/HARVEST 事件附 itemProfile:{"category":"plant|mineral|wood|water|fauna|core|natural|material","tier":"凡品|下品|中品|上品|極品|仙品","materialQuality":"殘損|普通|精良|上乘|極品","identified":true,"traits":["具體特性"],"description":"素材的實際性質與來源","use":"合理用途","referenceUnitValue":2}。品階依來源妖獸境界、靈氣、天材地寶特徵和既定世界規則慎重判斷，絕不能把所有天然素材都寫成凡品。普通樹枝多為凡品，千年雷擊木可能很高階。物品類別、品階、保存品質分開判斷；品質用 materialQuality，不得塞進 tier。referenceUnitValue 是下品靈石的市場參考值（非成交價、不可自行加錢），核心依品階界限複核。不知品階請用 identified:false 並保留合理物品描述，不可憑空虛構已有資產。來源一經登錄必須沿用原品階、品質與估值，不可每回合改寫；資產交易需保留物品的 v720ProfileId，若同名不同品階，assetEvents 請填 itemProfileId 或 itemTier，否則必須先澄清實際交易批次。這套定義不可取代裝備 grade、任務鎖定或實際所有權。
-【V7.14.4 AI 事件協定優先】玩家自然採集、販售、入職、接案、完成工作、付款、偷取或戰利品時，請讓玩家行動與 NPC 回應自然推進，不要強制詢問薪資或簽契約：若雙方已同意可直接入職，wage=null 表示待遇暫未知。輸出 JSON 另帶 natureEvents:[{kind:"HARVEST",name:"靈草",quantity:2,category:"plant",sourceId:"",outcome:"success"}]；採集時必須在 story 寫明具體取得材料、數量及場景來源，不能憑空出現稀有妖丹。交易／工作／委託另帶 assetEvents:[{kind:"SELL|BUY|GIVE|STEAL|ROB|LOOT|HIRE|AGREE|WORK|PAY_WAGE|PAY_REWARD|LOAN|REPAY|BARTER|DEPOSIT|RETURN_DEPOSIT|PREPAY|RETURN_PREPAY|PAYMENT_PLAN|INSTALLMENT|ESCROW_HOLD|ESCROW_RELEASE|ESCROW_REFUND|ADVANCE_PAYMENT|RETURN_PURCHASE|RETURN_SALE|COMPENSATION|BLACK_MARKET_SELL|SCAM|EXTORT|AUCTION_LIST|AUCTION_BID|AUCTION_CLOSE|CONSIGN|CONSIGN_SALE|RESTITUTE",confirmed:true,partyId:"NPC ID 或空",partyName:"商戶姓名",itemName:"靈草",quantity:2,amount:1,currency:"下品靈石",durationDays:null,terms:"原約定條件"}]。只在敘事已確認實際發生時輸出 confirmed:true；詢價、談判、未成交與拒絕不寫正式結算事件。SELL 須明確記錄成交價格與現有物品，BUY 須有商家實際庫存，付款必須真實扣帳。偷竊成功只改持有權、不消除原主人權利。原有 worldActions 不要為同一筆自然素材重複 HARVEST。故事不顯示任何工程或核心收據文字。
+【V7.14.5 AI 動態物品定義規則】每一種首次確定存在的自然素材、妖獸部位、礦物、木材、草藥，在 natureEvents 的 DISCOVER/HARVEST 事件附 itemProfile:{"category":"plant|mineral|wood|water|fauna|core|natural|material","tier":"凡品|下品|中品|上品|極品|仙品","materialQuality":"殘損|普通|精良|上乘|極品","identified":true,"traits":["具體特性"],"description":"素材的實際性質與來源","use":"合理用途","referenceUnitValue":2}。品階依來源妖獸境界、靈氣、天材地寶特徵和既定世界規則慎重判斷，絕不能把所有天然素材都寫成凡品。普通樹枝多為凡品，千年雷擊木可能很高階。物品類別、品階、保存品質分開判斷；品質用 materialQuality，不得塞進 tier。referenceUnitValue 是下品靈石的市場參考值（非成交價、不可自行加錢），核心依品階界限複核。不知品階請用 identified:false 並保留合理物品描述，不可憑空虛構已有資產。來源一經登錄必須沿用原品階、品質與估值，不可每回合改寫；資產交易需保留物品的 v720ProfileId，若同名不同品階，assetEvents 請填 itemProfileId 或 itemTier，否則必須先澄清實際交易批次。這套定義不可取代裝備 grade、任務鎖定或實際所有權。
+【V7.14.5 AI 事件協定優先】玩家自然採集、販售、入職、接案、完成工作、付款、偷取或戰利品時，請讓玩家行動與 NPC 回應自然推進，不要強制詢問薪資或簽契約：若雙方已同意可直接入職，wage=null 表示待遇暫未知。輸出 JSON 另帶 natureEvents:[{kind:"HARVEST",name:"靈草",quantity:2,category:"plant",sourceId:"",outcome:"success"}]；採集時必須在 story 寫明具體取得材料、數量及場景來源，不能憑空出現稀有妖丹。交易／工作／委託另帶 assetEvents:[{kind:"SELL|BUY|GIVE|STEAL|ROB|LOOT|HIRE|AGREE|WORK|PAY_WAGE|PAY_REWARD|LOAN|REPAY|BARTER|DEPOSIT|RETURN_DEPOSIT|PREPAY|RETURN_PREPAY|PAYMENT_PLAN|INSTALLMENT|ESCROW_HOLD|ESCROW_RELEASE|ESCROW_REFUND|ADVANCE_PAYMENT|RETURN_PURCHASE|RETURN_SALE|COMPENSATION|BLACK_MARKET_SELL|SCAM|EXTORT|AUCTION_LIST|AUCTION_BID|AUCTION_CLOSE|CONSIGN|CONSIGN_SALE|RESTITUTE",confirmed:true,partyId:"NPC ID 或空",partyName:"商戶姓名",itemName:"靈草",quantity:2,amount:1,currency:"下品靈石",durationDays:null,terms:"原約定條件"}]。只在敘事已確認實際發生時輸出 confirmed:true；詢價、談判、未成交與拒絕不寫正式結算事件。SELL 須明確記錄成交價格與現有物品，BUY 須有商家實際庫存，付款必須真實扣帳。偷竊成功只改持有權、不消除原主人權利。原有 worldActions 不要為同一筆自然素材重複 HARVEST。故事不顯示任何工程或核心收據文字。
 【V7.14.1 遊玩優先與薪資理解】AI 是工資條件、雇主是否同意、工作成果與商業談判的敘事判定者；不能以場景沒重複寫薪資數字為由讓已說明的契約一直失敗。請在應徵和報價對話中自然寫清楚雇主名稱、工期、是日薪還是「整段工期總薪」，及明確數量；同一契約數字沿用既有對話，不要每回合要求玩家重問。NPC 明確同意簽約時要描述契約正式成立；完成雇傭工作且雇主付款時要描述明確支付。碎靈石是獨立貨幣單位，不要自行換算成下品靈石。物理物品才可提 DISCOVER，禁制、道路、職位、線索、人物身分不得提 DISCOVER/ACQUIRE，應寫進 worldMemory 或 story。玩家故事不准出現【核心未結算】、【場景登錄】、【雇用核對】、【交易狀態】等工程文字。
 【V7.10 雇用契約與薪資】學徒、短工、商店雇用和固定月薪必須區分：詢問招工/報價（沒有契約）、簽約（雙方確認才建立雇用紀錄）、實際工作與時間推進、應付薪資、實際領取。招工告示不是清靈草實物，應徵不得提出 DISCOVER/ACQUIRE/HARVEST/CURRENCY_PICKUP。對「領薪水／向掌櫃領月俸」，不得提出 CURRENCY_PICKUP 或以未完成的委託 CLAIM_REWARD 代替；核心會從已簽署的雇用紀錄核算到期薪資並轉帳。每段敘事必須明確交代時間跨度；沒有完整工作憑證不得宣稱已領薪。不要每回合提到境界未突破或操作按鈕教學，除非真正在嘗試突破。
 【V7.06 下品靈石正式事件】靈石是錢包貨幣，不是物品；inventoryDelta 不得含靈石，spiritStonesDelta 必須為0。當明確發現散落靈石、且非假設或傳聞，可提出 worldActions:[{kind:"CURRENCY_DISCOVER",amount:1至10, currency:"下品靈石",outcome:"neutral",evidence:"已看到的場景靈石"}]。當玩家明確拾取且故事確認成功，可提出 kind:"CURRENCY_PICKUP"，附 amount、sourceEntityId（已登錄來源時必填）與 outcome:"success"；核心只允許一次性的有限世界探索來源，不可憑空反覆刷取。已登錄 NPC 主動贈與用 NPC_GIFT_CURRENCY，必須附 npcId、amount、證據；正式工作報酬用 WORK_PAYMENT，必須附已完成委託 contractId 與金額；戰鬥搜刮用 LOOT_CURRENCY，必須附勝利的搶劫 claimId 作為 sourceEntityId（戰鬥核心已入帳則只確認，絕不再次加錢）。未核實來源只能描述可能發現或報價，不得宣告入帳。`;
@@ -12228,11 +12228,11 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v709AuditExport(){
         const records=v709AuditRead();
-        const report={schemaVersion:712,gameVersion:'7.14.4',product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
+        const report={schemaVersion:712,gameVersion:'7.14.5',product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
             exportedAt:new Date().toISOString(),turns:records.length,records};
         const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');
-        a.href=url;a.download='九州裂天錄_V7.14.4_真實AI逐回合稽核_'+new Date().toISOString().slice(0,10)+'.json';
+        a.href=url;a.download='九州裂天錄_V7.14.5_真實AI逐回合稽核_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
     function v709AuditClear(){
@@ -12322,6 +12322,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v710ShopName(text){
         const input=String(text||'');
+        // General shop names should work without a predefined whitelist.
+        // Separating verbs prevents 「加入萬寶商盟分號」 from becoming an NPC name.
+        const orgSource=input.replace(/(?:加入|前往|來到|抵達|進入|踏入|走進|走到|到達|詢問|拜訪|向|在)/g,'，');
+        const orgParts=orgSource.split(/[，,。·｜|\s]+/).filter(Boolean);
+        const orgCandidates=orgParts.map(t=>(t.match(/([\u4e00-\u9fff]{2,12}(?:商盟分號|商號分號|商會分號|商盟|分號|外包藥行|藥行|商號))$/)||[])[1]).filter(Boolean);
+        if(orgCandidates.length)return orgCandidates.at(-1);
         if(input.includes('百草堂'))return '百草堂';
         if(input.includes('百草坊'))return '百草坊';
         if(input.includes('鐵血獵妖隊'))return '鐵血獵妖隊';
@@ -12365,10 +12371,11 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         return null;
     }
     function v712DurationFromText(text){
-        const m=String(text||'').match(/(\d+|[一二兩两三四五六七八九十]+)\s*(?:個)?\s*(個月|月|天|日)/);
+        const m=String(text||'').match(/(\d+|[一二兩两三四五六七八九十]+)\s*(?:個)?\s*(年|個月|月|天|日)/);
         if(!m)return 30;
         const n=/^\d+$/.test(m[1])?Number(m[1]):v710ChineseNumber(m[1]);
-        return Number.isSafeInteger(n)&&n>0&&n<=120?(/月/.test(m[2])?n*30:n):30;
+        // This game's monthly calendar uses 30 days; a 3-year term is 1080 days.
+        return Number.isSafeInteger(n)&&n>0&&n<=120?(/年/.test(m[2])?n*360:/月/.test(m[2])?n*30:n):30;
     }
     function v712WageEarnedHalves(c){
         const unit=c.salaryUnit||'month',rate=Number.isSafeInteger(c.salaryRateHalfUnits)?c.salaryRateHalfUnits:Math.round(Math.max(0,Number(c.monthlySalary)||0)*2);
@@ -12490,7 +12497,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const t=String(story||''),a=String(action||'');
         if(/(?:拒絕|不願|未能|並未|沒有|尚未|尚不能|未獲批准|拒簽|不能).{0,27}(?:簽|受雇|聘|接受|應徵|契約|合約)/.test(t))return false;
         if(/(?:若願意|若同意|若答應|如果願意|如願意).{0,35}(?:簽|契約|合約)/.test(t)&&!/(?:已簽|正式生效|按下手印)/.test(t))return false;
-        if(/(?:簽下|簽訂|簽署|按下手印|按捺手印|按上手印|落筆簽字|字據已定|契約(?:便|就|已|正式)?.{0,12}(?:成立|生效)|名冊.{0,25}按下手印|正式受雇|試用便算正式開始)/.test(t))return true;
+        if(/(?:簽下|簽訂|簽署|按下手印|按捺手印|按上手印|按下(?:自身)?印記|按上(?:自身)?印記|蓋上(?:印記|印章)|蓋章|按印|落筆簽字|字據已定|契約(?:便|就|已|正式)?.{0,12}(?:成立|生效)|名冊.{0,25}按下手印|正式受雇|正式加入|正式開始.{0,12}(?:工作|學徒)|試用便算正式開始)/.test(t))return true;
         return /(?:接受|同意|答應).{0,30}(?:雇用|契約|試用|應徵|短工)/.test(a) && /(?:點頭|允|答應|歡迎|開始上工|雇用|錄用|受聘)/.test(t);
     }
     function v716SameWorksite(job,place){
@@ -12893,7 +12900,13 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(id)return x.resources[id]||null;
         const n=v718ObjectName(evt.name||evt.itemName||''),loc=String(s.location||'');
         const matches=Object.values(x.resources).filter(r=>r.location===loc&&r.name===n&&r.remaining>0);
-        return matches.length===1?matches[0]:null;
+        if(matches.length===1)return matches[0];
+        // Only a UNIQUE short reference is allowed: 「短棍」→「枯木短棍」.
+        // Different physical sources or grades must never be selected arbitrarily.
+        const short=String(evt.actionText||evt.playerAction||'').match(/(?:把|將|拿|取|收|拾|撿|帶走).{0,12}?(短棍|木棍|樹枝|獸骨|獸牙|草藥|礦石)/)?.[1];
+        if(!short||matches.length>1)return null;
+        const near=Object.values(x.resources).filter(r=>r.location===loc&&r.remaining>0&&r.name.endsWith(short));
+        return near.length===1?near[0]:null;
     }
     function v718Discover(d,event,action,story,stamp){
         const st=v718State(d),name=v718ObjectName(event.name||event.itemName),kind=String(event.category||v718NaturalKind(name)||'');
@@ -12929,21 +12942,41 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     function v718Gather(s,event,action,story,eventId,index){
         const kind=String(event.kind||event.type||'').toUpperCase();
         const act=v718Text(action),txt=v718Text(story),name=v718ObjectName(event.name||event.itemName);
-        if(!name||!/(?:採|摘|挖|砍|伐|割|剝|解剖|拾|撿|收集|捕|釣|取|抽|撈|割取|採礦|採藥|採木|採石|拆骨)/.test(act))return {status:'SKIPPED',reason:'玩家沒有提出採集動作'};
+        if(!name||!/(?:採|摘|挖|砍|伐|割|剝|解剖|拾|撿|收集|收起|收下|收入|收進|帶走|拿起|拿走|拿到|取走|取下|捕|釣|取|抽|撈|割取|採礦|採藥|採木|採石|拆骨|找.{0,8}武器.{0,5}防身)/.test(act))return {status:'SKIPPED',reason:'玩家沒有提出採集動作'};
         if(!v718Confirm(action,story)||event.success===false||/^(?:fail|failure|rejected)$/.test(String(event.outcome||'').toLowerCase()))return {status:'SKIPPED',reason:'本次沒有成功採集'};
         const q=v718PositiveNumber(event.quantity??1,12);if(!q)return {status:'REJECTED',reason:'採集數量無效'};
+        // Repeating 「收起那根短棍」 after a successful pickup is an
+        // idempotent inventory check, not another acquisition or an error.
+        // Actual repeat harvesting still fails when the natural source is empty.
+        const stExisting=v718State(s),activeSource=v718FindResource(s,{...event,actionText:act});
+        if(!activeSource&&/(?:收起|收進|收入|拿走|取走|帶走|放入背包)/.test(act)
+            &&!/(?:又找到|又發現|另一件|另一根|另外一根)/.test(txt)){
+            const held=Object.values(stExisting.resources).filter(r=>r.location===s.location&&r.name===name&&r.remaining===0)
+                .filter(r=>(s.inventory||[]).some(i=>i.name===name&&i.v718ResourceId===r.id&&Number(i.quantity)>0));
+            if(held.length===1)return {kind:'NATURE_HARVEST',status:'ALREADY_HELD',name,quantity:0,resourceId:held[0].id};
+        }
         const key=eventId+':NATURE:'+index;
         try{return worldStageCall(s,'NATURE_HARVEST',d=>{
             const st=v718State(d);if(st.processed[key])throw Error('重複採集事件');
-            let res=v718FindResource(d,event);
+            let res=v718FindResource(d,{...event,actionText:act});
             if(!res){
                 if(event.sourceId||event.resourceId)throw Error('指定自然來源不存在或已經耗盡');
-                if(!/(?:採到|挖出|摘下|砍下|砍取|割下|剝下|捕到|捕獲|收集到|收取|撿到|取得|取出|舀取|盛起|採得|挖得|剝取|獲得|裝入|採集成功)/.test(txt))throw Error('AI 未確認實際取得自然素材');
+                const claimed=/(?:採到|挖出|摘下|砍下|砍取|割下|剝下|捕到|捕獲|收集到|收取|撿到|取得|取出|舀取|盛起|採得|挖得|剝取|獲得|裝入|收進|收入|收起|握在手中|握緊手中|揣入)/.test(txt);
+                if(!claimed||!txt.includes(name)||(event.originLegacyAcquisition&&!v700Mundane(d,name)))throw Error('AI 未確認可取得的自然素材來源');
+                const already=Object.values(st.resources).some(x=>x.location===d.location&&x.name===name);
+                if(already&&!/(?:又找到|又發現|另一根|另外一根|新的|另一件)/.test(txt))throw Error('原來源已耗盡，不得重複生成');
                 res=v718Discover(d,{...event,available:q},action,story,key+':SOURCE');
             }
             if(res.location!==String(d.location))throw Error('資源不在目前所在地');
             if(res.remaining<q)throw Error('來源剩餘數量不足');
-            if((event.itemProfile||event.materialProfile)&&res.profile){const proposal=v720ProfileFromAI(event.itemProfile||event.materialProfile,name,{category:res.category,story,sourceName:res.name});if(proposal.profileId!==res.profile.profileId)throw Error('同一資源來源的品階或品質不可在採集時改寫');}
+            if((event.itemProfile||event.materialProfile)&&res.profile){
+                const proposal=v720ProfileFromAI(event.itemProfile||event.materialProfile,name,{category:res.category,story,sourceName:res.name});
+                // AI may describe the same ordinary branch as 「普通」 on discovery
+                // and 「殘損」 on collection. Keep its original locked profile rather
+                // than denying the pickup. Never let a new turn upgrade its tier.
+                if(proposal.tier!==res.profile.tier)throw Error('同一資源來源的品階不可在採集時改寫');
+                if(proposal.profileId!==res.profile.profileId)st.events.push({id:key+':IGNORED_AI_PROFILE',kind:'AI_PROFILE_CONFLICT_IGNORED',resourceId:res.id});
+            }
             if(res.category==='core'&&!res.corpseId)throw Error('妖丹來源未經驗證');
             const before=structuredClone(d.inventory||[]);
             const profile=res.profile||v720DefaultProfile(name,res.category||'material');
@@ -13414,8 +13447,38 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const nature=Array.isArray(r.natureEvents)?r.natureEvents.filter(x=>x&&typeof x==='object').slice(0,12):[];
         const assets=Array.isArray(r.assetEvents)?r.assetEvents.filter(x=>x&&typeof x==='object').slice(0,12):[];
         // Legacy scene proposals can suggest common resources; never treat scenery or a location as inventory.
-        if(!nature.length&&/(?:尋|找|探|觀察|查看|調查|勘查)/.test(action)){
-            for(const e of r.worldActions||[])if(String(e.kind||'').toUpperCase()==='DISCOVER'&&v718NaturalKind(e.name)&&v718ObjectName(e.name)&&/(?:發現|找到|看見|見到|藏有|長著|生有|露出)/.test(story))nature.push({kind:'DISCOVER',name:e.name,quantity:Math.max(1,Math.min(12,Number(e.quantity)||1)),itemProfile:e.itemProfile||e.materialProfile||null,tier:e.tier||null,materialQuality:e.materialQuality||null});
+        if(!nature.length&&/(?:尋|找|探|看|翻|搜|摸|觀察|查看|調查|勘查)/.test(action)){
+            for(const e of r.worldActions||[])if(String(e.kind||'').toUpperCase()==='DISCOVER'&&v718NaturalKind(e.name)&&v718ObjectName(e.name)&&/(?:發現|找到|看見|見到|藏有|長著|生有|露出|摸到|尋得|搜出|握緊|抓在手中)/.test(story))nature.push({kind:'DISCOVER',name:e.name,quantity:Math.max(1,Math.min(12,Number(e.quantity)||1)),itemProfile:e.itemProfile||e.materialProfile||null,tier:e.tier||null,materialQuality:e.materialQuality||null});
+        }
+        // When a player explicitly searches for a weapon and the narrative
+        // confirms they are ALREADY HOLDING a common wooden object, do not force
+        // a second artificial pickup turn. Discovery and acquisition can settle
+        // against the same resource in the same atomic AI turn.
+        if(/(?:找|尋).{0,10}(?:武器|防身)/.test(action) &&
+           /(?:握緊手中|握在手中|拿在手裡|拿在手中|揣入懷中)/.test(story) &&
+           String(r.actionOutcome?.result||'')==='success'){
+            const discoveries=nature.filter(x=>String(x.kind||'').toUpperCase()==='DISCOVER');
+            if(discoveries.length===1){
+                const d=discoveries[0],n=String(d.name||'');
+                const noun=(n.match(/(?:木棍|短棍|棍|木棒|樹枝|枝條)$/)||[])[0];
+                if(noun&&v700Mundane(gameState,n)&&new RegExp(noun==='棍'?'(?:木棍|短棍|棍)':noun).test(story))
+                    nature.push({kind:'HARVEST',name:n,quantity:1,outcome:'success'});
+            }
+        }
+        // Older Gemini responses often emit only worldActions:ACQUIRE for natural
+        // props.  Reuse the verified nature source rather than require a magic ID.
+        const pickIntent=/(?:把|將|拿|取|收|撿|拾|帶走).{0,24}(?:起來|收起|收入|收進|拿走|取走|懷裡|囊中|背包|短棍|木棍|枝|草|石)|(?:拾|撿|拿起|收起|取走|帶走)/.test(action);
+        if(pickIntent && !nature.some(x=>String(x.kind||'').toUpperCase()==='HARVEST')){
+            for(const e of r.worldActions||[]){
+                if(String(e.kind||'').toUpperCase()!=='ACQUIRE')continue;
+                const item=v718ObjectName(e.name);
+                if(!item||!v718NaturalKind(item)||!v700Mundane(gameState,item))continue;
+                const existing=v718FindResource(gameState,{name:item,actionText:action});
+                // A truly new acquisition requires an explicit positive story and
+                // a concrete object; it must never mint rare resources or cash.
+                if(!existing&&(!String(story).includes(item)||!/(?:抓在手中|拿在手中|握在手中|收入囊中|收入懷中|揣入|收起|撿到|取得|取出)/.test(story)))continue;
+                nature.push({kind:'HARVEST',name:item,quantity:e.quantity||1,sourceId:existing?.id||'',outcome:e.outcome||r.actionOutcome?.result,itemProfile:e.itemProfile||e.materialProfile||null,originLegacyAcquisition:true});
+            }
         }
         if(!nature.length&&/(?:採|摘|挖|砍|割|剝|撿|拾|釣|捕)/.test(action)){
             const candidates=(r.worldActions||[]).filter(e=>['HARVEST','ACQUIRE'].includes(String(e.kind||'').toUpperCase())&&v718NaturalKind(e.name)&&v718ObjectName(e.name));
@@ -13454,6 +13517,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         proposed.nature.forEach((e,i)=>{const kind=String(e.kind||e.type||'').toUpperCase();
             const r=kind==='DISCOVER'?v718DiscoverEvent(s,e,action,story,eventId,i):v718Gather(s,e,action,story,eventId,i);
             receipts.push(r);if(r.status==='ACQUIRED'&&!(String(story).includes(r.name)&&/(?:採得|採到|摘下|挖出|割下|撿到|取得|收進背包)/.test(story)))notes.push(`你將${r.name} ×${r.quantity}收進背包。`);
+            if(r.status==='ALREADY_HELD')notes.push(`${r.name}已經在你的隨身物品中。`);
         });
         proposed.assets.forEach((e,i)=>{const r=v718AssetEvent(s,e,action,story,eventId,i);receipts.push(r);
             if(r.status==='AGREED')notes.push('雙方已達成約定，你可以開始履行。');
@@ -13818,7 +13882,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 v700Proposals=v700Proposals.filter(p=>!/(?:清靈草|薪資|薪水|學徒|招募|告示)/.test(p.name||'')||/^(?:ACQUIRE|HARVEST)$/.test(p.kind)&&!/(?:招募|短工|應徵|領薪|契約)/.test(actionText));
                 v701RawActions.worldActions=(v701RawActions.worldActions||[]).filter(p=>!['CLAIM_REWARD','WORK_PAYMENT','CURRENCY_PICKUP','CURRENCY_DISCOVER'].includes(String(p.kind||'').toUpperCase()));
             }
-            const v700Owned=v700Proposals.filter(p=>!(v718Report.receipts.some(r=>r.status==='ACQUIRED'&&r.name===p.name)&&['HARVEST','ACQUIRE'].includes(String(p.kind||'').toUpperCase())) && !(/羊皮紙/.test(p.name||'')&&v697Findings.some(n=>String(n).includes('核心拾取')))
+            const v700Owned=v700Proposals.filter(p=>!(v718Report.receipts.some(r=>['ACQUIRED','DISCOVERED','ALREADY_HELD'].includes(r.status)&&r.name===p.name)&&['DISCOVER','HARVEST','ACQUIRE'].includes(String(p.kind||'').toUpperCase())) && !(/羊皮紙/.test(p.name||'')&&v697Findings.some(n=>String(n).includes('核心拾取')))
                && !(String(p.kind||'').toUpperCase()==='DISCOVER'&&/(?:禁制|封印|線索|祕密|機關|商道|山路|小徑|路徑|方向|蹤跡|招工告示|告示牌|氣息|身分|背影)/.test(String(p.name||''))));
             const v700Result=v700Issue(gameState,actionText,storyText,v700Owned,eventMeta.eventId);
             const v698Findings=v698SceneAction(gameState,actionText,storyText,stateBeforeAction.location,eventMeta.eventId,v700Result.handled);
