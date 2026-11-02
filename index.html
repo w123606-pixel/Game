@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.14.7｜實玩核心修復與因果測試版</title>
+    <title>九州裂天錄 V7.14.8｜閉關排程修復與因果測試版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -332,7 +332,8 @@
             </div>
             <h2 style="margin-top:10px;">▣ AI 測試與自動稽核</h2>
             <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
-              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.7 真實 Gemini 1000 回合因果驗證</h2>
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.8 真實 Gemini 1000 回合因果驗證</h2>
+              <div style="color:#b8d7cd;font-size:.75rem;margin-bottom:8px;">新增安全閉關排程：交談中先告辭離場、險地先尋避難處；確認回到 IDLE 才閉關。三次無法離場將暫停並明確報錯，不會一直空轉。</div>
               <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。重新分配修煉、NPC、拾取、採集、買賣、雇用、任務與戰鬥情境，逐項追蹤正式收據。AI 說成功不代表結算成功；只有已入帳／入袋／履約的正式收據才列為實際核心覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。每回合自動稽核提案、資產、正式收據與最終敘事，警示一起納入報告。</p>
               <label for="long-qa-turns">目標回合：</label>
               <select id="long-qa-turns" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
@@ -4302,7 +4303,9 @@
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
         if (mode === "DIALOGUE" || mode === "DANGER" || mode === "HAZARD") {
-            openGameModal("✦ 無法閉關", "當前情勢不允許分心閉關！"); return;
+            openGameModal("✦ 無法閉關", mode === "DIALOGUE"
+                ? "目前仍在與 NPC 交談。請先告別、實際離開店鋪或會談場所，確認狀態變為『平靜遊歷』，再選擇閉關。"
+                : "目前仍處於險地或危機。請先真正解除威脅、到達安全地點，再開始閉關。"); return;
         }
         openGameModal("✦ 閉關修練", `選擇修練方式。當前修為：${Math.floor(gameState.exp).toLocaleString()} / ${Math.floor(gameState.maxExp).toLocaleString()}。<br><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(10,'short')">短期閉關｜10天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'long')">長期閉關｜30天</button><br><button class="modal-btn primary" onclick="closeGameModal();quickHeal(30,'death')">突破死關｜30天</button><br><button class="modal-btn primary" onclick="closeGameModal();v710FatigueRest(3)">調息休養｜3天（降疲勞）</button><br><button class="modal-btn primary" onclick="closeGameModal();v710FatigueRest(7)">靜養恢復｜7天（大幅降疲勞）</button>`);
     }
@@ -4327,7 +4330,9 @@
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
         if (mode === "DIALOGUE" || mode === "DANGER" || mode === "HAZARD") {
-            openGameModal("✦ 無法閉關", "當前情勢不允許分心閉關！"); return;
+            openGameModal("✦ 無法閉關", mode === "DIALOGUE"
+                ? "目前仍在與 NPC 交談。請先告別、實際離開店鋪或會談場所，確認狀態變為『平靜遊歷』，再選擇閉關。"
+                : "目前仍處於險地或危機。請先真正解除威脅、到達安全地點，再開始閉關。"); return;
         }
         const locMod = getLocationModifier(gameState.location);
         const isDeathSeclusion = cultivationMode === 'death';
@@ -12249,7 +12254,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v709AuditExport(){
         const records=v709AuditRead();
-        const report={schemaVersion:712,gameVersion:'7.14.7',product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
+        const report={schemaVersion:712,gameVersion:'7.14.8',product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
             exportedAt:new Date().toISOString(),turns:records.length,records};
         const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -15321,7 +15326,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }const stop=document.getElementById('long-qa-stop');if(stop)stop.disabled=!running;}
     // V6.82 MIXED QA: goal-oriented schedule, not a sequence of 80% cultivation.
     const MIX_QA_TARGETS={cultivate:120,social:100,gather:180,combat:80,economy:160,work:160,quest:100,other:100};
-    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',team_battle_turn:'combat',tactical_battle_turn:'combat',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'work',world:'quest'})[t]||t;}
+    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',find_shelter:'other',team_battle_turn:'combat',tactical_battle_turn:'combat',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'work',world:'quest'})[t]||t;}
     // V6.82 QA hotfix: observe effective progress, not only HTTP 200 / telemetry.
     function mixedQaProgressed(before,after){
         return before.days!==after.days || before.level!==after.level || before.exp!==after.exp ||
@@ -15350,6 +15355,11 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(mode==='DANGER'||(s.activeThreats||[]).length){
             return {type:'retreat',action:'我評估眼前追兵或妖獸，若可安全撤離便尋找實際退路；若仍在戰鬥不能假稱已逃脫。'};
         }
+        // V7.14.8: never call preset seclusion while still in dialogue/hazard.
+        // These are real Gemini actions, not silent state mutations or fake receipts.
+        // When exiting fails repeatedly, the runner halts with the actual blocking mode.
+        if(mode==='DIALOGUE')return {type:'depart',action:'我結束與眼前 NPC 的對話，禮貌告辭，確實走出店鋪或談話場所，前往附近安靜安全的野外落腳處；本回合不閉關、不交割任何未約定的物品或金錢。請將實際離開後的 scenarioMode 設為 IDLE，除非存在真實威脅。',expectedMode:'IDLE',reason:'dialogue_blocks_cultivation'};
+        if(mode==='HAZARD')return {type:'find_shelter',action:'我停止冒險，謹慎離開險地，尋找可安全休息與修行的營地或住處；若實際離開危險區，場景才可標記 IDLE，不能假稱解除真實存在的威脅。',expectedMode:'IDLE',reason:'hazard_blocks_cultivation'};
         const cd=Number(s.breakthroughCdDays)||0,day=Number(s.daysPassed)||0;
         if(s.exp>=s.maxExp&&day>=cd&&Number(s.hp||0)>(Number(s.maxHp||getMaxHp(s))*.35))return {type:'breakthrough',action:'【真正按鈕】突破境界'};
         if(Number(s.hp||0)<getMaxHp(s)*.3)return {type:'recover',action:'在安全處治療受傷，確認治療資源與實際血量變化。'};
@@ -15456,10 +15466,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function longQaProgress(data){
         const arr=data.rounds||[],last=arr[arr.length-1],p=data.state||{};
-        const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
+        const recent=arr.slice(-7).map(x=>`${x.turn}. ${x.type} ${x.success?'✓':'×'} | 場景 ${x.after?.mode||'?'} | ${x.after?.realm||'?'} | ${x.after?.exp||0}/${x.after?.maxExp||0} | HP ${x.after?.hp??'?'}${x.failure?' | '+x.failure.slice(0,55):''}`);
         longQaText([`完成 ${data.completedTurns??arr.filter(r=>r.success).length}/${data.target} 個有效回合（已嘗試 ${arr.length} 次） | Gemini 呼叫 ${data.apiCalls} | HTTP 嘗試 ${data.httpAttempts}`,
             `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
-            `未驗證的交易/採集/雇用成功回合 ${data.unverifiedSettlements||0}；突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；稽核警示 ${data.auditIssues?.length||0}；連續危險撤退 ${data.qaRetreatStall||0}/3`,
+            `未驗證的交易/採集/雇用成功回合 ${data.unverifiedSettlements||0}；突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；稽核警示 ${data.auditIssues?.length||0}；連續危險撤退 ${data.qaRetreatStall||0}/3；安全離場失敗 ${data.qaSafeExitStall||0}/3`,
             `目標分類 ${Object.entries(data.actionCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；已驗證真實收據 ${Object.entries(data.verifiedCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；NPC ${Object.keys(p.npcRegistry||{}).length}；HP ${p.hp??'?'}；靈石 ${p.spiritStone??'?'}`, 
             `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
     }
@@ -15483,14 +15493,14 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V7.14.7 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V7.14.8 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
-                    target:requested,delayMs,protocol:'V7.14.7 scenario + receipt verification v2',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    target:requested,delayMs,protocol:'V7.14.8 safe-mode cultivation + receipt verification v3',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
             data.target=Math.max(data.target||1000,requested);
             data.completedTurns ??= (data.rounds||[]).filter(r=>r.success).length;
-            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaCommerceFailureStreak??=0;data.qaPhases??={};data.verifiedCounts??={};data.unverifiedSettlements??=0;
+            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaSafeExitStall??=0;data.qaCommerceFailureStreak??=0;data.qaPhases??={};data.verifiedCounts??={};data.unverifiedSettlements??=0;
             if(resume && data.nextAllowedAt && Date.now()<data.nextAllowedAt){
                 const until=new Date(data.nextAllowedAt).toLocaleString();
                 openGameModal('Gemini 配額尚未恢復',`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
@@ -15526,7 +15536,11 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     if(plan.type==='team_battle_turn') v682Turn('attack');
                     else if(plan.type==='tactical_battle_turn') battleTurn('strike');
                     else if(plan.type==='breakthrough') await attemptBreakthrough();
-                    else if(plan.type==='cultivate') await quickHeal(30,'long');
+                    else if(plan.type==='cultivate') {
+                        const safe=getEffectiveMode(gameState);
+                        if(safe!=='IDLE')throw Error('QA 不得在 '+safe+' 模式啟動閉關，必須先離開交談或危險場景');
+                        await quickHeal(30,'long');
+                    }
                     else await sendAction(plan.action);
                     if(gameState.pendingEconomyProposal){
                         // Only automatic pure rewards in a disposable QA state; never automatically approve purchases or costs.
@@ -15586,6 +15600,20 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     if(verification.mismatch)(data.unverifiedExamples??=[]).length<50&&data.unverifiedExamples.push({turn:record.turn,bucket:record.bucket,action:plan.action,receipt:verification.receipts});
                 }
                 record.auditIssues=mixedQaAudit(before,after,plan,gameState);
+                if(['depart','find_shelter'].includes(plan.type)){
+                    const clear=after.mode==='IDLE'&&!gameState.activeThreats?.length;
+                    record.safeExitOutcome=clear?'SAFE_IDLE':after.mode;
+                    if(clear)data.qaSafeExitStall=0;
+                    else {
+                        data.qaSafeExitStall=(data.qaSafeExitStall||0)+1;
+                        record.auditIssues.push('P1_CULTIVATION_EXIT_NOT_SAFE:'+after.mode);
+                        if(data.qaSafeExitStall>=3){
+                            record.auditIssues.push('P1_CULTIVATION_SCENE_LIVELOCK');
+                            data.status='P1 blocker: 3 attempts to leave unsafe scene; mode='+after.mode;
+                            rt.stop=true;
+                        }
+                    }
+                }else if(after.mode==='IDLE')data.qaSafeExitStall=0;
                 if(verification.rejectionCount)record.auditIssues.push('P1_CORE_REJECTED_RECEIPT:'+verification.rejectionCount);
                 if(plan.expectedReceipt&&success&&!verification.verified)record.auditIssues.push('P0_STORY_SUCCESS_WITHOUT_SETTLEMENT');
                 if(success&&!progressed && plan.type!=='origin') record.auditIssues.push('P2_NO_MEANINGFUL_STATE_CHANGE');
@@ -15643,7 +15671,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const {state,history,logs,...safeReport}=data; // Explicitly exclude checkpoint internals and all API secrets.
         const blob=new Blob([JSON.stringify({...safeReport,currentState:longQaBefore(state||getDefaultGameState())},null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_V7.14.7_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V7.14.8_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
     // V7.14.7 QA core: deterministic, isolated scenario replay. This is NOT a Gemini call.
@@ -15651,7 +15679,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     // Player state, saved progress, API keys and localStorage are never modified by this runner.
     let __qa1000Report = null;
     let __qa1000Running = false;
-    const QA1000_VERSION = '7.14.7-causal';
+    const QA1000_VERSION = '7.14.8-safe-cultivation';
     const QA1000_CASES = [
         '登錄自然來源','確實拾取並進包','同一來源不可複製','賣素材並入帳','商人合法貨源登錄',
         '以半顆靈石買貨','不用硬性日薪格式也能締約','打工天數正式記錄','工資實際收款',
@@ -15815,13 +15843,32 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             return __qa721Report;
         }catch(e){__qa721Report={kind:'44回合缺陷樣本場景重播',passed:tests.filter(x=>x.ok).length,failed:tests.filter(x=>!x.ok).length+1,tests,error:String(e.stack||e)};return __qa721Report;}
     }
+    // V7.14.8: the deterministic offline test must also guard the long-QA planner
+    // against the dialogue -> preset cultivation -> no API -> repeated failure loop.
+    function qa7148PlannerRegression(){
+        const tests=[];
+        function check(name,scene,expected,setup){
+            const s=getDefaultGameState();
+            s.hasChosenOrigin=true;s.location='百草堂藥鋪';s.scenarioMode=scene;s.activeThreats=[];
+            if(setup)setup(s);
+            const counts={cultivate:0,social:100,gather:100,combat:100,economy:100,work:100,quest:100,other:100};
+            const plan=mixedQaPlan(s,{completedTurns:100,rounds:[],actionCounts:counts});
+            tests.push({name,scenarioMode:getEffectiveMode(s),expected,actual:plan.type,ok:plan.type===expected});
+        }
+        check('NPC交談中先告辭','DIALOGUE','depart');
+        check('險地先找避難處','HAZARD','find_shelter');
+        check('安全平靜可閉關','IDLE','cultivate');
+        check('交談中修為圓滿不得嘗試突破','DIALOGUE','depart',s=>{s.exp=s.maxExp;});
+        check('遭遇實際威脅先撤退','IDLE','retreat',s=>{s.activeThreats=['迫近妖獸'];});
+        return {passed:tests.filter(x=>x.ok).length,failed:tests.filter(x=>!x.ok).length,tests};
+    }
     async function qa1000Run(total=1000){
         if(__qa1000Running)throw Error('千回合測試正在執行');
         const target=Number(total);
         if(!Number.isInteger(target)||target<1||target>1000)throw Error('目前僅允許 1 至 1000 個檢查');
         __qa1000Running=true;
         const started=Date.now();
-        const output={version:QA1000_VERSION,baseline:'V7.14.5',mode:'deterministic_offline_core_no_Gemini',
+        const output={version:QA1000_VERSION,baseline:'V7.14.7',mode:'deterministic_offline_core_no_Gemini',
             note:'每20個檢查由同一隔離角色沿實際核心結算流程完成；每組重新建立角色。非1,000次Gemini呼叫，非1,000回合sendAction。',
             target,completed:0,passed:0,failed:0,categories:{},failures:[],evidence:[],startedAt:new Date().toISOString()};
         let ctx=null;
@@ -15844,11 +15891,13 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             }
         }finally{__qa1000Running=false;}
         output.finishedAt=new Date().toISOString();output.elapsedMs=Date.now()-started;
-        output.result=output.failed===0?'PASS':'FAIL';
+        output.plannerRegression=qa7148PlannerRegression();
+        output.result=output.failed===0&&output.plannerRegression.failed===0?'PASS':'FAIL';
         __qa1000Report=output;
         const el=document.getElementById('qa1000-offline-progress');
         if(el)el.textContent=`${output.result} | ${output.passed}/${target} 檢查通過，${output.failed} 失敗，耗時 ${(output.elapsedMs/1000).toFixed(1)} 秒。\n`+
             `涵蓋 ${Object.keys(output.categories).length} 種情境，每20項進行一次可追蹤的隔離流程。\n`+
+            `閉關場景排程自檢 ${output.plannerRegression.passed}/${output.plannerRegression.tests.length} 通過（獨立於1000項核心檢查）。\n`+
             (output.failures.length?'首項失敗：'+JSON.stringify(output.failures[0]).slice(0,350):'所有檢查均無失敗。')+
             '\n注意：本測試不連接 Gemini，亦不是連續 1,000 次真實 AI 遊玩。';
         return output;
@@ -15858,7 +15907,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(!__qa1000Report){openGameModal('無離線測試報告','請先執行離線千回合測試。');return;}
         const blob=new Blob([JSON.stringify(__qa1000Report,null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_V7.14.7_內建1000次核心覆檢_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V7.14.8_內建1000次核心覆檢_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
 
