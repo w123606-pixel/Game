@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.14.9｜閉關排程修復與因果測試版</title>
+    <title>九州裂天錄 V7.14.10｜503 中斷續跑與因果測試版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -332,7 +332,7 @@
             </div>
             <h2 style="margin-top:10px;">▣ AI 測試與自動稽核</h2>
             <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
-              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.8 真實 Gemini 1000 回合因果驗證</h2>
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.10 真實 Gemini 1000 回合因果驗證</h2>
               <div style="color:#b8d7cd;font-size:.75rem;margin-bottom:8px;">新增安全閉關排程：交談中先告辭離場、險地先尋避難處；確認回到 IDLE 才閉關。三次無法離場將暫停並明確報錯，不會一直空轉。</div>
               <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。重新分配修煉、NPC、拾取、採集、買賣、雇用、任務與戰鬥情境，逐項追蹤正式收據。AI 說成功不代表結算成功；只有已入帳／入袋／履約的正式收據才列為實際核心覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。每回合自動稽核提案、資產、正式收據與最終敘事，警示一起納入報告。</p>
               <label for="long-qa-turns">目標回合：</label>
@@ -343,15 +343,20 @@
               <select id="long-qa-delay" style="width:100%;padding:7px;margin:5px 0;background:#242834;color:#fff;border:1px solid #657680;">
                 <option value="3000">3 秒（僅配額充足）</option><option value="15000">15 秒</option><option value="30000">30 秒</option><option value="60000" selected>60 秒（建議起點）</option><option value="120000">120 秒</option>
               </select>
-              <p style="font-size:.74rem;color:#e4c889;">遇到 HTTP 429（配額／限流）會立即暫停並保存檢查點，不會同一回合連續重送。請先查看 Google AI Studio 的配額。目標僅計算遊戲成功回合；另記錄資產真正結算、空轉、阻擋及失敗。最多嘗試目標回合數的 130%，避免無限循環。</p>
+              <p style="font-size:.74rem;color:#e4c889;">遇到 HTTP 429（配額／限流）或網路／HTTP 503 服務故障，會暫停並保存檢查點；後者不算角色行動失敗或場景離場失敗。請先查看 Google AI Studio 的配額。目標僅計算遊戲成功回合；另記錄資產真正結算、空轉、阻擋及失敗。最多嘗試目標回合數的 130%，避免無限循環。</p>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
                 <button id="long-qa-new" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(false)">▶ 新測試</button>
                 <button id="long-qa-resume" class="sys-btn" style="flex:1;min-width:105px;" onclick="startLongGeminiQA(true)">↻ 接續</button>
                 <button id="long-qa-stop" class="sys-btn" style="flex:1;min-width:90px;" onclick="stopLongGeminiQA()" disabled>暫停</button>
                 <button id="long-qa-export" class="sys-btn" style="flex:1;min-width:110px;" onclick="exportLongGeminiQA()">↧ 匯出進度</button>
               </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;">
+                <button class="sys-btn" type="button" onclick="exportLongGeminiCheckpoint()">↧ 匯出可續跑檢查點</button>
+                <button class="sys-btn" type="button" onclick="document.getElementById('long-qa-checkpoint-file').click()">↥ 匯入可續跑檢查點</button>
+                <input type="file" id="long-qa-checkpoint-file" accept=".json,application/json" style="display:none" onchange="importLongGeminiCheckpoint(this)">
+              </div>
               <div id="long-qa-progress" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;line-height:1.65;padding:8px;margin-top:8px;border-radius:5px;background:#081118;color:#d2e2e1;max-height:300px;overflow:auto;">未執行。測試進度會分類統計，記錄 HP 異常、失敗突破冷卻、修為損失及無法結算原因；每回合可接續。</div>
-              <p style="font-size:.74rem;color:#b4ced0;">中途關閉或重整頁面後，重新開啟此檔並按「接續」，從最近一回合檢查點恢復。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
+              <p style="font-size:.74rem;color:#b4ced0;">同一網站與瀏覽器可按「接續」恢復本機檢查點；若換新網址／檔名／裝置，請先從舊頁面「匯出可續跑檢查點」，再到新頁面匯入。一般「匯出進度」是稽核報告，無法用於續跑。測試 API Key 僅讀取設定，不存進檢查點或報告。請勿多分頁同時測試。</p>
             </section>
 
 
@@ -15341,10 +15346,17 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }const stop=document.getElementById('long-qa-stop');if(stop)stop.disabled=!running;}
     // V6.82 MIXED QA: goal-oriented schedule, not a sequence of 80% cultivation.
     const MIX_QA_TARGETS={cultivate:120,social:100,gather:180,combat:80,economy:160,work:160,quest:100,other:100};
-    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',find_shelter:'other',team_battle_turn:'combat',tactical_battle_turn:'combat',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'work',world:'quest'})[t]||t;}
+    // V7.14.10: A 503 or network outage is not proof that leaving a shop failed.
+    function mixedQaTransportFailure(success,quotaLimit,events){
+        if(success||quotaLimit)return null;
+        const bad=(events||[]).filter(e=>e&&((Number(e.status)>=500&&Number(e.status)<600)||/^(network|timeout|fetch_error)$/i.test(String(e.status||''))));
+        if(!bad.length)return null;
+        return {kind:'GEMINI_TRANSIENT',httpCodes:bad.map(e=>String(e.status)),waitMs:180000};
+    }
+    function mixedQaBucket(t){return ({origin:'other',relocate:'other',retreat:'other',depart:'other',find_shelter:'other',rest:'other',work_travel:'other',team_battle_turn:'combat',tactical_battle_turn:'combat',breakthrough:'cultivate',recover:'cultivate',explore:'gather',travel:'other',craft:'economy',trade:'economy',contract:'work',world:'quest'})[t]||t;}
     // V6.82 QA hotfix: observe effective progress, not only HTTP 200 / telemetry.
     function mixedQaProgressed(before,after){
-        return before.days!==after.days || before.level!==after.level || before.exp!==after.exp ||
+        return before.days!==after.days || before.fatigue!==after.fatigue || before.level!==after.level || before.exp!==after.exp ||
             before.hp!==after.hp || before.stones!==after.stones || before.fragments!==after.fragments || before.npcs!==after.npcs || before.agreements!==after.agreements ||
             before.items!==after.items || before.mode!==after.mode || before.location!==after.location;
     }
@@ -15375,6 +15387,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         // When exiting fails repeatedly, the runner halts with the actual blocking mode.
         if(mode==='DIALOGUE')return {type:'depart',action:'我結束與眼前 NPC 的對話，禮貌告辭，確實走出店鋪或談話場所，前往附近安靜安全的野外落腳處；本回合不閉關、不交割任何未約定的物品或金錢。請將實際離開後的 scenarioMode 設為 IDLE，除非存在真實威脅。',expectedMode:'IDLE',reason:'dialogue_blocks_cultivation'};
         if(mode==='HAZARD')return {type:'find_shelter',action:'我停止冒險，謹慎離開險地，尋找可安全休息與修行的營地或住處；若實際離開危險區，場景才可標記 IDLE，不能假稱解除真實存在的威脅。',expectedMode:'IDLE',reason:'hazard_blocks_cultivation'};
+        // Real seclusion consumes fatigue. Recover before continuing instead of spending
+        // 450+ simulated days at 100 fatigue with near-zero XP efficiency.
+        if(Number(s.practiceFatigue||0)>=85)return {type:'rest',action:'【暫停修煉，安靜調息休養 7 天】',reason:'cultivation_fatigue_recovery'};
         const cd=Number(s.breakthroughCdDays)||0,day=Number(s.daysPassed)||0;
         if(s.exp>=s.maxExp&&day>=cd&&Number(s.hp||0)>(Number(s.maxHp||getMaxHp(s))*.35))return {type:'breakthrough',action:'【真正按鈕】突破境界'};
         if(Number(s.hp||0)<getMaxHp(s)*.3)return {type:'recover',action:'在安全處治療受傷，確認治療資源與實際血量變化。'};
@@ -15385,9 +15400,15 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const resources=Object.values(s.v718?.resources||{});
         const nearby=resources.filter(x=>x.location===loc&&Number(x.remaining)>0&&!x.isCorpse);
         const goods=(s.inventory||[]).filter(x=>Number(x.quantity)>0);
-        const sellable=goods.filter(x=>{try{return Boolean(getItemPermissions(x).sell);}catch(_){return false;}});
+        // Prefer unambiguous single-name goods; duplicate qualities need a precise
+        // lot/profile identifier in the AI event and cannot be sold by name alone.
+        const sellable=goods.filter(x=>{try{return Boolean(getItemPermissions(x).sell)&&goods.filter(y=>y.name===x.name).length===1;}catch(_){return false;}});
         const ag=Object.values(s.v718?.agreements||{}).find(x=>/ACTIVE|AGREED|WORKING|ONGOING|TERM_END/i.test(String(x.status||'')))||null;
         const legacyContracts=Array.isArray(s.v710Employment?.contracts)?s.v710Employment.contracts.filter(x=>x.status==='ACTIVE'):[];
+        const employer=ag?s.npcRegistry?.[ag.partyId]:null;
+        const employerName=String(employer?.name||ag?.partyId||'原雇主');
+        const employerLocation=String(employer?.location||'');
+        const jobScope=ag?`我已與「${employerName}」訂立「${ag.title||'工作'}」協議（協議ID ${ag.id}）。僅對此雇主履約，不得改為其他商人、工坊或商隊。` : '';
         const workPhase=Number(prevPhase.work||0)%4;
         const commercePhase=Number(prevPhase.economy||0)%3;
         const gatherPhase=Number(prevPhase.gather||0)%3;
@@ -15403,9 +15424,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 '詢問同一商人是否願意買入另外一件材料，若雙方未成交不能扣貨或加錢。':
                 '在就近的市集詢問可出售的普通材料或低階雇用工作，不得捏造已成交。',
             work:ag ?
-                (Number(ag.workDays||0)===0||workPhase===0||workPhase===1) ? '依已成立的雇用或委託履行一天能實際完成的工作，記錄真實工時與成果。':
-                (ag.wage===null||ag.wage===undefined) ? '我已完成部分工作，向原雇主確認工資數額與週期，待遇尚未確定時不能憑空收款。':
-                '向原雇主請求結清已完成工作的工錢；只有在 NPC 確實支付後才增加靈石。':
+                (Number(ag.workDays||0)===0||workPhase===0||workPhase===1) ? jobScope+'依已成立的雇用或委託履行一天能實際完成的工作，記錄真實工時與成果。':
+                (ag.wage===null||ag.wage===undefined) ? jobScope+'我已完成部分工作，向此雇主確認工資數額與週期，待遇尚未確定時不能憑空收款。':
+                jobScope+'向此雇主請求結清已完成工作的工錢；只有在 NPC 確實支付後才增加靈石。':
                 legacyContracts.length?
                 '按照已簽署的學徒契約繼續工作，累計實際工時；若到發薪日便向原掌櫃領取工錢。':
                 workPhase===0 ? '到附近可接觸的藥鋪、商隊或工坊詢問是否有學徒或短工，不必要求所有條款都先有數字。':
@@ -15428,6 +15449,11 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(getLocationModifier(loc).expPerDay<=0)ranked=ranked.map(x=>({...x,score:x.type==='other'?x.score+2:x.score}));
         ranked.sort((a,b)=>b.score-a.score);
         const type=ranked[0]?.type||'other';
+        // Do not call WORK/PAY_WAGE for a different nearby merchant. First travel
+        // back to the contracted employer; a travel turn is never a wage receipt.
+        if(type==='work'&&ag&&employerLocation&&employerLocation!==loc){
+            return {type:'work_travel',action:`我要返回與我有工作協議的「${employerName}」所在「${employerLocation}」，只確認實際抵達，不向其他雇主工作、不領薪、不結算交易。`,expectedReceipt:false};
+        }
         return {type,action:catalog[type],intent:nearby.length&&type==='gather'?'harvest':'explore',
             expectedReceipt:type==='gather'||type==='economy'&&sellable.length>0&&commercePhase!==0||
                 type==='work'&&Boolean(ag)&&!(ag.wage===null&&Number(ag.workDays||0)>0&&workPhase>=2)};
@@ -15446,6 +15472,17 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 rejectionCount,warningCodes:(auditRecord?.issues||[]).map(x=>String(x.code||x)).slice(-8),
                 mismatch:plan.expectedReceipt&&!!auditRecord&&results.length===0&&before.items===after.items&&before.stones===after.stones};
     }
+    // A successful API request or narration of an offer is not proof of a
+    // completed sale/harvest/wage. Reserve P0 for EXPLICIT story claims.
+    function mixedQaStoryClaimsSettlement(plan,audit){
+        if(String(audit?.aiOutcome||'').toLowerCase()!=='success')return false;
+        const story=String(audit?.finalStory||'');
+        const bucket=mixedQaBucket(plan?.type);
+        if(bucket==='economy')return /(?:已(?:完成)?(?:成交|交割|售出|賣出)|成交已完成|(?:靈石|貨款)(?:已)?(?:入袋|入帳|到手)|掌櫃已(?:付|支付)|收(?:到|取)了?\s*\d+\s*(?:顆|枚)?(?:下品)?靈石)/.test(story);
+        if(bucket==='gather')return /(?:已(?:經)?(?:採得|採到|撿到|拾得|收進背包|收入囊中)|(?:成功|順利)(?:採集|拾取|獲得))/i.test(story);
+        if(bucket==='work')return /(?:已(?:完成工作|領得工資|領到薪水|收到工錢|正式入職)|工錢(?:已)?入帳|(?:工作|工時)(?:已)?紀錄)/.test(story);
+        return false;
+    }
     function mixedQaAudit(before,after,plan,game){
         const issues=[];
         for(const key of ['exp','maxExp','hp','maxHp','stones','days','level'])if(!Number.isFinite(Number(after[key])))issues.push('P0_NONFINITE_'+key);
@@ -15459,7 +15496,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         return issues;
     }
     function longQaBefore(s){return {level:s.level,realm:s.realm,exp:Math.floor(s.exp||0),maxExp:Math.floor(s.maxExp||0),
-        hp:s.hp,maxHp:getMaxHp(s),stones:v713StoneDisplay(s),fragments:Number(s.v716FragmentStones||0),days:s.daysPassed,dead:Boolean(s.isDead),
+        hp:s.hp,maxHp:getMaxHp(s),stones:v713StoneDisplay(s),fragments:Number(s.v716FragmentStones||0),days:s.daysPassed,fatigue:Number(s.practiceFatigue||0),dead:Boolean(s.isDead),
         npcs:Object.keys(s.npcRegistry||{}).length,agreements:Object.keys(s.v718?.agreements||{}).length,items:(s.inventory||[]).reduce((a,x)=>a+Number(x.quantity||0),0),
         location:String(s.location||''),mode:getEffectiveMode(s),pending:Boolean(s.pendingEconomyProposal),breakthroughCdDays:Number(s.breakthroughCdDays||0),telemetryCompleted:Number(s.actionTelemetry?.completed||0),telemetryFailed:Number(s.actionTelemetry?.failed||0)};}
     function longQaCheckpoint(data){
@@ -15493,7 +15530,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             `當前境界 ${p.realm||'凡人'} Lv.${p.level||0}，最高 ${data.maxRealm||'凡人'} Lv.${data.maxLevel||0}`,
             `未驗證的交易/採集/雇用成功回合 ${data.unverifiedSettlements||0}；突破 ${data.breakthroughs?.success||0} 成功／${data.breakthroughs?.failed||0} 失敗；結算失敗 ${data.failures||0}；稽核警示 ${data.auditIssues?.length||0}；連續危險撤退 ${data.qaRetreatStall||0}/3；安全離場失敗 ${data.qaSafeExitStall||0}/3`,
             `目標分類 ${Object.entries(data.actionCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；已驗證真實收據 ${Object.entries(data.verifiedCounts||{}).map(([k,v])=>k+':'+v).join(' / ')||'尚無'}；NPC ${Object.keys(p.npcRegistry||{}).length}；HP ${p.hp??'?'}；靈石 ${p.spiritStone??'?'}`, 
-            `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
+            `執行狀態：${data.status||'執行中'}；429 冷卻次數 ${data.quotaPauses||0}；網路/503 暫停次數 ${data.transportPauses||0}${data.nextAllowedAt?'，建議重試時間 '+new Date(data.nextAllowedAt).toLocaleString():''}`,`已保存可接續檢查點。`,`最近回合：`,...recent].join('\n'));
     }
     async function startLongGeminiQA(resume=false){
         if(__longQaRuntime?.active||__liveQaRuntime?.active||isTyping)return;
@@ -15515,20 +15552,20 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V7.14.9 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V7.14.10 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
-                    target:requested,delayMs,protocol:'V7.14.9 grounded-source + causal QA v4',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    target:requested,delayMs,protocol:'V7.14.10 transient-safe + fatigue + employer QA v5',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
             data.target=Math.max(data.target||1000,requested);
             data.completedTurns ??= (data.rounds||[]).filter(r=>r.success).length;
-            data.quotaPauses ??= 0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaSafeExitStall??=0;data.qaCommerceFailureStreak??=0;data.qaPhases??={};data.verifiedCounts??={};data.unverifiedSettlements??=0;
+            data.quotaPauses ??= 0;data.transportPauses??=0;data.actionCounts??={};data.auditIssues??=[];data.diagnostics??=[];data.actionTargets??=MIX_QA_TARGETS;data.qaRetreatStall??=0;data.qaSafeExitStall??=0;data.qaCommerceFailureStreak??=0;data.qaPhases??={};data.verifiedCounts??={};data.unverifiedSettlements??=0;
             if(resume && data.nextAllowedAt && Date.now()<data.nextAllowedAt){
                 const until=new Date(data.nextAllowedAt).toLocaleString();
-                openGameModal('Gemini 配額尚未恢復',`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
+                openGameModal(data.lastTransportError?'Gemini 服務暫時異常':'Gemini 配額尚未恢復',data.lastTransportError?`上次網路／503 暫停，建議於 ${until} 後使用接續測試。先前進度仍在。`:`上次 HTTP 429 建議於 ${until} 後重試，請檢查 Google AI Studio 配額。`);
                 liveQaRestore(snapshot);longQaRestoreBackup();return;
             }
-            data.delayMs=delayMs;data.status='running';
+            data.delayMs=delayMs;data.status='running';data.endedAt=null;data.nextAllowedAt=null;data.lastTransportError=null;
             renderUI();renderStoryLogs();
             const rt={active:true,stop:false,responses:[],httpEvents:[],currentCalls:0};
             __longQaRuntime=rt;
@@ -15558,6 +15595,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     if(plan.type==='team_battle_turn') v682Turn('attack');
                     else if(plan.type==='tactical_battle_turn') battleTurn('strike');
                     else if(plan.type==='breakthrough') await attemptBreakthrough();
+                    else if(plan.type==='rest') await v710FatigueRest(7);
                     else if(plan.type==='cultivate') {
                         const safe=getEffectiveMode(gameState);
                         if(safe!=='IDLE')throw Error('QA 不得在 '+safe+' 模式啟動閉關，必須先離開交談或危險場景');
@@ -15585,13 +15623,17 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 const progressed=mixedQaProgressed(before,after);
                 const failure=!success?(gameState.actionTelemetry?.recent||[]).slice(-1)[0]?.reason||'操作未完成':'';
                 const deltas=rt.httpEvents.slice(httpBefore);
+                const transportPause=mixedQaTransportFailure(success,quotaLimit,deltas);
                 const record={turn:n+1,type:plan.type,bucket:mixedQaBucket(plan.type),coverage: ['combat','social','economy','quest','gather','other','recover'].includes(plan.type)?'Gemini自由文字情境（非正式核心按鈕驗收）':'正式核心操作',action:plan.action,success,elapsedMs:Date.now()-began,
                     apiCalls:rt.currentCalls-callsBefore,httpAttempts:deltas.length,apiMs:deltas.reduce((a,b)=>a+b.durationMs,0),
                     httpCodes:deltas.map(e=>e.status),before,after,levelDelta:after.level-before.level,
-                    failure:liveQaSanitize(quotaLimit?.message||failure),rateLimited:Boolean(quotaLimit),breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
+                    failure:liveQaSanitize(quotaLimit?.message||failure),rateLimited:Boolean(quotaLimit),transportError:transportPause?.kind||null,breakthroughChance:plan.type==='breakthrough'?Number(gameState.lastBreakthroughAttempt?.rate)||null:null,
                     breakthroughSuccess:plan.type==='breakthrough'&&success?Boolean(after.level>before.level):null,date:new Date().toISOString(),progressed};
                 data.rounds.push(record);data.apiCalls+=record.apiCalls;data.httpAttempts+=record.httpAttempts;
-                if(!success){data.failures++;streak++;}else {streak=0;data.completedTurns++;data.actionCounts[record.bucket]=(data.actionCounts[record.bucket]||0)+1;}
+                if(!success){
+                    if(transportPause){data.transportPauses=(data.transportPauses||0)+1;streak=0;}
+                    else{data.failures++;streak++;}
+                }else {streak=0;data.completedTurns++;data.actionCounts[record.bucket]=(data.actionCounts[record.bucket]||0)+1;}
                 // Distinguish successful settlement from meaningful world/player progression.
                 // A retreat that changes scenery but remains in danger still counts as an unsuccessful escape.
                 if(plan.type==='retreat' && success && after.mode==='DANGER'){
@@ -15610,7 +15652,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 const latestAudit=typeof v709AuditRead==='function'?v709AuditRead().slice(-1)[0]:null;
                 const verification=mixedQaReceiptVerification(plan,latestAudit,before,after);
                 record.coreVerification=verification;
-                record.goalOutcome=plan.expectedReceipt ?
+                record.goalOutcome=transportPause?'TRANSPORT_PAUSED':plan.expectedReceipt ?
                     (verification.verified?'SETTLED':verification.rejectionCount?'REJECTED':'NOT_SETTLED'):
                     (verification.rejectionCount?'REJECTED':success?'TURN_COMPLETED':'TURN_FAILED');
                 data.goalOutcomes??={};data.goalOutcomes[record.goalOutcome]=(data.goalOutcomes[record.goalOutcome]||0)+1;
@@ -15622,7 +15664,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     if(verification.mismatch)(data.unverifiedExamples??=[]).length<50&&data.unverifiedExamples.push({turn:record.turn,bucket:record.bucket,action:plan.action,receipt:verification.receipts});
                 }
                 record.auditIssues=mixedQaAudit(before,after,plan,gameState);
-                if(['depart','find_shelter'].includes(plan.type)){
+                if(!transportPause && ['depart','find_shelter'].includes(plan.type)){
                     const clear=after.mode==='IDLE'&&!gameState.activeThreats?.length;
                     record.safeExitOutcome=clear?'SAFE_IDLE':after.mode;
                     if(clear)data.qaSafeExitStall=0;
@@ -15637,7 +15679,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     }
                 }else if(after.mode==='IDLE')data.qaSafeExitStall=0;
                 if(verification.rejectionCount)record.auditIssues.push('P1_CORE_REJECTED_RECEIPT:'+verification.rejectionCount);
-                if(plan.expectedReceipt&&success&&!verification.verified)record.auditIssues.push('P0_STORY_SUCCESS_WITHOUT_SETTLEMENT');
+                if(plan.expectedReceipt&&success&&!verification.verified)record.auditIssues.push(mixedQaStoryClaimsSettlement(plan,latestAudit)?'P0_STORY_SUCCESS_WITHOUT_SETTLEMENT':'P1_GOAL_NOT_SETTLED');
                 if(success&&!progressed && plan.type!=='origin') record.auditIssues.push('P2_NO_MEANINGFUL_STATE_CHANGE');
                 if(plan.type==='retreat'&&data.qaRetreatStall>=3){
                     record.auditIssues.push('P1_DANGER_RETREAT_LIVELOCK');
@@ -15649,9 +15691,18 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     data.status='P1 blocker: 2 stale sale quote failures; inspect intent / quote flow';
                     rt.stop=true;
                 }
+                if(transportPause){
+                    record.auditIssues.push('P1_GEMINI_TRANSIENT_HTTP:'+transportPause.httpCodes.join(','));
+                    record.safeExitOutcome='NOT_ATTEMPTED_API_UNAVAILABLE';
+                }
                 if(!success && !record.auditIssues.length)record.auditIssues.push('P1_SETTLEMENT_FAILED:'+String(failure).slice(0,100));
                 if(record.auditIssues.length){data.auditIssues.push({turn:record.turn,issues:record.auditIssues});if(record.auditIssues.some(x=>x.startsWith('P0_'))){data.status='P0 blocker: '+record.auditIssues.join(', ');rt.stop=true;}}
-                if(quotaLimit){
+                if(transportPause){
+                    data.nextAllowedAt=Date.now()+transportPause.waitMs;
+                    data.lastTransportError=record.failure;
+                    data.status='paused: temporary Gemini network/503 error, resume after cooldown';
+                    rt.stop=true;
+                }else if(quotaLimit){
                     data.quotaPauses++;
                     data.nextAllowedAt=Date.now()+Math.max(60000,Number(quotaLimit.retryAfterMs)||60000);
                     data.lastQuotaError=liveQaSanitize(quotaLimit.message||'HTTP 429');
@@ -15679,7 +15730,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(gameState.isDead)data.status='character died';
         } catch(e){if(data){data.status='unexpected error';data.unexpectedError=liveQaSanitize(String(e?.message||e));}}
         finally {
-            if(data){data.endedAt=new Date().toISOString();try{longQaCheckpoint(data);}catch(_){}longQaProgress(data);}
+            if(data){if(data.status==='running'&&data.completedTurns<data.target)data.status='paused: runner ended before target';data.endedAt=new Date().toISOString();try{longQaCheckpoint(data);}catch(_){}longQaProgress(data);}
             __liveQaRuntime=null;__longQaRuntime=null;longQaControl(false);
             try {liveQaRestore(snapshot);longQaRestoreBackup();}
             catch(e){longQaText('緊急：正式角色還原失敗，請重整頁面觸發備份還原：'+String(e.message));}
@@ -15693,8 +15744,46 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const {state,history,logs,...safeReport}=data; // Explicitly exclude checkpoint internals and all API secrets.
         const blob=new Blob([JSON.stringify({...safeReport,currentState:longQaBefore(state||getDefaultGameState())},null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_V7.14.8_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V7.14.10_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    // V7.14.10: Audit exports intentionally omit the live world state, so they
+    // cannot resume. A separate portable checkpoint includes it but no API key.
+    function exportLongGeminiCheckpoint(){
+        let data;
+        try{data=JSON.parse(localStorage.getItem(LONG_QA_CHECKPOINT_KEY)||'null');}
+        catch(e){openGameModal('無法讀取檢查點',String(e.message));return;}
+        if(!data||!data.state||!Array.isArray(data.rounds)){
+            openGameModal('缺少可續跑檢查點','請先開始真實 Gemini 長測。稽核報告並不包含續跑所需的角色狀態。');return;
+        }
+        // Never export API keys, credentials or app secrets. The live state,
+        // dialogue and action history are required to continue the exact run.
+        const safe=structuredClone(data);
+        for(const k of ['apiKey','api_key','key','authToken','token','secret'])delete safe[k];
+        const blob=new Blob([JSON.stringify({checkpointFormat:'KYUSHU_LONG_QA_V1',...safe},null,2)],{type:'application/json;charset=utf-8'});
+        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+        a.download='九州裂天錄_V7.14.10_可續跑測試檢查點_'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    async function importLongGeminiCheckpoint(input){
+        try{
+            if(__longQaRuntime?.active||__liveQaRuntime?.active)throw Error('正在執行測試，請先暫停。');
+            const file=input?.files?.[0];if(!file)return;
+            if(file.size>25*1024*1024)throw Error('檢查點超過 25 MB，請先確認檔案。');
+            const data=JSON.parse(await file.text());
+            if(data.checkpointFormat!=='KYUSHU_LONG_QA_V1'||!data.state||!Array.isArray(data.rounds)||
+                !Array.isArray(data.history)||!Array.isArray(data.logs)||!Number.isSafeInteger(data.completedTurns)||
+                data.completedTurns<0||!Number.isSafeInteger(data.target)||data.target<1||data.completedTurns>data.target)
+                throw Error('這不是可續跑檢查點；一般「千回合Gemini驗證」稽核報告不能匯入續跑。');
+            if(!confirm(`將匯入 ${data.completedTurns}/${data.target} 回合進度，並覆蓋本機原有的長測檢查點（不會覆蓋正式角色存檔）。確定嗎？`))return;
+            const {checkpointFormat,...safe}=data;
+            for(const k of ['apiKey','api_key','key','authToken','token','secret'])delete safe[k];
+            localStorage.setItem(LONG_QA_CHECKPOINT_KEY,JSON.stringify(safe));
+            __longQaResult=safe;
+            longQaProgress(safe);
+            openGameModal('檢查點已匯入',`已匯入 ${safe.completedTurns}/${safe.target} 個成功回合。請設定自己的 API Key，然後按「接續」。`);
+        }catch(e){openGameModal('檢查點匯入失敗',String(e.message||e));}
+        finally{if(input)input.value='';}
     }
     // V7.14.7 QA core: deterministic, isolated scenario replay. This is NOT a Gemini call.
     // The 1,000 checks are 50 complete 20-step fixture workflows through the real settlement functions.
