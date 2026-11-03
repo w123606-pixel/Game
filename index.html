@@ -4,7 +4,7 @@
 <!-- V6.38｜修為境界裝備系統整合版 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>九州裂天錄 V7.14.12｜503 中斷續跑與因果測試版</title>
+    <title>九州裂天錄 V7.14.13｜503 中斷續跑與因果測試版</title>
     <style>
         :root {
             --bg-color: #050608;
@@ -22,11 +22,11 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "微軟正黑體", "Noto Sans TC", sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; padding: 8px; min-height: 100vh; overflow-x: hidden; }
-        
+
         .game-container { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 900px; }
         .panel { background-color: var(--panel-bg); border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { color: var(--border-gold); font-size: 0.95rem; border-bottom: 1px solid var(--border-gold); padding-bottom: 4px; margin-bottom: 8px; text-align: center; }
-        
+
         .tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 10px; overflow-x: auto; }
         .tab-btn { flex: 1; min-width: 70px; background: transparent; color: #888; border: none; padding: 8px 0; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: 0.3s; min-height: 44px; }
         .tab-btn.active { color: var(--border-gold); border-bottom: 2px solid var(--border-gold); }
@@ -38,7 +38,7 @@
         .stat-value { font-weight: bold; text-align: right; transition: color 0.3s; }
         .realm-badge { color: var(--accent-purple); font-weight: bold; }
         .scroll-list { font-size: 0.85rem; color: #aaa; line-height: 1.5; white-space: pre-line; margin-bottom: 10px; }
-        
+
         .radar-container { display: flex; justify-content: center; align-items: center; background: #0a0b10; padding: 6px; border-radius: 6px; border: 1px solid var(--ui-border); margin-bottom: 8px; min-height: 170px; }
         .six-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #0a0b10; padding: 8px; border-radius: 4px; border: 1px solid var(--ui-border); font-size: 0.8rem; margin-bottom: 8px; }
 
@@ -47,7 +47,7 @@
 
         .story-panel { padding: 0; background: #090a0f; border-color: var(--border-gold); display: flex; flex-direction: column; overflow: hidden; }
         .story-header { background: #12141d; padding: 8px 12px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
-        
+
         #story-log { 
             padding: 12px; font-size: 0.95rem; line-height: 1.6; 
             min-height: 220px;
@@ -62,10 +62,10 @@
         .story-block.player { border-left: 3px solid var(--accent-blue); padding-left: 8px; background: rgba(2, 136, 209, 0.05); }
         .story-block.ai { border-left: 3px solid var(--border-gold); padding-left: 8px; background: rgba(197, 160, 89, 0.05); }
         .story-block.system { border-left: 3px solid var(--accent-red); padding-left: 8px; background: rgba(255, 82, 82, 0.05); color: #ccc; font-size: 0.85rem; }
-        
+
         .controls-area { padding: 10px; background: #12141d; border-top: 1px solid var(--ui-border); }
         .dynamic-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 6px; margin-bottom: 8px; min-height: 48px; }
-        
+
         .choice-btn, .quick-btn, .sys-btn { 
             background: #1a1d2a; border: 1px solid #444; color: var(--border-gold); 
             padding: 8px 10px; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-align: center; 
@@ -76,18 +76,18 @@
             .choice-btn:hover:not(:disabled), .sys-btn:hover:not(:disabled) { background: var(--border-gold); color: #000; }
         }
         .choice-btn:active:not(:disabled), .sys-btn:active:not(:disabled) { background: var(--border-gold); color: #000; }
-        
+
         .input-group { display: flex; gap: 6px; }
         input[type="text"], select.fusion-select { flex-grow: 1; background: #0a0b10; border: 1px solid #444; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 0.9rem; outline: none; min-height: 44px; }
         input[type="text"]:focus, select.fusion-select:focus { border-color: var(--border-gold); }
         button.primary-btn { background: var(--border-gold); color: #000; min-width: 90px; border: none; font-weight: bold; border-radius: 4px; min-height: 44px; cursor: pointer;}
         button.primary-btn:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); pointer-events: none; }
-        
+
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 6px; margin-top: 6px; }
         .api-config { background: #0a0b10; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-size: 0.85rem; }
         .api-config input, .api-config select { width: 100%; padding: 8px; margin: 4px 0 6px 0; background: #1a1d2a; border: 1px solid #3a3d52; color: #fff; border-radius: 4px; font-size: 0.85rem; }
-        
+
         .sect-badge { font-size:0.75rem; background: rgba(197, 160, 89, 0.1); border:1px solid var(--border-gold); padding: 2px 6px; border-radius: 3px; color: var(--border-gold); margin-left:6px;}
         .mode-badge { font-size:0.75rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 4px; }
         .mode-idle { background: rgba(67, 160, 71, 0.15); border: 1px solid var(--accent-green); color: var(--accent-green); }
@@ -100,7 +100,7 @@
         .equip-card .slot-title { color: #888; }
         .equip-card .item-name { font-weight: bold; }
         .equip-card .item-desc { font-size: 0.72rem; color: #aaa; margin-top: 2px; }
-        
+
         .item-row { background: #1a1d2a; border: 1px solid #2a2d3d; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
         .item-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .item-actions { display: flex; gap: 6px; align-self: flex-end; flex-wrap: wrap; }
@@ -186,7 +186,7 @@
         <div id="story-log"></div>
         <div class="controls-area" id="controls-area">
             <div id="dynamic-choices-container" class="dynamic-choices"></div>
-            
+
             <div id="death-action-container" style="display:none; margin-bottom: 8px;">
                 <button class="choice-btn" style="width:100%; background:#4a1515; color:#fff; border:1px solid #ff5252; text-align:center; font-weight:bold; padding:12px; font-size:0.95rem; display:flex; justify-content:center; align-items:center; gap:6px;" onclick="resetGame()">
                     &#10022; 肉身已隕，神魂俱滅 — 點此輪迴重修
@@ -332,7 +332,7 @@
             </div>
             <h2 style="margin-top:10px;">▣ AI 測試與自動稽核</h2>
             <section id="long-gemini-qa" style="margin:14px 0;padding:11px;border:1px solid #6a8c91;border-radius:8px;background:#101c22;">
-              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.12 真實 Gemini 1000 回合因果驗證</h2>
+              <h2 style="margin:0 0 8px;color:#96e4e2;">✦ V7.14.13 真實 Gemini 1000 回合因果驗證</h2>
               <div style="color:#b8d7cd;font-size:.75rem;margin-bottom:8px;">新增安全閉關排程：交談中先告辭離場、險地先尋避難處；確認回到 IDLE 才閉關。三次無法離場將暫停並明確報錯，不會一直空轉。</div>
               <p style="font-size:.8rem;line-height:1.65;color:#cbd1d9;">使用真正 Gemini 逐回合演算、從凡人練起；<strong>不注入修為、不提供 300 測試靈石、不保證突破成功</strong>。重新分配修煉、NPC、拾取、採集、買賣、雇用、任務與戰鬥情境，逐項追蹤正式收據。AI 說成功不代表結算成功；只有已入帳／入袋／履約的正式收據才列為實際核心覆蓋，直到目標回合、角色死亡或安全暫停。測試會消耗大量 API 用量；原玩家存檔獨立備份並還原。每回合自動稽核提案、資產、正式收據與最終敘事，警示一起納入報告。</p>
               <label for="long-qa-turns">目標回合：</label>
@@ -417,7 +417,7 @@
             for (let sub = 1; sub <= 10; sub++) {
                 const subName = sub === 10 ? "圓滿" : `${sub}層`;
                 const fullName = isNascentOrHigher ? `${baseName}${subName} (天劫)` : `${baseName}${subName}`;
-                
+
                 let baseHp = Math.floor(80 * Math.pow(1.4, currentLvl));
                 // 分段式成長：前期升級較快，中後期持續增加但不再指數爆炸。
                 const expGrowth = currentLvl <= 20
@@ -1383,7 +1383,7 @@
 
     const TransactionEngine = {
         isLocked: false,
-        
+
         processDisassembly(targetItem) {
             const cleanName = cleanNameStrict(targetItem.name);
             const itemMeta = getItemMeta(targetItem);
@@ -2329,7 +2329,7 @@
 
     function getDefaultGameState() {
         return {
-            version: "7.14.12",
+            version: "7.14.13",
             level: 0, realm: "凡人", linggen: "待顯化", physique: "凡體",
             daysPassed: 0, ageBase: 18, maxAge: 100, maxHp: 50, hp: 50, exp: 0, maxExp: 100,
             economy: {receipts:[],notifiedIds:[]},
@@ -2340,7 +2340,7 @@
             hasChosenOrigin: false, originType: "未明", turn_count: 1,
             originLinggenBonus: "真靈根",
             originPhysiqueBonus: "靈體",
-            
+
             sect: { joined: false, id: null, name: "無", rank: "散修", contribution: 0, totalContribution: 0, position: "無" },
             stats: { str: 10, con: 10, agi: 10, int: 10, wis: 10, luk: 10 },
             status: ["凡體肉身"], 
@@ -3523,7 +3523,7 @@
         Object.values(s.equipment || {}).forEach(eq => { const ring = getAncientRingBonus(eq, true); if (ring) eqHp += ring.hp; });
         const phyMeta = getPhysiqueMeta(s.physique);
         let rawHp = Math.floor((realmDef.maxHp + kfHp + eqHp) * (phyMeta.hpMult || 1.0));
-        
+
         const toxin = Math.min(10, Math.max(0, Number(s.danToxin) || 0));
         const toxinPenalty = Math.floor(rawHp * (toxin * 0.04));
         return Math.max(10, rawHp - toxinPenalty);
@@ -3835,7 +3835,7 @@
 
     function openFusionModal() {
         if (gameState.isDead) return;
-        
+
         const container = document.createElement("div");
         container.style.display = "flex";
         container.style.flexDirection = "column";
@@ -4363,7 +4363,7 @@
         if (gameState.isDead) return;
         const mode = getEffectiveMode(gameState);
         if (mode === "DIALOGUE" || mode === "DANGER") { openGameModal("✦ 追殺中", "當前無法前往醫館！"); return; }
-        
+
         const daysSinceLast = gameState.daysPassed - safeNumber(gameState.lastHospitalDay, -999, -1e9, 1e9);
         const priorVisitCount = daysSinceLast > 30 ? 0 : safeNumber(gameState.hospitalVisitCount, 0, 0, 1e6);
         const visitCount = priorVisitCount + 1;
@@ -4468,7 +4468,7 @@
     function applyOriginInitialization(choiceText) {
         if (gameState.hasChosenOrigin) return;
         gameState.hasChosenOrigin = true;
-        
+
         const originInput=String(choiceText||'').trim();
         const presetIndex=originInput.match(/^([123])(?:[.．、:：\s]|$)/)?.[1] || '';
         if (presetIndex==='1' || /^宗門棄子(?:[\s、，。:：]|$)/.test(originInput)) {
@@ -5276,7 +5276,7 @@ JSON 輸出格式範例：
         const s = valid ? {...structuredClone(raw), ...normalized} : normalized;
         // Retain V6.90 membership metadata that the legacy normalizer does not know.
         if(valid && raw.sect && typeof raw.sect==='object')s.sect={...raw.sect,...normalized.sect};
-        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.14.12";
+        if(valid)s.legacySourceVersion=String(raw.version||"unknown");s.version = "7.14.13";
         s.inventory = normalizeInventory(s.inventory || []);
         const slots = ['weapon','armor','accessory','treasure'];
         s.equipment = (s.equipment && typeof s.equipment === 'object') ? s.equipment : {weapon:null,armor:null,accessory:null,treasure:null};
@@ -5958,7 +5958,7 @@ JSON 輸出格式範例：
         if(held>refund)v694Cash(s,`CARAVAN_ESCROW:${car.id}`,'TREASURY',held-refund,`CASH:${transactionId}:LOSS`,'商路實際運輸虧損');
         const paid=refund+actualProfit;
         if(desiredProfit>actualProfit)v694State(s).domainStatus[transactionId]={status:'profit_unfunded',approved:desiredProfit,paid:actualProfit,remaining:desiredProfit-actualProfit};
-        
+
         car.status='resolved';car.closedDay=day;car.returned=paid;car.result=paid<car.capital?'運輸損失':paid===car.capital?'收支平衡':'商貿獲利';
         const c=life.careers.commerce;c.xp+=paid>car.capital?4:2;c.completed++;c.stage=Math.min(10,Math.floor(Math.sqrt(c.xp/8)));
         lifeRecord(life,transactionId,day,`商隊${car.result}：本金${car.capital}，實付回收${paid}，淨額${paid-car.capital}；尚未具備資金的預估利潤不入帳。`);
@@ -7255,7 +7255,7 @@ JSON 輸出格式範例：
 3. 當 NPC 明確同意口頭入職、工作委託、學徒身分，填 assetEvents:[{kind:'HIRE',confirmed:true,partyId:'既有NPC ID',title:'工作名稱',wage:null,terms:'條款'}]；即使薪資未知也建立實際雇用；不要援引舊規則要求先填日薪或月薪。後續根據 actualAgreements 的 ID，確實完成一天工作應提 assetEvents:[{kind:'WORK',confirmed:true,agreementId:'既有ID',partyId:'雇主ID',days:1}]。領薪必須既有工作、明確金額與 NPC 實付，提 PAY_WAGE，不能只用故事口頭入帳。
 4. 如果實際賣出背包已持有物品，使用 SELL 資產事件及 NPC ID、確切數量價格；正式付款由核心驗證。僅詢價時不能提出 SELL。凡人可以透過合法採集與打工賺到第一筆靈石。
 5. 完成事件後故事應反映核心實際收據；失敗不可反過來捏造其他理由，不要把工程對帳文案放進故事。
-【V7.14.12 核心狀態要求】不得只憑故事或 npcDelta 就確定 NPC 昏迷、被綁、甦醒或奪取 NPC 身上裝備；這些必須有已確認的正式狀態收據。觀察在場 NPC 的普通實物裝備時，若玩家確實有查看動作且故事確認對應 NPC ID 與裝備名稱，可額外輸出 npcEquipmentEvents:[{"npcId":"既有NPC ID","name":"鐵刀"}]；僅建立可追溯的 NPC 持有實物，不表示玩家已拿到，也不得藉此創造高階法寶。普通磚塊、石塊、木棍、麻繩可經場景來源與玩家拾取後登錄，但使用前必須實際持有。移動商隊的工作應使用既有協議 ID；確實完成工作輸出 WORK，未做完不得虛報整日。發薪必須有已記工時、實際出款與明確的「顆下品靈石／碎靈石」單位；「二錢靈石」不是自動等於二顆，須先向 NPC 釐清。
+【V7.14.13 核心狀態要求】不得只憑故事或 npcDelta 就確定 NPC 昏迷、被綁、甦醒或奪取 NPC 身上裝備；這些必須有已確認的正式狀態收據。觀察在場 NPC 的普通實物裝備時，若玩家確實有查看動作且故事確認對應 NPC ID 與裝備名稱，可額外輸出 npcEquipmentEvents:[{"npcId":"既有NPC ID","name":"鐵刀"}]；僅建立可追溯的 NPC 持有實物，不表示玩家已拿到，也不得藉此創造高階法寶。普通磚塊、石塊、木棍、麻繩可經場景來源與玩家拾取後登錄，但使用前必須實際持有。移動商隊的工作應使用既有協議 ID；確實完成工作輸出 WORK，未做完不得虛報整日。發薪必須有已記工時、實際出款與明確的「顆下品靈石／碎靈石」單位；「二錢靈石」不是自動等於二顆，須先向 NPC 釐清。
 【輸出】只回傳一個合法 JSON 物件，不加 markdown，不加註解。至少包含：{"story":"約兩至四段故事","actionOutcome":{"result":"success|partial|failure|neutral","risk":"low|medium|high","reason":"理由","costs":[],"consequences":[]},"expDelta":0,"hpDelta":0,"hpReason":"無","daysPassedDelta":0,"inventoryDelta":[],"inventoryRemoveDelta":[],"worldActions":[],"economyOperation":{"kind":"reward","fee":0},"tradeOffer":null,"npcDelta":{"created":[],"updated":[],"killed":[]},"techniqueDelta":[],"worldEvents":[],"memoryDelta":{"chronicle":[],"openThreads":[],"resolvedThreads":[],"revealedSecrets":[],"worldStateChanges":[],"recentSummary":""},"quests":[],"choices":["選擇一","選擇二"],"location":"最終地點","scenarioMode":"IDLE","activeThreats":[]}。沒發生的增量用空陣列或0。開局身世物品由前端發放，禁止重複發放。`; 
     }
 
@@ -7531,7 +7531,7 @@ JSON 輸出格式範例：
 【V7.06 下品靈石正式事件】靈石是錢包貨幣，不是物品；inventoryDelta 不得含靈石，spiritStonesDelta 必須為0。當明確發現散落靈石、且非假設或傳聞，可提出 worldActions:[{kind:"CURRENCY_DISCOVER",amount:1至10, currency:"下品靈石",outcome:"neutral",evidence:"已看到的場景靈石"}]。當玩家明確拾取且故事確認成功，可提出 kind:"CURRENCY_PICKUP"，附 amount、sourceEntityId（已登錄來源時必填）與 outcome:"success"；核心只允許一次性的有限世界探索來源，不可憑空反覆刷取。已登錄 NPC 主動贈與用 NPC_GIFT_CURRENCY，必須附 npcId、amount、證據；正式工作報酬用 WORK_PAYMENT，必須附已完成委託 contractId 與金額；戰鬥搜刮用 LOOT_CURRENCY，必須附勝利的搶劫 claimId 作為 sourceEntityId（戰鬥核心已入帳則只確認，絕不再次加錢）。未核實來源只能描述可能發現或報價，不得宣告入帳。`;
         const bodyData = {system_instruction:{parts:[{text:systemText}]},contents,
             generationConfig:{responseMimeType:'application/json',temperature:0.65,maxOutputTokens:4096}};
-        
+
         const endpoint=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(customModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
         let res=null,lastNetworkError=null;
         const requestSize=JSON.stringify(bodyData).length;
@@ -12090,7 +12090,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     function v709AuditBegin(eventId,action,state){
         if(!v709AuditEnabled())return null;
         try{return {schemaVersion:709,turnId:String(eventId||''),time:new Date().toISOString(),
-            engineVersion:'7.14.12',testProtocolVersion:'V71412_CAUSAL_CORE_V1',
+            engineVersion:'7.14.13',testProtocolVersion:'V71413_CAUSAL_ECONOMIC_V1',
             model:v709AuditSafe(document.getElementById('api-model')?.value||'gemini-3.5-flash-lite',100),
             input:v709AuditSafe(action,1800),qa:Boolean(__liveQaRuntime?.active||__longQaRuntime?.active),
             responses:[],network:[],proposals:[],coreReceipts:[],issues:[],
@@ -12184,7 +12184,19 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             const from=v709AuditAccount(String(p.from)),to=v709AuditAccount(String(p.to));
             projected[from]=(projected[from]||0)-amt;projected[to]=(projected[to]||0)+amt;
         }
-        // V7.14.12: Verified first-time NPC opening capital is a WORLD INITIALIZATION,
+        // Half-stone postings are an independent bounded journal, but they must be
+        // checked against BOTH parties' fractional wallet changes as one atomic flow.
+        const oldHalves=beforeState?.economy?.v694?.halfPostings||[];
+        const newHalves=(afterState?.economy?.v694?.halfPostings||[]).slice(oldHalves.length);
+        const projectedHalves={};
+        for(const p of newHalves){
+            const amount=Number(p?.amountHalfUnits||0);
+            if(!Number.isSafeInteger(amount)||amount<1||p.from===p.to){issues.push({severity:'CRITICAL',code:'INVALID_HALF_POSTING'});continue;}
+            const from=v709AuditAccount(String(p.from)),to=v709AuditAccount(String(p.to));
+            projectedHalves[from]=(projectedHalves[from]||0)-amount;
+            projectedHalves[to]=(projectedHalves[to]||0)+amount;
+        }
+        // V7.14.13: Verified first-time NPC opening capital is a WORLD INITIALIZATION,
         // not a cash transfer. Reconcile it once, by unique NPC/event ID, and never
         // quietly excuse an unexplained increase to the player's balance.
         const openingCredits={},initializations=[];
@@ -12192,8 +12204,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const events=afterState?.v718?.events||[];
         for(const [npcId,entry] of Object.entries(current)){
             if(Object.prototype.hasOwnProperty.call(previous,npcId))continue;
-            if(entry?.kind!=='NPC_OPENING_CAPITAL'||entry?.source!=='WORLD_NPC_INITIALIZATION_LEGACY_MERCHANT'||
-                entry?.npcId!==npcId||entry?.amount!==40||!events.some(e=>e?.id==='INIT:'+npcId&&e?.kind==='NPC_OPENING_CAPITAL'&&e?.amount===40)){
+            const allowedSource=['WORLD_NPC_INITIALIZATION_LEGACY_MERCHANT','WORLD_NPC_INITIALIZATION'].includes(entry?.source);
+            const seeded=Number(entry?.amount||0);
+            if(entry?.kind!=='NPC_OPENING_CAPITAL'||!allowedSource||
+                entry?.npcId!==npcId||![0,40].includes(seeded)||!events.some(e=>e?.id==='INIT:'+npcId&&e?.kind==='NPC_OPENING_CAPITAL'&&Number(e?.amount||0)===seeded)){
                 issues.push({severity:'CRITICAL',code:'UNVERIFIED_NPC_GENESIS',npcId});continue;
             }
             const oldNpc=beforeState?.npcRegistry?.[npcId],newNpc=afterState?.npcRegistry?.[npcId];
@@ -12201,8 +12215,8 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 issues.push({severity:'CRITICAL',code:'INVALID_NPC_GENESIS_PRECONDITION',npcId});continue;
             }
             const key='NPC:'+npcId;
-            openingCredits[key]=(openingCredits[key]||0)+40;
-            initializations.push({npcId,amount:40,source:entry.source});
+            openingCredits[key]=(openingCredits[key]||0)+seeded;
+            initializations.push({npcId,amount:seeded,source:entry.source});
         }
         // Some employers have a separate legacy business-seed journal. Only
         // credit actual wallet initialization, not a journal row added while a
@@ -12225,14 +12239,18 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         catch(e){issues.push({severity:'WARNING',code:'MONEY_SNAPSHOT_UNAVAILABLE',detail:v709AuditSafe(e.message,150)});}
         for(const account of Object.keys(beforeAll)){
             if(!(account in afterAll))continue;
-            const changed=Number(afterAll[account])-Number(beforeAll[account]);
-            const expected=(projected[account]||0)+(openingCredits[account]||0);
+            const extra=(state,key)=>key==='PLAYER'?Number(state?.spiritStoneHalfUnits||0):
+                key.startsWith('NPC:')?Number(state?.npcRegistry?.[key.slice(4)]?.ueWalletHalfUnits||0):0;
+            const changed=2*(Number(afterAll[account])-Number(beforeAll[account]))+extra(afterState,account)-extra(beforeState,account);
+            const expected=2*((projected[account]||0)+(openingCredits[account]||0))+(projectedHalves[account]||0);
             if(changed!==expected){
                 issues.push({severity:'CRITICAL',code:'CURRENCY_LEDGER_MISMATCH',account,
                     actualDelta:changed,postedDelta:expected});
             }
         }
         if(afterLedger.length<beforeLedger.length)issues.push({severity:'CRITICAL',code:'CASH_POSTINGS_REMOVED'});
+        if((afterState?.economy?.v694?.halfPostings||[]).length<oldHalves.length)
+            issues.push({severity:'CRITICAL',code:'HALF_POSTINGS_REMOVED'});
         // Independently match each committed cash receipt to an actual incoming posting.
         for(const receipt of ctx.coreReceipts||[]){
             if(!['CURRENCY_PAID','PAID'].includes(receipt.status))continue;
@@ -12288,6 +12306,8 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             const accepted=auditReceipts.some(r=>['PAID','CURRENCY_PAID','ACQUIRED','CONTRACT_SIGNED','AGREED','WORK_RECORDED','CRAFTED','DELIVERED','SETTLED','HELD','RETURNED','DISCOVERED'].includes(r.status));
             const denied=auditReceipts.some(r=>['REJECTED','ACTION_REJECTED'].includes(r.status));
             ctx.actionSettlement=!succeeded?'ROLLED_BACK':accepted&&denied?'PARTIAL_SETTLEMENT':accepted?'SETTLED':denied?'ACTION_REJECTED':'NO_SETTLEMENT';
+            if(succeeded && !accepted && /(?:支付.{0,12}入住|領薪|領取.{0,8}工錢|出售|賣出|答應.{0,12}交換|換取)/.test(String(ctx.requestedAction||ctx.input||'')))
+                ctx.issues.push({severity:'WARNING',code:'V71413_GOAL_NOT_SETTLED'});
             ctx.status=ctx.issues.some(i=>i.severity==='CRITICAL')?'CRITICAL':
                 ctx.issues.some(i=>i.severity==='WARNING')?'WARNING':succeeded?'PASS':'ROLLED_BACK';
             ctx.transport=ctx.network.length?'GEMINI_HTTP':'NO_HTTP_EVIDENCE';
@@ -12321,12 +12341,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v709AuditExport(){
         const records=v709AuditRead();
-        const report={schemaVersion:712,gameVersion:'7.14.12',product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
+        const report={schemaVersion:712,gameVersion:'7.14.13',product:'九州裂天錄',note:'本機逐回合監測；GEMINI_HTTP 代表程式內有記錄到 API 呼叫，非第三方驗證。紅色警示須檢查。匯出包含對話，不含 API Key。',
             exportedAt:new Date().toISOString(),turns:records.length,records,
             localActionReceipts:(gameState.v71412LocalOps||[]).slice(-250)};
         const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');
-        a.href=url;a.download='九州裂天錄_V7.14.12_真實AI逐回合稽核_'+new Date().toISOString().slice(0,10)+'.json';
+        a.href=url;a.download='九州裂天錄_V7.14.13_真實AI逐回合稽核_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
     function v709AuditClear(){
@@ -12760,7 +12780,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         return report;
     }
 
-    // V7.14.12: verified NPC conditions. Narrative is never a combat receipt.
+    // V7.14.13: verified NPC conditions. Narrative is never a combat receipt.
     function v71412NpcState(s){
         if(!s.v71412Npc||typeof s.v71412Npc!=='object')s.v71412Npc={schema:71412,conditions:{},seen:{},receipts:[]};
         const v=s.v71412Npc;v.conditions=v.conditions||{};v.seen=v.seen||{};v.receipts=Array.isArray(v.receipts)?v.receipts:[];
@@ -13236,8 +13256,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         // Same ordinary material can be referred to with reversed descriptive words.
         // Keep strict matching of the material noun; do not fuzzy-match rare loot.
         const sameMaterial=[name,name.replace('枯乾','乾枯'),name.replace('乾枯','枯乾')];
-        if(!name||!sameMaterial.some(n=>text.includes(n))||!v718Confirm(action,story))return false;
-        if(!/(?:採|摘|拔|挖|砍|伐|割|拾|撿|收|取|尋找.*採集|找.*材料|尋.*素材|找.*武器)/.test(a))return false;
+        const commonBranch=/^(?=.{2,18}$)(?!.*(?:仙|神|聖|法寶|靈器|寶器)).*(?:木枝|樹枝|枯枝|木棍|木棒)$/.test(name) &&
+            /(?:枯木枝條|樹枝|木枝|木棍|木棒|枯枝)/.test(text) &&
+            /(?:樹林|疏林|老樹|樹根|林間)/.test(text) &&
+            /(?:握在手|握緊|拿在手中|掂量|拾起|撿起|取走)/.test(text);
+        if(!name || (!sameMaterial.some(n=>text.includes(n))&&!commonBranch) || !v718Confirm(action,story))return false;
+        if(!/(?:採|摘|拔|挖|砍|伐|割|拾|撿|收|取|尋找.*採集|找.*材料|尋.*素材|找.*武器|找.{0,8}(?:東西|工具|枝條).{0,6}防身)/.test(a))return false;
         if(!['success','partial',''].includes(String(event.outcome||'').toLowerCase()))return false;
         if(!v718NaturalKind(name)&&!['wood','plant','mineral','water','natural'].includes(String(event.category||'')))return false;
         if(/(?:妖丹|內丹|仙品|仙器|神器|至寶|天材地寶|古戒)/.test(name))return false;
@@ -13253,7 +13277,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     function v718Gather(s,event,action,story,eventId,index){
         const kind=String(event.kind||event.type||'').toUpperCase();
         const act=v718Text(action),txt=v718Text(story),name=v718ObjectName(event.name||event.itemName);
-        if(!name||!/(?:採|摘|挖|砍|伐|割|剝|解剖|拾|撿|收集|收起|收下|收入|收進|帶走|拿起|拿走|拿到|取走|取下|捕|釣|取|抽|撈|割取|採礦|採藥|採木|採石|拆骨|找.{0,8}武器.{0,5}防身)/.test(act))return {status:'SKIPPED',reason:'玩家沒有提出採集動作'};
+        if(!name||!/(?:採|摘|挖|砍|伐|割|剝|解剖|拾|撿|收集|收起|收下|收入|收進|帶走|拿起|拿走|拿到|取走|取下|捕|釣|取|抽|撈|割取|採礦|採藥|採木|採石|拆骨|找.{0,8}(?:武器|東西|工具|枝條).{0,6}防身)/.test(act))return {status:'SKIPPED',reason:'玩家沒有提出採集動作'};
         if(!v718Confirm(action,story)||event.success===false||/^(?:fail|failure|rejected)$/.test(String(event.outcome||'').toLowerCase()))return {status:'SKIPPED',reason:'本次沒有成功採集'};
         const q=v718PositiveNumber(event.quantity??1,12);if(!q)return {status:'REJECTED',reason:'採集數量無效'};
         // Repeating 「收起那根短棍」 after a successful pickup is an
@@ -13324,14 +13348,31 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             return r.map(x=>({id:x.id,name:x.name,remaining:x.remaining}));
         },'NATURE:CORPSE:'+corpseId);
     }
+    // V7.14.13: an employer's counter, back room and store yard are one reachable site.
+    // Do not relax to other shops merely because both are in the same market.
+    function v71413Site(loc){
+        return String(loc||'').replace(/(?:前堂|後堂|後院|前院|櫃檯|客房內|客房|店內|室內|內堂|貨倉|倉房|倉庫|庫房|藥材間|工作間|工作區|院內)$/,'').trim();
+    }
+    function v71413Reachable(d,npc,story){
+        if(!npc||npc.is_alive===false)return false;
+        const here=v71413Site(d.location),there=v71413Site(npc.location);
+        if(here&&there&&here===there)return true;
+        const base=String(npc.location||''),now=String(d.location||'');
+        if(base&&now&&(now.startsWith(base)||base.startsWith(now)) &&
+          /(?:百草會|分號|商鋪|店鋪|藥鋪|客棧|旅店|聚仙居|鏢局|工坊)/.test(here+' '+there) &&
+          (String(story||'').includes(npc.name)||String(story||'').includes(base.replace(/^.*[·．]/,''))))return true;
+        const agreement=Object.values(d.v718?.agreements||{}).some(a=>a.partyId===npc.id&&['ACTIVE','COMPLETED','UNPAID'].includes(a.status));
+        return agreement && /(?:車隊|商隊|鏢局)/.test(String(npc.role||'')+' '+String(npc.name||'')+' '+String(story||'')) &&
+          /(?:驛|路|道|營地|車隊|商隊|鏢局)/.test(now) && String(story||'').includes(npc.name);
+    }
     function v718Merchant(d,name,story,allowCreate=false){
-        const text=v718Text(name),loc=String(d.location||''),npcs=Object.values(d.npcRegistry||{}).filter(n=>n&&n.id&&n.is_alive!==false&&n.status!=='DEAD'&&String(n.location||'')===loc);
+        const text=v718Text(name),loc=String(d.location||''),npcs=Object.values(d.npcRegistry||{}).filter(n=>n&&n.id&&n.is_alive!==false&&n.status!=='DEAD'&&v71413Reachable(d,n,story));
         const byId=d.npcRegistry?.[text];if(byId&&npcs.includes(byId))return byId;
-        const found=npcs.filter(n=>n.name===text||n.name.includes(text)&&text.length>=3);
+        const found=npcs.filter(n=>n.name===text||(n.name.includes(text)&&text.length>=3));
         if(found.length===1)return found[0];if(found.length>1||!allowCreate)return null;
         if(!text||text.length>28||!String(story).includes(text)||!/(?:掌櫃|帳房|商人|店主|老闆|管事|雇主|商販|攤主|收購|收下|成交|同意|雇用|聘用)/.test(story))return null;
         const id='V718:NPC:'+v718Hash(loc+':'+text),st=v718State(d);
-        if(d.npcRegistry[id])return d.npcRegistry[id];
+        if(d.npcRegistry[id])return v71413Reachable(d,d.npcRegistry[id],story)?d.npcRegistry[id]:null;
         const npc={id,name:text,location:loc,role:'商戶／委託人',profession:'商人',status:'ACTIVE',is_alive:true,inventory:[],ueWallet:0,relationship:{favorability:0,awe:0,profit:0},trust:0,persistent:true};
         d.npcRegistry[id]=npc;
         // First encounter capital is a bounded world genesis, never a player's income or fake payment.
@@ -13352,9 +13393,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         // This does not credit the player, cannot fund a second seed, and is fully
         // recorded as WORLD_INITIALIZATION, not as a trade receipt.
         const name=String(npc.name||''),body=String(story||'');
-        const business=/(?:商人|商販|商戶|掌櫃|店主|雜貨|藥鋪|店鋪|工坊|商隊|商盟|店|鋪)/.test(name+' '+String(npc.profession||'')+' '+String(npc.role||''));
+        const business=/(?:商人|商販|商戶|掌櫃|店主|雜貨|藥鋪|店鋪|工坊|商隊|商盟|分號|夥計|鏢頭|店|鋪)/.test(name+' '+String(npc.profession||'')+' '+String(npc.role||''));
         const seen=body.includes(name)||body.includes(name.replace(/掌櫃$/, ''))||/(?:掌櫃|店主|店鋪|雜貨鋪|市集|商人)/.test(body);
-        if(!business||!seen||String(npc.location||'')!==String(d.location||''))return false;
+        if(!business||!seen||!v71413Reachable(d,npc,story))return false;
         if(Number(npc.ueWallet||0)!==0||Number(npc.ueWalletHalfUnits||0)!==0)return false;
         const ownedGenesis=Object.values(st.genesis).filter(g=>g.location===d.location).length;
         if(ownedGenesis>=3)return false;
@@ -13415,14 +13456,27 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     function v718Agreement(d,ev,action,story,tx){
         const st=v718State(d),type=String(ev.kind||'').toUpperCase();
         v71412MovingEmployer(d,ev,action,story);
-        const party=v718Merchant(d,ev.partyId||ev.partyName||ev.employer||ev.issuer||v710ShopName(story)||'',story,true);
+        const bound=ev.agreementId?st.agreements?.[String(ev.agreementId)]:null;
+        if(bound&&ev.partyId&&String(ev.partyId)!==String(bound.partyId))throw Error('協議所屬雇主與要求付款／工作對象不符');
+        const party=v718Merchant(d,bound?.partyId||ev.partyId||ev.partyName||ev.employer||ev.issuer||v710ShopName(story)||'',story,true);
         if(!party)throw Error('無法唯一辨識協議對象');
         if(type==='AGREE'||type==='HIRE'||type==='ACCEPT_JOB'||type==='ACCEPT_BOUNTY'||type==='PARTNERSHIP'){
+            // Give a legitimate in-world merchant employer one bounded, journaled
+            // operating float, never a reward to the player or a repeatable grant.
+            v721OpeningCapital(d,party,story);
+            const ongoing=Object.values(st.agreements).filter(a=>a.partyId===party.id&&['ACTIVE','UNPAID','COMPLETED'].includes(a.status)&&
+                String(a.kind||'')!=='DEBT'&&!(a.status==='COMPLETED'&&Number(a.lastPaidWorkDays||0)>=Number(a.workDays||0)));
+            if(ongoing.length){
+                if(ongoing.length===1 && /(?:續約|延長|展延|調整工期|更改條款)/.test(action)){
+                    // An explicit renewal needs separate proposed terms and a new agreement.
+                }else return {id:tx,kind:'AGREEMENT',status:'ALREADY_RECORDED',agreementId:ongoing[0].id,partyId:party.id};
+            }
             const id='V718:AG:'+v718Hash(party.id+'|'+String(ev.title||ev.work||action)+'|'+String(d.daysPassed));
-            if(st.agreements[id])return {id:tx,kind:'AGREEMENT',status:'ALREADY_RECORDED',agreementId:id};
+            if(st.agreements[id])return {id:tx,kind:'AGREEMENT',status:'ALREADY_RECORDED',agreementId:id,partyId:party.id};
             const phrase=String(story+' '+action);const days=v718PositiveNumber(ev.durationDays,3650)||(/(?:\d+|[一二兩三四五六七八九十]+)\s*(?:個)?(?:月|天|日)/.test(phrase)?v712DurationFromText(phrase):null);
             const rawWage=ev.wage??ev.amount;const amount=rawWage==null?NaN:Number(rawWage);const money=Number.isFinite(amount)&&amount>=0?amount:null;
-            st.agreements[id]={id,partyId:party.id,title:String(ev.title||ev.work||'自由委託'),terms:String(ev.terms||story).slice(0,800),status:'ACTIVE',durationDays:days,workDays:0,wage:money,currency:String(ev.currency||'下品靈石'),paymentBasis:String(ev.paymentBasis||'unknown'),paid:0,acceptedDay:Number(d.daysPassed)||0,receipts:[]};
+            const basis=String(ev.paymentBasis||'unknown')==='unknown'&&/(?:每日|日薪|一天|每工作日)/.test(String(ev.terms||story))?'daily':String(ev.paymentBasis||'unknown');
+            st.agreements[id]={id,partyId:party.id,title:String(ev.title||ev.work||ev.itemName||'自由委託'),terms:String(ev.terms||story).slice(0,800),status:'ACTIVE',durationDays:days,workDays:0,wage:money,currency:String(ev.currency||'下品靈石'),paymentBasis:basis,paid:0,acceptedDay:Number(d.daysPassed)||0,receipts:[]};
             return {id:tx,kind:'AGREEMENT',status:'AGREED',agreementId:id,partyId:party.id};
         }
         const candidates=Object.values(st.agreements).filter(a=>a.partyId===party.id&&['ACTIVE','COMPLETED','UNPAID'].includes(a.status));
@@ -13442,7 +13496,11 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(type==='PAY_WAGE'||type==='PAY_REWARD'||type==='CLAIM_BOUNTY'){
             if(/(?:拒付|並未支付|不肯付款|無法支付|尚未給|改天再付|未獲核准|沒有給|未給)/.test(story))throw Error('NPC尚未同意支付');
             v71412PayUnitCheck(ev,story,action);
-            const raw=ev.amount??ev.wage??agreement.wage;const amount=raw==null?NaN:Number(raw);const currency=v718CurrencyName(ev.currency?ev:agreement);if(!v718MoneyValid(amount,currency))throw Error('本次付款金額尚未確定');
+            const unpaidDays=Math.max(0,Number(agreement.workDays||0)-Number(agreement.lastPaidWorkDays||0));
+            const owed=type==='PAY_WAGE'&&agreement.paymentBasis==='daily'&&agreement.wage!==null? +(unpaidDays*agreement.wage).toFixed(6):null;
+            const raw=ev.amount??ev.wage??owed??agreement.wage;const amount=raw==null?NaN:Number(raw);const currency=v718CurrencyName(ev.currency?ev:agreement);
+            if(!v718MoneyValid(amount,currency))throw Error('本次付款金額尚未確定');
+            if(owed!==null&&amount!==owed)throw Error('付款數額與已完成且未付的工作日數不一致');
             if(agreement.wage!==null&&agreement.paymentBasis==='total'&&amount>agreement.wage-agreement.paid)throw Error('超過已約定的剩餘報酬');
             if(agreement.status==='PAID')throw Error('該協議已經結清');
             if(type==='PAY_WAGE'){
@@ -13582,13 +13640,16 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         }
     }
     function v719Barter(d,ev,tx,story){
-        const npc=v718Merchant(d,ev.partyId||ev.partyName||'',story,false);
+        const npc=v718Merchant(d,ev.partyId||ev.partyName||'',story,true);
         if(!npc)throw Error('換物對手不唯一或不在場');
         const give=v718ObjectName(ev.itemName||ev.name||''),get=v718ObjectName(ev.exchangeName||''),q=v718PositiveNumber(ev.quantity??1,100),rq=v718PositiveNumber(ev.exchangeQty??1,100);
         if(!give||!get||!q||!rq)throw Error('換物雙方品項或數量未確認');
         // Snapshot preflight, so the first transfer cannot make the second leg seem verified.
         const player=d.inventory||[],shop=npc.inventory||[];
         const enough=(bag,name,owner,qty)=>bag.filter(i=>i.name===name&&i.ueLegalOwnerId===owner&&!i.ueStolenFrom&&getItemPermissions(i).sell).reduce((sum,i)=>sum+Number(i.quantity||0),0)>=qty;
+        if(!enough(shop,get,npc.id,rq)&&ev.stockVerified===true && rq<=2 &&
+          /(?:從.{0,12}(?:木櫃|貨架|櫃中|架上|貨箱).{0,20}(?:取出|拿出)|取出.{0,16}(?:貨品|砂石|材料)|櫃上擺著)/.test(story))
+            v718ProvisionShopStock(d,npc,{itemName:get,quantity:rq},story,tx+':STOCK');
         if(!enough(player,give,'PLAYER',q)||!enough(shop,get,npc.id,rq))throw Error('以物易物未具備雙方真實貨物');
         v719MoveLegal(d,player,shop,'PLAYER',npc.id,give,q,tx+':GIVE');
         v719MoveLegal(d,shop,player,npc.id,'PLAYER',get,rq,tx+':RECEIVE');
@@ -13670,7 +13731,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             // a paid work shift during an unrelated gathering/travel turn.
             const intent=/(?:做工|上工|打工|工作|勞務|雜役|協助車隊.{0,20}(?:馬匹|物資|搬運|貨物)|照料.{0,12}(?:馬匹|馱獸)|履行.{0,12}(?:工作|雇用|契約)|完成.{0,14}(?:工作|差事|雜務)|分揀|清點.{0,12}(?:貨物|藥材)|整理藥材|搬運.{0,12}(?:貨物|藥材)|打掃|灑掃|值勤|挑揀藥材|打雜)/.test(a);
             const negative=/(?:不|未|沒有|暫不|先不).{0,8}(?:工作|做工|上工|打工|勞務)|(?:只|僅).{0,10}(?:返回|前往|移動|趕路|採集|尋找|詢問|觀察)|(?:返回|前往|移動|趕路|採集).{0,28}(?:不工作|不結算工作)/.test(a);
-            const evidence=/(?:完成|做完|已做|做了|忙了|進行了|辛勤|仔細|實際|協助|幫忙).{0,35}(?:工作|勞務|差事|雜務|照看|照料|馬匹|物資|分揀|清點|整理|搬運|打掃|灑掃|值勤|挑揀)|(?:分揀|整理|清點|搬運|打掃|灑掃|值勤|照料|照看).{0,30}(?:完成|完畢|一日|一天|工作|物資|貨物|馬匹)/.test(t);
+            const evidence=/(?:完成|做完|已做|做了|忙了|進行了|辛勤|仔細|實際|協助|幫忙).{0,35}(?:工作|勞務|差事|雜務|照看|照料|馬匹|物資|分揀|清點|整理|搬運|打掃|灑掃|值勤|挑揀)|(?:分揀|整理|清點|搬運|打掃|灑掃|值勤|照料|照看).{0,30}(?:完成|完畢|一日|一天|工作|物資|貨物|馬匹)|(?:度過.{0,12}一日|直到.{0,16}(?:日落|天黑|天色|傍晚)|日落.{0,8}方歇|完成當日)/.test(t)&&/(?:工作|藥材|靈草|分揀|整理|打工|上工|雜役)/.test(t);
             const denied=/(?:未|沒有|未能|失敗|拒絕|尚未|並未).{0,18}(?:完成|工作|上工|做工|分揀|搬運|清點)/.test(t);
             return intent&&!negative&&evidence&&!denied;
         }
@@ -13691,6 +13752,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 if(st.deals[type+':'+businessId])throw Error('同一交易已在先前回合結算');
             }
             if(ev.confirmed===false||/^(?:rejected|failed|failure|neutral|pending|quote)$/.test(String(ev.outcome||'').toLowerCase()))throw Error('雙方尚未成立正式交易');
+            if(['SELL','BUY','BARTER','PAY_WAGE'].includes(type)&&/(?:交易(?:最終)?未能|未能(?:成交|談妥|完成)|交易(?:因此|因而)?作罷|尚未付款|拒付|並未支付|沒有支付)/.test(String(story||'')))throw Error('敘事已明確表示未完成交割');
             if(type!=='SHOP_STOCK'&&!v718Confirm(action,story)){
                 const isConfirmedReturn=['CANCEL_PREPAY','RETURN_PREPAY','RETURN_DEPOSIT','CONSIGN_RETURN','RETURN_PURCHASE','RETURN_SALE'].includes(type)
                     && ev.confirmed===true && /(?:退還|退回|返還|交還|取回|退款)/.test(story)
@@ -13905,6 +13967,44 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 }
             }
         }
+        // V7.14.13: deterministic fallback for missing assetEvents.
+        // Never backfill a shift from a wage-collection, negotiation or preparation turn.
+        if(!assets.some(e=>['WORK','PERFORM_JOB'].includes(String(e.kind||'').toUpperCase()))){
+            const intent=/(?:上工|做工|打工|工作|開始第.{0,4}日|分揀|整理藥草|整理靈草|清點藥材|協助.{0,12}整理)/.test(String(action||''));
+            const done=/(?:完成|做完|忙完|日落|天色漸暗|度過.{0,6}一日|辛勤.{0,6}勞動|分類歸位|整理著|進行.{0,10}整理|投入.{0,10}工作|仔細分揀)/.test(String(story||''));
+            const pending=/(?:準備|打算|計劃|詢問|報到(?!上工)|前往|返回|領薪|領取工錢|工資|尚未開工|未開始)/.test(String(action||''))&&!/(?:完成|開始.{0,6}工作|報到上工|繼續.{0,6}打工)/.test(String(action||''));
+            const refused=/(?:未能|沒有|尚未|拒絕|不允許).{0,14}(?:上工|完成|工作|整理|打工)/.test(String(story||''));
+            const contracts=Object.values(state.v718?.agreements||{}).filter(a=>a&&['ACTIVE','UNPAID'].includes(a.status)&&state.npcRegistry?.[a.partyId]&&v71413Reachable(state,state.npcRegistry[a.partyId],story));
+            if(intent&&done&&!pending&&!refused&&contracts.length===1)
+                assets.push({kind:'WORK',confirmed:true,partyId:contracts[0].partyId,agreementId:contracts[0].id,days:1,causalFallback:'V71413_WORK'});
+        }
+        if(!assets.some(e=>String(e.kind||'').toUpperCase()==='PAY_WAGE')&&
+           /(?:領薪|領取.{0,12}(?:工資|工錢|薪資)|結算.{0,8}(?:工錢|工資))/.test(String(action||''))&&
+           /(?:支付|付給|交給|領到|當場結清)/.test(String(story||''))&&
+           !/(?:拒付|未付|尚未付|不能支付|改日支付|無法支付)/.test(String(story||''))){
+            const agreements=Object.values(state.v718?.agreements||{}).filter(a=>a&&['ACTIVE','COMPLETED','UNPAID'].includes(a.status)&&
+                state.npcRegistry?.[a.partyId]&&v71413Reachable(state,state.npcRegistry[a.partyId],story)&&
+                Number(a.workDays||0)>Number(a.lastPaidWorkDays||0)&&a.paymentBasis==='daily'&&a.wage!==null);
+            if(agreements.length===1){const a=agreements[0],due=+(a.wage*(a.workDays-Number(a.lastPaidWorkDays||0))).toFixed(6);
+                if(v718MoneyValid(due,v718CurrencyName(a)))assets.push({kind:'PAY_WAGE',confirmed:true,partyId:a.partyId,agreementId:a.id,amount:due,currency:a.currency,causalFallback:'V71413_PAY_WAGE'});
+            }
+        }
+        if(!assets.some(e=>String(e.kind||'').toUpperCase()==='BARTER')&&
+            /(?:答應|同意|確認).{0,22}(?:換取|交換)|(?:換取|交換).{0,25}(?:完成|成交)/.test(String(action||''))&&
+            /(?:交出|交給|交付).{0,35}(?:完成.{0,8}(?:交換|互換)|換得|收下)|(?:雙方完成).{0,8}(?:交換|互換)/.test(String(story||''))){
+            const goods=(state.inventory||[]).filter(i=>Number(i.quantity)>0&&String(story).includes(i.name));
+            const distinct=[...new Set(goods.map(i=>i.name))];
+            const offered=String(story).match(/([一二兩三四五六七八九十\d]+)\s*(?:株|份|包|根|枚|塊)\s*([\u4e00-\u9fff]{2,12})\s*(?:交出|交給)/);
+            const giveaway=distinct.length===1?distinct[0]:null;
+            const take=String(story).match(/(製器砂石|煉器砂石|低階砂石|粗砂石|砂石|礦石|木材|砂礫|砂土|石料)/);
+            const quan=(String(story).match(/([一二兩三四五六七八九十\d]+)\s*株\s*翠綠靈草/)||[])[1];
+            const count=quan?v718PositiveNumber(v710ChineseNumber(quan),100):1;
+            const named=Object.values(state.npcRegistry||{}).filter(n=>v71413Reachable(state,n,story)&&String(story||'').includes(n.name));
+            const business=named.length===1?named[0].name: (String(story).match(/([\u4e00-\u9fff]{2,10}(?:管事|掌櫃|攤主|店主))/)||[])[1];
+            if(giveaway&&take&&take[1]!==giveaway&&count&&business)
+                assets.push({kind:'BARTER',confirmed:true,partyName:business,itemName:giveaway,quantity:count,
+                    exchangeName:take[1],exchangeQty:1,stockVerified:true,causalFallback:'V71413_BARTER'});
+        }
         return {nature,assets};
     }
     function v718Apply(s,raw,action,story,eventId){
@@ -13933,6 +14033,57 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v718PlayerNarrative(story){return v716PlayerStory(story).split(/\n/).filter(line=>!/^\s*(?:NPC 的承諾已登錄|正式結算狀態|事件已提交|核心判定|帳務稽核|資產帳本|NPC.*(?:資產|報酬).*登錄)/.test(line)).join('\n').replace(/【(?:正式交割|未成交|核心拾取|核心取得|場景登錄|核心未結算|雇用核對|正式契約|正式入帳|交易狀態|遊戲稽核|稽核回合|系統結算)[^】]*】[^\n]*/g,'').replace(/\n{3,}/g,'\n\n').trim();}
 
+    function v71413Lodging(s,action,story,eventId,previousLocation){
+        if(!/(?:支付|付|花|繳).{0,16}(?:靈石|房費)|(?:付費|花錢).{0,12}(?:住|入住)/.test(String(action||''))||
+           !/(?:入住|住宿|客房|房間|投宿)/.test(String(action||'')))return null;
+        const tx=String(eventId)+':LODGING';
+        const denied=(reason)=>({id:tx,kind:'PAY_FOR_LODGING',status:'REJECTED',reason});
+        // No charge based on an AI estimate or unconfirmed room offer.
+        const m=String(action).match(/(?:支付|付|花|繳)\s*([一二兩三四五六七八九十\d]+|半)\s*(?:塊|顆|枚)?\s*下品靈石/);
+        const amount=m?(m[1]==='半'?0.5:Number(v710ChineseNumber(m[1]))):NaN;
+        if(!v718MoneyValid(amount,'下品靈石'))return denied('房價尚未核對');
+        if(v713StoneDisplay(s)<amount)return denied('玩家靈石不足，未付款亦未取得客房使用權');
+        if(!/(?:入住|住進|進入.{0,8}客房|房門|房間|客房鑰匙|交給.{0,6}鑰匙)/.test(String(story||'')))return denied('店方未確認交付房間');
+        // Set the party's encounter location to the lobby, not the AI-proposed room.
+        const lobby=String(previousLocation||s.location||'');
+        const site=String(action).match(/(?:入住|住進)([\u4e00-\u9fff]{2,12})(?:普通|上房|下房|客房|房間)/)?.[1]||
+             (lobby.match(/([\u4e00-\u9fff]{2,9}(?:客棧|居|旅店|酒樓))/)||[])[1];
+        if(!site)return denied('缺少可確認的旅店身分');
+        try{return worldStageCall(s,'V71413_LODGING',d=>{
+            const proposedRoom=String(d.location||'');
+            d.location=lobby;
+            const npc=v718Merchant(d,site+'掌櫃',String(story)+' '+site+'掌櫃同意入住',true);
+            if(!npc)throw Error('旅店櫃檯未能唯一核對');
+            v718TransferMoney(d,'PLAYER',npc.id,amount,'下品靈石',tx+':CASH','住宿付費');
+            d.location=proposedRoom;
+            const st=v718State(d);st.lodgingRights=st.lodgingRights||{};
+            st.lodgingRights[tx]={id:tx,partyId:npc.id,amount,currency:'下品靈石',location:lobby,room:proposedRoom,day:Number(d.daysPassed)||0};
+            const rec={id:tx,kind:'PAY_FOR_LODGING',status:'PAID',partyId:npc.id,amount,currency:'下品靈石'};
+            st.events.push(rec);st.processed[tx]=rec;return rec;
+        },tx);}catch(e){return denied(String(e.message||e));}
+    }
+    function v71413NarrativeGate(s,before,action,story,receipts){
+        const t=String(story||''),a=String(action||'');
+        if(/【系統提示】本次 AI 回傳或結算內容不完整/.test(t))
+            return '這次互動未得到完整的可核對結果，尚未成立任何新交易。你可以再次確認條件，或繼續其他行動。';
+        const r=Array.isArray(receipts)?receipts:[];
+        const completed=(kind)=>r.some(x=>x.kind===kind&&['PAID','SETTLED','ACQUIRED','WORK_RECORDED'].includes(x.status));
+        if(/(?:支付|付|花|繳).{0,18}(?:下品靈石|房費)/.test(a)&&/(?:入住|投宿|客房|房間)/.test(a)&&!completed('PAY_FOR_LODGING')){
+            s.location=before.location;
+            if(before.worldMemory)s.worldMemory=structuredClone(before.worldMemory);
+            return '你詢問了住宿安排，但尚未完成正式付款，因此沒有取得客房或鑰匙。你仍留在原處，可以籌措房費、協商其他條件，或另尋落腳處。';
+        }
+        if(/(?:換取|交換|互換)/.test(a)&&/(?:交出|完成.{0,8}(?:交換|互換)|換得|收到.{0,10}(?:砂石|材料))/.test(t)&&!completed('BARTER')){
+            if(before.worldMemory)s.worldMemory=structuredClone(before.worldMemory);
+            return '你與對方商議以物易物，但雙方的實物、數量及所有權尚未完成核對，這筆交換未成立。原有物品仍歸原持有人，不能使用尚未取得的材料。';
+        }
+        if(/(?:出售|賣出|售出)/.test(a)&&/(?:已經成交|交易完成|已收下.{0,10}靈石)/.test(t)&&!completed('SELL'))
+            return '你提出出售物品的要求，但尚未取得正式成交收據。原物品與靈石保持不變，請與同一商戶確認報價及交割。';
+        if(/(?:上工|工作|打工|整理藥草|整理靈草)/.test(a)&&/(?:完成.{0,12}(?:工作|整理)|做完|收工|度過.{0,10}一日)/.test(t)&&
+            !completed('WORK')&&!/(?:問|詢|準備|打算|計畫)/.test(a))
+            return '你嘗試履行工作，但本次工時尚未取得正式核准，不能視為已完成可領薪工作日。請確認雇主、契約與工作地點。';
+        return t;
+    }
     async function sendAction(choiceText = null, eventMeta = null, customPromptText = null) {
         if (isTyping || gameState.isDead) return;
         if(v682State().battle||tacticalState().battle){openGameModal("正式戰鬥進行中","請先完成既有戰鬥回合，不得同時啟動另一場戰鬥或透過 AI 文字結算。 ");return;}
@@ -14108,7 +14259,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 delete parsedState.daysPassedDelta;
                 delete parsedState.daysPassed;
             }
-            
+
             if(eventMeta.deductStone!==undefined){
                 const purpose=eventMeta.isHospital?"hospital":eventMeta.isDetox?"detox":"message";
                 settleEconomy(gameState,{eventId:`FEE:${eventMeta.eventId}`,kind:"service",purpose,amount:eventMeta.deductStone},ECONOMY_AUTHORITY);
@@ -14286,6 +14437,8 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             v716CaptureJobOffer(gameState,actionText,storyText);
             gameState.v71412TurnClock={turn:String(eventMeta.eventId),startDay:Number(stateBeforeAction.daysPassed)||0};
             const v718Report=v718Apply(gameState,v701RawActions,actionText,storyText,eventMeta.eventId);
+            const v71413Room=v71413Lodging(gameState,actionText,storyText,eventMeta.eventId,stateBeforeAction.location);
+            if(v71413Room){v718Report.receipts.push(v71413Room);v718Report.handled=true;}
             const v718Kinds=new Set((v718Report.receipts||[]).filter(r=>!['REJECTED','SKIPPED'].includes(r.status)).map(r=>r.kind));
             const v71412HasModernAgreement=Object.values(gameState.v718?.agreements||{}).some(a=>
                 a&&['ACTIVE','COMPLETED','UNPAID'].includes(a.status)&&gameState.npcRegistry?.[a.partyId]);
@@ -14369,6 +14522,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             storyText=v710CleanCultivationSpam(storyText,actionText);
             storyText+=dialogueInlineHint(gameState);
             for(const note of v718Report.notes)if(!storyText.includes(note))storyText+='\n'+note;
+            storyText=v71413NarrativeGate(gameState,stateBeforeAction,actionText,storyText,v701Report.receipts);
             storyText=v718PlayerNarrative(storyText)||'你重新思量眼前局勢，暫未有新的進展。';
             conversationHistory.push({ role: "assistant", content: JSON.stringify({story:storyText,coreSettlement:gameState.lastEconomySummary,pendingEconomyProposal:gameState.pendingEconomyProposal||null}) });
             appendLogData("天道", storyText, "ai", false, true);
@@ -15042,7 +15196,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     span.style.color = itemRank ? getItemRankColor(itemRank) : (meta.rarityColor || '#c5a059');
                     span.title = itemRank ? `裝備境界階：${itemRank}｜類型：${meta.category || '裝備'}` : `物品類型：${meta.category || meta.type || '雜項'}${dynamicProfile?'｜'+v720Display(item):''}`;
                     if (getItemPermissions(item).identify) span.title += "｜先按『鑑定』，成功後才可裝備；未鑑定持有可有微弱共鳴";
-                    
+
                     let actionGroup = document.createElement("div"); actionGroup.className = "item-actions";
 
                     const permissions = getItemPermissions(item);
@@ -15087,7 +15241,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if (npcsBox && deadNpcsBox) {
             npcsBox.innerHTML = "";
             deadNpcsBox.innerHTML = "";
-            
+
             const registry = Object.values(gameState.npcRegistry).filter(n => n && (n.is_alive === false || n.status === "DEAD" || n.is_alive === true))
               .filter(n=>n.is_alive===false||n.status==='DEAD'||String(n.location||'')===String(gameState.location||'')||n.isImportant||n.isCompanion||n.persistent||Math.abs(Number(n.relationship?.favorability)||0)>=15||Math.abs(Number(n.trust)||0)>=15)
               .sort((a,b)=>Number(String(b.location||'')===String(gameState.location||''))-Number(String(a.location||'')===String(gameState.location||''))||(Number(b.relationship?.favorability||0)-Number(a.relationship?.favorability||0))).slice(0,35);
@@ -15121,7 +15275,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 if (n.is_alive !== false && n.status !== "DEAD") {
                     aliveCount++;
                     const actions = document.createElement("div"); actions.className = "item-actions";
-                    
+
                     if (fav < 0) {
                         if (nearby) {
                             const ambBtn = document.createElement("button"); ambBtn.style.background = "#4a1515"; ambBtn.textContent = "✦ 當面伏擊";
@@ -15306,7 +15460,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             // A failed write/verification must not leave partially migrated live data.
             const staged=structuredClone(gameState);
             ensureWorldMemory(staged);v694Migrate(staged);
-            v701Migrate(staged);staged.version="7.14.12";staged.maxHp=getMaxHp(staged);
+            v701Migrate(staged);staged.version="7.14.13";staged.maxHp=getMaxHp(staged);
             ueSyncAssetRegistry(staged,"SAVE_SYNC");
             const saveIssues=[...worldInvariantIssues(staged),...v701ProtocolIssues(staged)];
             if(saveIssues.length)throw new Error('世界狀態不一致：'+saveIssues.join(','));
@@ -15361,7 +15515,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         try{
             staged=structuredClone(gameState);
             ensureWorldMemory(staged);v694Migrate(staged);
-            v701Migrate(staged);staged.version="7.14.12";staged.maxHp=getMaxHp(staged);ueSyncAssetRegistry(staged,"EXPORT_SYNC");
+            v701Migrate(staged);staged.version="7.14.13";staged.maxHp=getMaxHp(staged);ueSyncAssetRegistry(staged,"EXPORT_SYNC");
             const exportIssues=[...worldInvariantIssues(staged),...v701ProtocolIssues(staged)];
             if(exportIssues.length)throw new Error(exportIssues.join(','));
         }catch(error){openGameModal('匯出前驗證失敗','世界狀態異常：'+String(error.message||error)+'。原資料未修改，請保留現有存檔供修復。');return false;}
@@ -15399,7 +15553,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const history=(pkg.history||[]).slice(-100).map(x => ({role:x.role,
             content:typeof x.content==="string"?x.content:x.parts.map(p=>p.text).join("\n")}));
         const state = ensureWorldMemory(normalizeGameState(structuredClone(raw)));
-        v701Migrate(state);state.version = "7.14.12"; v694Migrate(state);state.maxHp = getMaxHp(state);
+        v701Migrate(state);state.version = "7.14.13"; v694Migrate(state);state.maxHp = getMaxHp(state);
         for(const c of state.v710Employment?.contracts||[]){
             if(!object(c)||!c.id||!c.npcId||!Number.isSafeInteger(c.workDays)||c.workDays<0||
                !Number.isSafeInteger(c.durationDays)||c.durationDays<1||c.workDays>c.durationDays||
@@ -15657,7 +15811,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }const stop=document.getElementById('long-qa-stop');if(stop)stop.disabled=!running;}
     // V6.82 MIXED QA: goal-oriented schedule, not a sequence of 80% cultivation.
     const MIX_QA_TARGETS={cultivate:120,social:100,gather:180,combat:80,economy:160,work:160,quest:100,other:100};
-    // V7.14.12: A 503 or network outage is not proof that leaving a shop failed.
+    // V7.14.13: A 503 or network outage is not proof that leaving a shop failed.
     function mixedQaTransportFailure(success,quotaLimit,events){
         if(success||quotaLimit)return null;
         const bad=(events||[]).filter(e=>e&&((Number(e.status)>=500&&Number(e.status)<600)||/^(network|timeout|fetch_error)$/i.test(String(e.status||''))));
@@ -15863,9 +16017,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(resume){data=JSON.parse(oldText);gameState=normalizeGameState(data.state);conversationHistory=data.history||[];storyLogData=data.logs||[];}
             else {
                 gameState=getDefaultGameState();conversationHistory=[];storyLogData=[{role:'天道',content:DEFAULT_WELCOME_MSG,type:'ai'}];
-                data={tool:'九州裂天錄 V7.14.12 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
+                data={tool:'九州裂天錄 V7.14.13 真實Gemini千回合事件驗證',source:'real Gemini generateContent through game code',
                     startedAt:new Date().toISOString(),model:document.getElementById('api-model').value.trim()||'gemini-3.5-flash-lite',
-                    target:requested,delayMs,protocol:'V7.14.12 transient-safe + fatigue + employer QA v5',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
+                    target:requested,delayMs,protocol:'V7.14.13 transient-safe + fatigue + employer QA v5',origin:'落魄少主',actionTargets:MIX_QA_TARGETS,actionCounts:{},auditIssues:[],rounds:[],milestones:[],breakthroughs:{success:0,failed:0},failures:0,
                     apiCalls:0,httpAttempts:0,completedTurns:0,quotaPauses:0,maxLevel:0,maxRealm:'凡人',status:'running'};
             }
             data.target=Math.max(data.target||1000,requested);
@@ -16055,10 +16209,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const {state,history,logs,...safeReport}=data; // Explicitly exclude checkpoint internals and all API secrets.
         const blob=new Blob([JSON.stringify({...safeReport,currentState:longQaBefore(state||getDefaultGameState())},null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_V7.14.12_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V7.14.13_千回合Gemini驗證_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
-    // V7.14.12: Audit exports intentionally omit the live world state, so they
+    // V7.14.13: Audit exports intentionally omit the live world state, so they
     // cannot resume. A separate portable checkpoint includes it but no API key.
     function exportLongGeminiCheckpoint(){
         let data;
@@ -16073,7 +16227,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         for(const k of ['apiKey','api_key','key','authToken','token','secret'])delete safe[k];
         const blob=new Blob([JSON.stringify({checkpointFormat:'KYUSHU_LONG_QA_V1',...safe},null,2)],{type:'application/json;charset=utf-8'});
         const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='九州裂天錄_V7.14.12_可續跑測試檢查點_'+new Date().toISOString().slice(0,10)+'.json';
+        a.download='九州裂天錄_V7.14.13_可續跑測試檢查點_'+new Date().toISOString().slice(0,10)+'.json';
         document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
     async function importLongGeminiCheckpoint(input){
