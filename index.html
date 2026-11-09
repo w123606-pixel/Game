@@ -7538,7 +7538,7 @@ JOB_OFFER:{kind:"JOB_OFFER",partyName:"百草堂",wage:1,basis:"daily",durationD
 目前 AI 雇用契約：${JSON.stringify(Object.values(gameState.aiEconomyV81?.contracts||{}).slice(-12).map(c=>({contractId:c.id,partyName:c.party,status:c.status,wage:c.rate,basis:c.basis,durationDays:c.duration,workDays:c.workDays,paidWorkDays:c.paidWorkDays})))}。
 任何交易、領薪不能超過實際持有量或已賺取但未付數；工作已支付不能再領。
 【本回合交易授權】只有玩家這一次明確要求出售、購買、以物易物，或接受既有商業報價，才可產生 SELL/BUY/BARTER/ACCEPT_OFFER。玩家只是在應徵、簽工作契約、領薪、探查、詢問報價時，不得把以前商業報價自動成交；不要把同意雇用或同意任務當成同意出售。
-【V8.1 AI-FIRST 優先】上方 settlementEvents 才是唯一經濟與物品結果介面。此前任何舊版規則要求必須預先登錄物品來源、商人錢包、雙邊分錄、交易收據，現在已全部廢止。同一筆出售只能用 SELL，不可另加 GAIN_STONE/LOSE_ITEM；同一筆買入只能用 BUY，不可另加 GAIN_ITEM/SPEND_STONE；領薪只用 PAY_WAGE，不能再加 GAIN_STONE。採藥或挖礦每個凡人採集日最多約 20 件，同一地點同一日採量有上限；不要生成 50/100/1000 株或數日幾百株的收穫。二日一顆要用 basis:"two-days"；已領薪不再加 WORK。已接受後再次上工要使用現有 contractId。普通草藥或凡物在合理情境取得就直接 GAIN_ITEM；同品階同品質自動堆疊。靈石只能正整數顆。商家接受玩家明確出售即可同回合 SELL；只是問價則 QUOTE。雇用、工作和領薪分別用 HIRE、WORK、PAY_WAGE。不要在玩家故事中出現技術帳本術語。沒有實際變動則 settlementEvents:[]。
+【V8.1 AI-FIRST 優先】上方 settlementEvents 才是唯一經濟與物品結果介面。此前任何舊版規則要求必須預先登錄物品來源、商人錢包、雙邊分錄、交易收據，現在已全部廢止。同一筆出售只能用 SELL，不可另加 GAIN_STONE/LOSE_ITEM；同一筆買入只能用 BUY，不可另加 GAIN_ITEM/SPEND_STONE；領薪只用 PAY_WAGE，不能再加 GAIN_STONE。採藥或挖礦每個凡人採集日最多約 20 件，同一地點同一日採量有上限；不要生成 50/100/1000 株或數日幾百株的收穫。二日一顆要用 basis:"two-days"；若整份契約完工才發一筆固定報酬，須用 basis:"total" 並指定 durationDays。玩家領薪時先核對契約工作天數與已付款天數，雇主確實支付時必須輸出一筆 PAY_WAGE，使用既有 contractId；stones 或 amount 是本次實付總額，wage 僅代表單位薪資，不可混用。可支付部分已到期且整數的工資，剩餘欠款延後領取。若雇主拒付或尚未實際付款則不要生成 PAY_WAGE，也不能聲稱玩家已收到靈石。已領薪不再加 WORK。已接受後再次上工要使用現有 contractId。普通草藥或凡物在合理情境取得就直接 GAIN_ITEM；同品階同品質自動堆疊。靈石只能正整數顆。商家接受玩家明確出售即可同回合 SELL；只是問價則 QUOTE。雇用、工作和領薪分別用 HIRE、WORK、PAY_WAGE。不要在玩家故事中出現技術帳本術語。沒有實際變動則 settlementEvents:[]。
 `;
         const bodyData = {system_instruction:{parts:[{text:systemText}]},contents,
             generationConfig:{responseMimeType:'application/json',temperature:0.65,maxOutputTokens:4096}};
@@ -7553,7 +7553,10 @@ JOB_OFFER:{kind:"JOB_OFFER",partyName:"百草堂",wage:1,basis:"daily",durationD
             const began=performance.now();
             let outcome='network';
             try {
-                res=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":cleanKey},body:JSON.stringify(bodyData)});
+                // Stage 7.1：每次外部請求最多等待 50 秒，避免網路半開連線卡住整個回合。
+                // 最多三次有界重試，再加重試間隔仍低於 Stage 7 的 180 秒整回合預算。
+                res=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":cleanKey},
+                    body:JSON.stringify(bodyData),signal:AbortSignal.timeout(50000)});
                 lastNetworkError=null;outcome=res.status;
             } catch(e){lastNetworkError=e;res=null;outcome='network';}
             const event={type:repairKind,phase:sceneRepair?repairKind:'initial',attempt:attempt+1,status:outcome,
@@ -14216,9 +14219,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     const take=Math.min(left,9999-existing.quantity);existing.quantity+=take;left-=take;
                 }else{
                     const take=Math.min(left,9999),item={...source,name:clean,quantity:take};
-                    // These IDs tracked individual historical collection lots, not species.
-                    // Keep a small compact origin summary, never as a stacking barrier.
-                    delete item.ueUnitId;delete item.ueLotId;delete item.ueProvenanceEvent;
+                    // Stage 7.1：普通可堆疊材料保留第一份既有實體批次編號。
+                    // 若每次整理背包都清掉 ueLotId，SAVE_SYNC 就會逐回合新增批次並將前批次標為廢棄，造成登記簿無限制膨脹。
+                    // 合併其他同類材料時以第一份批次作為合併後的識別；來源歷史仍保存在既有帳本事件內。
+                    delete item.ueUnitId;delete item.ueProvenanceEvent;
                     delete item.wte8SourceId;delete item.v720ProfileId;
                     delete item.ueLegalOwnerId;delete item.ueLegalStatus;
                     item.itemId='v81:item:'+clean+':'+v81ItemTier(item)+':'+String(item.materialQuality||item.v720MaterialQuality||'普通');
@@ -14302,13 +14306,27 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         }
         return !key&&active.length===1?active[0]:null;
     }
+    // STAGE73_WAGE_SETTLEMENT_V1：工資計價須區分日薪、週薪、雙日薪與整份契約總價。
+    // 僅以已正式記錄且未領薪的工作日計算應付額，不從 AI 敘事推導新的勞動或金額。
     function v811SalaryDue(contract){
-        if(!contract||contract.rate===null||contract.rate===undefined)return {amount:null,days:0};
-        const unpaid=Math.max(0,(contract.workDays||0)-(contract.paidWorkDays||0));
+        if(!contract||!Number.isSafeInteger(Number(contract.rate))||Number(contract.rate)<=0)
+            return {amount:null,days:0,unpaid:0,unit:1};
+        const worked=Math.max(0,Number(contract.workDays)||0);
+        const paid=Math.max(0,Number(contract.paidWorkDays)||0);
+        const unpaid=Math.max(0,worked-paid);
         const basis=String(contract.basis||'daily').toLowerCase();
-        const unit=/(?:two-days|every-2-days|2-days|兩日|每兩日)/.test(basis)?2:/(?:monthly|month|月)/.test(basis)?30:/(?:weekly|week|週)/.test(basis)?7:1;
+        const isTotal=/(?:^total$|fixed|lump|contract-total|整份|總價|總酬|總計|完工)/.test(basis);
+        if(isTotal){
+            const duration=Number(contract.duration);
+            // 總價契約必須有正式約定的工期，且工作已全部完成，才能整筆領取。
+            if(!Number.isSafeInteger(duration)||duration<1||worked<duration||paid>0)
+                return {amount:0,days:0,unpaid,unit:duration||1};
+            return {amount:Number(contract.rate),days:unpaid,unpaid,unit:unpaid,isTotal:true};
+        }
+        const unit=/(?:two.days|every.2.days|2.days|兩日|每兩日)/.test(basis)?2:
+            /(?:monthly|month|月)/.test(basis)?30:/(?:weekly|week|週)/.test(basis)?7:1;
         const periods=Math.floor(unpaid/unit);
-        return {amount:periods*contract.rate,days:periods*unit,unpaid,unit};
+        return {amount:periods*Number(contract.rate),days:periods*unit,unpaid,unit,isTotal:false};
     }
     function v811HireIntent(action){return /(?:答應|同意|接受|受雇|受聘|簽約|正式加入|願意|我來|幫忙|開始工作|做雜役)/.test(action)&&!/(?:如果|是否|詢問|問問|考慮)/.test(action);}
     // STAGE5_7_4_JOB_AUTH_PATCH_V1: 僅由玩家當回合的明確承接意圖授權創設雇用契約。
@@ -14643,12 +14661,25 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             if(!contract)throw Error('尚未建立可領薪的工作契約');
             const due=v811SalaryDue(contract);
             if(!due.days||!due.amount)throw Error('尚無符合約定付款週期的未領薪工作日');
-            // Pay only what is truly due. AI cannot invent a different wage with PAY_WAGE.
-            const amount=one(currency===null?due.amount:currency);
-            if(amount!==due.amount)throw Error('工資金額與已完成工作日或約定薪資不符');
-            s.spiritStone+=amount;contract.paidWorkDays+=due.days;contract.paidAmount+=amount;
-            contract.status=contract.duration!==null&&contract.workDays>=contract.duration?'PAID':'ACTIVE';
-            return {kind:'PAY_WAGE',status:'PAID',amount,contractId:contract.id};
+            // STAGE73_WAGE_PARTIAL_PAYMENT_V1：允許雇主依約分次支付已賺得的整數工資。
+            // AI 可以提議少付部分到期工資；超出實際到期金額仍禁止入帳。
+            // 若模型只寫 wage（日薪倍率），欠缺實際付款額，仍應使用正式應付總額。
+            const paymentProposed=v81Whole(e.stones??e.amount??e.paidAmount??null,1e9);
+            const amount=one(paymentProposed===null?due.amount:paymentProposed);
+            if(amount<=0||amount>due.amount)throw Error('領薪金額超過已核實的未付工資或未達最小單位');
+            // 每次付款必須覆蓋完整計價週期，避免只付部分金額卻把整天標成已付清。
+            if(due.isTotal&&amount!==due.amount)throw Error('總價契約僅接受完整總額結算');
+            const paidPeriods=due.isTotal?1:amount/Number(contract.rate);
+            if(!Number.isSafeInteger(paidPeriods)||paidPeriods<1)
+                throw Error('領薪金額須為完整薪資週期的整數倍');
+            const settledDays=due.isTotal?due.days:paidPeriods*due.unit;
+            if(!Number.isSafeInteger(settledDays)||settledDays>due.days)
+                throw Error('付款工作天數超過已完成的可領薪天數');
+            s.spiritStone+=amount;contract.paidWorkDays+=settledDays;contract.paidAmount+=amount;
+            const completed=contract.duration!==null&&contract.duration!==undefined&&contract.workDays>=contract.duration;
+            // 期滿但仍有欠薪時保持 COMPLETED，讓下一回合可以再次請領餘額。
+            contract.status=completed?(contract.paidWorkDays>=contract.workDays?'PAID':'COMPLETED'):'ACTIVE';
+            return {kind:'PAY_WAGE',status:'PAID',amount,paidWorkDays:settledDays,contractId:contract.id};
         }
         return {kind,status:'SKIPPED',reason:'非一般經濟事件，交由原遊戲系統處理'};
     }
@@ -14697,7 +14728,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(!out.some(e=>['WORK','PERFORM_JOB'].includes(String(e.kind||'').toUpperCase()))&&contracts.length===1&&
            /(?:工作|上工|搬運|整理|風乾|押送|守夜|協助|做工|完成工作)/.test(action)&&/(?:完成|做完|收工|忙完|整理妥當|風乾完|順利完成|已將)/.test(story)&&!/(?:詢問|確認|回報|報告|領薪|報價)/.test(action))
             out.push({kind:'WORK',contractId:contracts[0].id,days:v81DayCount(action,story,{})});
-        if(!out.some(e=>String(e.kind||'').toUpperCase()==='PAY_WAGE')&&/(?:領薪|工資|結清報酬|領取報酬|請領)/.test(action)&&/(?:交給你|遞給你|支付|已領到|給了你)/.test(story)&&contracts.length===1)
+        // STAGE73_WAGE_RECEIPT_FALLBACK_V1：模型漏送結算事件，但故事明確描述已實際付薪時補建候選事件。
+        // 付款是否合法仍由 v81EventInDraft 對正式契約及未付工資再次核對；拒付、預告付款不能入帳。
+        const wageRequest=/(?:領薪|工資|結清報酬|領取報酬|請領)/.test(String(action||''));
+        const actualPayout=/(?:交給你|遞給你|付給你|給了你|支付給你|已領到|你收到|你領到|當場結清|當場付清|正式發放|工資已入帳|工錢已到手)/.test(String(story||''));
+        const withheld=/(?:拒付|拒絕支付|不肯支付|尚未支付|沒有支付|未能支付|不能支付|無法支付|改日支付|稍後支付|尚未結清|沒有結清|未領到|未收到)/.test(String(story||''));
+        if(!out.some(e=>String(e.kind||'').toUpperCase()==='PAY_WAGE')&&wageRequest&&actualPayout&&!withheld&&contracts.length===1)
             out.push({kind:'PAY_WAGE',contractId:contracts[0].id});
         return out.slice(0,40);
     }
@@ -14785,6 +14821,15 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         let output=text.replace(/這是一次非正式的私下協議/g,'對方提出一項尚待確認的私下提議')
             .replace(/你接過(?:了)?(?:他(?:手中)?的)?(?:巡邏)?令牌/g,'你打量著對方手中的巡邏令牌')
             .replace(/你(?:已|正式)?(?:同意|答應|接下)(?:了)?(?:這份|此次|這項)?(?:工作|巡邏|差事|雇用|協議)/g,'你仍在評估對方提出的工作條件');
+        // 拒絕雇用後，亦須攔住省略主語的「當場答應並簽下契約」與「正式受雇」斷言。
+        // 逐子句核對並保留否定、假設、未來及過往描述，避免改寫合法報價或既有工作歷史。
+        output=output.split(/([，。！？；\n])/).map(clause=>{
+            if(/(?:尚未|還未|並未|未曾|沒有|不能|無法|拒絕|不願|若|如果|只要|待|將會|將要|才會|可以|可於|曾經|先前|此前|過去)/.test(clause))return clause;
+            if(/(?:簽下|簽訂|簽署|訂立)(?:了)?[^，。！？；\n]{0,16}(?:契約|雇用合約|僱用合約|短工合約)/.test(clause)
+                ||/(?:正式|已經|已)(?:受雇|受僱|獲聘|被聘用)|(?:成為|成了)[^，。！？；\n]{0,16}(?:雇工|僱工|短工|雇員|僱員)/.test(clause))
+                return '這份工作仍待你明確確認接受';
+            return clause;
+        }).join('');
         // 當原敘事未聲稱契約成立時，完整保留其內容。
         if(output!==text)output+='\n工作邀約仍待玩家明確接受，尚未建立正式契約。';
         return output;
@@ -14821,8 +14866,25 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         }
         return output;
     }
+    // STAGE73_PAID_WAGE_STORY_V1：實際已入帳的工資以正式收據為準，修正 AI 提及的錯誤付款數量。
+    // 只修改本回合敘述「已經付款」的句子，保留其他報價、未來工資、工作天數和故事細節。
+    function stage73PaidWageStoryGuard(story,receipts){
+        const paid=(Array.isArray(receipts)?receipts:[]).filter(r=>
+            String(r?.kind||'').toUpperCase()==='PAY_WAGE'&&String(r?.status||'').toUpperCase()==='PAID');
+        if(paid.length!==1||!Number.isSafeInteger(Number(paid[0].amount))||Number(paid[0].amount)<=0)
+            return String(story||'');
+        const amount=Number(paid[0].amount);
+        return String(story||'').split(/([。！？\n])/).map(sentence=>{
+            // 出現「支付、領到、交付」與「工資、靈石」的同一句才調整數量。
+            const handover=/(?:支付|付給|交給|交付|遞給|領到|收到|發放|入帳|到手|結清|已付)/.test(sentence);
+            const wages=/(?:工資|工錢|薪資|薪水|報酬|靈石)/.test(sentence);
+            const future=/(?:如果|若|只要|待|日後|明日|未來|預計|承諾|尚未|沒有|拒絕)/.test(sentence);
+            if(!handover||!wages||future)return sentence;
+            return sentence.replace(/(?:[零〇一二兩三四五六七八九十百千\d]+)\s*顆\s*(?:下品)?靈石/g,`${amount} 顆下品靈石`);
+        }).join('');
+    }
     function v81Narrative(s,before,action,story,receipts){
-        const rs=Array.isArray(receipts)?receipts:[],a=String(action||''),t=stage7NarrativeConsistency(stage622WageStoryGuard(story,rs,before,s),rs,before,s,a);
+        const rs=Array.isArray(receipts)?receipts:[],a=String(action||''),t=stage7NarrativeConsistency(stage73PaidWageStoryGuard(stage622WageStoryGuard(story,rs,before,s),rs),rs,before,s,a);
         if(/【系統提示】本次 AI 回傳或結算內容不完整|核心未核准新的物品或獎勵|未有正式交割憑證/.test(t))
             return '你重新確認眼前的情況。這次沒有新的物品或靈石交付，先前已完成的收穫與交易仍然有效。';
         const successful=rs.filter(r=>['SETTLED','PAID','ACQUIRED','AGREED','WORK_RECORDED'].includes(r.status));
