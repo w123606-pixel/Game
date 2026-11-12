@@ -14831,7 +14831,10 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             return clause;
         }).join('');
         // 當原敘事未聲稱契約成立時，完整保留其內容。
-        if(output!==text)output+='\n工作邀約仍待玩家明確接受，尚未建立正式契約。';
+        if(output!==text){
+            output=output.replace(/這份工作仍待你明確確認接受(?:[，、；]這份工作仍待你明確確認接受)+/g,'這份工作仍待你明確確認接受');
+            output+='\n工作邀約仍待玩家明確接受，尚未建立正式契約。';
+        }
         return output;
     }
     // Stage 7：只校正與正式帳本明顯衝突的時間及已付款敘述，避免推定其他貨幣的實際數量。
