@@ -504,6 +504,16 @@
             .replace(/[《》『』【】"'‘“’”<>&]/g, '')
             .trim();
     }
+    function displayItemName(rawName) {
+        const name=cleanNameStrict(rawName);
+        return name.replace(/^(?:[\[［]\s*(?:equipment|weapon|armor|accessory|treasure|consumable|material|plant|animal|mineral|wood|misc|junk|special)\s*[\]］]\s*)+/i,'')||name;
+    }
+    function improvisedWeaponBonus(name) {
+        const clean=displayItemName(name);
+        if(/^(?:木棍|短棍|木棒|樹枝|木枝|枯枝)$/.test(clean))return 2;
+        if(/^(?:石頭|石塊|碎石|小石子|石子)$/.test(clean))return 1;
+        return 0;
+    }
 
     function getLinggenRank(name) {
         const clean = cleanNameStrict(name);
@@ -541,6 +551,7 @@
     const LEGACY_RANK_MAP = { '凡階':0, '黃階':1, '玄階':2, '地階':3, '天階':4, '仙階':8, '神階':9, '聖階':10 };
     function getEquipmentGradeIndex(itemInput) {
         const rawName = typeof itemInput === 'object' && itemInput ? String(itemInput.name || '') : String(itemInput || '');
+        if(improvisedWeaponBonus(rawName))return 0;
         const explicit = itemInput && typeof itemInput === 'object' ? String(itemInput.grade || itemInput.rank || itemInput.itemRank || '') : '';
         if (EQUIPMENT_GRADE_INDEX[explicit] !== undefined) return EQUIPMENT_GRADE_INDEX[explicit];
         const clean = cleanNameStrict(rawName);
@@ -625,7 +636,9 @@
                 // 不接受未註冊物品偽造中央物品定義的授權；分類仍由名稱及權限解析器決定。
                 delete item.definitionId;
             }
-            if((v719MundaneNature(item)||v720IsOrdinaryMaterial(item))&&!item.questLocked&&!item.isQuestItem&&item.identified!==false&&!item.v714LoanId&&!item.ueLoanContractId){
+            if(meta.commonUse){
+                item.type=meta.type;item.category=meta.category;
+            }else if((v719MundaneNature(item)||v720IsOrdinaryMaterial(item))&&!item.questLocked&&!item.isQuestItem&&item.identified!==false&&!item.v714LoanId&&!item.ueLoanContractId){
                 item.type='material';item.category='材料';
                 if(!item.ueStolenFrom&&!['stolen','disputed','disputed_possession','seized'].includes(String(item.ueLegalStatus||''))){item.canDrop=true;item.canSell=true;}
             }
@@ -3113,7 +3126,7 @@
         const meta = getItemMeta(item);
         const c = String(meta.category || '其他');
         if (['武器','防具','飾品','法寶'].includes(c)) return c;
-        if (/修為丹藥|丹藥|消耗品/.test(c)) return '丹藥';
+        if (/修為丹藥|丹藥|消耗品|療傷草藥/.test(c)) return '丹藥';
         if (/食物|飲水/.test(c)) return '食物／飲水';
         if (/材料|靈材/.test(c)) return '材料';
         if (/典籍|傳承/.test(c)) return '典籍';
@@ -3242,6 +3255,18 @@
         if (/殘片|碎片|廢寶/.test(clean) || explicitType === 'fragment') {
             return meta('fragment', { category:'殘片', value:15, canDisassemble:false, canSell:false, canDrop:false, desc:'可收集同類殘片進行熔煉；未達數量前不可拆解。' });
         }
+        const ordinaryUse=!(isObj&&(itemInput.questLocked||itemInput.v714LoanId||itemInput.ueLoanContractId||
+            itemInput.ueStolenFrom||['stolen','disputed','disputed_possession','seized','auction_escrow','consigned'].includes(itemInput.ueLegalStatus)));
+        if(ordinaryUse){
+            const strBonus=improvisedWeaponBonus(rawName);
+            if(strBonus)return meta('equipment',{commonUse:true,category:'武器',slot:'weapon',grade:'凡器',rank:'凡器',
+                value:5,strBonus,desc:`簡易武器｜膂力 +${strBonus}`});
+            const herb=displayItemName(rawName);
+            if(/^(?:止血草|凝血草|療傷草|回血草|水靈草)$/.test(herb)){
+                const hpGain=herb==='水靈草'?5:10;
+                return meta('consumable',{commonUse:true,category:'療傷草藥',value:10,hpGain,desc:`直接使用可恢復 ${hpGain} 點生命`});
+            }
+        }
 
         // AI-defined material lots keep their verified tier and valuation; names alone cannot downgrade them.
         if(isObj && v720ProfileOf(itemInput) && !itemInput.isQuestItem && !itemInput.questLocked && itemInput.identified!==false)
@@ -3255,7 +3280,7 @@
         const categoryAliases = {
             'equipment':'equipment','weapon':'equipment','武器':'equipment','armor':'equipment','防具':'equipment','accessory':'equipment','飾品':'equipment','treasure':'equipment','法寶':'equipment',
             'consumable':'consumable','丹藥':'consumable','修為丹藥':'consumable','食物／飲水':'consumable','食物/飲水':'consumable',
-            'material':'material','材料':'material','靈材':'material',
+            'material':'material','plant':'material','animal':'material','mineral':'material','wood':'material','材料':'material','靈材':'material',
             'knowledge':'knowledge','典籍':'knowledge',
             'key':'key','鑰匙／憑證':'key','鑰匙/憑證':'key',
             'special':'special','任務／劇情物品':'special','任務/劇情物品':'special','地圖／情報':'special','地圖/情報':'special','資訊物品':'special',
@@ -3263,29 +3288,30 @@
             'fragment':'fragment','殘片':'fragment','unidentified':'unidentified','未鑑定物':'unidentified'
         };
         const declaredCategory = String(isObj ? (itemInput.category || '') : '').trim();
+        const categoryLabel = /[\u3400-\u9fff]/.test(declaredCategory) ? declaredCategory : '';
         const declaredType = String(isObj ? (itemInput.type || '') : '').trim().toLowerCase();
-        const declared = categoryAliases[declaredCategory] || categoryAliases[declaredType] || '';
+        const declared = categoryAliases[declaredCategory.toLowerCase()] || categoryAliases[declaredType] || '';
         if (declared === 'key') return meta('key',{category:'鑰匙／憑證',isQuestItem:true,canDisassemble:false,canSell:false,canDrop:false,value:50,desc:'鑰匙或通行憑證，不可參悟、拆解、出售或丟棄。'});
-        if (declared === 'special') return meta('special',{category:declaredCategory || '特殊物品',isQuestItem:Boolean(isObj && itemInput.isQuestItem),canDisassemble:false,canSell:false,canDrop:false,desc:'特殊資訊或劇情物品，依專用互動處理。'});
+        if (declared === 'special') return meta('special',{category:categoryLabel || '特殊物品',isQuestItem:Boolean(isObj && itemInput.isQuestItem),canDisassemble:false,canSell:false,canDrop:false,desc:'特殊資訊或劇情物品，依專用互動處理。'});
         if (declared === 'unidentified') return meta('unidentified',{category:'未鑑定物',canDisassemble:false,canSell:false,canDrop:false,value:20,desc:'尚未辨明用途，須先鑑定。'});
         if (declared === 'fragment') return meta('fragment',{category:'殘片',canDisassemble:false,canSell:false,canDrop:false,desc:'可透過專用熔煉功能處理。'});
         if (declared === 'equipment') {
             const slotMap = {'武器':'weapon','weapon':'weapon','防具':'armor','armor':'armor','飾品':'accessory','accessory':'accessory','法寶':'treasure','treasure':'treasure'};
-            const declaredSlot = slotMap[declaredCategory] || slotMap[declaredType] || null;
+            const declaredSlot = slotMap[declaredCategory.toLowerCase()] || slotMap[declaredType] || null;
             if (declaredSlot) {
                 const grade = getItemRank(itemInput);
                 const mult = getEquipmentGradeMultiplier(itemInput);
                 const hp = Math.floor((declaredSlot==='weapon'?25:declaredSlot==='armor'?50:declaredSlot==='accessory'?15:80)*mult);
                 const extra = declaredSlot==='weapon'?{strBonus:Math.floor(6*mult)}:declaredSlot==='armor'?{conBonus:Math.floor(5*mult)}:declaredSlot==='accessory'?{lukBonus:Math.floor(5*mult),agiBonus:Math.floor(5*mult)}:{intBonus:Math.floor(8*mult),wisBonus:Math.floor(5*mult)};
-                return meta('equipment',{category:declaredCategory || ({weapon:'武器',armor:'防具',accessory:'飾品',treasure:'法寶'}[declaredSlot]),slot:declaredSlot,grade,rank:grade,rarityColor:getItemRankColor(grade),value:Math.floor((declaredSlot==='treasure'?150:declaredSlot==='accessory'?100:80)*mult),hpBonus:hp,...extra,canDisassemble:itemInput.canDisassemble!==false,desc:`${grade}｜HP +${hp}`});
+                return meta('equipment',{category:({weapon:'武器',armor:'防具',accessory:'飾品',treasure:'法寶'}[declaredSlot]),slot:declaredSlot,grade,rank:grade,rarityColor:getItemRankColor(grade),value:Math.floor((declaredSlot==='treasure'?150:declaredSlot==='accessory'?100:80)*mult),hpBonus:hp,...extra,canDisassemble:itemInput.canDisassemble!==false,desc:`${grade}｜HP +${hp}`});
             }
         }
         if (declared === 'consumable' && !/(妖丹|內丹|丹砂|丹珠|丹粉)$/.test(clean)) {
             const isExpType=/(聚氣丹|培元丹|修為丹|築基丹)/.test(clean);
             const hpGain=isExpType?0:Math.floor(40*rarity.mult), expGain=isExpType?Math.floor(30*rarity.mult):0;
-            return meta('consumable',{category:declaredCategory || (isExpType?'修為丹藥':'丹藥'),value:15,expGain,hpGain,canDisassemble:false,desc:isExpType?`服下可增加 ${expGain} 點修為`:`服下可恢復 ${hpGain} 點 HP`});
+            return meta('consumable',{category:categoryLabel || (isExpType?'修為丹藥':'丹藥'),value:15,expGain,hpGain,canDisassemble:false,desc:isExpType?`服下可增加 ${expGain} 點修為`:`服下可恢復 ${hpGain} 點 HP`});
         }
-        if (declared === 'material') return meta('material',{category:declaredCategory || '材料',value:Math.max(10,Math.floor(10*rarity.mult)),canDisassemble:false,desc:'可用於鍛造、煉製或交付任務；不可直接服用。'});
+        if (declared === 'material') return meta('material',{category:categoryLabel || '材料',value:Math.max(10,Math.floor(10*rarity.mult)),canDisassemble:false,desc:'可用於鍛造、煉製或交付任務；不可直接服用。'});
         if (declared === 'knowledge') return meta('knowledge',{category:'典籍',value:100,canDisassemble:false,desc:'由物品定義確認為典籍，可依內容參悟。'});
 
         // 2. 典籍：必須有明確修煉/傳承語意。單獨「玉簡、古書、卷軸」不自動提供參悟。
@@ -14285,9 +14311,15 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         for(const e of v81ValidatedItems(items)){
             const n=e.name;
             if(/(?:無上神器|主宰器|天道本源|滅世仙器)/.test(n)&&Number(s.level||0)<10)throw Error('獎勵超出目前境界的合理範圍');
-            s.inventory.push({name:n,quantity:e.quantity,tier:e.tier||'凡品',materialQuality:e.materialQuality||'普通',
+            const item={name:n,quantity:e.quantity,tier:e.tier||'凡品',materialQuality:e.materialQuality||'普通',
                 category:e.category||'材料',type:e.type||'material',identified:e.identified!==false,canSell:true,canDrop:true,
-                itemId:'v81:item:'+n+':'+(e.tier||'凡品')});
+                itemId:'v81:item:'+n+':'+(e.tier||'凡品')};
+            const meta=getItemMeta(item);
+            if(meta.commonUse){
+                item.type=meta.type;item.category=meta.category;
+                if(meta.slot){item.grade=meta.grade;delete item.tier;}
+            }
+            s.inventory.push(item);
         }
         v81CompactInventory(s);
     }
@@ -14403,11 +14435,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         const deferred=negotiate&&!authorizeNow&&!/(?:我接受|我同意|我確認|我就按|我就照|現在成交|正式成交)/.test(a);
         const jobOnly=/(?:應徵|招工|短工|打工|受雇|受聘|聘用|雇主|僱主|搬運短工|工作契約|兩日工作|工資|領薪|簽訂契約|建立契約|入職|拜師|宗門)/.test(a)&&!(sell||buy||swap);
         const acceptQuote=!deny&&!deferred&&!jobOnly&&!isInquiry&&quoteReference&&quoteAgree;
+        const acceptsExistingQuote=acceptQuote&&/(?:報價|出價|開價|價格|價錢|收購價|那筆交易|這筆交易|上一筆交易|先前交易|按剛才|照剛才)/.test(a);
         // '店家出售給我，我購買' is a BUY, not permission to sell MY inventory.
         const merchantSelling=/(?:商家|店家|掌櫃|商人|攤主|對方).{0,18}(?:出售|賣給我|賣出|賣)/.test(a)&&buy&&!/(?:我(?:也|另外|同時)?(?:出售|賣出|賣給)|把.{0,30}賣給)/.test(a);
         const direct=!deny&&!deferred&&!isInquiry;
         return {sell:direct&&sell&&!merchantSelling,buy:direct&&buy,swap:direct&&swap,
-            acceptQuote,denied:deny,jobOnly};
+            acceptQuote,acceptsExistingQuote,denied:deny,jobOnly};
     }
     // STAGE5_7_4_6_TRADE_LIFECYCLE_V1：每次交易前清除庫存不足的舊報價，阻止重複成交與循環詢價。
     function v8146RetireInvalidQuotes(s,reason){
@@ -14442,6 +14475,29 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v812OpenCommercialOffers(s){
         return Object.values(v81Economy(s).offers||{}).filter(o=>o?.status==='OPEN'&&['SELL','BUY'].includes(o.kind));
+    }
+    function v81FindAcceptedQuote(s,action,intent){
+        const text=String(action||'').normalize('NFKC');
+        const recent=/(?:剛才|剛剛|剛開|剛報|剛給|剛提出)/.test(text);
+        const statedPrice=text.match(/(?:接受|同意|確認)\s*([0-9零〇一二兩三四五六七八九十百千萬]+)\s*(?:顆|枚|塊)?(?:下品)?靈石的(?:報價|出價)/);
+        const price=statedPrice?v710ChineseNumber(statedPrice[1]):null;
+        const quotes=Object.values(v81Economy(s).offers).filter(o=>o&&['SELL','BUY'].includes(o.kind)&&Array.isArray(o.items)&&o.items.length);
+        const knownNames=[...new Set(quotes.flatMap(o=>o.items).map(i=>i?.name).filter(Boolean))];
+        const quotedNames=[...new Set([...text.matchAll(/[「『]([^」』]+)[」』]/g)].map(match=>v81CleanName(match[1])))];
+        const named=quotedNames.length?quotedNames:knownNames.filter(name=>text.includes(name));
+        const matching=quotes.filter(o=>{
+            if(recent&&(!Number.isSafeInteger(o.day)||s.daysPassed-o.day<0||s.daysPassed-o.day>2))return false;
+            if(intent.buy!==intent.sell&&o.kind!==(intent.buy?'BUY':'SELL'))return false;
+            if(price!==null&&price!==Number(o.stones))return false;
+            if(named.length&&(o.items.length!==named.length||!named.every(name=>o.items.some(i=>i?.name===name))))return false;
+            return !v812TradePermission(s,action,o.kind,o.items,o,o.stones);
+        });
+        const latestDay=matching.reduce((day,o)=>Math.max(day,Number(o.day)||0),-Infinity);
+        const mostRecent=matching.filter(o=>(Number(o.day)||0)===latestDay);
+        const pending=mostRecent.filter(o=>o.status==='OPEN');
+        // 「剛開的報價」仍指最後那張，即使它已成交或撤銷。
+        if(pending.length!==1||(recent&&mostRecent.at(-1)!==pending[0]))return null;
+        return pending[0];
     }
     // 明確拒絕才取消報價，排除暫緩與詢問並核對商品。
     function v812CancelRejectedOffers(s,action,eventId){
@@ -14589,7 +14645,9 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
             return {kind:'QUOTE',status:'OFFERED',side,items:goods,amount,offerId:id};
         }
         if(kind==='ACCEPT_OFFER'){
-            const oid=String(e.offerId||'');const offers=v812OpenCommercialOffers(s).filter(o=>!oid||oid===o.id);
+            const oid=String(e.offerId||'');
+            if(oid==='NO_MATCHING_SAVED_OFFER')throw Error('這張報價已結束，或找不到唯一符合的有效報價，請重新詢價');
+            const offers=v812OpenCommercialOffers(s).filter(o=>!oid||oid===o.id);
             if(offers.length!==1)throw Error('沒有唯一可接受的商業報價');
             const offer=offers[0],permission=v812TradePermission(s,action,offer.kind,offer.items,offer,offer.stones);
             if(permission)throw Error(permission);
@@ -14751,17 +14809,12 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
         if(!alreadyCash&&!original.length&&!legacyComposite){const delta=Number(raw?.spiritStonesDelta||0);if(Number.isSafeInteger(delta)&&delta!==0)out.push({kind:delta>0?'GAIN_STONE':'SPEND_STONE',stones:Math.abs(delta)});}
         // Prior quotes are NOT automatically accepted by generic '同意' (e.g. agreeing to a job).
         // Explicit quote acceptance settles the SAVED terms, never newly invented AI terms.
-        let pending=v812OpenCommercialOffers(s);
         const tradeIntent=v812TradeIntent(action);
-        const recent=tradeIntent.acceptQuote&&/(?:接受|確認)剛才的報價/.test(action);
-        if(recent){
-            // 所有仍開放的報價可能跨越數個遊戲年；剛才的報價必須對上玩家當次確認的條件。
-            pending=pending.filter(o=>Number.isSafeInteger(o.day)&&o.day<=s.daysPassed&&s.daysPassed-o.day<=2&&
-                !v812TradePermission(s,action,o.kind,o.items,o,o.stones));
-        }
-        if(tradeIntent.acceptQuote&&(pending.length===1||recent)&&!/(?:重新報價|新的報價|改價|再議價)/.test(action)){
+        const usesSavedQuote=tradeIntent.acceptQuote&&(tradeIntent.acceptsExistingQuote||
+            !(tradeIntent.sell||tradeIntent.buy||tradeIntent.swap));
+        if(usesSavedQuote&&!/(?:重新報價|新的報價|改價|再議價)/.test(action)){
             const replacements=out.filter(e=>['ACCEPT_OFFER','SELL','BUY','TRADE'].includes(String(e.kind||'').toUpperCase()));
-            const offerId=pending.length===1?pending[0].id:'NO_MATCHING_RECENT_OFFER';
+            const offerId=v81FindAcceptedQuote(s,action,tradeIntent)?.id||'NO_MATCHING_SAVED_OFFER';
             if(replacements.length){
                 const first=replacements[0];first.kind='ACCEPT_OFFER';first.offerId=offerId;
                 for(const other of replacements.slice(1))out.splice(out.indexOf(other),1);
@@ -14933,10 +14986,18 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
     }
     function v81Narrative(s,before,action,story,receipts){
         const rs=Array.isArray(receipts)?receipts:[],a=String(action||''),t=stage7NarrativeConsistency(stage73PaidWageStoryGuard(stage622WageStoryGuard(story,rs,before,s),rs),rs,before,s,a);
-        if(/【系統提示】本次 AI 回傳或結算內容不完整|核心未核准新的物品或獎勵|未有正式交割憑證/.test(t))
+        if(/【系統提示】本次 AI 回傳或結算內容不完整|核心未核准新的物品或獎勵|未有正式交割憑證/.test(t)){
+            const trades=rs.filter(r=>r.kind==='TRADE'&&r.status==='SETTLED'&&['BUY','SELL'].includes(r.side)&&r.items?.length);
+            if(trades.length)return trades.map(r=>{
+                const goods=r.items.map(i=>i.name+' ×'+i.quantity).join('、');
+                return r.side==='BUY'?`你支付 ${r.amount} 顆靈石，買入 ${goods}。`:`你售出 ${goods}，收到 ${r.amount} 顆靈石。`;
+            }).join('\n');
             return '你重新確認眼前的情況。這次沒有新的物品或靈石交付，先前已完成的收穫與交易仍然有效。';
+        }
         const successful=rs.filter(r=>['SETTLED','PAID','ACQUIRED','AGREED','WORK_RECORDED'].includes(r.status));
         const failed=rs.filter(r=>r.status==='REJECTED');
+        if(rs.length&&rs.every(r=>r.status==='REJECTED'&&r.kind==='ACCEPT_OFFER'))
+            return '這次未能完成交割。你可以請掌櫃重新報價，再確認商品、數量和總價。';
         if(rs.length&&rs.every(r=>r.status==='REJECTED'&&/^報價方向/.test(r.reason||'')))
             return '掌櫃停下來核對這筆報價。你可以說明要向店裡買，還是要把手上的物品賣給店裡，再請對方開價。';
         const unauthorized=failed.some(r=>/(?:本回合沒有授權|未指定的其他物品|沒有唯一且方向一致)/.test(r.reason||''));
@@ -16743,7 +16804,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                 const name = cleanNameStrict(typeof eqItem === 'object' ? eqItem.name : eqItem);
                 const meta = getItemMeta(eqItem || name);
                 const eqRank = getItemRank(eqItem || name);
-                if (nameEl) { nameEl.textContent = `[${eqRank}] ${name}`; nameEl.style.color = getItemRankColor(eqRank); }
+                if (nameEl) { nameEl.textContent = `[${eqRank}] ${displayItemName(name)}`; nameEl.style.color = getItemRankColor(eqRank); }
                 if (descEl) descEl.textContent = meta.desc || "無屬性加成";
                 if (btnEl) btnEl.disabled = false;
             } else {
@@ -16782,7 +16843,7 @@ ${vo.actorName||'交易對手'}的報價：${vo.itemName||vo.purpose||vo.kind}�
                     const itemRank = (meta.type === 'equipment' || meta.slot) ? getItemRank(item) : null;
                     const itemCategory = itemRank ? itemRank : (meta.category || '雜項');
                     const dynamicProfile=v720ProfileOf(item);
-                    span.textContent = `✦ [${itemCategory}] ${name} x${qty} ${dynamicProfile ? `〔${dynamicProfile.identified?dynamicProfile.tier:'未鑑定'}／${dynamicProfile.materialQuality}〕` : ''} ${item.isQuestItem ? '🔒' : ''}`;
+                    span.textContent = `✦ [${itemCategory}] ${displayItemName(name)} x${qty} ${dynamicProfile ? `〔${dynamicProfile.identified?dynamicProfile.tier:'未鑑定'}／${dynamicProfile.materialQuality}〕` : ''} ${item.isQuestItem ? '🔒' : ''}`;
                     span.style.color = itemRank ? getItemRankColor(itemRank) : (meta.rarityColor || '#c5a059');
                     span.title = itemRank ? `裝備境界階：${itemRank}｜類型：${meta.category || '裝備'}` : `物品類型：${meta.category || meta.type || '雜項'}${dynamicProfile?'｜'+v720Display(item):''}`;
                     if (getItemPermissions(item).identify) span.title += "｜先按『鑑定』，成功後才可裝備；未鑑定持有可有微弱共鳴";
